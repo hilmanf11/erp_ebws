@@ -18,7 +18,7 @@
             <th rowspan="2" data-options="field:'control_id',width:100,halign:'center'">Control No</th>
             <th rowspan="2" data-options="field:'polybag',width:150,halign:'center'">Polybag Label</th>
             <th rowspan="2" data-options="field:'box_label',width:70,align:'center'">Box Label</th>
-            <th rowspan="2" data-options="field:'lot',width:100,align:'center'">Lot No</th>
+            <!-- <th rowspan="2" data-options="field:'lot',width:100,align:'center'">Lot No</th> -->
             <!-- <th rowspan="2" data-options="field:'ng_ration',width:90,align:'center'">NG Ratio (%)</th> -->
             <!-- <th rowspan="2" data-options="field:'is_no',width:100,halign:'center'">IS No.</th> -->
             <th rowspan="2" data-options="field:'weight',width:100,align:'center'">Weight (gram)</th>
@@ -53,6 +53,7 @@
 </table>
 <!-- TOOLBAR DATAGRID -->
 <div id="toolbar" style="height: 35px;">
+    <a href="javascript:;" class="easyui-linkbutton" id="sync" data-options="plain:true" onclick="sync()"><i class="fa fa-history"></i> Push Data</a>
     <?= $button ?>
 </div>
 <!-- DIALOG SAVE AND UPDATE -->
@@ -121,7 +122,7 @@
                     <span style="width:35%; display:inline-block;">Control No</span>
                     <input style="width:60%;" name="control_id" id="control_id" class="easyui-textbox">
                 </div>
-                <div class="fitem">
+                <div class="fitem" hidden>
                     <span style="width:35%; display:inline-block;">Lot No</span>
                     <input style="width:60%;" name="lot" id="lot" class="easyui-numberbox">
                 </div>
@@ -167,7 +168,7 @@
                     <input style="width:60%;" name="uom" id="uom" required="" class="easyui-combobox">
                 </div>
                 <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Qty/Box</span>
+                    <span style="width:35%; display:inline-block;">Lot Qty</span>
                     <input style="width:60%;" name="qty_box" id="qty_box" class="easyui-numberbox">
                 </div>
                 <div class="fitem" hidden>
@@ -221,6 +222,17 @@
     </form>
 </div>
 
+<!-- Sync -->
+<div id="dlg_sync" class="easyui-dialog" title="Sync Data" data-options="closed: true,modal:true" style="width: 500px; padding:10px; top: 20px;">
+    <span style="float: left; color:green;">SUCCESS : <b id="p_success">0</b></span><span style="float: right; color:red;"> FAILED : <b id="p_failed">0</b></span>
+    <div id="p_upload2" class="easyui-progressbar" style="width:100%; margin-top: 10px;"></div>
+    <center><b id="p_start2">0</b> Of <b id="p_finish2">0</b></center>
+    <div id="p_remarks2" title="History Sync" class="easyui-panel" style="width:100%; height:200px; padding:10px; margin-top: 10px;">
+        <ul id="remarks2">
+        </ul>
+    </div>
+</div>
+
 <!-- Upload -->
 <div id="dlg_upload" class="easyui-dialog" title="Upload Data" data-options="closed: true,modal:true" style="width: 500px; padding:10px; top: 20px;">
     <form id="frm_upload" method="post" enctype="multipart/form-data" novalidate>
@@ -244,6 +256,81 @@
 <!-- PDF -->
 <iframe id="printout" src="<?= base_url('master/item_fg/print') ?>" style="width: 100%;" hidden></iframe>
 <script>
+    function sync() {
+        $.messager.confirm('Warning', 'Are you sure you want to push this data?', function(r) {
+            if (r) {
+                Swal.fire({
+                    title: 'Get Data from Database ERP',
+                    showConfirmButton: false,
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    },
+                });
+
+                $.ajax({
+                    type: "get",
+                    url: "<?= base_url('master/item_fg/getSync') ?>",
+                    dataType: "json",
+                    success: function(rows) {
+                        Swal.close();
+                        $("#dlg_sync").dialog('open');
+                        $("#sync").linkbutton("disable");
+
+                        if(rows['total'] > 0){
+                            requestData(rows['total'], rows);
+                            function requestData(total, json, number = 1, value = 0) {
+                                if (value < 100) {
+                                    value = Math.floor((number / total) * 100);
+                                    $('#p_upload2').progressbar('setValue', value);
+                                    $('#p_start2').html(number);
+                                    $('#p_finish2').html(total);
+
+                                    $.post('<?= base_url('master/item_fg/createSync') ?>', {
+                                        data: json[number - 1]
+                                    }, function(note) {
+                                        var result = eval('(' + note + ')');
+                                        requestData(total, json, number + 1, value);
+
+                                        var title = "<b style='color: green;'>" + result.title + "</b> | " + result.message;
+                                        $("#p_remarks2").append(title + "<br>");
+
+                                        if (value == 100) {
+                                            // Swal.fire('Good job!', 'Process Sync Data Completed!', 'success');
+                                            $("#sync").linkbutton("enable");
+                                        }
+                                    }).fail(function(jqXHR, textStatus) {
+                                        if (textStatus == "error") {
+                                            Swal.fire({
+                                                title: 'Connection Time Out, Check Your Connection',
+                                                showConfirmButton: false,
+                                                allowOutsideClick: false,
+                                                allowEscapeKey: false,
+                                                didOpen: () => {
+                                                    Swal.showLoading();
+                                                },
+                                            });
+
+                                            requestData(total, json, number, value);
+                                        }
+                                    });
+                                }
+                            }
+                        }else{
+                            Swal.close();
+                            Swal.fire('Failed!', 'Data to Push data is 0', 'error');
+                        }
+                    },
+                    error: function(){
+                        Swal.close();
+                        Swal.fire('Failed!', 'Not Connected in MRP Banshu', 'error');
+                    }
+                });
+            }
+        });
+    }
+
     function autoid(){
         var customer_number = $("#customer_number").textbox('getValue');
         var harnes_type = $("#harnes_type").combogrid('getValue');
@@ -402,7 +489,7 @@
         //SAVE DATA
         $('#dlg_insert').dialog({
             buttons: [{
-                text: 'Save',
+                text: 'Send to Approval',
                 iconCls: 'icon-ok',
                 handler: function() {
                     $('#frm_insert').form('submit', {

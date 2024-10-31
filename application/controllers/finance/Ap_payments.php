@@ -64,7 +64,7 @@ class Ap_payments extends CI_Controller
         }
         
         $monthBf = date('Y-m-01', strtotime('-1 month', strtotime($payment_date)));
-        $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $monthBf, "currency_from" => $currency, "currency_to" => "IDR"]);
+        $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $monthBf, "currency_from" => $currency, "currency_to" => "INR"]);
 
         if ($exchange) {
             $amount = $exchange->middle;
@@ -72,7 +72,7 @@ class Ap_payments extends CI_Controller
             $amount = 0;
         }
 
-        echo "Rp. " . number_format($amount, 2);
+        echo "Rate $currency to INR : " . number_format($amount, 2);
     }
 
     public function calculateJournal($journal_type_id = "", $bank_account = "")
@@ -104,9 +104,9 @@ class Ap_payments extends CI_Controller
             }
 
             $monthBf = date('Y-m-01', strtotime('-1 month', strtotime($payment_date)));
-            $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $monthBf, "currency_from" => $currency, "currency_to" => "IDR"]);
+            $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $monthBf, "currency_from" => $currency, "currency_to" => "INR"]);
 
-            if ($currency != "IDR") {
+            if ($currency != "INR") {
                 if ($exchange) {
                     $amount = ($total * $exchange->middle);
                 } else {
@@ -167,7 +167,7 @@ class Ap_payments extends CI_Controller
         $arr = array_values($mergedData);
 
         foreach ($banks as $bank) {
-            if ($currency != "IDR") {
+            if ($currency != "INR") {
                 if ($exchange) {
                     $amount = ($grand_total * $exchange->middle);
                 } else {
@@ -202,7 +202,7 @@ class Ap_payments extends CI_Controller
             $where_por = "por_no = '-'";
         }
 
-        $records = $this->crud->query("SELECT DISTINCT `number`, journal_type_id FROM purchase_invoices WHERE supplier_id = '$supplier_id' and `status` = 0");
+        $records = $this->crud->query("SELECT DISTINCT `number`, journal_type_id, invoice_no FROM purchase_invoices WHERE supplier_id = '$supplier_id' and `status` = 0");
         echo json_encode($records);
     }
 
@@ -215,7 +215,7 @@ class Ap_payments extends CI_Controller
     public function readInvoices($supplier_id)
     {
         $date_now = date("Y-m-t");
-        $data = $this->crud->query("SELECT DISTINCT `purchase_invoice` FROM ap_payments WHERE supplier_id = '$supplier_id' and `status` = 0 ORDER BY `purchase_invoice` ASC");
+        $data = $this->crud->query("SELECT DISTINCT `purchase_invoice`, supplier_invoice FROM ap_payments WHERE supplier_id = '$supplier_id' and `status` = 0 ORDER BY `purchase_invoice` ASC");
         echo json_encode($data);
     }
 
@@ -237,20 +237,37 @@ class Ap_payments extends CI_Controller
         echo json_encode($records);
     }
 
-    public function number($trans_date)
+    public function number($id_menu)
     {
-        $datenow    = "AP-" . date("Ymd", strtotime(base64_decode($trans_date)));
-        $sqlGetID   = $this->db->query("SELECT max(`payment_no`) as kode FROM ap_payments WHERE `payment_no` like '%$datenow%'");
-        $rowID      = $sqlGetID->row();
-        $kode       = $rowID->kode;
-        if ($kode == NULL) {
-            $autoID = sprintf("%04s", $kode + 1);
-        } else {
-            $urutan = (int) substr($kode, -4);
-            $urutan++;
-            $autoID = sprintf("%04s", $urutan);
+        $datenow = date("Y-m-d");
+        $sql_menu = $this->db->query("SELECT * FROM menus_no WHERE menus_id = '$id_menu' and `status` = '0' and `start_date` <= '$datenow' and end_date >= '$datenow'");
+        $row_menu = $sql_menu->row();
+
+        if(@$row_menu->number == ""){
+            //
+        }else{
+            $number = @$row_menu->number;
+            $yearnow = date("y", strtotime($row_menu->start_date));
+            $yearend = date("y", strtotime($row_menu->end_date));
+
+            $whereDate = $number.$yearnow.$yearend."1";
+
+            $sqlGetID	= $this->db->query("SELECT max(payment_no) as kode FROM ap_payments WHERE payment_no like '%$whereDate%'");
+            $rowID = $sqlGetID->row();
+            $kode = $rowID->kode;
+            
+            if ($kode == NULL) {
+                $autoID = sprintf("%0".$row_menu->sequence."s", $kode + 1);
+                $autoNo = $whereDate.$autoID;
+            } else {
+                $urutan = (int) substr($kode, -6);
+                $urutan++;
+                $autoID	= sprintf("%0".$row_menu->sequence."s", $urutan);
+                $autoNo = $whereDate.$autoID;
+            }
+
+            echo $autoNo;
         }
-        echo $datenow . "-" . $autoID;
     }
 
     public function datatablesTemp()
@@ -729,7 +746,7 @@ class Ap_payments extends CI_Controller
             }
 
             $monthBf = date('Y-m-01', strtotime('-1 month', strtotime($payment_date)));
-            $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $monthBf, "currency_from" => $currency, "currency_to" => "IDR"]);
+            $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $monthBf, "currency_from" => $currency, "currency_to" => "INR"]);
 
             if ($exchange) {
                 $amount = $exchange->middle;
@@ -814,7 +831,7 @@ class Ap_payments extends CI_Controller
                                     </table>
                                 </div>
                                 <div ' . $hide . ' style="float:left; width:25%; border:2px solid black; padding:10px; font-size:12px; margin-left:20px;"> 
-                                    <p style="margin:0;">Rate USD to IDR : <b>' . $exchangeName . '</b></p>
+                                    <p style="margin:0;">Rate USD to INR : <b>' . $exchangeName . '</b></p>
                                 </div>
                                 <table id="customers">
                                     <tr>
@@ -948,7 +965,7 @@ class Ap_payments extends CI_Controller
                     <tr>
                         <th style="height:20px; text-align:center;">' . $this->session->name . '<hr style="width:60%;margin-left:20%;">User Entry</th>
                         <th style="height:20px; text-align:center;"><br><hr style="width:60%;margin-left:20%;">Accounting Manager</th>
-                        <th style="height:20px; text-align:center;"><br><hr style="width:60%;margin-left:20%;">Director</th>
+                        <th style="height:20px; text-align:center;"><br><hr style="width:60%;margin-left:20%;">HOD of Finance</th>
                     </tr>
                 </table>
                 </div>

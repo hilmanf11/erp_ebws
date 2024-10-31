@@ -10,6 +10,7 @@ class Os_rm extends CI_Controller
         $this->load->helper(array('form', 'url'));
         $this->load->library('form_validation');
         $this->load->library('session');
+        $this->load->library('Ciqrcode');
         $this->load->model('crud');
 
         //VALIDASI FORM
@@ -38,6 +39,23 @@ class Os_rm extends CI_Controller
         echo json_encode($send);
     }
 
+    public function readMpq($id, $type){
+        $id = base64_decode($id);
+
+        $records = $this->crud->query("SELECT a.mpq, c.name as supplier_name 
+            from supplier_items a 
+            join os_rm b on a.item_rm_id = b.item_rm_id 
+            join suppliers c on a.supplier_id = c.id 
+            where b.id = '$id'");
+            
+        if($type == "rows"){
+            echo json_encode($records);
+        }else{
+            echo json_encode(array("total" => count($records)));
+        }
+        
+    }
+
     //GET DATATABLES
     public function datatables()
     {
@@ -59,12 +77,12 @@ class Os_rm extends CI_Controller
             $result = array();
 
             //Select Query
-            $this->db->select('a.*, b.uom, b.number as item_rm_number, b.name as item_rm_name, c.name as category_name, d.name as product_family_name');
+            $this->db->select('a.*, b.uom, b.number as item_rm_number, b.name as item_rm_name, e.mpq, c.name as category_name, d.name as product_family_name');
             $this->db->from('os_rm a');
             $this->db->join('item_rm b', 'a.item_rm_id = b.id');
             $this->db->join('item_categories c', 'b.item_category_id = c.id');
             $this->db->join('item_familys d', 'b.item_family_id = d.id');
-            // $this->db->join('item_family_subs e', 'b.item_sub_family_id = e.id');
+            $this->db->join('supplier_items e', 'a.item_rm_id = e.item_rm_id');
             if($filter_from != "" && $filter_to != ""){
                 $this->db->where('a.trans_date >=', $filter_from);
                 $this->db->where('a.trans_date <=', $filter_to);
@@ -72,6 +90,7 @@ class Os_rm extends CI_Controller
             $this->db->like('c.id', $filter_category);
             $this->db->like('d.id', $filter_product_family);
             $this->db->like('b.id', $filter_item_rm);
+            $this->db->group_by('a.item_rm_id');
             $this->db->order_by('a.trans_date', 'DESC');
 
             //Total Data
@@ -121,6 +140,7 @@ class Os_rm extends CI_Controller
     {
         $data = $this->input->post();
         $send = $this->crud->delete('os_rm', $data);
+        $send = $this->crud->delete('scan_item_receipts', ["receipt_id" => $data['id']]);
         echo $send;
     }
 
@@ -139,9 +159,7 @@ class Os_rm extends CI_Controller
         for ($i = 3; $i <= $total_row; $i++) {
             $datas[] = array(
                 'item_rm_id' => $data->val($i, 2),
-                'trans_date' => $data->val($i, 8),
-                'qty' => $data->val($i, 9),
-                'location' => $data->val($i, 10)
+                'qty' => $data->val($i, 3)
             );
         }
 
@@ -185,21 +203,172 @@ class Os_rm extends CI_Controller
         if ($this->input->post()) {
             $data = $this->input->post('data');
 
-            $os_rm = $this->crud->read('os_rm', [], [
-                "item_rm_id" => $data['item_rm_id'],
-            ]);
-
+            $os_rm = $this->crud->read('os_rm', [], ["item_rm_id" => $data['item_rm_id']]);
             $item_rm = $this->crud->read('item_rm', [], ["id" => $data['item_rm_id']]);
 
             if (!empty($os_rm->item_rm_id)) {
-                echo json_encode(array("title" => "Duplicated", "message" => "Part ID " . $data['item_rm_id'] . " is Duplicate Data", "theme" => "error"));
+                echo json_encode(array("title" => "Duplicated", "message" => "Part No EBWS " . $data['item_rm_id'] . " is Already Exist", "theme" => "error"));
             }elseif(empty($item_rm->id)){
-                echo json_encode(array("title" => "Not Found", "message" => "Part ID " . $data['item_rm_id'] . " is Not Found", "theme" => "error"));
+                echo json_encode(array("title" => "Not Found", "message" => "Part No EBWS " . $data['item_rm_id'] . " is Not Found", "theme" => "error"));
             } else {
-                $send = $this->crud->create('os_rm', $data);
-                echo $send;
+                $location = $this->crud->query("SELECT `number` from warehouse_locations where item_family_id = '$item_rm->item_family_id' order by RAND() limit 1");
+
+                if(empty($location->number)){
+                    $dataFinal = array(
+                        "item_rm_id" => $data['item_rm_id'],
+                        "trans_date" => date("Y-m-d"),
+                        "location" => @$location[0]->number,
+                        "qty" => $data['qty']
+                    );
+    
+                    $send = $this->crud->create('os_rm', $dataFinal);
+                    echo $send;
+                }else{
+                    echo json_encode(array("title" => "Not Found", "message" => "Part No EBWS " . $data['item_rm_id'] . " Location Not Ready", "theme" => "error"));
+                }
             }
         }
+    }
+
+    public function createLabel(){
+        $post = $this->input->post();
+        $id = $post['id'];
+        $mpq = $post['mpq'];
+        
+        $po_receipt_label = $this->crud->reads('scan_item_receipts', [], ["receipt_id" => $id]);
+
+        $os_rm = $this->crud->read('os_rm', [], ["id" => $id]);
+        $qty_receipt = $os_rm->qty;
+        $qty_label = ceil($qty_receipt / $mpq);
+
+        if (!$po_receipt_label) {
+            for ($i = 0; $i < $qty_label; $i++) {
+                //Read Label ID
+                $sqlGetID = $this->db->query("SELECT max(label_no) as kode FROM scan_item_receipts WHERE receipt_id = '$id'");
+                $rowID = $sqlGetID->row();
+                $label = $rowID->kode;
+
+                if ($label == NULL) {
+                    $autoID = "STO".$id . sprintf("%04s", $label + 1);
+                } else {
+                    $urutan = (int) substr($label, -4);
+                    $autoID = "STO".$id . sprintf("%04s", $urutan + 1);
+                }
+
+                if ($qty_receipt > $mpq) {
+                    $qty = $mpq;
+                } else {
+                    $qty = $qty_receipt;
+                }   
+
+                //Simpan Label
+                $arrLabel = [
+                    "receipt_id" => $id,
+                    "label_no" => $autoID,
+                    "qty" => $qty,
+                    "warehouse" => $os_rm->location
+                ];
+
+                $this->crud->create('scan_item_receipts', $arrLabel);
+                $qty_receipt = ($qty_receipt - $mpq);
+            }
+
+            echo "OK";
+        }
+    }
+
+    public function print_label($id)
+    {
+        //Config
+        $this->db->select('*');
+        $this->db->from('config');
+        $config = $this->db->get()->row();
+
+        $id = base64_decode($id);
+        
+        $this->db->select('a.*, c.id as item_rm_id, b.trans_date, c.number, c.name, b.location, c.uom');
+        $this->db->from('scan_item_receipts a');
+        $this->db->join('os_rm b', 'a.receipt_id = b.id');
+        $this->db->join('item_rm c', 'b.item_rm_id = c.id');
+        $this->db->join('item_familys e', 'c.item_family_id = e.id');
+        $this->db->where('a.deleted', 0);
+        $this->db->where('a.receipt_id', $id);
+        $this->db->order_by('a.label_no', 'asc');
+        $records = $this->db->get()->result_object();
+
+        $html = '<html>
+                    <head>
+                        <title>' . $id . '</title>
+                        <link rel="icon" href="' . $config->favicon . '" type="image/png" sizes="16x16">
+                    </head>
+                    <style>body {font-family: Arial, Helvetica, sans-serif; margin:5px;}#customers {border-collapse: collapse; width: 100%; font-size: 9px;}#customers td, #customers th {border: 1px solid black;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: #ddd;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: center;color: black;}</style><body>';
+        if ($records) {
+            $html .= '<div style="width: 44mm;">';
+            $no = 1;
+            foreach ($records as $record) {
+                if ($no == 3) {
+                    $no = 1;
+                }
+                if ($no == 1) {
+                    $padding = "padding:2mm 3mm 3mm 2mm;";
+                } else {
+                    $padding = "padding:2mm 3mm 3mm 2mm;";
+                }
+                //Generate QRcode
+                $this->createQrcode($record->label_no, "assets/image/qrcode/");
+                $html .= '  <div style="width: 44mm; max-height:40mm; float:left; ' . $padding . '">
+                                <table id="customers" border="1" style="margin-bottom:20px;">
+                                    <tr>
+                                        <th colspan="3" style="font-size:7px; text-align:center;"><b>' . $config->name . '</b></th>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="3" style="height:35px;">
+                                            <div style="float:left;">
+                                                <small style="font-size:7px;"><b>' . $record->number. '</b></small><br>
+                                                <small style="font-size:12px;"><b>' . $record->item_rm_id . '</b></small>
+                                                <br>
+                                                <b style="font-size:7px;">STO</b>
+                                            </div>
+                                            
+                                            <div style="float:right;">
+                                                <small style="font-size:15px;"><b>' . date("m", strtotime($record->trans_date)) . '</b></small><small style="font-size:10px;"><b>' ." - ". date("Y", strtotime($record->trans_date)) . '</b></small>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th style="text-align:left">
+                                            <small>Quantity</small><br><b style="font-size:20px;">' . number_format($record->qty, 2) . '</b></small><br>
+                                            <small style="font-size:15px; float: right;"><b>'. $record->uom . '</b></small>
+                                        </th>
+                                        <th style="text-align:left">
+                                            <small>Location</small><br><b style="font-size:14px;">'.$record->location.'</b><br>
+                                        </th>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <th style="text-align:left">
+                                            <div style="display: inline-block;">
+                                                <small>Date :</small><br> 
+                                                <b style="font-size:8px;">' . $record->trans_date . '</b>
+                                            </div>
+                                            <div style="display: inline-block;">
+                                                <small>Label No :</small><br>
+                                                <b style="font-size:8px;">' . $record->label_no . '</b>
+                                            </div>
+                                        </th>
+                                        <th style="text-align:center;">
+                                            <img src="' . base_url('assets/image/qrcode/' . $record->label_no . '.png') . '" width="50"/>
+                                        </th>
+                                    </tr>
+                                </table>
+                            </div>';
+                $no++;
+            }
+            $html .= '</div><script>window.print()</script>';
+        } else {
+            $html .= "<br><br><br><center><h3>Data not found or data has been scanned</h3></center>";
+        }
+        die($html);
     }
 
     //PRINT & EXCEL DATA
@@ -218,7 +387,6 @@ class Os_rm extends CI_Controller
         $filter_product_family = @base64_decode($get['filter_product_family']);
         $filter_product_family_sub = @base64_decode($get['filter_product_family_sub']);
         $filter_item_rm = @base64_decode($get['filter_item_rm']);
-
 
         //Config
         $this->db->select('*');

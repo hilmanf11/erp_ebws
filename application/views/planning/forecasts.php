@@ -81,7 +81,7 @@
 </div>
 
 <!-- Insert & Update -->
-<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 1300px; height: 600px; padding:10px; top: 20px; left: 20px;">
+<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 1300px; height: 550px; padding:10px; top: 20px; left: 20px;">
     <form id="frm_insert" method="post" novalidate>
         <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
             <legend><b>Form Data</b></legend>
@@ -877,7 +877,7 @@
         //SAVE DATA
         $('#dlg_insert').dialog({
             buttons: [{
-                text: 'Save All',
+                text: 'Send to Approval',
                 iconCls: 'icon-ok',
                 handler: function() {
                     var p_month = $("#p_month").combobox('getValue');

@@ -121,6 +121,14 @@
                 <span style="width:35%; display:inline-block;">PPH Rates (%)</span>
                 <input style="width:60%;" name="pph" value="<?= $config->pph ?>" class="easyui-numberbox">
             </div>
+
+            <div style="width:100%;">
+                <br><br>
+                <h2 style="font-weight: bold; font-size: 15px;">Setting Terms and Conditions (Purchase Order)</h2>
+                <textarea class="summernote" name="si_terms" id="description">
+                    <?= $config->si_terms ?>
+                </textarea>
+            </div>
         </fieldset>
         <div style="float: left; width: 100%;">
             <center>
@@ -149,4 +157,23 @@
             }
         });
     }
+
+    $(function() {
+        $('.summernote').summernote({
+            height: 300,
+            hintMode: 'words',
+            hintSelect: 'next',
+            toolbar: [
+                // [groupName, [list of button]]
+                ['style', ['bold', 'italic', 'underline', 'clear']],
+                ['font', ['strikethrough', 'superscript', 'subscript']],
+                ['fontname', ['fontname']],
+                ['fontsize', ['fontsize']],
+                ['color', ['color']],
+                ['para', ['ul', 'ol', 'paragraph']],
+                ['height', ['height']],
+                ['table', ['table']]
+            ]
+        });
+    });
 </script>

@@ -76,9 +76,9 @@ $query_builder = TRUE;
 $db['default'] = array(
 	'dsn'	=> '',
 	'hostname' => 'localhost',
-	'username' => 'root',
-	'password' => '',
-	'database' => 'erp_ebws',
+	'username' => 'erp-ebws-dummy',
+	'password' => '8zSz8GH2jnmGD5RX',
+	'database' => 'erp-ebws-dummy',
 	'dbdriver' => 'mysqli',
 	'dbprefix' => '',
 	'pconnect' => FALSE,
@@ -96,13 +96,13 @@ $db['default'] = array(
 	'save_queries' => TRUE
 );
 
-$db['pg'] = array(
+$db['dummy'] = array(
 	'dsn' => '',
 	// 'hostname' => '43.254.126.105',
 	'hostname' => '103.141.99.23',
 	'username' => 'postgres',
 	'password' => 'skipad#0712pt%',
-	'database' => 'mrp_ebws_test',
+	'database' => 'mrp_ebws_21082024',
 	'dbdriver' => 'postgre',
 	'dbprefix' => '',
 	'pconnect' => FALSE,
@@ -117,5 +117,29 @@ $db['pg'] = array(
 	'stricton' => FALSE,
 	'failover' => array(),
 	'save_queries' => TRUE,
-	'port' => '5432'
+	'port' => '5433'
+);
+
+$db['qas'] = array(
+	'dsn' => '',
+	// 'hostname' => '43.254.126.105',
+	'hostname' => '103.141.99.23',
+	'username' => 'postgres',
+	'password' => 'skipad#0712pt%',
+	'database' => 'qas_ebws_dummy',
+	'dbdriver' => 'postgre',
+	'dbprefix' => '',
+	'pconnect' => FALSE,
+	'db_debug' => (ENVIRONMENT !== 'production'),
+	'cache_on' => FALSE,
+	'cachedir' => '',
+	'char_set' => 'utf8',
+	'dbcollat' => 'utf8_general_ci',
+	'swap_pre' => '',
+	'encrypt' => FALSE,
+	'compress' => FALSE,
+	'stricton' => FALSE,
+	'failover' => array(),
+	'save_queries' => TRUE,
+	'port' => '5433'
 );

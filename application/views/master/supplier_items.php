@@ -513,7 +513,7 @@
         //SAVE DATA
         $('#dlg_insert').dialog({
             buttons: [{
-                text: 'Save',
+                text: 'Send to Approval',
                 iconCls: 'icon-ok',
                 handler: function() {
                     $('#frm_insert').form('submit', {

@@ -23,6 +23,7 @@
             <th rowspan="2" data-options="field:'supplier_name',width:250,halign:'center'">Vendor Name</th>
             <!-- <th rowspan="2" data-options="field:'item_family_name',width:120,halign:'center'">Product Family</th> -->
             <!-- <th rowspan="2" data-options="field:'request_no',width:120,halign:'center'">PR No</th> -->
+            <th rowspan="2" data-options="field:'request_no',width:100,halign:'center'">PR No</th>
             <th rowspan="2" data-options="field:'po_no',width:200,halign:'center'">PO No</th>
             <th rowspan="2" data-options="field:'po_date',width:80,halign:'center'">PO Date</th>
             <th rowspan="2" data-options="field:'total_qty',width:100,halign:'center',align:'right',formatter:numberformatPrice">Qty</th>
@@ -35,6 +36,7 @@
             <!-- <th rowspan="2" data-options="field:'push_date',width:150,align:'center'">Push Date</th> -->
             <th colspan="3" data-options="field:'Send_mail',width:100,halign:'center'">Send Mail</th>
             <th colspan="2" data-options="field:'Send_mail',width:100,halign:'center'">Vendor Confirm</th>
+            <th rowspan="2" data-options="field:'note',width:200,halign:'center'">Note</th>
             <th colspan="3" data-options="field:'Send_mail',width:100,halign:'center'">Approved</th>
             <th colspan="2" data-options="field:'Send_mail',width:100,halign:'center'">Created</th>
         </tr>
@@ -144,6 +146,12 @@
                     <input style="width:60%;" id="d_product_family" class="easyui-textbox" readonly>
                 </div>
             </div>
+            <div style="width: 30%; float: left;">
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Note</span>
+                    <input style="width:60%;" id="d_note" data-options="onChange:updateNote" class="easyui-textbox">
+                </div>
+            </div>
 
             <div style="width: 100%; float: left;">
                 <div class="alert alert-danger" role="alert" id="sendBlink">
@@ -190,6 +198,10 @@
                     <span style="width:35%; display:inline-block;">Product Family</span>
                     <input style="width:60%;" id="mrp_profam" class="easyui-combobox">
                 </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Part No</span>
+                    <input style="width:60%;" id="mrp_item_rm_id" class="easyui-combogrid">
+                </div>
             </div>
             <div style="width: 30%; float: left;">
                 <div class="fitem">
@@ -222,6 +234,7 @@
                 <th data-options="field:'leadtime',width:80,halign:'center'">Leadtime</th>
                 <th data-options="field:'qty',width:100,halign:'center',align:'right',formatter:numberformat">Qty</th>
                 <th data-options="field:'price',width:100,halign:'center',align:'right',formatter:numberformatPrice">Price</th>
+                <th data-options="field:'sync',width:80,align:'center', formatter:BtnSync">Sync</th>
                 <th data-options="field:'total',width:100,halign:'center',align:'right',formatter:numberformatPrice">Total</th>
                 <th data-options="field:'currency',width:80,align:'center'">Currency</th>
                 <th data-options="field:'rev',width:50,align:'center'">Rev</th>
@@ -275,7 +288,7 @@
     </table>
 </div> -->
 
-<div id="dlg_insert" class="easyui-dialog" title="Update Data" data-options="closed: true,modal:true" style="width: 500px; padding:10px; top: 20px;">
+<div id="dlg_insert" class="easyui-dialog" title="Update Data" data-options="closed: true,modal:true" style="width: 500px; height: 500px; padding:10px; top: 20px;">
     <form id="frm_insert" method="post" novalidate>
         <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
             <legend><b>Form Data</b></legend>
@@ -321,7 +334,7 @@
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Price</span>
-                <input style="width:30%;" name="price" id="price" class="easyui-numberbox" data-options="precision: 4">
+                <input style="width:30%;" name="price" id="price" readonly class="easyui-numberbox" data-options="precision: 4">
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Total</span>
@@ -496,6 +509,38 @@
                     $(e.data.target).combobox('clear').combobox('textbox').focus();
                 }
             }],
+            onSelect: function(row){
+                $('#mrp_item_rm_id').combogrid({
+                    url: '<?= base_url('master/item_rm/reads/') ?>' + row.id,
+                    panelWidth: 550,
+                    idField: 'id',
+                    textField: 'number',
+                    mode: 'remote',
+                    fitColumns: true,
+                    prompt: "Select Part No",
+                    icons: [{
+                        iconCls: 'icon-clear',
+                        handler: function(e) {
+                            $(e.data.target).combogrid('clear').combogrid('textbox').focus();
+                        }
+                    }],
+                    columns: [
+                        [{
+                            field: 'id',
+                            title: 'Part No EBWS',
+                            width: 150
+                        },{
+                            field: 'number',
+                            title: 'Part No Supplier',
+                            width: 200
+                        }, {
+                            field: 'name',
+                            title: 'Description',
+                            width: 200
+                        }]
+                    ]
+                });
+            }
         });
 
         $('#mrp_supplier').combogrid({
@@ -531,11 +576,12 @@
         var mrp_year = $("#mrp_year").combobox('getValue');
         var mrp_revision = $("#mrp_revision").combobox('getValue');
         var mrp_profam = $("#mrp_profam").combobox('getValue');
+        var mrp_item_rm_id = $("#mrp_item_rm_id").combogrid('getValue');
         var mrp_supplier = $("#mrp_supplier").combogrid('getValue');
 
         if(mrp_supplier != ""){
             $('#dg_mrp').datagrid({
-                url: '<?= base_url('purchase/purchase_orders/datatableMrp?mrp_month=') ?>' + btoa(mrp_month) + "&mrp_year=" + btoa(mrp_year) + "&mrp_revision=" + btoa(mrp_revision) + "&mrp_profam=" + btoa(mrp_profam) + "&mrp_supplier=" + btoa(mrp_supplier),
+                url: '<?= base_url('purchase/purchase_orders/datatableMrp?mrp_month=') ?>' + btoa(mrp_month) + "&mrp_year=" + btoa(mrp_year) + "&mrp_revision=" + btoa(mrp_revision) + "&mrp_profam=" + btoa(mrp_profam) + "&mrp_supplier=" + btoa(mrp_supplier) + "&mrp_item_rm_id=" + btoa(mrp_item_rm_id),
                 // clientPaging: false,
                 // remoteFilter: true,
                 rownumbers: true,
@@ -578,7 +624,7 @@
 
                     $.ajax({
                         type: "post",
-                        url: "<?= base_url("purchase/purchase_orders/purchaseOrderNo") ?>",
+                        url: "<?= base_url("purchase/purchase_orders/purchaseOrderNo/" . $id_menu . "/add") ?>",
                         data: "p_month=" + mrp_month + "&p_year=" + mrp_year,
                         dataType: "json",
                         success: function (po_no) {
@@ -680,11 +726,12 @@
     //     });
     // }
     
-    function details(po_no, supplier, product_family, push="", email = "", email_cc = "") {
+    function details(po_no, supplier, note, product_family, push="", email = "", email_cc = "") {
         $("#dlg_purchase_order").dialog('open');
 
         $("#d_po_no").textbox('setValue', po_no);
         $("#d_supplier").textbox('setValue', supplier);
+        $("#d_note").textbox('setValue', note);
         $("#d_product_family").textbox('setValue', product_family);
         
         if(push == ""){
@@ -1055,6 +1102,48 @@
         window.location.reload();
     }
 
+    function updateNote(newData, old){
+        var po_no = $("#d_po_no").textbox('getValue');
+
+        if(old != "" && old != null && old != "null"){
+            $.ajax({
+                type: "post",
+                url: "<?= base_url('purchase/purchase_orders/updateNote') ?>",
+                data: {po_no: po_no, note: newData},
+                dataType: "json",
+                success: function (result) {
+                    if (result.theme == "success") {
+                        toastr.success(result.message, result.title);
+                    } else {
+                        toastr.error(result.message, result.title);
+                    }
+                    $("#dg").datagrid('reload');
+                }
+            });
+        }
+    }
+
+    function syncPrice(id, price){
+        $.messager.prompt('Sync Price to '+price, 'Please input Password for Sync Price', function(r){
+            if (r == "SYNC"){
+                $.ajax({
+                    type: "post",
+                    url: "<?= base_url('purchase/purchase_orders/updatePrice') ?>",
+                    data: {id: id, price: price},
+                    dataType: "json",
+                    success: function (result) {
+                        if (result.theme == "success") {
+                            toastr.success(result.message, result.title);
+                        } else {
+                            toastr.error(result.message, result.title);
+                        }
+                        $("#dg_purchase_order").datagrid('reload');
+                    }
+                });
+            }
+        });
+    }
+
     $(function() {
     	$("#add").html("Convert MRP to PO");
         
@@ -1402,7 +1491,7 @@
     }
 
     function BtnDetail(val, row) {
-        var details = "details('"+row.po_no+"','"+row.supplier_name+"','"+row.item_family_name+"')";
+        var details = "details('"+row.po_no+"','"+row.supplier_name+"','"+row.note+"','"+row.item_family_name+"')";
         return '<a class="btn btn-primary w-100" style="pointer-events: visible; opacity:1;" onClick="'+details+'"><i class="fa fa-eye"></i> View</a>';
     }
 
@@ -1437,7 +1526,7 @@
             return 'DONE';
         // } else if ((row.approved_to == null || row.approved_to == "") && row.email_status == "SEND") {
         } else if (row.approved_to == null || row.approved_to == "") {
-            var details = "details('"+row.po_no+"','"+row.supplier_name+"','"+row.item_family_name+"','push')";
+            var details = "details('"+row.po_no+"','"+row.supplier_name+"','"+row.note+"','"+row.item_family_name+"','push')";
             return '<a class="btn btn-danger w-100" style="pointer-events: visible; opacity:1;" onClick="'+details+'"><i class="fa fa-share"></i> Push</a>';
         } else {
             return '-';
@@ -1448,8 +1537,17 @@
         if(row.email_status == "SENT"){
             return "-";
         } else if (row.approved_to == null || row.approved_to == "") {
-            var details = "details('"+row.po_no+"','"+row.supplier_name+"','"+row.item_family_name+"','mail','"+row.email+"')";
+            var details = "details('"+row.po_no+"','"+row.supplier_name+"','"+row.note+"','"+row.item_family_name+"','mail','"+row.email+"')";
             return '<a class="btn btn-success w-100" style="pointer-events: visible; opacity:1;" onClick="'+details+'"><i class="fa fa-send"></i> Send</a>';
+        } else {
+            return '-';
+        }
+    }
+
+    function BtnSync(val, row) {
+        if(val == "SYNC"){
+            var details = "syncPrice('"+row.id+"','"+row.new_price+"')";
+            return '<a class="btn btn-success w-100" style="pointer-events: visible; opacity:1;" onClick="'+details+'"><i class="fa fa-money"></i> Sync</a>';
         } else {
             return '-';
         }

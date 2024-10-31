@@ -283,7 +283,7 @@
             <tr>
                 <th rowspan="2" data-options="field:'trans_date',width:100,halign:'center'">Trans Date</th>
                 <th rowspan="2" data-options="field:'document_no',width:150,halign:'center'">Document No</th>
-                <th rowspan="2" data-options="field:'invoice_no',width:150,halign:'center'">Invoice No</th>
+                <th rowspan="2" data-options="field:'invoice_no',width:150,halign:'center'">Supplier Invoice</th>
                 <th rowspan="2" data-options="field:'company_name',width:200,halign:'center'">Company Name</th>
                 <th rowspan="2" data-options="field:'account_number',width:100,halign:'center'">Account No</th>
                 <th rowspan="2" data-options="field:'account_name',width:200,halign:'center'">Account Name</th>
@@ -376,13 +376,17 @@
     }
 
     //NOMOR AUTOMATIC
-    function number(journal_date) {
+    function number(id_menu) {
         $.ajax({
             type: "post",
-            url: "<?= base_url('finance/journal_postings/number/') ?>" + window.btoa(journal_date),
+            url: "<?= base_url('finance/journal_postings/number/') ?>" + id_menu,
             dataType: "html",
             success: function(result) {
-                $("#number").textbox('setValue', result);
+                if(result == ""){
+                    toastr.info("Please Check Configuration in Serial No First");
+                }else{
+                    $("#number").textbox('setValue', result);
+                }
             }
         });
     }
@@ -1079,7 +1083,7 @@
 
         $("#journal_date").datebox({
             onChange: function(val) {
-                number(val);
+                number("<?= $menus_id ?>");
             }
         });
     });

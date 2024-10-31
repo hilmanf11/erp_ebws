@@ -94,7 +94,7 @@
 </div>
 
 <!-- Insert & Update -->
-<div id="dlg_insert" class="easyui-dialog" title="Add Delivery Note" data-options="closed: true,modal:true" style="width: 1200px; height: 600px; padding:10px; top: 20px; left: 50px;">
+<div id="dlg_insert" class="easyui-dialog" title="Add Delivery Note" data-options="closed: true,modal:true" style="width: 1200px; height: 550px; padding:10px; top: 20px; left: 50px;">
     <form id="frm_insert" method="post" novalidate>
         <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
             <legend><b>Form Data</b></legend>
@@ -214,20 +214,36 @@
         $("#btnPreview").linkbutton('enable');
     }
 
-    function number(delivery_note_date, customer_number) {
-        if(delivery_note_date == "" || customer_number == ""){
-            toastr.info("Please Choose Delivery Date and Customer First");
-        }else{
-            $.ajax({
-                type: "post",
-                url: "<?= base_url('sales/delivery_notes/number/') ?>" + btoa(delivery_note_date),
-                data: { customer_number: btoa(customer_number) }, // Kirim customer_number sebagai data POST
-                dataType: "html",
-                success: function(result) {
+    // function number(delivery_note_date, customer_number) {
+    //     if(delivery_note_date == "" || customer_number == ""){
+    //         toastr.info("Please Choose Delivery Date and Customer First");
+    //     }else{
+    //         $.ajax({
+    //             type: "post",
+    //             url: "<?= base_url('sales/delivery_notes/number/') ?>" + btoa(delivery_note_date),
+    //             data: { customer_number: btoa(customer_number) }, // Kirim customer_number sebagai data POST
+    //             dataType: "html",
+    //             success: function(result) {
+    //                 $("#delivery_note_no").textbox('setValue', result);
+    //             }
+    //         });
+    //     }
+    // }
+
+    function number(id_menu) {
+        $.ajax({
+            type: "post",
+            url: "<?= base_url('sales/delivery_notes/number/') ?>" + id_menu,
+            dataType: "html",
+            success: function(result) {
+                if(result == ""){
+                    toastr.info("Please Check Configuration in Serial No First");
+                }else{
                     $("#delivery_note_no").textbox('setValue', result);
                 }
-            });
-        }
+                
+            }
+        });
     }
 
     //EDIT DATA
@@ -724,7 +740,8 @@
             $("#incoterm").textbox('setValue', incoterm);
 
             var delivery_note_date = $("#delivery_note_date").datebox('getValue');
-            number(delivery_note_date, customer.number);
+            // number(delivery_note_date, customer.number);
+            number("<?= $id_menu ?>");
 
             $('#delivery_order_no').combobox({
                 url: '<?= base_url('sales/delivery_notes/readDo/') ?>' + btoa(customer.id),

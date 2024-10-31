@@ -10,6 +10,7 @@ class Os_fg extends CI_Controller
         $this->load->helper(array('form', 'url'));
         $this->load->library('form_validation');
         $this->load->library('session');
+        $this->load->library('Ciqrcode');
         $this->load->model('crud');
 
         //VALIDASI FORM
@@ -56,7 +57,7 @@ class Os_fg extends CI_Controller
             $result = array();
 
             //Select Query
-            $this->db->select('a.*, b.uom, b.number as item_fg_number, b.name as item_fg_name');
+            $this->db->select('a.*, b.uom, b.number as item_fg_number, b.qty_box, b.name as item_fg_name');
             $this->db->from('os_fg a');
             $this->db->join('item_fg b', 'a.item_fg_id = b.id');
             if($filter_from != "" && $filter_to != ""){
@@ -113,6 +114,7 @@ class Os_fg extends CI_Controller
     {
         $data = $this->input->post();
         $send = $this->crud->delete('os_fg', $data);
+        $send = $this->crud->delete('scan_item_receipts_fg', ["workorder" => $data['id']]);
         echo $send;
     }
 
@@ -131,9 +133,7 @@ class Os_fg extends CI_Controller
         for ($i = 3; $i <= $total_row; $i++) {
             $datas[] = array(
                 'item_fg_id' => $data->val($i, 2),
-                'trans_date' => $data->val($i, 8),
-                'qty' => $data->val($i, 9),
-                'location' => $data->val($i, 10)
+                'qty' => $data->val($i, 3),
             );
         }
 
@@ -178,21 +178,182 @@ class Os_fg extends CI_Controller
             $data = $this->input->post('data');
 
             $os_fg = $this->crud->read('os_fg', [], [
-                "item_fg_id" => $data['item_fg_id'],
-                "trans_date" => $data['trans_date'],
+                "item_fg_id" => $data['item_fg_id']
             ]);
 
             $item_fg = $this->crud->read('item_fg', [], ["id" => $data['item_fg_id']]);
 
             if (!empty($os_fg->item_fg_id)) {
-                echo json_encode(array("title" => "Duplicated", "message" => "Product ID " . $data['item_fg_id'] . " is Duplicate Data", "theme" => "error"));
+                echo json_encode(array("title" => "Duplicated", "message" => "Product No EBWS " . $data['item_fg_id'] . " is Duplicate Data", "theme" => "error"));
             }elseif(empty($item_fg->id)){
-                echo json_encode(array("title" => "Not Found", "message" => "Product ID " . $data['item_fg_id'] . " is Not Found", "theme" => "error"));
+                echo json_encode(array("title" => "Not Found", "message" => "Product No EBWS " . $data['item_fg_id'] . " is Not Found", "theme" => "error"));
             } else {
-                $send = $this->crud->create('os_fg', $data);
-                echo $send;
+                $location = $this->crud->query("SELECT `number` from warehouse_locations where `type` = 'FG' order by RAND() limit 1");
+
+                if(empty($location->number)){
+                    $dataFinal = array(
+                        "item_fg_id" => $data['item_fg_id'],
+                        "trans_date" => date("Y-m-d"),
+                        "location" => @$location[0]->number,
+                        "qty" => $data['qty']
+                    );
+    
+                    $send = $this->crud->create('os_fg', $dataFinal);
+                    echo $send;
+                }else{
+                    echo json_encode(array("title" => "Not Found", "message" => "Product No EBWS " . $data['item_fg_id'] . " Location Not Ready", "theme" => "error"));
+                }
             }
         }
+    }
+
+    public function createLabel(){
+        $post = $this->input->post();
+        $id = $post['id'];
+        $mpq = $post['mpq'];
+        
+        $po_receipt_label = $this->crud->reads('scan_item_receipts_fg', [], ["workorder" => $id]);
+
+        $os_rm = $this->crud->read('os_fg', [], ["id" => $id]);
+        $qty_receipt = $os_rm->qty;
+        $qty_label = ceil($qty_receipt / $mpq);
+
+        if (!$po_receipt_label) {
+            for ($i = 0; $i < $qty_label; $i++) {
+                //Read Label ID
+                $sqlGetID = $this->db->query("SELECT max(checksheet_label) as kode FROM scan_item_receipts_fg WHERE workorder = '$id'");
+                $rowID = $sqlGetID->row();
+                $label = $rowID->kode;
+
+                if ($label == NULL) {
+                    $autoID = "STO".$id . sprintf("%04s", $label + 1);
+                } else {
+                    $urutan = (int) substr($label, -4);
+                    $autoID = "STO".$id . sprintf("%04s", $urutan + 1);
+                }
+
+                if ($qty_receipt > $mpq) {
+                    $qty = $mpq;
+                } else {
+                    $qty = $qty_receipt;
+                }   
+
+                //Simpan Label
+                $arrLabel = [
+                    "workorder" => $id,
+                    "checksheet_label" => $autoID,
+                    "qty" => $qty,
+                    "warehouse" => $os_rm->location
+                ];
+
+                $this->crud->create('scan_item_receipts_fg', $arrLabel);
+                $qty_receipt = ($qty_receipt - $mpq);
+            }
+
+            echo "OK";
+        }
+    }
+
+    public function print_label($id)
+    {
+        //Config
+        $this->db->select('*');
+        $this->db->from('config');
+        $config = $this->db->get()->row();
+
+        $id = base64_decode($id);
+        
+        //Cek Label
+        $this->db->select('d.number, d.name, d.number_customer, d.alias, a.qty, a.checksheet_label, b.trans_date, i.id as customer_number, i.name as customer_name');//d.description,
+        $this->db->from('scan_item_receipts_fg a');
+        $this->db->join('os_fg b', 'a.workorder = b.id');
+        $this->db->join('item_fg d', 'b.item_fg_id = d.id');
+        $this->db->join('customer_items h', 'd.id = h.item_fg_id', 'left');
+        $this->db->join('customers i', 'i.id = h.customer_id', 'left');
+        $this->db->where('a.deleted', 0);
+        $this->db->where('a.status', 0);
+        $this->db->where('a.workorder', $id);
+        $this->db->group_by('a.checksheet_label');
+        $wip_receipt_labels = $this->db->get()->result_object();
+
+        $html = '<html>
+                    <head>
+                        <title>' . $id . '</title>
+                        <link rel="icon" href="' . $config->favicon . '" type="image/png" sizes="16x16">
+                    </head>
+                    <style>body {font-family: Arial, Helvetica, sans-serif; margin:5px;}#customers {border-collapse: collapse; width: 100%; font-size: 9px;}#customers td, #customers th {border: 1px solid black;padding: 2px;}#customers tr:hover {background-color: #ddd;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: center;color: black;}</style><body>';
+        if ($wip_receipt_labels) {
+            //$html .= '<div style="width: 120mm;">';
+            $no = 1;
+            foreach ($wip_receipt_labels as $wip_receipt_label) {
+                // if ($no == 3) {
+                //     $no = 1;
+                // }
+                // if ($no == 1) {
+                //     $padding = "padding:0 3mm 1mm 0mm;";
+                // } else {
+                //     $padding = "padding:0 0mm 1mm 4mm;";
+                // }
+                //Generate QRcode
+
+                // if ($wip_receipt_label->logo == "0") {
+                //     $img_leoco = '<img style="width:100%;" src="' . base_url("assets/image/BPI.png") . '" />';
+                // } else {
+                //     $img_leoco = '';
+                // }
+
+                $qrcodes = $wip_receipt_label->checksheet_label;
+                $this->createQrcode($qrcodes, "assets/image/qrcode/", $wip_receipt_label->checksheet_label);
+                $html .= '  <div style="width: 70mm; max-height:90mm; border:1px solid black; margin-bottom:5px;">
+                                <table id="customers" border="1">
+                                    <tr>
+                                        <td style="width:15mm; height: 9mm; font-size:12px; text-align:center;">Cust. Code</td>
+                                        <th colspan="2" style="font-size:15px; text-align:left;"><b>' . $wip_receipt_label->customer_number . '</b></th>
+                                    </tr>
+                                    <tr>
+                                        <td style="width:15mm; height: 9mm; font-size:12px; text-align:center;">Cust. Name.</td>
+                                        <td colspan="2"><small style="font-size:14px;"><b>' . $wip_receipt_label->customer_name . '</b></small></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="width:15mm; height: 9mm; font-size:14px; text-align:center;">EBWS P/N</td>
+                                        <td colspan="2"><small style="font-size:14px;"><b>' . $wip_receipt_label->number . '</b></small></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="width:15mm; height: 9mm; font-size:12px; text-align:center;">Cust P/N</td>
+                                        <td colspan="2"><small style="font-size:14px;"><b>' . $wip_receipt_label->number_customer . '</b></small></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="width:15mm; height: 9mm; font-size:12px; text-align:center;">Lot. No</td>
+                                        <td colspan="2"><small style="font-size:14px;"><b>' . $wip_receipt_label->checksheet_label . '</b></small></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="width:15mm; height: 9mm; font-size:12px; text-align:center;">Quantity</td>
+                                        <td style="width:25mm;"><small style="font-size:20px;"><b>' . number_format($wip_receipt_label->qty, 2) . '</b></small></td>
+                                        <td style="text-align:center;" style="width:25mm" rowspan="3">
+                                            <img src="' . base_url('assets/image/qrcode/' . $wip_receipt_label->checksheet_label . '.png') . '" width="100"/>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="width:15mm; height: 9mm; font-size:12px; text-align:center;">Date</td>
+                                        <td><small style="font-size:12px;"><b>' . $wip_receipt_label->trans_date . '</b></small></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="width:15mm; height: 9mm; font-size:10px; text-align:center;">Control ID</td>
+                                        <td><small style="font-size:12px;"><b></b></small></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="width:15mm; height: 9mm;"></td>
+                                        <td colspan="2" style="text-align:center;"><small style="font-size:14px;"><b>ELCON BANSHU</b></small></td>
+                                    </tr>
+                                </table>
+                            </div>';
+                $no++;
+            }
+            $html .= '</div><script>window.print()</script>';
+        } else {
+            $html .= "<br><br><br><center><h3>Data not found or data has been scanned</h3></center>";
+        }
+        die($html);
     }
 
     //PRINT & EXCEL DATA

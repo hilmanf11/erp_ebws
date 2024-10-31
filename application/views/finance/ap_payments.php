@@ -82,7 +82,7 @@
 </div>
 
 <!-- DIALOG SAVE AND UPDATE -->
-<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 99%; height: 600px; padding:10px; top: 5px; left: 5px;">
+<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 99%; height: 550px; padding:10px; top: 5px; left: 5px;">
     <form id="frm_insert" method="post" novalidate>
         <div style="width: 100%; display: grid; grid-template-columns: auto auto auto; grid-gap: 5px; display: flex;">
             <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px;">
@@ -116,7 +116,7 @@
                 <div style="width: 50%; float: left;">
                     <div class="fitem">
                         <span style="width:35%; display:inline-block;">Purchase Invoice No</span>
-                        <input style="width:60%;" required="" id="purchase_invoice" name="purchase_invoice" class="easyui-combobox">
+                        <input style="width:60%;" required="" id="purchase_invoice" name="purchase_invoice" class="easyui-combogrid">
                     </div>
                     <div class="fitem">
                         <span style="width:35%; display:inline-block;">Journal Type</span>
@@ -233,7 +233,7 @@
                 <a style="width: 90%; height: 50px; padding:10px;" class="easyui-linkbutton c2" onclick="addJournal()">Add to Journal</a>
             </div>
             <div style="float: left; width: 30%; border:4px solid green; padding:10px;" id="showExchange">
-                <p style="font-size: 16px !important; margin:0;">Rate USD to IDR : <b style="font-size: 16px !important;" id="exchange"></b></p>
+                <p style="font-size: 16px !important; margin:0;"><b style="font-size: 16px !important;" id="exchange"></b></p>
             </div>
         </div>
 
@@ -362,13 +362,13 @@
         $("#payment_date").datebox('enable');
         $("#payment_type").combobox('enable');
         $("#supplier_id").combogrid('enable');
-        $("#purchase_invoice").combobox('enable');
+        $("#purchase_invoice").combogrid('enable');
         $("#payment_by").combobox('setValue', "TRANSFER");
         $("#f_cheque_no").hide();
 
         $("#payment_date").datebox({
             onChange: function(val) {
-                number(val);
+                number("<?= $menus_id ?>");
             }
         });
     }
@@ -442,7 +442,7 @@
                 var jsonData2 = JSON.stringify(data_array2);
 
                 if (totalrows == total_currency) {
-                    if (currency != "IDR") {
+                    if (currency != "INR") {
                         $.ajax({
                             type: "post",
                             url: "<?= base_url('finance/ap_payments/readExchangeRate') ?>",
@@ -545,7 +545,7 @@
 
     function append_dp() {
         var supplier_id = $("#supplier_id").combobox('getValue');
-        var purchase_invoice = $("#purchase_invoice").combobox('getValue');
+        var purchase_invoice = $("#purchase_invoice").combogrid('getValue');
 
         if (endEditing()) {
             $.ajax({
@@ -710,7 +710,7 @@
                     $("#payment_date").datebox('disable');
                     $("#payment_type").combobox('disable');
                     $("#supplier_id").combogrid('disable');
-                    $("#purchase_invoice").combobox('disable');
+                    $("#purchase_invoice").combogrid('disable');
 
                     $("#showExchange").hide();
 
@@ -731,14 +731,27 @@
                             $("#supplier_id").combobox('setValue', row.supplier_id);
                         },
                         onSelect: function(supplier) {
-                            $("#purchase_invoice").combobox({
+                            $("#purchase_invoice").combogrid({
                                 url: '<?= base_url('finance/ap_payments/readInvoices/') ?>' + supplier.id,
-                                valueField: 'purchase_invoice',
+                                panelWidth: 500,
+                                idField: 'purchase_invoice',
                                 textField: 'purchase_invoice',
-                                multiple: true,
-                                prompt: "Choose Purchase Invoice No",
+                                // mode: 'remote',
+                                fitColumns: true,
+                                prompt: "Choose Purchase invoice No",
+                                columns: [
+                                    [{
+                                        field: 'purchase_invoice',
+                                        title: 'Purchase Invoice No',
+                                        width: 200
+                                    }, {
+                                        field: 'supplier_invoice',
+                                        title: 'Supplier Invoice No',
+                                        width: 250
+                                    }, ]
+                                ],
                                 onLoadSuccess: function(load_invoice) {
-                                    $("#purchase_invoice").combobox('setValue', row.purchase_invoice);
+                                    $("#purchase_invoice").combogrid('setValue', row.purchase_invoice);
                                     $("#journal_type").combobox('setValue', row.journal_type);
                                 },
                             });
@@ -764,13 +777,17 @@
     }
 
     //NOMOR AUTOMATIC
-    function number(trans_date) {
+    function number(id_menu) {
         $.ajax({
             type: "post",
-            url: "<?= base_url('finance/ap_payments/number/') ?>" + window.btoa(trans_date),
+            url: "<?= base_url('finance/ap_payments/number/') ?>" + id_menu,
             dataType: "html",
             success: function(result) {
-                $("#payment_no").textbox('setValue', result);
+                if(result == ""){
+                    toastr.info("Please Check Configuration in Serial No First");
+                }else{
+                    $("#payment_no").textbox('setValue', result);
+                }
             }
         });
     }
@@ -778,7 +795,7 @@
     var editIndex = undefined;
 
     function preview(link = "") {
-        var purchase_invoice = $("#purchase_invoice").combobox('getText');
+        var purchase_invoice = $("#purchase_invoice").combogrid('getText');
 
         if (link == "") {
             var linked = '<?= base_url('finance/ap_payments/datatablesTemp') ?>?purchase_invoice=' + window.btoa(purchase_invoice);
@@ -1446,13 +1463,26 @@
             onSelect: function(supplier) {
                 var payment_type = $("#payment_type").combobox('getValue');
 
-                $("#purchase_invoice").combobox({
+                $("#purchase_invoice").combogrid({
                     url: '<?= base_url('finance/ap_payments/readInvoiceType?supplier_id=') ?>' + supplier.id + "&payment_type=" + payment_type,
-                    valueField: 'number',
+                    panelWidth: 500,
+                    idField: 'number',
                     textField: 'number',
-                    multiple: true,
-                    prompt: "Choose Purchase Invoice No",
-                    onSelect: function(pi) {
+                    // mode: 'remote',
+                    fitColumns: true,
+                    prompt: "Choose Purchase invoice No",
+                    columns: [
+                        [{
+                            field: 'number',
+                            title: 'Purchase Invoice No',
+                            width: 200
+                        }, {
+                            field: 'invoice_no',
+                            title: 'Supplier Invoice No',
+                            width: 250
+                        }, ]
+                    ],
+                    onSelect: function(valpi, pi) {
                         if (pi.journal_type_id != null) {
                             $("#journal_type").combobox('setValue', pi.journal_type_id);
                         } else {
@@ -1516,7 +1546,7 @@
             var format = "de-DE";
         } else {
             var digits = 0;
-            var currency = 'IDR';
+            var currency = 'INR';
             var format = "id-ID";
         }
 
@@ -1532,7 +1562,7 @@
 
     function priceformatlocal(value, row) {
         var digits = 0;
-        var currency = 'IDR';
+        var currency = 'INR';
         var format = "id-ID";
 
         if (value != null) {

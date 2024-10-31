@@ -22,6 +22,8 @@ class Supply_sheets extends CI_Controller
             redirect('error_session');
         } elseif ($this->checkuserAccess($this->id_menu()) > 0) {
             $data['button'] = $this->getbutton($this->id_menu());
+            $data['id_menu'] = $this->id_menu();
+            
             $this->load->view('template/header', $data);
             $this->load->view('planning/supply_sheets');
         } else {
@@ -118,21 +120,37 @@ class Supply_sheets extends CI_Controller
         echo json_encode($records);
     }
 
-    public function request_no($trans_date)
+    public function request_no($id_menu)
     {
-        $trans_date = base64_decode($trans_date);
-        $datenow    = "SH-".date("ymd", strtotime($trans_date));
-        $sqlGetID   = $this->db->query("SELECT max(request_no) as kode FROM supply_sheets WHERE request_no like '%$datenow%'");
-        $rowID      = $sqlGetID->row();
-        $kode       = $rowID->kode;
-        if ($kode == NULL) {
-            $autoID = sprintf("%04s", $kode + 1);
-        } else {
-            $urutan = (int) substr($kode, -4);
-            $urutan++;
-            $autoID = sprintf("%04s", $urutan);
+        $datenow = date("Y-m-d");
+        $sql_menu = $this->db->query("SELECT * FROM menus_no WHERE menus_id = '$id_menu' and `status` = '0' and `start_date` <= '$datenow' and end_date >= '$datenow'");
+        $row_menu = $sql_menu->row();
+
+        if(@$row_menu->number == ""){
+            //
+        }else{
+            $number = @$row_menu->number;
+            $yearnow = date("y", strtotime($row_menu->start_date));
+            $yearend = date("y", strtotime($row_menu->end_date));
+
+            $whereDate = $number.$yearnow.$yearend."1";
+
+            $sqlGetID	= $this->db->query("SELECT max(request_no) as kode FROM supply_sheets WHERE request_no like '%$whereDate%'");
+            $rowID = $sqlGetID->row();
+            $kode = $rowID->kode;
+            
+            if ($kode == NULL) {
+                $autoID = sprintf("%0".$row_menu->sequence."s", $kode + 1);
+                $autoNo = $whereDate.$autoID;
+            } else {
+                $urutan = (int) substr($kode, -6);
+                $urutan++;
+                $autoID	= sprintf("%0".$row_menu->sequence."s", $urutan);
+                $autoNo = $whereDate.$autoID;
+            }
+
+            echo $autoNo;
         }
-        echo $datenow . "-" . $autoID;
     }
 
     public function datatables()
@@ -160,11 +178,7 @@ class Supply_sheets extends CI_Controller
             $this->db->join('item_rm c', 'a.item_rm_id = c.id');
             $this->db->join('production_schedules e', 'a.item_fg_id = e.item_fg_id and a.workorder = e.workorder');
             $this->db->join('bom f', 'a.item_fg_id = f.item_fg_id and a.item_rm_id = f.item_rm_id');
-            $this->db->join("(SELECT a.request_no, a.item_rm_id, COALESCE(SUM(a.qty), 0) as qty, b.qty_req, COALESCE(SUM(a.qty) - b.qty_req, 0) as qty_issued2 
-                FROM issued_material_details a 
-                JOIN supply_sheets b ON a.request_no = b.request_no and a.item_rm_id = b.item_rm_id
-                GROUP BY a.request_no, a.item_rm_id
-                HAVING (SUM(a.qty) - b.qty_req) < 0) g", "a.request_no = g.request_no", "LEFT");
+            $this->db->join("(SELECT request_no, SUM(qty) as qty_issued2 FROM issued_material_details GROUP BY request_no) g", "a.request_no = g.request_no", "LEFT");
             if ($filter_supply_type == "OPEN") {
                 $this->db->having('(qty_issued2 - SUM(a.qty_act)) <', 0);
             }elseif ($filter_supply_type == "CLOSE") {
@@ -593,7 +607,7 @@ class Supply_sheets extends CI_Controller
             $this->db->join('supplier_items g', 'a.item_rm_id = g.item_rm_id');
             $this->db->join('process_main h', 'h.name = e.main_process');
             $this->db->where('a.deleted', 0);
-            $this->db->where('a.status', 0);
+            // $this->db->where('a.status', 0);
             $this->db->where('e.main_process', $main_process);
             $this->db->like('a.request_no', base64_decode($request_no));
             $this->db->group_by('c.number');
@@ -703,9 +717,9 @@ class Supply_sheets extends CI_Controller
                 $this->db->join('uom d', 'c.uom = d.name');
                 $this->db->join('bom e', 'a.item_fg_id = e.item_fg_id and a.item_rm_id = e.item_rm_id');
                 $this->db->join('supplier_items g', 'a.item_rm_id = g.item_rm_id');
-                $this->db->join('makers h', 'g.maker = h.number', 'left');
+                $this->db->join('makers h', 'c.maker_id = h.id', 'left');
                 $this->db->where('a.deleted', 0);
-                $this->db->where('a.status', 0);
+                // $this->db->where('a.status', 0);
                 $this->db->where('e.main_process', $main_process);
                 $this->db->like('a.request_no', base64_decode($request_no));
                 $this->db->group_by('c.number');

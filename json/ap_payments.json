@@ -1,1 +1,1 @@
-[{"account_number":"2022101","account_name":"ACCOUNT PAYABLE - VENDOR","account_type":"DEBIT","description":"070.008-23.87364723","currency":"IDR","payment_date":"2023-08-31","payment":"481680.00"},{"account_number":"5311003","account_name":"BANK CHARGE","account_type":"DEBIT","description":"070.008-23.87364723","currency":"IDR","payment_date":"2023-08-31","payment":"2500.00"}]
+[{"account_number":"16000001","account_name":"Sundry Crs RM -Domestic","account_type":"DEBIT","description":"INV1004","currency":"INR","payment_date":"2024-10-22","payment":42500}]

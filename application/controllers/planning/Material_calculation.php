@@ -178,6 +178,8 @@ class Material_calculation extends CI_Controller
 
     public function print($option = "")
     {
+        $this->dummy = $this->load->database('dummy', TRUE);
+
         if ($option == "excel") {
             $format  = date("Ymd");
             header("Content-type: application/vnd-ms-excel");
@@ -202,7 +204,7 @@ class Material_calculation extends CI_Controller
         $endDate = date('t M', strtotime($filter_year . "-" . $filter_month . "-01"));
 
         // $this->db->select("a.*, c.name as item_rm_name, b.name as item_family, d.actual as qty_supply, e.qty as balance_wip");
-        $this->db->select("a.*, c.name as item_rm_name, b.name as item_family");
+        $this->db->select("a.*, c.number as item_rm_number, c.name as item_rm_name, b.name as item_family");
         $this->db->from('generate_item_calculation a');
         $this->db->join('item_rm c', 'a.item_rm_id = c.id');
         $this->db->join('item_familys b', 'c.item_family_id = b.id');
@@ -270,7 +272,7 @@ class Material_calculation extends CI_Controller
             $firstDate2 = date('01 M', strtotime($filter_year . "-" . $filter_month . "-01"));
             $endDate2 = date('t M', strtotime($filter_year . "-" . $filter_month . "-01"));
 
-            $item_id = $record['item_fg_id'];
+            $item_id = $record['item_rm_number'];
             $ith = $this->dummy->query("SELECT sum(ith_qty) as qty from ith where ith_item_id = '$item_id' and ith_date <= '$filter_date'");
             $ithRow = $ith->row();
 
@@ -339,8 +341,8 @@ class Material_calculation extends CI_Controller
                 $styles = 'background:#FFC2C2;';
             }
 
-            $onclick = 'window.open("' . base_url('planning/material_calculation/printOsPo/' . base64_encode($record['item_fg_id'])) . '","_blank","width=600,height=300")';
-            $onclickBalance = 'window.open("' . base_url('planning/material_calculation/printBalance/'.$filter_month.'/'.$filter_year.'/'.$filter_revision.'/'.base64_encode($record['item_fg_id'])) . '","_blank","width=600,height=300")';
+            $onclick = 'window.open("' . base_url('planning/material_calculation/printOsPo/' . base64_encode($record['item_rm_id'])) . '","_blank","width=600,height=300")';
+            $onclickBalance = 'window.open("' . base_url('planning/material_calculation/printBalance/'.$filter_month.'/'.$filter_year.'/'.$filter_revision.'/'.base64_encode($record['item_rm_id'])) . '","_blank","width=600,height=300")';
             $content .= "   <td style='text-align:right;'>" . number_format($record['total']) . "</td>
                             <td style='text-align:right; ".$styles."'><a href='#' onclick='".$onclickBalance."'>". number_format(@$balances) ."</a></td>
                             <td style='text-align:right; ".$styles."'>" . number_format($free_stock) . "</td>

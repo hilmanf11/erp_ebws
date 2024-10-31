@@ -152,7 +152,8 @@
                 if(customer_id == ""){
                     toastr.info("Please Choose Customer");
                 }else{
-                    number(val, customer_id);
+                    // number(val, customer_id);
+                    number("<?= $id_menu ?>");
                 }
             }
         });
@@ -166,7 +167,10 @@
             prompt: 'Choose Customer',
             onSelect: function(customer){
                 var delivery_order_date = $("#delivery_order_date").datebox('getValue');
-                number(delivery_order_date, customer.id);
+
+                // number(delivery_order_date, customer.id);
+                number("<?= $id_menu ?>");
+                
                 $('#delivery_date').combobox({
                     url: '<?= base_url('sales/sales_order_deliveries/readTransdate/'); ?>' + btoa(customer.id),
                     valueField: 'trans_date',
@@ -180,13 +184,19 @@
         });
     }
 
-    function number(delivery_order_date, customer_no){
+    // function number(delivery_order_date, customer_no){
+    function number(id_menu){
         $.ajax({
             type: "post",
-            url: "<?= base_url('sales/delivery_orders/number/') ?>" + window.btoa(delivery_order_date) + "/" + window.btoa(customer_no),
+            // url: "<?= base_url('sales/delivery_orders/number/') ?>" + window.btoa(delivery_order_date) + "/" + window.btoa(customer_no),
+            url: "<?= base_url('sales/delivery_orders/number/') ?>" + id_menu,
             dataType: "html",
             success: function(result) {
-                $("#delivery_order_no").textbox('setValue', result);
+                if(result == ""){
+                    toastr.info("Please Check Configuration in Serial No First");
+                }else{
+                    $("#delivery_order_no").textbox('setValue', result);
+                }
             }
         });
     }

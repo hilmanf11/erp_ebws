@@ -1095,12 +1095,13 @@ class Generate_mpp extends CI_Controller{
                 }
 
                 $workOrderNo = "WO" . $datenow . "-" . $autoID;
+                $trans_date = $p_year."-".$p_month."-".sprintf("%02s", $tgl);
 
                 $dataFinal = array(
                     "customer_id" => $generate_mpp['customer_id'], 
                     "item_fg_id" => $generate_mpp['item_fg_id'],
                     "workorder" => $workOrderNo,
-                    "trans_date" => date("Y-m-d"),
+                    "trans_date" => $trans_date,
                     "period" => $period,
                     "year" => $p_year,
                     "month" => $p_month,

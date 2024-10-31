@@ -15,6 +15,8 @@
             <th rowspan="2" data-options="field:'item_name',halign:'center',width:200">Product Name</th>
             <th rowspan="2" data-options="field:'uom',width:80,align:'center'">Uom</th>
             <th rowspan="2" data-options="field:'qty',width:80,halign:'center',align:'right',formatter:numberformat">Qty</th>
+            <!-- <th rowspan="2" data-options="field:'rework',width:80,halign:'center',align:'right',formatter:numberformat">Rework</th> -->
+            <th rowspan="2" data-options="field:'total_rfg',width:80,halign:'center',align:'right',formatter:numberformat">RFG Qty</th>
             <th rowspan="2" data-options="field:'so_number',width:150,align:'center'">SO No</th>
             <th rowspan="2" data-options="field:'so_date',width:80,align:'center'">SO Date</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
@@ -89,20 +91,20 @@
                 <input style="width:60%;" name="customer_id" required="" id="customer_id" required="" class="easyui-combogrid">
             </div>
             <div class="fitem">
-                <span style="width:35%; display:inline-block;">WP</span>
-                <input style="width:60%;" name="wp" id="wp" required="" class="easyui-textbox">
-            </div>
-            <div class="fitem">
-                <span style="width:35%; display:inline-block;">WP date</span>
-                <input style="width:60%;" name="trans_date" id="trans_date" required="" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
-            </div>
-            <div class="fitem">
                 <span style="width:35%; display:inline-block;">Product No</span>
                 <input style="width:60%;" name="item_fg_id" required="" id="item_fg_id" required="" class="easyui-combogrid">
             </div>
             <div class="fitem">
+                <span style="width:35%; display:inline-block;">WP</span>
+                <input style="width:60%;" name="wp" id="wp" required="" class="easyui-combobox">
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">WP date</span>
+                <input style="width:60%;" name="trans_date" id="trans_date" readonly class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
+            </div>
+            <div class="fitem">
                 <span style="width:35%; display:inline-block;">Quantity</span>
-                <input style="width:30%;" name="qty" id="qty" required="" class="easyui-numberbox" data-options="precision:2">
+                <input style="width:30%;" name="qty" id="qty" readonly class="easyui-numberbox" data-options="precision:2">
             </div>
         </fieldset>
     </form>
@@ -139,7 +141,7 @@
         $('#dlg_insert').dialog('open');
         url_save = '<?= base_url('planning/production_schedules/create') ?>';
         $('#frm_insert').form('clear');
-        $("#wp").textbox('enable');
+        $("#wp").combobox('enable');
         $("#customer_id").combogrid('enable');
         $("#item_fg_id").combogrid('enable');
         $("#month").combobox('setValue', "<?= date("m") ?>");
@@ -152,7 +154,7 @@
         if (row) {
             $('#dlg_insert').dialog('open');
             $('#frm_insert').form('load', row);
-            $("#wp").textbox('disable');
+            $("#wp").combobox('disable');
             $("#customer_id").combogrid('disable');
             $("#item_fg_id").combogrid('disable');
             url_save = '<?= base_url('planning/production_schedules/update') ?>?id=' + btoa(row.id);
@@ -451,18 +453,29 @@
                 }]
             ],
         });
+        
         $("#month").combobox({
             url: '<?= base_url('planning/production_schedules/readMonth') ?>',
             valueField: 'number',
             textField: 'name',
-            prompt: "Month"
+            prompt: "Month",
+            onSelect: function(){
+                $("#customer_id").combogrid('clear');
+                $("#item_fg_id").combogrid('clear');
+            }
         });
+
         $("#year").combobox({
             url: '<?= base_url('planning/production_schedules/readYear') ?>',
             valueField: 'number',
             textField: 'number',
-            prompt: "Year"
+            prompt: "Year",
+            onSelect: function(){
+                $("#customer_id").combogrid('clear');
+                $("#item_fg_id").combogrid('clear');
+            }
         });
+        
         $("#line_id").combobox({
             url: '<?= base_url('master/line_productions/reads') ?>',
             valueField: 'id',
@@ -514,6 +527,21 @@
                             width: 150
                         }]
                     ],
+                    onSelect: function(itemVal, itemRow) {
+                        var month = $("#month").combobox('getValue');
+                        var year = $("#year").combobox('getValue');
+
+                        $("#wp").combobox({
+                            url: '<?= base_url('planning/production_schedules/getDataWp?p_month=') ?>' + month + "&p_year=" + year + "&customer_id=" + btoa(rowCust.id) + "&item_fg_id=" + btoa(itemRow.id),
+                            valueField: 'wp',
+                            textField: 'wp',
+                            prompt: "Choose WP",
+                            onSelect: function(wp){
+                                $("#trans_date").datebox('setValue', wp.trans_date);
+                                $("#qty").numberbox('setValue', wp.qty);
+                            }
+                         });
+                    }
                 });
             }
         });

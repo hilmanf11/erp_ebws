@@ -98,7 +98,7 @@
 </div>
 
 <!-- DIALOG SAVE AND UPDATE -->
-<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 99%; height: 600px; padding:10px; top: 10px; left:5px;">
+<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 99%; height: 550px; padding:10px; top: 10px; left:5px;">
     <form id="frm_insert" method="post" novalidate>
         <div style="width: 100%; display: grid; grid-template-columns: auto auto auto; grid-gap: 5px; display: flex;">
             <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px;">
@@ -134,7 +134,7 @@
                         <span style="width:35%; display:inline-block;">Plant</span>
                         <input style="width:30%;" id="plant" name="plant" readonly class="easyui-textbox">
                     </div>
-                    <div class="fitem">
+                    <div class="fitem" hidden>
                         <span style="width:35%; display:inline-block;">Taxes</span>
                         <input style="width:30%;" id="taxes" name="taxes" class="easyui-numberbox">
                     </div>
@@ -403,7 +403,8 @@
             ],
             onSelect: function(index, row) {
                 var trans_date = $("#trans_date").datebox('getValue');
-                number(trans_date, row.number);
+                // number(trans_date, row.number);
+                number("<?= $menus_id ?>");
 
                 $("#dn_number").combobox({
                     url: '<?= base_url('finance/sales_invoices/readDelivery?customer_id=') ?>' + btoa(row.id),
@@ -913,13 +914,17 @@
     }
 
     //NOMOR AUTOMATIC
-    function number(trans_date, nickname) {
+    function number(id_menu) {
         $.ajax({
             type: "post",
-            url: "<?= base_url('finance/sales_invoices/number/') ?>" + window.btoa(trans_date) + "/" + nickname,
+            url: "<?= base_url('finance/sales_invoices/number/') ?>" + id_menu,
             dataType: "html",
             success: function(result) {
-                $("#number").textbox('setValue', result);
+                if(result == ""){
+                    toastr.info("Please Check Configuration in Serial No First");
+                }else{
+                    $("#number").textbox('setValue', result);
+                }
             }
         });
     }
@@ -1393,6 +1398,8 @@
                                                                 hsn_code: json[i].hsn_code,
                                                                 currency_local: json[i].currency_local,
                                                                 currency: json[i].currency,
+                                                                item_no: json[i].item_fg_number,
+                                                                item_name: json[i].item_fg_name,
                                                                 qty: json[i].qty,
                                                                 igst: json[i].igst,
                                                                 sgst: json[i].sgst,

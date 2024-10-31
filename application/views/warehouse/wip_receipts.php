@@ -54,7 +54,7 @@
 </div>
 
 <!-- Insert & Update -->
-<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 1000px; height: 600px; padding:10px; top: 20px; left: 10px;">
+<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 1000px; height: 550px; padding:10px; top: 20px; left: 10px;">
     <form id="frm_insert" method="post" novalidate>
         <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
             <legend><b>Form Data</b></legend>
@@ -90,6 +90,7 @@
                     <th data-options="field:'workorder',width:250">Work Order</th>
                     <th data-options="field:'period',width:150">Period</th>
                     <th data-options="field:'wp',width:150">WP</th>
+                    <th data-options="field:'qty_receipt',width:100,editor:{type:'numberbox', options:{readonly:true}}">Qty</th>
                     <th data-options="field:'qty',width:100,editor:{type:'numberbox', options:{required:true}}">Receipt Qty</th>
                     <th data-options="field:'qty_box',width:100,editor:{type:'numberbox', options:{readonly:true}}">Lot Box</th>
                     <th data-options="field:'label_box',width:100,editor:{type:'numberbox', options:{readonly:true}}">Label Box</th>
@@ -123,7 +124,7 @@
 
         $("#trans_date").datebox({
             onChange: function(val){
-                number(val);
+                number("<?= $id_menu ?>");
 
                 $('#customer_id').combobox({
                     url: '<?php echo base_url('warehouse/wip_receipts/readCustomer/'); ?>' + btoa(val),
@@ -161,13 +162,17 @@
         });
     }
 
-    function number(trans_date){
+    function number(id_menu){
         $.ajax({
             type: "post",
-            url: "<?= base_url('warehouse/wip_receipts/number/') ?>" + window.btoa(trans_date),
+            url: "<?= base_url('warehouse/wip_receipts/number/') ?>" + id_menu,
             dataType: "html",
             success: function(result) {
-                $("#checksheet_number").textbox('setValue', result);
+                if(result == ""){
+                    toastr.info("Please Check Configuration in Serial No First");
+                }else{
+                    $("#checksheet_number").textbox('setValue', result);
+                }
             }
         });
     }
@@ -190,6 +195,9 @@
             var dg = $('#dg_request').datagrid({
                 url: urlGet,
                 fitColumns: true,
+                onLoadError: function(rowMessage){
+                    toastr.error("Data Not Found in Old MRP Process Scan");
+                },
                 onClickRow: function(rowIndex) {
                     if (lastIndex != rowIndex) {
                         $(this).datagrid('endEdit', lastIndex);
@@ -200,21 +208,25 @@
                 onBeginEdit: function(rowIndex, row) {
                     var editors = $('#dg_request').datagrid('getEditors', rowIndex);
                     var qty_receipt = $(editors[0].target).numberbox('getValue');
-                    var qty = $(editors[0].target);
-                    var qty_box = $(editors[1].target).numberbox('getValue');
-                    var label_box = $(editors[2].target);
+                    var qty = $(editors[1].target);
+                    var qty_box = $(editors[2].target).numberbox('getValue');
+                    var label_box = $(editors[3].target);
 
                     qty.numberbox({
                         onChange: function(val){
                             if(parseInt(val) < parseInt(qty_box)){
                                 toastr.info("Qty Receipt Cannot < Lot Box");
                                 qty.numberbox('setValue', qty_receipt);
+                                label_box.numberbox('setValue', 0);
+                            }else if(parseInt(val) > parseInt(qty_receipt)){
+                                toastr.info("Qty Receipt Cannot > Qty");
+                                qty.numberbox('setValue', qty_receipt);
+                                label_box.numberbox('setValue', 0);
+                            }else{
+                                label_box.numberbox('setValue', Math.round(parseInt(val) / parseInt(qty_box)));
                             }
-                            label_box.numberbox('setValue', Math.round(parseInt(val) / parseInt(qty_box)));
                         }
-                    })
-
-                    // sales_order.combobox('setValue', row.sales_order_no);
+                    });
                 }
             });
         }

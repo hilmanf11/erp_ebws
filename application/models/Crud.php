@@ -30,9 +30,9 @@ class Crud extends CI_Model
         $kode = $row->kode;
 
         if ($kode == NULL) {
-            $autoid        = $date . sprintf("%06s", $kode + 1);
+            $autoid = $date . sprintf("%06s", $kode + 1);
         } else {
-            $autoid        = (int) $kode + 1;
+            $autoid = (int) $kode + 1;
         }
 
         return $autoid;
@@ -94,7 +94,12 @@ class Crud extends CI_Model
     function create($table, $values)
     {
         if ($this->session->username != "") {
-            $id = $this->autoid($table);
+            if(@empty($values['id'])){
+                $id = $this->autoid($table);
+            }else{
+                $id = $values['id'];
+            }
+
             $data = array_merge($values, [
                 "id" => $id,
                 "created_by" => $this->session->username,
@@ -116,7 +121,7 @@ class Crud extends CI_Model
     function update($table, $where, $values)
     {
         if ($this->session->username != "") {
-            $data   = array_merge($values, [
+            $data = array_merge($values, [
                 "updated_by" => $this->session->username,
                 "updated_date" => date('Y-m-d H:i:s')
             ]);
@@ -129,7 +134,7 @@ class Crud extends CI_Model
                 $this->logs("Update New", json_encode($data), $table);
                 
                 $read = $this->read($table, [], $where);
-                $this->approvals($table, @$read->id);
+                $this->approvals($table, @$read->id, $dataBefore);
 
                 return json_encode(array("title" => "Good Job", "message" => "Data Updated Successfully", "theme" => "success"));
             } else {
@@ -182,6 +187,7 @@ class Crud extends CI_Model
                     } else {
                         $records = $this->read($table, $id);
                         @unlink('"' . $records->$field . '"');
+                        // @unlink("assets/image/$table/" . $records->$field);
                     }
 
                     @move_uploaded_file($temporary, $path . $newname);
@@ -213,7 +219,7 @@ class Crud extends CI_Model
         $this->db->insert('logs', $data);
     }
 
-    function approvals($table, $table_id)
+    function approvals($table, $table_id, $dataBefore = null)
     {
         $query = $this->db->query("DESCRIBE $table");
         $fields = $query->result_array();
@@ -235,6 +241,7 @@ class Crud extends CI_Model
                     "approved" => 1,
                     "approved_to" => $approval->user_approval_1,
                     "approved_by" => $this->session->username,
+                    "approved_data" => json_encode($dataBefore),
                 ];
 
                 $this->db->where(["id" => $table_id]);

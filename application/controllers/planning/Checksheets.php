@@ -22,6 +22,8 @@ class Checksheets extends CI_Controller
             redirect('error_session');
         } elseif ($this->checkuserAccess($this->id_menu()) > 0) {
             $data['button'] = $this->getbutton($this->id_menu());
+            $data['id_menu'] = $this->id_menu();
+
             $this->load->view('template/header', $data);
             $this->load->view('planning/checksheets');
         } else {
@@ -58,23 +60,37 @@ class Checksheets extends CI_Controller
         echo json_encode($send);
     }
 
-    public function checksheet_id($trans_date)
+    public function checksheet_id($id_menu)
     {
-        $datenow = date("Y-m", strtotime($trans_date));
-        $datenow2 = date("Ymd", strtotime($trans_date));
+        $datenow = date("Y-m-d");
+        $sql_menu = $this->db->query("SELECT * FROM menus_no WHERE menus_id = '$id_menu' and `status` = '0' and `start_date` <= '$datenow' and end_date >= '$datenow'");
+        $row_menu = $sql_menu->row();
 
-        $sqlGetID = $this->db->query("SELECT max(`number`) as kode FROM checksheets WHERE trans_date like '%$datenow%'");
-        $rowID = $sqlGetID->row();
-        $kode = $rowID->kode;
-        if ($kode == NULL) {
-            $autoID = sprintf("%05s", $kode + 1);
-        } else {
-            $urutan = (int) substr($kode, -4);
-            $urutan++;
-            $autoID = sprintf("%05s", $urutan);
+        if(@$row_menu->number == ""){
+            //
+        }else{
+            $number = @$row_menu->number;
+            $yearnow = date("y", strtotime($row_menu->start_date));
+            $yearend = date("y", strtotime($row_menu->end_date));
+
+            $whereDate = $number.$yearnow.$yearend."1";
+
+            $sqlGetID	= $this->db->query("SELECT max(`number`) as kode FROM checksheets WHERE `number` like '%$whereDate%'");
+            $rowID = $sqlGetID->row();
+            $kode = $rowID->kode;
+            
+            if ($kode == NULL) {
+                $autoID = sprintf("%0".$row_menu->sequence."s", $kode + 1);
+                $autoNo = $whereDate.$autoID;
+            } else {
+                $urutan = (int) substr($kode, -6);
+                $urutan++;
+                $autoID	= sprintf("%0".$row_menu->sequence."s", $urutan);
+                $autoNo = $whereDate.$autoID;
+            }
+
+            return $autoNo;
         }
-        $workOrderNo = "CS" . $datenow2 . "-" . $autoID;
-        return $workOrderNo;
     }
 
     public function datatables()
@@ -124,8 +140,10 @@ class Checksheets extends CI_Controller
         if ($this->input->post()) {
             if ($this->form_validation->run() == TRUE) {
                 $post = $this->input->post();
+                $id_menu = $this->input->get('id_menu');
+
                 if ($post['receipt'] > 0) {
-                    $checksheet_id = $this->checksheet_id($post['trans_date']);
+                    $checksheet_id = $this->checksheet_id($id_menu);
                     $checksheet = $this->crud->reads("checksheets", [], ["workorder" => $post['workorder'], "accumulate" => $post['accumulate']]);
                     if (count($checksheet) == 0) {
                         $send = $this->crud->create('checksheets', array_merge($post, array("number" => $checksheet_id)));

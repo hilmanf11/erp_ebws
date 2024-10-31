@@ -88,7 +88,7 @@
 </div>
 
 <!-- DIALOG CUSTOMER ADDRESS -->
-<div id="dlg_details" class="easyui-dialog" title="Customer Address" data-options="closed: true,modal:true" style="width: 99%; height: 500px; top:10px;">
+<div id="dlg_details" class="easyui-dialog" title="Customer Address" data-options="closed: true,modal:true" style="width: 99%; height: 500px; top:10px; left: 10px;">
     <table id="dg2" class="easyui-datagrid" style="width:100%;" toolbar="#toolbar2">
         <thead>
             <tr>

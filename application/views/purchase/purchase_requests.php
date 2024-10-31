@@ -20,7 +20,7 @@
     <thead>
         <tr>
                 <th rowspan="2" field="ck" checkbox="true"></th>
-                <th rowspan="2" data-options="field:'request_no',width:100,halign:'center'">PR No</th>
+                <th rowspan="2" data-options="field:'request_no',width:120,halign:'center'">PR No</th>
                 <th rowspan="2" data-options="field:'request_date',width:100,halign:'center'">PR Date</th>
                 <th rowspan="2" data-options="field:'supplier_name',width:250,halign:'center'">Vendor Name</th>
                 <th rowspan="2" data-options="field:'item_family_name',width:120,halign:'center'">Product Family</th>
@@ -28,15 +28,15 @@
                 <th rowspan="2" data-options="field:'detail',width:80,halign:'center',formatter:BtnDetail">Detail</th>
                 <th rowspan="2" data-options="field:'print_pr',width:80,halign:'center',formatter:BtnPrint">Print PR</th>
                 <th colspan="2" data-options="field:'',width:100,halign:'center'">Create PO</th>
-                <th colspan="2" data-options="field:'',width:100,halign:'center'">Confirm PR</th>
+                <!-- <th colspan="2" data-options="field:'',width:100,halign:'center'">Confirm PR</th> -->
                 <th colspan="3" data-options="field:'',width:100,halign:'center'">Approved</th>
                 <th colspan="2" data-options="field:'',width:100,halign:'center'">Created</th>
             </tr>
             <tr>
                 <th data-options="field:'send',width:120,align:'center',formatter:BtnSend">Create</th>
                 <th data-options="field:'create_po',width:150,align:'center'">Date</th>
-                <th data-options="field:'confirm',width:100,align:'center', styler:cellStylerConfirm, formatter:cellFormatterConfirm">Status</th>
-                <th data-options="field:'confirm_date',width:150,align:'center'">Date</th>
+                <!-- <th data-options="field:'confirm',width:100,align:'center', styler:cellStylerConfirm, formatter:cellFormatterConfirm">Status</th> -->
+                <!-- <th data-options="field:'confirm_date',width:150,align:'center'">Date</th> -->
                 <th data-options="field:'approved_to',width:80,align:'center', styler:cellStylerApproval, formatter:cellFormatterApproval">Status</th>
                 <th data-options="field:'approved_by',width:100,align:'center'">By</th>
                 <th data-options="field:'approved_date',width:120,align:'center'">Date</th>
@@ -323,7 +323,8 @@
                             "&filter_year=" + window.btoa(filter_year) +
                             "&filter_revision=" + window.btoa(filter_revision) +
                             "&filter_item_family=" + window.btoa(filter_item_family) +
-                            "&filter_item_rm=" + window.btoa(filter_item_rm),
+                            "&filter_item_rm=" + window.btoa(filter_item_rm) +
+                            "&id_menu=<?= base64_encode($id_menu) ?>",
                         dataType: "json",
                         success: function(rows) {
                             Swal.close();
@@ -1028,7 +1029,7 @@
                 $.ajax({
                     type: "get",
                     url: "<?= base_url('purchase/purchase_orders/getData') ?>",
-                    data: "request_no=" + window.btoa(request_no),
+                    data: "request_no=" + window.btoa(request_no) + "&id_menu=20240103000001",
                     dataType: "json",
                     success: function(rows) {
                         Swal.close();
@@ -1043,7 +1044,7 @@
                                     $('#p_start').html(number);
                                     $('#p_finish').html(total);
 
-                                    $.post('<?= base_url('purchase/purchase_orders/create') ?>', {
+                                    $.post('<?= base_url('purchase/purchase_orders/create2') ?>', {
                                         data: json[number - 1]
                                     }, function(note) {
                                         var result = eval('(' + note + ')');
@@ -1146,7 +1147,7 @@
 
         $('#dlg_insert').dialog({
             buttons: [{
-                text: 'Save',
+                text: 'Send to Approval',
                 iconCls: 'icon-ok',
                 handler: function() {
                     var p_month = $("#p_month").combobox('getValue');
@@ -1278,10 +1279,14 @@
                         $.ajax({
                             type: "post",
                             // url: "<?= base_url("purchase/purchase_requests/purchaseRequestNo/") ?>"+btoa(code)+"/adds",
-                            url: "<?= base_url("purchase/purchase_requests/purchaseRequestNo/adds") ?>",
+                            url: "<?= base_url("purchase/purchase_requests/purchaseRequestNo/".$id_menu."/adds") ?>",
                             dataType: "html",
                             success: function (response) {
-                                $("#request_no").textbox('setValue', response);
+                                if(response == ""){
+                                    toastr.info("Please Check Configuration in Serial No First");
+                                }else{
+                                    $("#request_no").textbox('setValue', response);
+                                }
                             }
                         });
                     }

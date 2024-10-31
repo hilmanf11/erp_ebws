@@ -21,6 +21,8 @@ class Delivery_orders extends CI_Controller
             redirect('error_session');
         } elseif ($this->checkuserAccess($this->id_menu()) > 0) {
             $data['button'] = $this->getbutton($this->id_menu());
+            $data['id_menu'] = $this->id_menu();
+
             $this->load->view('template/header', $data);
             $this->load->view('sales/delivery_orders');
         } else {
@@ -48,22 +50,55 @@ class Delivery_orders extends CI_Controller
         echo json_encode($records);
     }
 
-    public function number($delivery_order_date, $customer_id)
+    public function number($id_menu)
     {
-        $customer_id = base64_decode($customer_id);
-        $datenow    = "DO" . $customer_id . date("ym", strtotime(base64_decode($delivery_order_date)));
-        $sqlGetID   = $this->db->query("SELECT max(`delivery_order_no`) as kode FROM delivery_orders WHERE `delivery_order_no` like '%$datenow%'");
-        $rowID      = $sqlGetID->row();
-        $kode       = $rowID->kode;
-        if ($kode == NULL) {
-            $autoID = sprintf("%04s", $kode + 1);
-        } else {
-            $urutan = (int) substr($kode, -3);
-            $urutan++;
-            $autoID = sprintf("%04s", $urutan);
+        $datenow = date("Y-m-d");
+        $sql_menu = $this->db->query("SELECT * FROM menus_no WHERE menus_id = '$id_menu' and `status` = '0' and `start_date` <= '$datenow' and end_date >= '$datenow'");
+        $row_menu = $sql_menu->row();
+
+        if(@$row_menu->number == ""){
+            //
+        }else{
+            $number = @$row_menu->number;
+            $yearnow = date("y", strtotime($row_menu->start_date));
+            $yearend = date("y", strtotime($row_menu->end_date));
+
+            $whereDate = $number.$yearnow.$yearend."1";
+
+            $sqlGetID	= $this->db->query("SELECT max(delivery_order_no) as kode FROM delivery_orders WHERE delivery_order_no like '%$whereDate%'");
+            $rowID = $sqlGetID->row();
+            $kode = $rowID->kode;
+            
+            if ($kode == NULL) {
+                $autoID = sprintf("%0".$row_menu->sequence."s", $kode + 1);
+                $autoNo = $whereDate.$autoID;
+            } else {
+                $urutan = (int) substr($kode, -6);
+                $urutan++;
+                $autoID	= sprintf("%0".$row_menu->sequence."s", $urutan);
+                $autoNo = $whereDate.$autoID;
+            }
+
+            echo $autoNo;
         }
-        echo $datenow . $autoID;
     }
+
+    // public function number($delivery_order_date, $customer_id)
+    // {
+    //     $customer_id = base64_decode($customer_id);
+    //     $datenow    = "DO" . $customer_id . date("ym", strtotime(base64_decode($delivery_order_date)));
+    //     $sqlGetID   = $this->db->query("SELECT max(`delivery_order_no`) as kode FROM delivery_orders WHERE `delivery_order_no` like '%$datenow%'");
+    //     $rowID      = $sqlGetID->row();
+    //     $kode       = $rowID->kode;
+    //     if ($kode == NULL) {
+    //         $autoID = sprintf("%04s", $kode + 1);
+    //     } else {
+    //         $urutan = (int) substr($kode, -3);
+    //         $urutan++;
+    //         $autoID = sprintf("%04s", $urutan);
+    //     }
+    //     echo $datenow . $autoID;
+    // }
 
     public function datatablesTemp($delivery_date, $customer_id)
     {

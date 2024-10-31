@@ -511,21 +511,54 @@ class Journal_postings extends CI_Controller
         }
     }
 
-    public function number($journal_date)
+    public function number($id_menu)
     {
-        $datenow    = "GL" . date("ym", strtotime(base64_decode($journal_date)));
-        $sqlGetID   = $this->db->query("SELECT max(`number`) as kode FROM journal_postings WHERE `number` like '%$datenow%'");
-        $rowID      = $sqlGetID->row();
-        $kode       = $rowID->kode;
-        if ($kode == NULL) {
-            $autoID = sprintf("%04s", $kode + 1);
-        } else {
-            $urutan = (int) substr($kode, -4);
-            $urutan++;
-            $autoID = sprintf("%04s", $urutan);
+        $datenow = date("Y-m-d");
+        $sql_menu = $this->db->query("SELECT * FROM menus_no WHERE menus_id = '$id_menu' and `status` = '0' and `start_date` <= '$datenow' and end_date >= '$datenow'");
+        $row_menu = $sql_menu->row();
+
+        if(@$row_menu->number == ""){
+            //
+        }else{
+            $number = @$row_menu->number;
+            $yearnow = date("y", strtotime($row_menu->start_date));
+            $yearend = date("y", strtotime($row_menu->end_date));
+
+            $whereDate = $number.$yearnow.$yearend."1";
+
+            $sqlGetID	= $this->db->query("SELECT max(`number`) as kode FROM journal_postings WHERE `number` like '%$whereDate%'");
+            $rowID = $sqlGetID->row();
+            $kode = $rowID->kode;
+            
+            if ($kode == NULL) {
+                $autoID = sprintf("%0".$row_menu->sequence."s", $kode + 1);
+                $autoNo = $whereDate.$autoID;
+            } else {
+                $urutan = (int) substr($kode, -6);
+                $urutan++;
+                $autoID	= sprintf("%0".$row_menu->sequence."s", $urutan);
+                $autoNo = $whereDate.$autoID;
+            }
+
+            echo $autoNo;
         }
-        echo $datenow . $autoID;
     }
+
+    // public function number($journal_date)
+    // {
+    //     $datenow    = "GL" . date("ym", strtotime(base64_decode($journal_date)));
+    //     $sqlGetID   = $this->db->query("SELECT max(`number`) as kode FROM journal_postings WHERE `number` like '%$datenow%'");
+    //     $rowID      = $sqlGetID->row();
+    //     $kode       = $rowID->kode;
+    //     if ($kode == NULL) {
+    //         $autoID = sprintf("%04s", $kode + 1);
+    //     } else {
+    //         $urutan = (int) substr($kode, -4);
+    //         $urutan++;
+    //         $autoID = sprintf("%04s", $urutan);
+    //     }
+    //     echo $datenow . $autoID;
+    // }
 
     public function datatablesTemp()
     {
@@ -597,9 +630,9 @@ class Journal_postings extends CI_Controller
                             $trans_date = $purchase_invoice['trans_date'];
 
                             $transmonth = date('Y-m-01', strtotime('-1 month', strtotime($purchase_invoice['trans_date'])));
-                            $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $transmonth, "currency_from" => $currency, "currency_to" => "IDR"]);
+                            $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $transmonth, "currency_from" => $currency, "currency_to" => "INR"]);
 
-                            if ($currency != "IDR") {
+                            if ($currency != "INR") {
                                 if ($purchase_invoice['account_type'] == "DEBIT") {
                                     $original_debit = round($purchase_invoice['total'], 2);
                                     $original_credit = 0;
@@ -642,6 +675,8 @@ class Journal_postings extends CI_Controller
                                 "account_number" => $purchase_invoice['account_number'],
                                 "account_name" => $purchase_invoice['account_name'],
                                 "description" => $supplier_name . " | " . $purchase_invoice['po_no'] . " | " . $purchase_invoice['invoice_no'] . " | " . $purchase_invoice['item_no'] . " | " . $purchase_invoice['item_name'],
+                                "item_no" => $purchase_invoice['item_no'],
+                                "item_name" => $purchase_invoice['item_name'],
                                 "currency" => $purchase_invoice['currency'],
                                 "original_debit" => $original_debit,
                                 "original_credit" => $original_credit,
@@ -662,9 +697,9 @@ class Journal_postings extends CI_Controller
                         }
                     } else {
                         $transmonth = date('Y-m-01', strtotime('-1 month', strtotime($trans_date)));
-                        $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $transmonth, "currency_from" => $currency, "currency_to" => "IDR"]);
+                        $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $transmonth, "currency_from" => $currency, "currency_to" => "INR"]);
 
-                        if ($currency != "IDR") {
+                        if ($currency != "INR") {
                             $original_debit = $debit;
                             $original_credit = $credit;
                             $local_debit = round($debit * @$exchange->middle, 2);
@@ -689,6 +724,8 @@ class Journal_postings extends CI_Controller
                             "account_number" => $account_number,
                             "account_name" => $account_name,
                             "description" => $journal['supplier_name'] . " | " . $number . " | " . $journal['invoice_no'] . " | " . $journal['item_no'] . " | " . $journal['item_name'],
+                            "item_no" => $journal['item_no'],
+                            "item_name" => $journal['item_name'],
                             "currency" => $journal['currency'],
                             "original_debit" => $original_debit,
                             "original_credit" => $original_credit,
@@ -765,9 +802,9 @@ class Journal_postings extends CI_Controller
                             $trans_date = $sales_invoice['trans_date'];
 
                             $transmonth = date('Y-m-01', strtotime('-1 month', strtotime($sales_invoice['trans_date'])));
-                            $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $transmonth, "currency_from" => $currency, "currency_to" => "IDR"]);
+                            $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $transmonth, "currency_from" => $currency, "currency_to" => "INR"]);
 
-                            if ($currency != "IDR") {
+                            if ($currency != "INR") {
                                 if ($sales_invoice['account_type'] == "DEBIT") {
                                     $original_debit = $sales_invoice['total'];
                                     $original_credit = 0;
@@ -810,6 +847,8 @@ class Journal_postings extends CI_Controller
                                 "account_number" => $sales_invoice['account_number'],
                                 "account_name" => $sales_invoice['account_name'],
                                 "description" => $customer_name . " | " . $number . " | " . $sales_invoice['customer_po'] . " | " . $sales_invoice['item_no'] . " | " . $sales_invoice['item_name'],
+                                "item_no" => $sales_invoice['item_no'],
+                                "item_name" => $sales_invoice['item_name'],
                                 "currency" => $sales_invoice['currency'],
                                 "original_debit" => $original_debit,
                                 "original_credit" => $original_credit,
@@ -825,9 +864,9 @@ class Journal_postings extends CI_Controller
                         }
                     } else {
                         $transmonth = date('Y-m-01', strtotime('-1 month', strtotime($journal['trans_date'])));
-                        $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $transmonth, "currency_from" => $journal['currency'], "currency_to" => "IDR"]);
+                        $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $transmonth, "currency_from" => $journal['currency'], "currency_to" => "INR"]);
 
-                        if ($journal['currency'] != "IDR") {
+                        if ($journal['currency'] != "INR") {
                             $original_debit = $debit;
                             $original_credit = $credit;
                             $local_debit = round($debit * @$exchange->middle, 2);
@@ -852,6 +891,8 @@ class Journal_postings extends CI_Controller
                             "account_number" => $account_number,
                             "account_name" => $account_name,
                             "description" => $journal['customer_name'] . " | " . $journal['so_number'] . " | " . $journal['customer_po'] . " | " . $journal['item_no'] . " | " . $journal['item_name'],
+                            "item_no" => $sales_invoice['item_no'],
+                            "item_name" => $sales_invoice['item_name'],
                             "currency" => $journal['currency'],
                             "original_debit" => $original_debit,
                             "original_credit" => $original_credit,
@@ -907,9 +948,9 @@ class Journal_postings extends CI_Controller
                 $credit = $journal['credit'];
 
                 $transmonth = date('Y-m-01', strtotime('-1 month', strtotime($journal['payment_date'])));
-                $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $transmonth, "currency_from" => $journal['currency'], "currency_to" => "IDR"]);
+                $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $transmonth, "currency_from" => $journal['currency'], "currency_to" => "INR"]);
 
-                if ($journal['currency'] != "IDR") {
+                if ($journal['currency'] != "INR") {
                     $original_debit = $debit;
                     $original_credit = $credit;
                     $local_debit = $journal['local_debit'];
@@ -987,9 +1028,9 @@ class Journal_postings extends CI_Controller
                 $credit = $journal['credit'];
 
                 $transmonth = date('Y-m-01', strtotime('-1 month', strtotime($journal['receipt_date'])));
-                $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $transmonth, "currency_from" => $journal['currency'], "currency_to" => "IDR"]);
+                $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $transmonth, "currency_from" => $journal['currency'], "currency_to" => "INR"]);
 
-                if ($journal['currency'] != "IDR") {
+                if ($journal['currency'] != "INR") {
                     $original_debit = $debit;
                     $original_credit = $credit;
                     $local_debit = round($debit * @$exchange->middle, 2);
@@ -1067,9 +1108,9 @@ class Journal_postings extends CI_Controller
                 $credit = $journal['credit'];
 
                 $transmonth = date('Y-m-01', strtotime('-1 month', strtotime($journal['trans_date'])));
-                $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $transmonth, "currency_from" => $journal['currency'], "currency_to" => "IDR"]);
+                $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $transmonth, "currency_from" => $journal['currency'], "currency_to" => "INR"]);
 
-                if ($journal['currency'] != "IDR") {
+                if ($journal['currency'] != "INR") {
                     $original_debit = $debit;
                     $original_credit = $credit;
                     $local_debit = round($debit * @$exchange->middle, 2);
@@ -1164,7 +1205,7 @@ class Journal_postings extends CI_Controller
                     "account_number" => $account_number,
                     "account_name" => $account_name,
                     "description" => $journal['company_name'] . " | " . $number . " | " . $journal['document_no'],
-                    "currency" => "IDR",
+                    "currency" => "INR",
                     "original_debit" => $original_debit,
                     "original_credit" => $original_credit,
                     "rates" => $rates,
@@ -1222,7 +1263,7 @@ class Journal_postings extends CI_Controller
                 "account_number" => "4512001",
                 "account_name" => "COST OF GOOD MANUFACTURING - MATEIRAL",
                 "description" => "DEBIT TOTAL SUPPLY MATERIAL",
-                "currency" => "IDR",
+                "currency" => "INR",
                 "original_debit" => round($total_amount_out, 2),
                 "original_credit" => 0,
                 "rates" => 1,
@@ -1240,7 +1281,7 @@ class Journal_postings extends CI_Controller
                 "account_number" => @$account->account_number,
                 "account_name" => @$account->account_name,
                 "description" => "CREDIT TOTAL SUPPLY MATERIAL",
-                "currency" => "IDR",
+                "currency" => "INR",
                 "original_debit" => 0,
                 "original_credit" => round($total_amount_out, 2),
                 "rates" => 1,
@@ -1288,7 +1329,7 @@ class Journal_postings extends CI_Controller
                 "account_number" => $account->account_number,
                 "account_name" => $account->account_name,
                 "description" => "-",
-                "currency" => "IDR",
+                "currency" => "INR",
                 "original_debit" => round($total_amount_fg_in, 2),
                 "original_credit" => 0,
                 "rates" => 1,
@@ -1306,7 +1347,7 @@ class Journal_postings extends CI_Controller
                 "account_number" => "4512001",
                 "account_name" => "COST OF GOOD MANUFACTURING - MATERIAL",
                 "description" => "-",
-                "currency" => "IDR",
+                "currency" => "INR",
                 "original_debit" => 0,
                 "original_credit" => abs(round($total_inventory_rm, 2)),
                 "rates" => 1,
@@ -1324,7 +1365,7 @@ class Journal_postings extends CI_Controller
                 "account_number" => "4512002",
                 "account_name" => "COST OF GOOD MANUFACTURING - DIRECT LABOR",
                 "description" => "-",
-                "currency" => "IDR",
+                "currency" => "INR",
                 "original_debit" => 0,
                 "original_credit" => abs(round($total_final_labor, 2)),
                 "rates" => 1,
@@ -1342,7 +1383,7 @@ class Journal_postings extends CI_Controller
                 "account_number" => "4512003",
                 "account_name" => "COST OF GOOD MANUFACTURING - FACTORY",
                 "description" => "-",
-                "currency" => "IDR",
+                "currency" => "INR",
                 "original_debit" => 0,
                 "original_credit" => abs(round($total_final_foh, 2)),
                 "rates" => 1,
@@ -1390,7 +1431,7 @@ class Journal_postings extends CI_Controller
                 "account_number" => "4511001",
                 "account_name" => "COST OF GOOD SOLD - LOCAL - MATERIAL",
                 "description" => "-",
-                "currency" => "IDR",
+                "currency" => "INR",
                 "original_debit" => round(abs($total_inventory_rm), 2),
                 "original_credit" => 0,
                 "rates" => 1,
@@ -1408,7 +1449,7 @@ class Journal_postings extends CI_Controller
                 "account_number" => "4511002",
                 "account_name" => "COST OF GOOD SOLD - LOCAL - DIRECTLABOR",
                 "description" => "-",
-                "currency" => "IDR",
+                "currency" => "INR",
                 "original_debit" => round(abs($total_final_labor), 2),
                 "original_credit" => 0,
                 "rates" => 1,
@@ -1426,7 +1467,7 @@ class Journal_postings extends CI_Controller
                 "account_number" => "4511003",
                 "account_name" => "COST OF GOOD SOLD - LOCAL - OVERHEAD",
                 "description" => "-",
-                "currency" => "IDR",
+                "currency" => "INR",
                 "original_debit" => round(abs($total_final_foh), 2),
                 "original_credit" => 0,
                 "rates" => 1,
@@ -1450,7 +1491,7 @@ class Journal_postings extends CI_Controller
                 "account_number" => $account->account_number,
                 "account_name" => $account->account_name,
                 "description" => "-",
-                "currency" => "IDR",
+                "currency" => "INR",
                 "original_debit" => 0,
                 "original_credit" => abs(round($total_amount_fg_in, 2)),
                 "rates" => 1,
@@ -1486,7 +1527,7 @@ class Journal_postings extends CI_Controller
                 "account_number" => "4512002",
                 "account_name" => "COST OF GOOD MANUFACTURING - DIRECT LABOR",
                 "description" => "-",
-                "currency" => "IDR",
+                "currency" => "INR",
                 "original_debit" => round($total_labour, 2),
                 "original_credit" => 0,
                 "rates" => 1,
@@ -1506,7 +1547,7 @@ class Journal_postings extends CI_Controller
                     "account_number" => $labour->account_number,
                     "account_name" => $labour->account_name,
                     "description" => "-",
-                    "currency" => "IDR",
+                    "currency" => "INR",
                     "original_debit" => 0,
                     "original_credit" => ($labour->local_debit + $labour->local_credit),
                     "rates" => 1,
@@ -1545,7 +1586,7 @@ class Journal_postings extends CI_Controller
                 "account_number" => "4512003",
                 "account_name" => "COST OF GOOD MANUFACTURING - FACTORY",
                 "description" => "-",
-                "currency" => "IDR",
+                "currency" => "INR",
                 "original_debit" => round($total_labour, 2),
                 "original_credit" => 0,
                 "rates" => 1,
@@ -1574,7 +1615,7 @@ class Journal_postings extends CI_Controller
                     "account_number" => $labour->account_number,
                     "account_name" => $labour->account_name,
                     "description" => "-",
-                    "currency" => "IDR",
+                    "currency" => "INR",
                     "original_debit" => $labor_debit,
                     "original_credit" => $labor_credit,
                     "rates" => 1,
@@ -1624,7 +1665,7 @@ class Journal_postings extends CI_Controller
                         "account_number" => $account->account_number,
                         "account_name" => $account->account_name,
                         "description" => "-",
-                        "currency" => "IDR",
+                        "currency" => "INR",
                         "original_debit" => $debit,
                         "original_credit" => $credit,
                         "rates" => 1,
@@ -1655,7 +1696,7 @@ class Journal_postings extends CI_Controller
                 "account_number" => "3091200",
                 "account_name" => "RETAINED EARNING",
                 "description" => "-",
-                "currency" => "IDR",
+                "currency" => "INR",
                 "original_debit" => $earn_debit,
                 "original_credit" => $earn_credit,
                 "rates" => 1,
@@ -2120,12 +2161,12 @@ class Journal_postings extends CI_Controller
                                             <td width="50" rowspan="4"><img src="' . base_url('assets/image/qrcode/' . $number . '.png') . '" width="60"/></td>
                                             <td width="60">Doc No</td>
                                             <td width="5">:</td>
-                                            <td width="100">' . $config_iso->doc_general_ledger . '</td>
+                                            <td width="100">' . @$config_iso->doc_general_ledger . '</td>
                                         </tr>
                                         <tr>
                                             <td>Form</td>
                                             <td>:</td>
-                                            <td>' . $config_iso->form_general_ledger . '</td>
+                                            <td>' . @$config_iso->form_general_ledger . '</td>
                                         </tr>
                                         <tr>
                                             <td>Print Date</td>

@@ -9,11 +9,12 @@ class Convertcurrency
             "USD" => "Dollar",
             "EUR" => "Euro",
             "JPY" => "Yen",
+            "INR" => "Rupees",
             "IDR" => "Rupiah",
             // Add other currencies as needed
         );
     
-        $words .= $this->numberToWords($amount) . " " . $currencyNames[$currency];
+        $words .= $currencyNames[$currency] . " " . $this->numberToWords($amount);
     
         return $words;
     }

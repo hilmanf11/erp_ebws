@@ -82,7 +82,7 @@
 </div>
 
 <!-- DIALOG SAVE AND UPDATE -->
-<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 99%; height: 600px; padding:10px; left: 5px; top: 5px;">
+<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 99%; height: 550px; padding:10px; left: 5px; top: 5px;">
     <form id="frm_insert" method="post" novalidate>
         <div style="width: 100%; display: grid; grid-template-columns: auto auto auto; grid-gap: 5px; display: flex;">
             <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px;">
@@ -166,8 +166,8 @@
                         type: 'combobox',
                         options: {
                             url: '<?= base_url('master/currencies/reads') ?>',
-                            valueField: 'number',
-                            textField: 'number',
+                            valueField: 'name',
+                            textField: 'name',
                             editable:false,
                             prompt: 'Choose Currency',
                             panelHeight: 'auto',
@@ -233,7 +233,7 @@
                 <a style="width: 90%; height: 50px; padding:10px;" class="easyui-linkbutton c2" onclick="addJournal()">Add to Journal</a>
             </div>
             <div style="float: left; width: 30%; border:4px solid green; padding:10px;" id="showExchange">
-                <p style="font-size: 16px !important; margin:0;">Rate USD to IDR : <b style="font-size: 16px !important;" id="exchange"></b></p>
+                <p style="font-size: 16px !important; margin:0;"><b style="font-size: 16px !important;" id="exchange"></b></p>
             </div>
         </div>
 
@@ -346,7 +346,7 @@
 
         $("#receipt_date").datebox({
             onChange: function(val) {
-                number(val);
+                number("<?= $menus_id ?>");
             }
         });
     }
@@ -415,7 +415,7 @@
                 var jsonData2 = JSON.stringify(data_array2);
 
                 if (totalrows == total_currency) {
-                    if (currency != "IDR") {
+                    if (currency != "INR") {
                         $.ajax({
                             type: "post",
                             url: "<?= base_url('finance/ar_receipts/readExchangeRate') ?>",
@@ -720,13 +720,17 @@
     }
 
     //NOMOR AUTOMATIC
-    function number(trans_date) {
+    function number(id_menu) {
         $.ajax({
             type: "post",
-            url: "<?= base_url('finance/ar_receipts/number/') ?>" + window.btoa(trans_date),
+            url: "<?= base_url('finance/ar_receipts/number/') ?>" + id_menu,
             dataType: "html",
             success: function(result) {
-                $("#receipt_no").textbox('setValue', result);
+                if(result == ""){
+                    toastr.info("Please Check Configuration in Serial No First");
+                }else{
+                    $("#receipt_no").textbox('setValue', result);
+                }
             }
         });
     }
@@ -1383,7 +1387,7 @@
             var format = "de-DE";
         } else {
             var digits = 0;
-            var currency = 'IDR';
+            var currency = 'INR';
             var format = "id-ID";
         }
 
@@ -1399,7 +1403,7 @@
 
     function priceformatlocal(value, row) {
         var digits = 0;
-        var currency = 'IDR';
+        var currency = 'INR';
         var format = "id-ID";
 
         if (value != null) {

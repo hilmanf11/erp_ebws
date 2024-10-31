@@ -21,6 +21,8 @@ class Supply_requestions extends CI_Controller
             redirect('error_session');
         } elseif ($this->checkuserAccess($this->id_menu()) > 0) {
             $data['button'] = $this->getbutton($this->id_menu());
+            $data['id_menu'] = $this->id_menu();
+
             $this->load->view('template/header', $data);
             $this->load->view('planning/supply_requestions');
         } else {
@@ -43,22 +45,40 @@ class Supply_requestions extends CI_Controller
         $records = $this->crud->query("SELECT request_no FROM supply_requestions WHERE status = '0' and `period` = '$period' and wp = '$wp' GROUP BY `request_no`");
         echo json_encode($records);
     }
-    public function request_no($trans_date)
+
+    public function request_no($id_menu)
     {
-        $trans_date = base64_decode($trans_date);
-        $datenow    = date("ymd", strtotime($trans_date));
-        $sqlGetID   = $this->db->query("SELECT max(request_no) as kode FROM supply_requestions WHERE request_no like '%$datenow%'");
-        $rowID      = $sqlGetID->row();
-        $kode       = $rowID->kode;
-        if ($kode == NULL) {
-            $autoID = sprintf("%04s", $kode + 1);
-        } else {
-            $urutan = (int) substr($kode, -4);
-            $urutan++;
-            $autoID = sprintf("%04s", $urutan);
+        $datenow = date("Y-m-d");
+        $sql_menu = $this->db->query("SELECT * FROM menus_no WHERE menus_id = '$id_menu' and `status` = '0' and `start_date` <= '$datenow' and end_date >= '$datenow'");
+        $row_menu = $sql_menu->row();
+
+        if(@$row_menu->number == ""){
+            //
+        }else{
+            $number = @$row_menu->number;
+            $yearnow = date("y", strtotime($row_menu->start_date));
+            $yearend = date("y", strtotime($row_menu->end_date));
+
+            $whereDate = $number.$yearnow.$yearend."1";
+
+            $sqlGetID	= $this->db->query("SELECT max(request_no) as kode FROM supply_requestions WHERE request_no like '%$whereDate%'");
+            $rowID = $sqlGetID->row();
+            $kode = $rowID->kode;
+            
+            if ($kode == NULL) {
+                $autoID = sprintf("%0".$row_menu->sequence."s", $kode + 1);
+                $autoNo = $whereDate.$autoID;
+            } else {
+                $urutan = (int) substr($kode, -6);
+                $urutan++;
+                $autoID	= sprintf("%0".$row_menu->sequence."s", $urutan);
+                $autoNo = $whereDate.$autoID;
+            }
+
+            echo $autoNo;
         }
-        echo "PRQ-" . $datenow . "-" . $autoID;
     }
+    
     public function datatables()
     {
         if ($this->input->post()) {

@@ -245,7 +245,8 @@
                     toastr.error("Please Choose Customer Name");
                     $("#sales_order_date").datebox('clear');
                 } else {
-                    number(customer_id, sales_order_date);
+                    // number(customer_id, sales_order_date);
+                    number("<?= $id_menu ?>");
                 }
             }
         });
@@ -261,7 +262,8 @@
                 $("#taxes").numberbox('setValue', customer.taxes);
 
                 if (sales_order_date != "") {
-                    number(customer.id, sales_order_date);
+                    // number(customer.id, sales_order_date);
+                    number("<?= $id_menu ?>");
                 }
 
                 $('#plant').combogrid({
@@ -302,13 +304,32 @@
         });
     }
 
-    function number(customer_id, sales_order_date) {
+    // function number(customer_id, sales_order_date) {
+    function number(id_menu) {
         $.ajax({
             type: "post",
-            url: "<?= base_url('sales/sales_orders/number/') ?>" + btoa(customer_id) + '/' + window.btoa(sales_order_date),
+            // url: "<?= base_url('sales/sales_orders/number/') ?>" + btoa(customer_id) + '/' + window.btoa(sales_order_date),
+            url: "<?= base_url('sales/sales_orders/number/') ?>" + id_menu,
             dataType: "html",
             success: function(result) {
-                $("#sales_order_no").textbox('setValue', result);
+                if(result == ""){
+                    toastr.info("Please Check Configuration in Serial No First");
+                }else{
+                    $("#sales_order_no").textbox('setValue', result);
+                }
+            }
+        });
+
+        $.ajax({
+            type: "post",
+            url: "<?= base_url('purchase/purchase_order_receipts/receipt_no/') ?>" + id_menu,
+            dataType: "html",
+            success: function(result) {
+                if(result == ""){
+                    toastr.info("Please Check Configuration in Serial No First");
+                }else{
+                    $("#receipt_no").textbox('setValue', result);
+                }
             }
         });
     }

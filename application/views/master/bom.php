@@ -612,7 +612,7 @@
         //SAVE DATA
         $('#dlg_insert').dialog({
             buttons: [{
-                text: 'Save All',
+                text: 'Send to Approval',
                 iconCls: 'icon-ok',
                 handler: function() {
                     $('#dlg_insert').dialog('close');

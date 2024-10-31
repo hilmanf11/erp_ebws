@@ -3,26 +3,27 @@
     <thead>
         <tr>
             <th rowspan="2" field="ck" checkbox="true"></th>
-            <th rowspan="2" data-options="field:'item_fg_number',width:150,halign:'center'">Product No EBWS</th>
+            <th rowspan="2" data-options="field:'item_fg_number',width:150,halign:'center'">Part No EBWS</th>
             <th rowspan="2" data-options="field:'number_customer',width:200,halign:'center'">Part No Customer</th>
             <th rowspan="2" data-options="field:'item_fg_name',width:200,halign:'center'">Description</th>
             <th rowspan="2" data-options="field:'circuit_no',width:50,align:'center'">CCT</th>
             <th rowspan="2" data-options="field:'kind',width:80,halign:'center'">Kind</th>
             <th rowspan="2" data-options="field:'size',width:80,halign:'center'">Size</th>
-            <th rowspan="2" data-options="field:'color',width:80,halign:'center'">Color</th>
+            <th rowspan="2" data-options="field:'color',width:80,halign:'center'">Base Color</th>
+            <th rowspan="2" data-options="field:'line_color',width:80,halign:'center'">Line 1 Color</th>
             <th rowspan="2" data-options="field:'cl',width:80,halign:'center'">C/L</th>
             <th rowspan="2" data-options="field:'jno',width:80,halign:'center'">J. No</th>
             <th rowspan="2" data-options="field:'twist',width:80,halign:'center'">Twist</th>
             <th rowspan="2" data-options="field:'mno',width:80,halign:'center'">M. No</th>
             <th rowspan="2" data-options="field:'dc_1',width:80,halign:'center'">D/C 1</th>
-            <th rowspan="2" data-options="field:'terminal_1',width:100,halign:'center'">Terminal 1</th>
+            <th rowspan="2" data-options="field:'terminal_1',width:100,halign:'center'">Terminal 1 (R)</th>
             <th rowspan="2" data-options="field:'strip_1',width:100,halign:'center'">Strip 1</th>
             <th rowspan="2" data-options="field:'chc_1',width:100,halign:'center'">CH/C 1</th>
             <th rowspan="2" data-options="field:'cwc_1',width:100,halign:'center'">CW/C 1</th>
             <th rowspan="2" data-options="field:'chi_1',width:100,halign:'center'">CH/I 1</th>
             <th rowspan="2" data-options="field:'cwi_1',width:100,halign:'center'">CW/I 1</th>
             <th rowspan="2" data-options="field:'dc_2',width:100,halign:'center'">D/C 2</th>
-            <th rowspan="2" data-options="field:'terminal_2',width:100,halign:'center'">Terminal 2</th>
+            <th rowspan="2" data-options="field:'terminal_2',width:100,halign:'center'">Terminal 2 (F)</th>
             <th rowspan="2" data-options="field:'strip_2',width:100,halign:'center'">Strip 2</th>
             <th rowspan="2" data-options="field:'chc_2',width:100,halign:'center'">CH/C 2</th>
             <th rowspan="2" data-options="field:'cwc_2',width:100,halign:'center'">CW/C 2</th>
@@ -31,13 +32,15 @@
             <th rowspan="2" data-options="field:'accessories_1',width:100,halign:'center'">Accessories 1</th>
             <th rowspan="2" data-options="field:'accessories_2',width:100,halign:'center'">Accessories 2</th>
             <th rowspan="2" data-options="field:'tube_1',width:100,halign:'center'">Tube 1</th>
+            <th rowspan="2" data-options="field:'tube_size_1',width:100,halign:'center'">Tube Size 1</th>
             <th rowspan="2" data-options="field:'tube_2',width:100,halign:'center'">Tube 2</th>
+            <th rowspan="2" data-options="field:'tube_size_2',width:100,halign:'center'">Tube Size 2</th>
             <th rowspan="2" data-options="field:'end_1',width:100,halign:'center'">End 1</th>
             <th rowspan="2" data-options="field:'end_2',width:100,halign:'center'">End 2</th>
             <th rowspan="2" data-options="field:'note_r',width:100,halign:'center'">Note R</th>
             <th rowspan="2" data-options="field:'note_f',width:100,halign:'center'">Note F</th>
             <th rowspan="2" data-options="field:'mc',width:100,halign:'center'">MC No</th>
-            <th rowspan="2" data-options="field:'order',width:100,halign:'center'">Index</th>
+            <th rowspan="2" data-options="field:'order',width:100,halign:'center'">Process<br>Sequence</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
         </tr>
@@ -51,6 +54,7 @@
 </table>
 <!-- TOOLBAR DATAGRID -->
 <div id="toolbar" style="height: 35px;">
+    <a href="javascript:;" class="easyui-linkbutton" id="sync" data-options="plain:true" onclick="sync()"><i class="fa fa-history"></i> Push Data</a>
     <?= $button ?>
 </div>
 <!-- DIALOG SAVE AND UPDATE -->
@@ -76,8 +80,12 @@
                     <input style="width:60%;" name="size" id="size" required="true" class="easyui-textbox">
                 </div>
                 <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Color</span>
+                    <span style="width:35%; display:inline-block;">Base Color</span>
                     <input style="width:60%;" name="color" id="color" required="true" class="easyui-textbox">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Line 1 Color</span>
+                    <input style="width:60%;" name="line_color" id="line_color" required="true" class="easyui-textbox">
                 </div>
             </div>
             <div style="width: 50%; float: left;">
@@ -106,7 +114,7 @@
                 <input style="width:60%;" name="dc_1" id="dc_1" class="easyui-textbox">
             </div>
             <div class="fitem">
-                <span style="width:35%; display:inline-block;">Terminal</span>
+                <span style="width:35%; display:inline-block;">Terminal R</span>
                 <input style="width:60%;" name="terminal_1" id="terminal_1" class="easyui-textbox">
             </div>
             <div class="fitem">
@@ -138,6 +146,10 @@
                 <input style="width:60%;" name="tube_1" id="tube_1" class="easyui-textbox">
             </div>
             <div class="fitem">
+                <span style="width:35%; display:inline-block;">Tube Size</span>
+                <input style="width:60%;" name="tube_size_1" id="tube_size_1" class="easyui-textbox">
+            </div>
+            <div class="fitem">
                 <span style="width:35%; display:inline-block;">End</span>
                 <input style="width:60%;" name="end_1" id="end_1" class="easyui-textbox">
             </div>
@@ -157,7 +169,7 @@
                 <input style="width:60%;" name="dc_2" id="dc_2" class="easyui-textbox">
             </div>
             <div class="fitem">
-                <span style="width:35%; display:inline-block;">Terminal</span>
+                <span style="width:35%; display:inline-block;">Terminal F</span>
                 <input style="width:60%;" name="terminal_2" id="terminal_2" class="easyui-textbox">
             </div>
             <div class="fitem">
@@ -187,6 +199,10 @@
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Tube</span>
                 <input style="width:60%;" name="tube_2" id="tube_2" class="easyui-textbox">
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Tube Size</span>
+                <input style="width:60%;" name="tube_size_2" id="tube_size_2" class="easyui-textbox">
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">End</span>
@@ -225,9 +241,70 @@
     </div>
 </div>
 
+<!-- Sync -->
+<div id="dlg_sync" class="easyui-dialog" title="Sync Data" data-options="closed: true,modal:true" style="width: 500px; padding:10px; top: 20px;">
+    <span style="float: left; color:green;">SUCCESS : <b id="p_success">0</b></span><span style="float: right; color:red;"> FAILED : <b id="p_failed">0</b></span>
+    <div id="p_upload2" class="easyui-progressbar" style="width:100%; margin-top: 10px;"></div>
+    <center><b id="p_start2">0</b> Of <b id="p_finish2">0</b></center>
+    <div id="p_remarks2" title="History Sync" class="easyui-panel" style="width:100%; height:200px; padding:10px; margin-top: 10px;">
+        <ul id="remarks2">
+        </ul>
+    </div>
+</div>
+
 <!-- PDF -->
 <iframe id="printout" src="<?= base_url('master/wos/print') ?>" style="width: 100%;" hidden></iframe>
 <script>
+    function sync() {
+        var rows = $('#dg').datagrid('getSelections');
+        if (rows.length > 0) {
+            $.messager.confirm('Warning', 'Are you sure you want to push this data?', function(r) {
+                if (r) {
+                    $("#dlg_sync").dialog('open');
+                    $("#sync").linkbutton("disable");
+
+                    requestData(rows.length, rows);
+                    function requestData(total, json, number = 1, value = 0) {
+                        if (value < 100) {
+                            value = Math.floor((number / total) * 100);
+                            $('#p_upload2').progressbar('setValue', value);
+                            $('#p_start2').html(number);
+                            $('#p_finish2').html(total);
+
+                            $.post('<?= base_url('master/wos/createSync') ?>', {
+                                data: json[number - 1]
+                            }, function(note) {
+                                var result = eval('(' + note + ')');
+
+                                if (result.theme == "success") {
+                                    var title = "<b style='color: green;'>" + result.title + "</b> | " + result.message;
+                                } else {
+                                    var title = "<b style='color: red;'>" + result.title + "</b> | " + result.message;
+                                }
+
+                                requestData(total, json, number + 1, value);
+                                $("#p_remarks2").append(title + "<br>");
+
+                                if (value == 100) {
+                                    $("#dlg_sync").dialog('close');
+                                    Swal.fire('Completed', 'Push Data WOS has been completed', 'success');
+                                    $("#sync").linkbutton("enable");
+                                }
+                            }).fail(function(jqXHR, textStatus) {
+                                if (textStatus == "error") {
+                                    $("#dlg_sync").dialog('close');
+                                    Swal.fire('Not Connected', 'Check Connection Database ERP Banshu', 'error');
+                                }
+                            });
+                        }
+                    }
+                }
+            });
+        }else{
+            toastr.info("Please select one of the data in the table first");
+        }
+    }
+
     //ADD DATA
     function add() {
         $('#dlg_insert').dialog('open');

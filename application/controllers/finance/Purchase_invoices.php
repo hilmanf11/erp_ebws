@@ -189,7 +189,7 @@ class Purchase_invoices extends CI_Controller
 
     public function readDueDate($trans_date, $payment_term)
     {
-        $due_date = date('Y-m-t', strtotime('+' . $payment_term . ' days', strtotime(base64_decode($trans_date))));
+        $due_date = date('Y-m-d', strtotime('+' . $payment_term . ' days', strtotime(base64_decode($trans_date))));
         die($due_date);
     }
 
@@ -203,7 +203,7 @@ class Purchase_invoices extends CI_Controller
             $dp = "and d.total_dp > 0";
         }
 
-        $records = $this->crud->query("SELECT a.receipt_no, d.taxes, d.total_dp
+        $records = $this->crud->query("SELECT a.receipt_no, d.taxes, d.total_dp, a.bc_document
             FROM purchase_order_receipts a
             JOIN item_rm b ON a.item_rm_id = b.id
             JOIN item_familys c ON b.item_family_id = c.id
@@ -238,20 +238,53 @@ class Purchase_invoices extends CI_Controller
         echo json_encode($data);
     }
 
-    public function number($trans_date)
+    // public function number($id_menu)
+    // {
+    //     $datenow    = "PI-" . date("Ymd", strtotime(base64_decode($trans_date)));
+    //     $sqlGetID   = $this->db->query("SELECT max(`number`) as kode FROM purchase_invoices WHERE `number` like '%$datenow%'");
+    //     $rowID      = $sqlGetID->row();
+    //     $kode       = $rowID->kode;
+    //     if ($kode == NULL) {
+    //         $autoID = sprintf("%04s", $kode + 1);
+    //     } else {
+    //         $urutan = (int) substr($kode, -4);
+    //         $urutan++;
+    //         $autoID = sprintf("%04s", $urutan);
+    //     }
+    //     echo $datenow . "-" . $autoID;
+    // }
+
+    public function number($id_menu)
     {
-        $datenow    = "PI-" . date("Ymd", strtotime(base64_decode($trans_date)));
-        $sqlGetID   = $this->db->query("SELECT max(`number`) as kode FROM purchase_invoices WHERE `number` like '%$datenow%'");
-        $rowID      = $sqlGetID->row();
-        $kode       = $rowID->kode;
-        if ($kode == NULL) {
-            $autoID = sprintf("%04s", $kode + 1);
-        } else {
-            $urutan = (int) substr($kode, -4);
-            $urutan++;
-            $autoID = sprintf("%04s", $urutan);
+        $datenow = date("Y-m-d");
+        $sql_menu = $this->db->query("SELECT * FROM menus_no WHERE menus_id = '$id_menu' and `status` = '0' and `start_date` <= '$datenow' and end_date >= '$datenow'");
+        $row_menu = $sql_menu->row();
+
+        if(@$row_menu->number == ""){
+            //
+        }else{
+            $number = @$row_menu->number;
+            $yearnow = date("y", strtotime($row_menu->start_date));
+            $yearend = date("y", strtotime($row_menu->end_date));
+
+            $whereDate = $number.$yearnow.$yearend."1";
+
+            $sqlGetID	= $this->db->query("SELECT max(`number`) as kode FROM purchase_invoices WHERE `number` like '%$whereDate%'");
+            $rowID = $sqlGetID->row();
+            $kode = $rowID->kode;
+            
+            if ($kode == NULL) {
+                $autoID = sprintf("%0".$row_menu->sequence."s", $kode + 1);
+                $autoNo = $whereDate.$autoID;
+            } else {
+                $urutan = (int) substr($kode, -6);
+                $urutan++;
+                $autoID	= sprintf("%0".$row_menu->sequence."s", $urutan);
+                $autoNo = $whereDate.$autoID;
+            }
+
+            echo $autoNo;
         }
-        echo $datenow . "-" . $autoID;
     }
 
     public function numberInvoice($type)
@@ -282,9 +315,7 @@ class Purchase_invoices extends CI_Controller
             ((a.qty_receipt * f.price) * COALESCE(j.sgst, 0) / 100) as sgst,
             ((a.qty_receipt * f.price) * COALESCE(j.cgst, 0) / 100) as cgst,
             (a.qty_receipt * f.price) as total,
-            ((a.qty_receipt * f.price) + ((a.qty_receipt * f.price) * COALESCE(j.igst, 0) / 100) + ((a.qty_receipt * f.price) * COALESCE(j.sgst, 0) / 100) + ((a.qty_receipt * f.price) * COALESCE(j.cgst, 0) / 100)) as total2,
-            (CASE WHEN g.middle is null THEN 1 ELSE g.middle END) as rate,
-            (CASE WHEN g.middle != '' THEN (g.middle * ((a.qty_receipt * f.price) + ((a.qty_receipt * f.price) * COALESCE(j.igst, 0) / 100) + ((a.qty_receipt * f.price) * COALESCE(j.sgst, 0) / 100) + ((a.qty_receipt * f.price) * COALESCE(j.cgst, 0) / 100))) ELSE ((a.qty_receipt * f.price) + ((a.qty_receipt * f.price) * COALESCE(j.igst, 0) / 100) + ((a.qty_receipt * f.price) * COALESCE(j.sgst, 0) / 100) + ((a.qty_receipt * f.price) * COALESCE(j.cgst, 0) / 100)) END) as total_local");
+            (CASE WHEN g.middle is null THEN 1 ELSE g.middle END) as rate");
         $this->db->from('purchase_order_receipts a');
         $this->db->join('suppliers b', 'a.supplier_id = b.id');
         $this->db->join('item_rm c', 'a.item_rm_id = c.id');
@@ -313,19 +344,23 @@ class Purchase_invoices extends CI_Controller
             $total_sub += $record['total'];
             
             if($record['state'] == $config->state){
-                $igst = $record['igst'];
-                $cgst = 0;
-                $sgst = 0;
-                $total_igst += $record['igst'];
-                $total_cgst += 0;
-                $total_sgst += 0;
-            }else{
                 $igst = 0;
                 $cgst = $record['cgst'];
                 $sgst = $record['sgst'];
+                $total2 = ($record['total'] + $record['cgst'] + $record['sgst']);
+                $total2_local = ($total2 * $record['rate']);
                 $total_igst += 0;
                 $total_cgst += $record['cgst'];
                 $total_sgst += $record['sgst'];
+            }else{
+                $igst = $record['igst'];
+                $cgst = 0;
+                $sgst = 0;
+                $total2 = ($record['total'] + $record['igst']);
+                $total2_local = ($total2 * $record['rate']);
+                $total_igst += $record['igst'];
+                $total_cgst += 0;
+                $total_sgst += 0;
             }
 
             $obj[] = array(
@@ -346,11 +381,11 @@ class Purchase_invoices extends CI_Controller
                 "price" => $record['price'],
                 "rate" => $record['rate'],
                 "total" => $record['total'],
-                "total2" => ($record['total2']),
+                "total2" => ($total2),
                 "igst" => $igst,
                 "cgst" => $cgst,
                 "sgst" => $sgst,
-                "total_local" => $record['total_local'],
+                "total_local" => $total2_local,
                 "account_number" => $record['account_number'],
                 "account_name" => $record['account_name'],
                 "account_type" => "DEBIT"
@@ -810,11 +845,11 @@ class Purchase_invoices extends CI_Controller
                 $amount = ($record['total_idr']);
                 if($record['account_type'] == "DEBIT"){
                     $grand_total += $record['total2'];
-                    $grand_total_all += $record['total2'];
+                    $grand_total_all += $record['total'];
                     $grand_total_local += $amount;
                 }else{
                     $grand_total -= $record['total2'];
-                    $grand_total_all -= $record['total2'];
+                    $grand_total_all -= $record['total'];
                     $grand_total_local -= $amount;
                 }
 
@@ -884,7 +919,7 @@ class Purchase_invoices extends CI_Controller
                 $total_credit += $journal->credit;
 
                 $html .= '  <tr>
-                                <td>' . $journal->account_number . '</td>
+                                <td style="mso-number-format:\@;">' . $journal->account_number . '</td>
                                 <td>' . $journal->account_name . '</td>
                                 <td style="text-align:right;">' . number_format($journal->debit, 2) . '</td>
                                 <td style="text-align:right;">' . number_format($journal->credit, 2) . '</td>
@@ -1002,7 +1037,7 @@ class Purchase_invoices extends CI_Controller
         $this->db->group_by('a.number');
         $records = $this->db->get()->result_array();
 
-        $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#customers {border-collapse: collapse;width: 100%;font-size: 12px;}#customers td, #customers th {border: 1px solid #ddd;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: #ddd;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: center;color: black;}</style><body>
+        $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#customers {border-collapse: collapse;width: 150%;font-size: 12px;}#customers td, #customers th {border: 1px solid #ddd;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: #ddd;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: center;color: black;}</style><body>
             <center>
                 <div style="float: left; font-size: 12px; text-align: left;">
                     <table style="width: 100%;">
@@ -1266,7 +1301,7 @@ class Purchase_invoices extends CI_Controller
                             <td>' . $data['currency'] . '</td>
                             <td>' . $data['price'] . '</td>
                             <td>' . $data['total'] . '</td>
-                            <td>' . $data['account_number'] . '</td>
+                            <td style="mso-number-format:\@;">' . $data['account_number'] . '</td>
                             <td>' . $data['account_name'] . '</td>
                             <td>' . $data['account_type'] . '</td>
                             <td>' . $data['created_by'] . '</td>
@@ -1403,7 +1438,7 @@ class Purchase_invoices extends CI_Controller
                             <td>' . $data['due_date'] . '</td>
                             <td>' . $data['payment_term'] . '</td>
                             <td>' . $data['currency'] . '</td>
-                            <td>' . $data['account_number'] . '</td>
+                            <td style="mso-number-format:\@;">' . $data['account_number'] . '</td>
                             <td>' . $data['account_name'] . '</td>
                             <td>' . $data['debit'] . '</td>
                             <td>' . $data['credit'] . '</td>

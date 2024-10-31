@@ -69,12 +69,37 @@ class Sales_invoices extends CI_Controller
         die(json_encode($datas));
     }
 
+    public function readApi(){
+        $url = 'https://stage-api.irisgst.com/irisgst/mgmt/login';
+
+        $data = array(
+            "email" => "bhawani.shankar@ebwsindia.com",
+            "password" => "Damien@2128"
+        );
+
+        $ch = curl_init($url);
+        $payload = json_encode($data);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type:application/json'));
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+        $response = curl_exec($ch);
+
+        if($response === false) {
+            echo 'Curl error: ' . curl_error($ch);
+        } else {
+            die($response);
+        }
+
+        curl_close($ch);
+    }
+
     public function readExchangeRates()
     {
         $customer_id = $this->input->get('customer_id');
 
         $records = $this->crud->query("SELECT b.selling
-            FROM customers a JOIN exchange_rates b ON a.currency = b.currency_from and b.currency_to = 'IDR'
+            FROM customers a JOIN exchange_rates b ON a.currency = b.currency_from and b.currency_to = 'INR'
             WHERE a.id = '$customer_id'
             GROUP BY a.currency 
             ORDER BY b.created_date desc");
@@ -275,40 +300,76 @@ class Sales_invoices extends CI_Controller
 
     public function readDueDate($trans_date, $payment_term)
     {
-        $due_date = date('Y-m-t', strtotime('+' . $payment_term . ' days', strtotime(base64_decode($trans_date))));
+        $due_date = date('Y-m-d', strtotime('+' . $payment_term . ' days', strtotime(base64_decode($trans_date))));
         die($due_date);
     }
 
-    public function number($trans_date, $nickname)
+    // public function number($trans_date, $nickname)
+    // {
+    //     $datenow    = "SI-" . $nickname . date("Ym", strtotime(base64_decode($trans_date)));
+    //     $sqlGetID   = $this->db->query("SELECT max(`number`) as kode FROM sales_invoices WHERE `number` like '%$datenow%'");
+    //     $rowID      = $sqlGetID->row();
+    //     $kode       = $rowID->kode;
+    //     if ($kode == NULL) {
+    //         $autoID = sprintf("%04s", $kode + 1);
+    //     } else {
+    //         $urutan = (int) substr($kode, -4);
+    //         $urutan++;
+    //         $autoID = sprintf("%04s", $urutan);
+    //     }
+    //     echo $datenow . "-" . $autoID;
+    // }
+
+    public function number($id_menu)
     {
-        $datenow    = "SI-" . $nickname . date("Ym", strtotime(base64_decode($trans_date)));
-        $sqlGetID   = $this->db->query("SELECT max(`number`) as kode FROM sales_invoices WHERE `number` like '%$datenow%'");
-        $rowID      = $sqlGetID->row();
-        $kode       = $rowID->kode;
-        if ($kode == NULL) {
-            $autoID = sprintf("%04s", $kode + 1);
-        } else {
-            $urutan = (int) substr($kode, -4);
-            $urutan++;
-            $autoID = sprintf("%04s", $urutan);
+        $datenow = date("Y-m-d");
+        $sql_menu = $this->db->query("SELECT * FROM menus_no WHERE menus_id = '$id_menu' and `status` = '0' and `start_date` <= '$datenow' and end_date >= '$datenow'");
+        $row_menu = $sql_menu->row();
+
+        if(@$row_menu->number == ""){
+            //
+        }else{
+            $number = @$row_menu->number;
+            $yearnow = date("y", strtotime($row_menu->start_date));
+            $yearend = date("y", strtotime($row_menu->end_date));
+
+            $whereDate = $number.$yearnow.$yearend."1";
+
+            $sqlGetID	= $this->db->query("SELECT max(`number`) as kode FROM sales_invoices WHERE `number` like '%$whereDate%'");
+            $rowID = $sqlGetID->row();
+            $kode = $rowID->kode;
+            
+            if ($kode == NULL) {
+                $autoID = sprintf("%0".$row_menu->sequence."s", $kode + 1);
+                $autoNo = $whereDate.$autoID;
+            } else {
+                $urutan = (int) substr($kode, -6);
+                $urutan++;
+                $autoID	= sprintf("%0".$row_menu->sequence."s", $urutan);
+                $autoNo = $whereDate.$autoID;
+            }
+
+            echo $autoNo;
         }
-        echo $datenow . "-" . $autoID;
     }
 
     public function datatablesTemp()
     {
         $dn_number = base64_decode($this->input->get('dn_number'));
 
+        //Config
+        $this->db->select('*');
+        $this->db->from('config');
+        $config = $this->db->get()->row();
+
         $this->db->select("a.delivery_note_no as dn_number, a.customer_order_no as customer_po, a.sales_order_no as so_number, b.uom,
-            a.item_fg_id, b.number_customer, b.number as item_fg_number, b.name as item_fg_name, b.account_number, b.account_name, b.hsn_code,
+            a.item_fg_id, b.number_customer, b.number as item_fg_number, b.name as item_fg_name, b.account_number, b.account_name, b.hsn_code, h.bill_state as state,
             ((a.qty * e.price) * COALESCE(f.igst, 0) / 100) as igst,
             ((a.qty * e.price) * COALESCE(f.sgst, 0) / 100) as sgst,
             ((a.qty * e.price) * COALESCE(f.cgst, 0) / 100) as cgst,
             d.currency, a.qty, e.price, (a.qty * e.price) as total,
             COALESCE(g.middle, 0) as rate,
-            ((a.qty * e.price) + ((a.qty * e.price) * COALESCE(f.igst, 0) / 100) + ((a.qty * e.price) * COALESCE(f.sgst, 0) / 100) + ((a.qty * e.price) * COALESCE(f.cgst, 0) / 100)) as total2,
-            (CASE WHEN g.middle is null THEN 1 ELSE g.middle END) as rate,
-            (CASE WHEN g.middle != '' THEN (g.middle * ((a.qty * e.price) + ((a.qty * e.price) * COALESCE(f.igst, 0) / 100) + ((a.qty * e.price) * COALESCE(f.sgst, 0) / 100) + ((a.qty * e.price) * COALESCE(f.cgst, 0) / 100))) ELSE ((a.qty * e.price) + ((a.qty * e.price) * COALESCE(f.igst, 0) / 100) + ((a.qty * e.price) * COALESCE(f.sgst, 0) / 100) + ((a.qty * e.price) * COALESCE(f.cgst, 0) / 100)) END) as total_local");
+            (CASE WHEN g.middle is null THEN 1 ELSE g.middle END) as rate");
         $this->db->from('delivery_notes a');
         $this->db->join('item_fg b', 'a.item_fg_id = b.id');
         $this->db->join('customer_items c', 'a.customer_id = c.customer_id and c.item_fg_id = a.item_fg_id and a.plant = c.plant');
@@ -316,6 +377,7 @@ class Sales_invoices extends CI_Controller
         $this->db->join('sales_orders e', 'a.sales_order_no = e.sales_order_no and a.item_fg_id = e.item_fg_id');
         $this->db->join('hsn f', "b.hsn_code = f.number", 'left');
         $this->db->join('exchange_rates g', "g.start_date = DATE_FORMAT((a.delivery_note_date - INTERVAL '1' MONTH), '%Y-%m-01') and g.currency_from = d.currency", 'left');
+        $this->db->join('customer_address h', 'a.customer_id = h.customer_id and a.plant = h.plant', "left");
         $this->db->where('a.delivery_note_no', $dn_number);
         $this->db->group_by('a.id');
         $this->db->order_by('a.delivery_note_no', 'asc');
@@ -327,11 +389,38 @@ class Sales_invoices extends CI_Controller
         $total_sgst = 0;
         $total_local = 0;
         foreach ($records as $record) {
+            
+            if($record['state'] == ""){
+                $igst = 0;
+                $cgst = 0;
+                $sgst = 0;
+                $total2 = $record['total'];
+                $total2_local = $record['total'];
+                $total_igst += 0;
+                $total_cgst += 0;
+                $total_sgst += 0;
+            }elseif($record['state'] == $config->state){
+                $igst = 0;
+                $cgst = $record['cgst'];
+                $sgst = $record['sgst'];
+                $total2 = ($record['total'] + $record['cgst'] + $record['sgst']);
+                $total2_local = ($total2 * $record['rate']);
+                $total_igst += 0;
+                $total_cgst += $record['cgst'];
+                $total_sgst += $record['sgst'];
+            }else{
+                $igst = $record['igst'];
+                $cgst = 0;
+                $sgst = 0;
+                $total2 = ($record['total'] + $record['igst']);
+                $total2_local = ($total2 * $record['rate']);
+                $total_igst += $record['igst'];
+                $total_cgst += 0;
+                $total_sgst += 0;
+            }
+
             $total_sub += $record['total'];
-            $total_igst += $record['igst'];
-            $total_cgst += $record['cgst'];
-            $total_sgst += $record['sgst'];
-            $total_local += $record['total_local'];
+            $total_local += $total2_local;
 
             $obj[] = array(
                 "dn_number" => $record['dn_number'],
@@ -348,12 +437,12 @@ class Sales_invoices extends CI_Controller
                 "qty" => $record['qty'],
                 "price" => $record['price'],
                 "rate" => $record['rate'],
-                "igst" => $record['igst'],
-                "sgst" => $record['sgst'],
-                "cgst" => $record['cgst'],
+                "igst" => $igst,
+                "sgst" => $sgst,
+                "cgst" => $cgst,
                 "total" => $record['total'],
-                "total2" => $record['total2'],
-                "total_local" => $record['total_local'],
+                "total2" => $total2,
+                "total_local" => $total2_local,
                 "account_number" => $record['account_number'],
                 "account_name" => $record['account_name'],
                 "account_type" => "CREDIT",
@@ -533,7 +622,7 @@ class Sales_invoices extends CI_Controller
         $config = $this->db->get('config')->row();
         $config_iso = $this->db->get('config_iso')->row();
         //Config Page
-        $rows = 20;
+        $rows = 15;
         $page = ceil(count($sales_invoices) / $rows);
         //Generate QRcode
         $this->createQrcode($sales_invoice->number, "assets/image/qrcode/");
@@ -565,7 +654,7 @@ class Sales_invoices extends CI_Controller
             $this->db->where('a.number', $invoice_no);
             $this->db->group_by('a.id');
             $this->db->order_by('a.item_fg_id', 'asc');
-            $this->db->limit(20, ($i * 20));
+            $this->db->limit(15, ($i * 15));
             $records = $this->db->get()->result_array();
 
             $html .= '  <div style="border: 1px solid black; width:100%; height:auto;">
@@ -694,7 +783,7 @@ class Sales_invoices extends CI_Controller
                                     <th rowspan="2" width="60">Total</th>
                                     <th rowspan="2" width="80">Taxable<br>Value</th>
                                     <th colspan="2" width="60">CGST</th>
-                                    <th colspan="2" width="60">SGST / UTGST</th>
+                                    <th colspan="2" width="60">SGST / CGST</th>
                                     <th colspan="2" width="60">IGST</th>
                                 </tr>
                                 <tr>
@@ -710,29 +799,50 @@ class Sales_invoices extends CI_Controller
             $cgst = 0;
             $sgst = 0;
             $igst = 0;
-            foreach ($records as $record) {
-                $html .= '  <tr>
-                                <td style="text-align:center; border-top: 0; border-bottom: 0; height:30px;">' . $no . '</td>
-                                <td style="font-size:10px; border-top: 0; border-bottom: 0;">' . $record['number_customer'] . ' -<br>'.$record['item_fg_name'].'</td>
-                                <td style="font-size:10px; border-top: 0; border-bottom: 0;">' . $record['hsn_code'] . '</td>
-                                <td style="text-align:center; border-top: 0; border-bottom: 0;">' . number_format($record['qty']) . '</td>
-                                <td style="text-align:center; border-top: 0; border-bottom: 0;"><span style="font-size:10px;">' . $record['uom'] . '</span></td>
-                                <td style="text-align:right; border-top: 0; border-bottom: 0;">' . number_format($record['price'], 2) . '</td>
-                                <td style="text-align:right; border-top: 0; border-bottom: 0;">' . number_format(($record['price'] * $record['qty']), 2) . '</td>
-                                <td style="text-align:right; border-top: 0; border-bottom: 0;">' . number_format((($record['price'] * $record['qty']) + $record['cgst'] + $record['igst'] + $record['sgst']), 2) . '</td>
-                                <td style="text-align:right; border-top: 0; border-bottom: 0;">' . number_format($record['p_cgst'], 2) . ' %</td>
-                                <td style="text-align:right; border-top: 0; border-bottom: 0;">' . number_format($record['cgst'], 2) . '</td>
-                                <td style="text-align:right; border-top: 0; border-bottom: 0;">' . number_format($record['p_sgst'], 2) . ' %</td>
-                                <td style="text-align:right; border-top: 0; border-bottom: 0;">' . number_format($record['sgst'], 2) . '</td>
-                                <td style="text-align:right; border-top: 0; border-bottom: 0;">' . number_format($record['p_igst'], 2) . ' %</td>
-                                <td style="text-align:right; border-top: 0; border-bottom: 0;">' . number_format($record['igst'], 2) . '</td>
-                            </tr>';
 
-                $sub_qty += ($record['qty']);
-                $sub_total += ($record['price'] * $record['qty']);
-                $cgst += $record['cgst'];
-                $sgst += $record['sgst'];
-                $igst += $record['igst'];
+            for ($a=0; $a < 15; $a++) {
+                if(!empty($records[$a]['qty'])){
+                    $html .= '  <tr>
+                                    <td style="text-align:center; border-top: 0; border-bottom: 0; height:30px;">' . $no . '</td>
+                                    <td style="font-size:10px; border-top: 0; border-bottom: 0;">' . $records[$a]['number_customer'] . ' -<br>'.$records[$a]['item_fg_name'].'</td>
+                                    <td style="font-size:10px; border-top: 0; border-bottom: 0;">' . $records[$a]['hsn_code'] . '</td>
+                                    <td style="text-align:center; border-top: 0; border-bottom: 0;">' . number_format($records[$a]['qty']) . '</td>
+                                    <td style="text-align:center; border-top: 0; border-bottom: 0;"><span style="font-size:10px;">' . $records[$a]['uom'] . '</span></td>
+                                    <td style="text-align:right; border-top: 0; border-bottom: 0;">' . number_format($records[$a]['price'], 2) . '</td>
+                                    <td style="text-align:right; border-top: 0; border-bottom: 0;">' . number_format(($records[$a]['price'] * $records[$a]['qty']), 2) . '</td>
+                                    <td style="text-align:right; border-top: 0; border-bottom: 0;">' . number_format((($records[$a]['price'] * $records[$a]['qty']) + $records[$a]['cgst'] + $records[$a]['igst'] + $records[$a]['sgst']), 2) . '</td>
+                                    <td style="text-align:right; border-top: 0; border-bottom: 0;">' . number_format($records[$a]['p_cgst'], 2) . ' %</td>
+                                    <td style="text-align:right; border-top: 0; border-bottom: 0;">' . number_format($records[$a]['cgst'], 2) . '</td>
+                                    <td style="text-align:right; border-top: 0; border-bottom: 0;">' . number_format($records[$a]['p_sgst'], 2) . ' %</td>
+                                    <td style="text-align:right; border-top: 0; border-bottom: 0;">' . number_format($records[$a]['sgst'], 2) . '</td>
+                                    <td style="text-align:right; border-top: 0; border-bottom: 0;">' . number_format($records[$a]['p_igst'], 2) . ' %</td>
+                                    <td style="text-align:right; border-top: 0; border-bottom: 0;">' . number_format($records[$a]['igst'], 2) . '</td>
+                                </tr>';
+
+                    $sub_qty += ($records[$a]['qty']);
+                    $sub_total += ($records[$a]['price'] * $records[$a]['qty']);
+                    $cgst += $records[$a]['cgst'];
+                    $sgst += $records[$a]['sgst'];
+                    $igst += $records[$a]['igst'];
+                }else{
+                    $html .= '  <tr>
+                                    <td style="text-align:center; border-top: 0; border-bottom: 0; height:30px;">' . $no . '</td>
+                                    <td style="text-align:center; border-top: 0; border-bottom: 0;"></td>
+                                    <td style="text-align:center; border-top: 0; border-bottom: 0;"></td>
+                                    <td style="text-align:center; border-top: 0; border-bottom: 0;"></td>
+                                    <td style="text-align:center; border-top: 0; border-bottom: 0;"></td>
+                                    <td style="text-align:center; border-top: 0; border-bottom: 0;"></td>
+                                    <td style="text-align:center; border-top: 0; border-bottom: 0;"></td>
+                                    <td style="text-align:center; border-top: 0; border-bottom: 0;"></td>
+                                    <td style="text-align:center; border-top: 0; border-bottom: 0;"></td>
+                                    <td style="text-align:center; border-top: 0; border-bottom: 0;"></td>
+                                    <td style="text-align:center; border-top: 0; border-bottom: 0;"></td>
+                                    <td style="text-align:center; border-top: 0; border-bottom: 0;"></td>
+                                    <td style="text-align:center; border-top: 0; border-bottom: 0;"></td>
+                                    <td style="text-align:center; border-top: 0; border-bottom: 0;"></td>
+                                </tr>';
+                }
+
                 $no++;
             }
 
@@ -795,28 +905,6 @@ class Sales_invoices extends CI_Controller
                 $html .= '<div style="page-break-after:always;"></div>';
             }
             $html .= '</div></div>';
-
-            // if (($i + 1) == $page) {
-            //     $html .= '  <div style="position:fixed; bottom:0; width:98.7%;">
-            //                     <table id="customers" style="margin-top:10px; font-size:10px;">
-            //                         <tr>
-            //                             <th width="400" style="text-align:left; vertical-align:top;" rowspan="4">Note.</th>
-            //                         </tr>
-            //                         <tr>
-            //                             <th width="200" style="text-align:center;">CUSTOMER STAMP & SIGNATURE</th>
-            //                             <th width="200" style="text-align:center;">AUTHORISED SIGNATURE</th>
-            //                         </tr>
-            //                         <tr>
-            //                             <th style="height:80px;"></th>
-            //                             <th style="height:80px;"></th>
-            //                         </tr>
-            //                         <tr>
-            //                             <th style="height:20px; text-align:center;"></th>
-            //                             <th style="height:20px; text-align:center;"></th>
-            //                         </tr>
-            //                     </table>
-            //                 </div>';
-            // }
         }
         $html .= '</div><script>window.print()</script>';
         die($html);
@@ -985,28 +1073,36 @@ class Sales_invoices extends CI_Controller
                                         <th rowspan="2">Description</th>
                                         <th rowspan="2">Uom</th>
                                         <th rowspan="2">Qty</th>
-                                        <th colspan="3">Original Currency</th>
-                                        <th colspan="2">Local Currency</th>
+                                        <th colspan="7">Original Currency</th>
+                                        <th colspan="3">Local Currency</th>
                                     </tr>
                                     <tr>
                                         <th>Currency</th>
-                                        <th>Unit Price</th>
+                                        <th>Price</th>
                                         <th>Amount</th>
+                                        <th>IGST</th>
+                                        <th>CGST</th>
+                                        <th>SGST</th>
+                                        <th>Amount<br>After Tax</th>
+                                        <th>Rate</th>
                                         <th>Currency</th>
                                         <th>Amount</th>
                                     </tr>';
             $grand_total = 0;
             $grand_total_local = 0;
+            $total_igst = 0;
+            $total_sgst = 0;
+            $total_cgst = 0;
             foreach ($records as $record) {
-                $grand_total += $record['total'];
-                $grand_total_all += $record['total'];
+                // $grand_total += $record['total'];
+                // $grand_total_all += $record['total'];
 
                 $currency = $record['currency'];
 
                 $monthBf = date('Y-m-01', strtotime('-1 month', strtotime($record['trans_date'])));
-                $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $monthBf, "currency_from" => $currency, "currency_to" => "IDR"]);
+                $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $monthBf, "currency_from" => $currency, "currency_to" => "INR"]);
 
-                if ($currency != "IDR") {
+                if ($currency != "INR") {
                     if ($exchange) {
                         $price = $exchange->middle;
                     } else {
@@ -1016,8 +1112,20 @@ class Sales_invoices extends CI_Controller
                     $price = 1;
                 }
 
-                $amount = ($record['total'] * $price);
-                $grand_total_local += $amount;
+                $amount = ($record['total_grand_local']);
+                if($record['account_type'] == "CREDIT"){
+                    $grand_total += $record['total2'];
+                    $grand_total_all += $record['total'];
+                    $grand_total_local += $amount;
+                }else{
+                    $grand_total -= $record['total2'];
+                    $grand_total_all -= $record['total'];
+                    $grand_total_local -= $amount;
+                }
+
+                $total_igst += $record['igst'];
+                $total_sgst += $record['sgst'];
+                $total_cgst += $record['cgst'];
 
                 $html .= '  <tr>
                                 <td style="text-align:center">' . $no . '</td>
@@ -1030,19 +1138,25 @@ class Sales_invoices extends CI_Controller
                                 <td>' . $record['currency'] . '</td>
                                 <td style="text-align:right;">' . @number_format($record['price'], 2) . '</td>
                                 <td style="text-align:right;">' . @number_format($record['total'], 2) . '</td>
-                                <td>IDR</td>
+                                <td style="text-align:right;">' . @number_format($record['igst'], 2) . '</td>
+                                <td style="text-align:right;">' . @number_format($record['cgst'], 2) . '</td>
+                                <td style="text-align:right;">' . @number_format($record['sgst'], 2) . '</td>
+                                <td style="text-align:right;">' . @number_format($record['total2'], 2) . '</td>
+                                <td style="text-align:right;">' . @number_format($record['rate'], 2) . '</td>
+                                <td>INR</td>
                                 <td style="text-align:right;">' . @number_format($amount, 2) . '</td>
                             </tr>';
                 $no++;
             }
 
             $html .= '  <tr>
-                            <th colspan="9" style="text-align:right">TOTAL</th>
-                            <th style="text-align:right">' . number_format($grand_total, 2) . '</th>
+                            <th colspan="13" style="text-align:right">TOTAL</th>
+                            <th style="text-align:right">'.number_format($grand_total, 2).'</th>
                             <th></th>
-                            <th style="text-align:right">' . number_format($grand_total_local) . '</th>
+                            <th></th>
+                            <th style="text-align:right">'.number_format($grand_total_local, 2).'</th>
                         </tr>
-            </table>';
+                    </table>';
 
             if (($i + 1) != $page) {
                 $html .= '<div style="page-break-after:always;"></div>';
@@ -1093,20 +1207,28 @@ class Sales_invoices extends CI_Controller
                     <div style="width:20%; float:left;">
                         <table id="customers" style="width:100%; font-size:12px;">
                             <tr>
-                                <td style="font-weight:bold;">Sub Total</td>
+                                <td style="font-weight:bold;">TAXABLE VALUE</td>
                                 <td style="font-weight:bold; text-align:right;">' . @number_format($grand_total_all, 2) . '</td>
                             </tr>
                             <tr>
-                                <td style="font-weight:bold;">VAT</td>
-                                <td style="font-weight:bold; text-align:right;">' . @number_format(@$records[0]['total_vat'], 2) . '</td>
+                                <td style="font-weight:bold;">IGST</td>
+                                <td style="font-weight:bold; text-align:right;">' . @number_format(@$total_igst, 2) . '</td>
                             </tr>
                             <tr>
-                                <td style="font-weight:bold;">PPH</td>
-                                <td style="font-weight:bold; text-align:right;">' . @number_format(@$records[0]['total_pph'], 2) . '</td>
+                                <td style="font-weight:bold;">SGST</td>
+                                <td style="font-weight:bold; text-align:right;">' . @number_format(@$total_sgst, 2) . '</td>
                             </tr>
                             <tr>
-                                <td style="font-weight:bold;">Grand Total</td>
-                                <td style="font-weight:bold; text-align:right;">' . @number_format(((@$grand_total_all + $records[0]['total_vat']) - $records[0]['total_pph']), 2) . '</td>
+                                <td style="font-weight:bold;">CGST</td>
+                                <td style="font-weight:bold; text-align:right;">' . @number_format(@$total_cgst, 2) . '</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight:bold;">TDS ('.@$records[0]['tds'].')</td>
+                                <td style="font-weight:bold; text-align:right;">' . @number_format((($grand_total_all * @$records[0]['individual']) / 100), 2) . '</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight:bold;">INVOICE VALUE</td>
+                                <td style="font-weight:bold; text-align:right;">' . @number_format((@$grand_total_all + $total_igst + $total_sgst + $total_cgst + (($grand_total_all * @$record[0]['tds']) / 100)), 2) . '</td>
                             </tr>
                         </table>
                     </div>

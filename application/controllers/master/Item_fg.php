@@ -104,6 +104,89 @@ class item_fg extends CI_Controller
         echo json_encode(array("code" => $autoid));
     }
 
+    public function getSync()
+    {
+        error_reporting(0);
+        
+        $this->pg = $this->load->database('dummy', TRUE);
+        $this->pg->select("item_id");
+        $this->pg->from("mst_item");
+        $this->pg->where("stscode_id", "01");
+        $this->pg->where("pfm_id", "06");
+        $items = $this->pg->get()->result_array();
+
+        $rowItem = array();
+        foreach ($items as $item) {
+            $rowItem[] = $item['item_id'];
+        }
+
+        $this->db->select("*");
+        $this->db->from("item_fg");
+        $this->db->where('status', 0);
+        $this->db->where_not_in('number_customer', $rowItem);
+        $records = $this->db->get()->result_array();
+
+        //Mapping Data
+        $result['total'] = count($records);
+        $result = array_merge($result, $records);
+
+        die(json_encode($result));
+    }
+
+    public function createSync()
+    {
+        $data = $this->input->post('data');
+
+        $this->dummy = $this->load->database('dummy', TRUE);
+        $this->dummy->select("item_id");
+        $this->dummy->from("mst_item");
+        $this->dummy->where("stscode_id", "01");
+        $this->dummy->where("item_id", $data['number']);
+        $read = $this->dummy->get()->result_array();
+
+        if($data['uom'] == "METER"){
+            $uom = "01";
+        }elseif($data['uom'] == "PIECES"){
+            $uom = "02";
+        }elseif($data['uom'] == "SET"){
+            $uom = "03";
+        }elseif($data['uom'] == "GRAM"){
+            $uom = "04";
+        }elseif($data['uom'] == "LITER"){
+            $uom = "05";
+        }elseif($data['uom'] == "KILOGRAM"){
+            $uom = "06";
+        }else{
+            $uom = "02";
+        }
+
+        $dataFinal = array(
+            "item_id" => @$data['number_customer'],
+            "um_id" => @$uom,
+            "item_name" => @$data['name'],
+            "item_cct" => @$data['cct'],
+            "item_regdate" => date("Y-m-d"),
+            "stscode_id" => "01",
+            "type_id" => "01",
+            "pfm_id" => "06",
+            "cust_id" => "1",
+            "item_minoq" => $data['moq'],
+            "item_muloq" => $data['mpq'],
+            "item_user" => $this->session->name,
+            "lotqty" => $data['qty_box'],
+            "type_item" => "Domestic",
+            "harness_type" => 1,
+        );
+
+        // if(empty($item_family)){}
+        if (empty($read)) {
+            $this->dummy->insert('mst_item', $dataFinal);
+            echo json_encode(array("title" => "Success", "message" => "Create Data Successfully", "theme" => "success"));
+        } else {
+            echo json_encode(array("title" => "Duplicate", "message" => "Duplicated", "theme" => "error"));
+        }
+    }
+
     //CREATE DATA
     public function create()
     {

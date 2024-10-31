@@ -59,7 +59,7 @@ class Ar_receipts extends CI_Controller
         $currency = $this->input->post('currency');
         $monthBf = date('Y-m-01', strtotime('-1 month', strtotime($receipt_date)));
 
-        $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $monthBf, "currency_from" => $currency, "currency_to" => "IDR"]);
+        $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $monthBf, "currency_from" => $currency, "currency_to" => "INR"]);
 
         if ($exchange) {
             $amount = $exchange->middle;
@@ -67,7 +67,7 @@ class Ar_receipts extends CI_Controller
             $amount = 0;
         }
 
-        echo "Rp. " . number_format($amount, 2);
+        echo "Rate $currency to INR : " . number_format($amount, 2);
     }
 
     public function calculateJournal($journal_type_id = "", $bank_account = "")
@@ -98,9 +98,9 @@ class Ar_receipts extends CI_Controller
         }
 
         foreach ($banks as $bank) {
-            if ($currency != "IDR") {
+            if ($currency != "INR") {
                 $monthBf = date('Y-m-01', strtotime('-1 month', strtotime($receipt_date)));
-                $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $monthBf, "currency_from" => $currency, "currency_to" => "IDR"]);
+                $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $monthBf, "currency_from" => $currency, "currency_to" => "INR"]);
 
                 if ($exchange) {
                     $amount = ($grand_total * $exchange->middle);
@@ -135,9 +135,9 @@ class Ar_receipts extends CI_Controller
 
             $monthBf = date('Y-m-01', strtotime('-1 month', strtotime($receipt_date)));
 
-            $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $monthBf, "currency_from" => $currency, "currency_to" => "IDR"]);
+            $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $monthBf, "currency_from" => $currency, "currency_to" => "INR"]);
 
-            if ($currency != "IDR") {
+            if ($currency != "INR") {
                 if ($exchange) {
                     $amount = ($total * $exchange->middle);
                 } else {
@@ -229,20 +229,53 @@ class Ar_receipts extends CI_Controller
         echo json_encode($records);
     }
 
-    public function number($trans_date)
+    // public function number($trans_date)
+    // {
+    //     $datenow    = "AR-" . date("Ymd", strtotime(base64_decode($trans_date)));
+    //     $sqlGetID   = $this->db->query("SELECT max(`receipt_no`) as kode FROM ar_receipts WHERE `receipt_no` like '%$datenow%'");
+    //     $rowID      = $sqlGetID->row();
+    //     $kode       = $rowID->kode;
+    //     if ($kode == NULL) {
+    //         $autoID = sprintf("%04s", $kode + 1);
+    //     } else {
+    //         $urutan = (int) substr($kode, -4);
+    //         $urutan++;
+    //         $autoID = sprintf("%04s", $urutan);
+    //     }
+    //     echo $datenow . "-" . $autoID;
+    // }
+
+    public function number($id_menu)
     {
-        $datenow    = "AR-" . date("Ymd", strtotime(base64_decode($trans_date)));
-        $sqlGetID   = $this->db->query("SELECT max(`receipt_no`) as kode FROM ar_receipts WHERE `receipt_no` like '%$datenow%'");
-        $rowID      = $sqlGetID->row();
-        $kode       = $rowID->kode;
-        if ($kode == NULL) {
-            $autoID = sprintf("%04s", $kode + 1);
-        } else {
-            $urutan = (int) substr($kode, -4);
-            $urutan++;
-            $autoID = sprintf("%04s", $urutan);
+        $datenow = date("Y-m-d");
+        $sql_menu = $this->db->query("SELECT * FROM menus_no WHERE menus_id = '$id_menu' and `status` = '0' and `start_date` <= '$datenow' and end_date >= '$datenow'");
+        $row_menu = $sql_menu->row();
+
+        if(@$row_menu->number == ""){
+            //
+        }else{
+            $number = @$row_menu->number;
+            $yearnow = date("y", strtotime($row_menu->start_date));
+            $yearend = date("y", strtotime($row_menu->end_date));
+
+            $whereDate = $number.$yearnow.$yearend."1";
+
+            $sqlGetID	= $this->db->query("SELECT max(receipt_no) as kode FROM ar_receipts WHERE receipt_no like '%$whereDate%'");
+            $rowID = $sqlGetID->row();
+            $kode = $rowID->kode;
+            
+            if ($kode == NULL) {
+                $autoID = sprintf("%0".$row_menu->sequence."s", $kode + 1);
+                $autoNo = $whereDate.$autoID;
+            } else {
+                $urutan = (int) substr($kode, -6);
+                $urutan++;
+                $autoID	= sprintf("%0".$row_menu->sequence."s", $urutan);
+                $autoNo = $whereDate.$autoID;
+            }
+
+            echo $autoNo;
         }
-        echo $datenow . "-" . $autoID;
     }
 
     public function datatablesTemp()
@@ -534,7 +567,7 @@ class Ar_receipts extends CI_Controller
             $receipt_date = $records[0]['receipt_date'];
             $currency = $records[0]['currency'];
             $monthBf = date('Y-m-01', strtotime('-1 month', strtotime($receipt_date)));
-            $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $monthBf, "currency_from" => $currency, "currency_to" => "IDR"]);
+            $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $monthBf, "currency_from" => $currency, "currency_to" => "INR"]);
 
             if ($exchange) {
                 $amount = $exchange->middle;
@@ -619,7 +652,7 @@ class Ar_receipts extends CI_Controller
                                     </table>
                                 </div>
                                 <div ' . $hide . ' style="float:left; width:15%; border:2px solid black; padding:10px; font-size:12px; margin-left:20px;"> 
-                                    <p style="margin:0;">Rate USD to IDR : <b>' . $exchangeName . '</b></p>
+                                    <p style="margin:0;">Rate USD to INR : <b>' . $exchangeName . '</b></p>
                                 </div>
                                 <table id="customers">
                                     <tr>

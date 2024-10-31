@@ -112,7 +112,7 @@
     //Add Data
     function add() {
         $('#dlg_insert').dialog('open');
-        url_save = '<?= base_url('planning/checksheets/create') ?>';
+        url_save = '<?= base_url('planning/checksheets/create?id_menu=' . $id_menu) ?>';
         $('#frm_insert').form('clear');
         $("#trans_date").datebox('setValue', "<?= date("Y-m-d") ?>");
 

@@ -135,6 +135,142 @@ class Production_schedules extends CI_Controller
         return $workOrderNo;
     }
 
+    public function getDataWp()
+    {
+        $post = $this->input->get();
+        $p_month = $post['p_month'];
+        $p_year = $post['p_year'];
+        $customer_id = base64_decode($post['customer_id']);
+        $item_fg_id = base64_decode($post['item_fg_id']);
+
+        $query_generate_mpp = $this->db->query("SELECT * FROM generate_mpp WHERE p_month='$p_month' and p_year='$p_year' and customer_id = '$customer_id' and item_fg_id = '$item_fg_id'");
+        $generate_mpp = $query_generate_mpp->row_array();
+
+        $period = $p_year.$p_month;
+        
+        $firstDate = date("Y-m-01", strtotime(date("$p_year-$p_month-01")));
+        $endDate = date("Y-m-t", strtotime(date("$p_year-$p_month")));
+
+        $wp = 0;
+        $tgl = 1;
+        $alfabet = "z";
+        $arr = array();
+        while (strtotime($firstDate) <= strtotime($endDate)) {
+            $working_date = date('Y-m-d', strtotime($firstDate));
+
+            $this->db->select('remarks');
+            $this->db->from('calendars');
+            $this->db->where('working_date', $working_date);
+            $holiday = $this->db->get()->row();
+
+            if (@$holiday->remarks != null or @$holiday->remarks != "") {
+                if($alfabet == "z"){
+                    $alfabets = "A";
+                }elseif($alfabet == "A"){
+                    $alfabets = "B";
+                }elseif($alfabet == "B"){
+                    $alfabets = "C";
+                }elseif($alfabet == "C"){
+                    $alfabets = "D";
+                }elseif($alfabet == "D"){
+                    $alfabets = "E";
+                }elseif($alfabet == "E"){
+                    $alfabets = "F";
+                }elseif($alfabet == "F"){
+                    $alfabets = "G";
+                }elseif($alfabet == "G"){
+                    $alfabets = "H";
+                }elseif($alfabet == "H"){
+                    $alfabets = "I";
+                }elseif($alfabet == "I"){
+                    $alfabets = "J";
+                }elseif($alfabet == "J"){
+                    $alfabets = "K";
+                }elseif($alfabet == "K"){
+                    $alfabets = "L";
+                }elseif($alfabet == "L"){
+                    $alfabets = "M";
+                }elseif($alfabet == "M"){
+                    $alfabets = "N";
+                }elseif($alfabet == "N"){
+                    $alfabets = "O";
+                }else{  
+                    $alfabets = "";
+                }
+
+                $wpp = $wp.$alfabets;
+                $alfabet = $alfabets;
+                $firstDate_check = date("d M", strtotime("+1 day", strtotime($firstDate)));
+                $working_date_check = date('Y-m-d', strtotime($firstDate_check));
+                $this->db->select('remarks');
+                $this->db->from('calendars');
+                $this->db->where('working_date', $working_date_check);
+                $holiday_check = $this->db->get()->row();
+
+                // if (date('w', strtotime($firstDate_check)) !== '0' && date('w', strtotime($firstDate_check)) !== '6') {
+                    if (@$holiday_check->remarks == null or @$holiday_check->remarks == "") {
+                        $wp++;
+                    }
+                // }
+            }else{
+                if($wp == 0){
+                    $wp = 1;
+                }
+
+                $wpp = $wp;
+                $alfabet = "z";
+                $firstDate_check = date("d M", strtotime("+1 day", strtotime($firstDate)));
+                $working_date_check = date('Y-m-d', strtotime($firstDate_check));
+                $this->db->select('remarks');
+                $this->db->from('calendars');
+                $this->db->where('working_date', $working_date_check);
+                $holiday_check = $this->db->get()->row();
+
+                // if (date('w', strtotime($firstDate_check)) !== '0' && date('w', strtotime($firstDate_check)) !== '6') {
+                    if (@$holiday_check->remarks == null or @$holiday_check->remarks == "") {
+                        $wp++;
+                    }
+                // }
+            }
+
+            $qty = $generate_mpp['date_'.$tgl];
+            $trans_date = $p_year."-".$p_month."-".sprintf("%02s", $tgl);
+
+            $dataFinal = array(
+                "trans_date" => $trans_date,
+                "period" => $period,
+                "year" => $p_year,
+                "month" => $p_month,
+                "wp" => $wpp,
+                "qty" => $qty,
+            );
+
+            $productionSchedule = $this->crud->read("production_schedules", [], [
+                "customer_id" => $customer_id, 
+                "item_fg_id" => $item_fg_id,
+                "period" => $period,
+                "year" => $p_year,
+                "month" => $p_month,
+                "wp" => $wpp,
+            ]);
+
+            if($qty > 0){
+                if($productionSchedule){
+                    //
+                }else{
+                    $arr[] = $dataFinal;
+                }
+            }else{
+                //
+            }
+
+            $tgl++;
+            $firstDate = date("Y-m-d", strtotime("+1 day", strtotime($firstDate)));
+        }
+
+        die(json_encode($arr));
+    }
+
     public function datatables()
     {
         if ($this->input->post()) {
@@ -154,6 +290,7 @@ class Production_schedules extends CI_Controller
             //Select Query
             $this->db->select("a.*, b.number as customer_number, b.name as customer_name, b.type as customer_type, 
                 c.number as item_number, c.name as item_name, c.number_customer, c.uom,
+                SUM(f.qty) as total_rfg,
                 (CASE WHEN f.id != '' THEN 2 ELSE a.status END) as status_wo");
             $this->db->from('production_schedules a');
             $this->db->join('customers b', 'a.customer_id = b.id');

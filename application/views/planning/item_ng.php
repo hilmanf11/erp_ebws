@@ -145,6 +145,22 @@
         $("#trans_date").datebox('setValue', "<?= date("Y-m-d") ?>");
         $("#departement").textbox('setValue', "PRODUCTION");
         $('#dg2').datagrid('loadData', []);
+        autoid();
+    }
+
+    function autoid(){
+        $.ajax({
+            type: "post",
+            url: "<?= base_url('planning/item_ng/item_ng_no/' . $id_menu) ?>",
+            dataType: "html",
+            success: function(scraps_no) {
+                if(scraps_no == ""){
+                    toastr.info("Please Check Configuration in Serial No First");
+                }else{
+                    $("#document").textbox('setValue', scraps_no);
+                }
+            }
+        });
     }
 
     function addTable(workorder) {
@@ -485,19 +501,6 @@
             fit: true,
             pageList: [10, 50, 100, 500, 1000],
             pageSize: 10,
-        });
-
-        $("#trans_date").datebox({
-            onChange: function(val) {
-                $.ajax({
-                    type: "post",
-                    url: "<?= base_url('planning/item_ng/item_ng_no/') ?>" + window.btoa(val),
-                    dataType: "html",
-                    success: function(scraps_no) {
-                        $("#document").textbox('setValue', scraps_no);
-                    }
-                });
-            }
         });
 
         //Save Data

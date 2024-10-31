@@ -105,7 +105,7 @@ class Generate_mps extends CI_Controller
             $this->db->join('stock_wip c', "a.id = c.item_fg_id and c.p_month = '" . $filter_month . "' and c.p_year = '" . $filter_year . "' and c.revision = '" . $filter_revision . "'", "left");
             $this->db->join("(SELECT b.period, b.item_fg_id, b.customer_id, SUM(a.qty) as qty FROM scan_item_receipts_fg a JOIN production_schedules b ON a.workorder = b.workorder WHERE a.status = 0 GROUP BY b.period, b.item_fg_id) d", "a.id = d.item_fg_id and b.customer_id = d.customer_id and d.period = '$period2'", "left");
             $this->db->join("(SELECT period, item_fg_id, customer_id, SUM(qty) as qty FROM production_schedules GROUP BY period) e", "a.id = e.item_fg_id and b.customer_id = e.customer_id and e.period = '$period2'", "left");
-            $this->db->join("(SELECT item_fg_id, customer_id, SUM(outstanding) as outstanding FROM sales_orders WHERE sales_order_date <= '$filter_cutoff' and status = 0 GROUP BY customer_id, ite_fg_id) f", "a.id = f.item_fg_id and b.customer_id = f.customer_id", "left");
+            $this->db->join("(SELECT item_fg_id, customer_id, SUM(outstanding) as outstanding FROM sales_orders WHERE sales_order_date <= '$filter_cutoff' and status = 0 GROUP BY customer_id, item_fg_id) f", "a.id = f.item_fg_id and b.customer_id = f.customer_id", "left");
             if ($filter_customer != "") {
                 $this->db->where('b.id', $filter_customer);
             }
@@ -139,11 +139,11 @@ class Generate_mps extends CI_Controller
                 $monthEnd =  strtotime(date('Y-m-d', strtotime('+5 month', strtotime($varBackYear . "-" . $varBackMonth . "-01"))));
 
                 //Cek Forecasts
-                $item_fg_id = $data['id'];
-                $customer_id = $data['customer_id'];
-                $qForecast = $this->db->query("SELECT *, SUM(qty) as qty FROM forecasts WHERE item_fg_id = '$item_fg_id' and customer_id = '$customer_id' and p_year = '$filter_year' and revision = '$filter_revision'");
-                $forecast = $qForecast->row();
-                // $forecast = $this->crud->read('forecasts', [], ["item_fg_id" => $data['id'], "customer_id" => $data['customer_id'], "p_month" => $filter_month, "p_year" => $filter_year, "revision" => $filter_revision]);
+                // $item_fg_id = $data['id'];
+                // $customer_id = $data['customer_id'];
+                // $qForecast = $this->db->query("SELECT *, SUM(month_1) as month_1 FROM forecasts WHERE item_fg_id = '$item_fg_id' and customer_id = '$customer_id' and p_year = '$filter_year' and revision = '$filter_revision'");
+                // $forecast = $qForecast->row();
+                $forecast = $this->crud->read('forecasts', [], ["item_fg_id" => $data['id'], "customer_id" => $data['customer_id'], "p_month" => $filter_month, "p_year" => $filter_year, "revision" => $filter_revision]);
 
                 while ($monthStart < $monthEnd) {
                     $monthName = date('F Y', $monthStart);

@@ -5,14 +5,16 @@
             <th rowspan="2" field="ck" checkbox="true"></th>
             <th rowspan="2" data-options="field:'item_rm_id',width:150,halign:'center'">Part No EBWS</th>
             <th rowspan="2" data-options="field:'item_rm_number',width:150,halign:'center'">Part No Supplier</th>
-            <th rowspan="2" data-options="field:'item_rm_name',width:100,halign:'center'">Part Name</th>
+            <th rowspan="2" data-options="field:'item_rm_name',width:100,halign:'center'">Description</th>
             <th rowspan="2" data-options="field:'category_name',width:100,halign:'center'">Category</th>
             <th rowspan="2" data-options="field:'product_family_name',width:150,halign:'center'">Product Family</th>
             <!-- <th rowspan="2" data-options="field:'product_family_sub_name',width:150,halign:'center'">Product Family Sub</th> -->
             <th rowspan="2" data-options="field:'trans_date',width:80,halign:'center'">Cut Off</th>
             <th rowspan="2" data-options="field:'uom',width:80,align:'center'">Uom</th>
+            <th rowspan="2" data-options="field:'mpq',width:80,halign:'center',align:'right',formatter:numberFormat">MPQ</th>
             <th rowspan="2" data-options="field:'qty',width:80,halign:'center',align:'right',formatter:numberFormat">Quantity</th>
             <th rowspan="2" data-options="field:'location',width:100,halign:'center'">Location</th>
+            <th rowspan="2" data-options="field:'label',width:80,align:'center',formatter:BtnPrintLabel">Label</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
         </tr>
@@ -108,6 +110,27 @@
         <ul id="remarks">
         </ul>
     </div>
+</div>
+
+<!-- MPQ -->
+<div id="dlg_mpq" class="easyui-dialog" title="Choose MPQ" data-options="closed: true,modal:true" style="width: 500px; padding:10px; top: 20px;">
+    <form id="frm_mpq" method="post" enctype="multipart/form-data" novalidate>
+        <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
+            <legend><b>Form Data</b></legend>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">ID</span>
+                <input name="id" id="id" style="width: 60%;" disabled class="easyui-textbox">
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Supplier / MPQ</span>
+                <input name="mpq" id="mpq" style="width: 60%;" class="easyui-combogrid">
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;"></span>
+                <a href="javascript:;" class="easyui-linkbutton" onclick="chooseMpq()"><i class="fa fa-search"></i> Choose MPQ</a>
+            </div>
+        </fieldset>
+    </form>
 </div>
 
 <!-- PDF -->
@@ -239,6 +262,106 @@
     //RELOAD
     function reload() {
         window.location.reload();
+    }
+
+    function BtnPrintLabel(val, row) {
+        // if (val != "closed") {
+        var onClick = "createLabel('"+row.id+"','"+row.mpq+"')";
+        return '<a class="btn btn-primary w-100" style="pointer-events: visible; opacity:1;" target="_blank" onClick="'+onClick+'"><i class="fa fa-print"></i> Print</a>';
+        // }
+    }
+
+    function chooseMpq(){
+        var id = $("#id").textbox('getValue');
+        var mpq = $("#mpq").textbox('getValue');
+        $("#dlg_mpq").dialog('close');
+
+        if(mpq != ""){
+            Swal.fire({
+                title: 'Please Wait...',
+                showConfirmButton: false,
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                },
+            });
+
+            $.ajax({
+                type: "post",
+                url: "<?= base_url("planning/os_rm/createLabel") ?>",
+                data: "id=" + id + "&mpq=" + mpq,
+                dataType: "html",
+                success: function (qas) {
+                    swal.close();
+                    window.open("<?= base_url('planning/os_rm/print_label/') ?>" + window.btoa(id), '_blank');
+                }
+            });
+        }else{
+            toastr.info("Please Choose MPQ");
+        }
+    }
+
+    function createLabel(id, mpq){
+        $("#id").textbox('setValue', id);
+
+        $.ajax({
+            type: "post",
+            url: '<?= base_url('planning/os_rm/readMpq/'); ?>' + window.btoa(id) + "/total",
+            dataType: "json",
+            success: function (response) {
+                if(response.total > 1){
+                    $("#dlg_mpq").dialog('open');
+                    $('#mpq').combogrid({
+                        url: '<?= base_url('planning/os_rm/readMpq/'); ?>' + window.btoa(id) + "/rows",
+                        panelWidth: 300,
+                        idField: 'mpq',
+                        textField: 'mpq',
+                        mode: 'remote',
+                        fitColumns: true,
+                        prompt: "Choose Supplier No",
+                        icons: [{
+                            iconCls: 'icon-clear',
+                            handler: function(e) {
+                                $(e.data.target).combogrid('clear').combogrid('textbox').focus();
+                            }
+                        }],
+                        columns: [
+                            [{
+                                field: 'supplier_name',
+                                title: 'Supplier',
+                                width: 200
+                            }, {
+                                field: 'mpq',
+                                title: 'MPQ',
+                                width: 80
+                            }]
+                        ],
+                    });
+                }else{
+                    Swal.fire({
+                        title: 'Please Wait...',
+                        showConfirmButton: false,
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        },
+                    });
+
+                    $.ajax({
+                        type: "post",
+                        url: "<?= base_url("planning/os_rm/createLabel") ?>",
+                        data: "id=" + id + "&mpq=" + mpq,
+                        dataType: "html",
+                        success: function (qas) {
+                            swal.close();
+                            window.open("<?= base_url('planning/os_rm/print_label/') ?>" + window.btoa(id), '_blank');
+                        }
+                    });
+                }
+            }
+        });
     }
 
     $(function() {
@@ -403,8 +526,8 @@
 
     $('#location').combobox({
         url: '<?= base_url('master/locations/reads/RM'); ?>',
-        valueField: 'location',
-        textField: 'location',
+        valueField: 'number',
+        textField: 'number',
         prompt: 'Choose Locations',
     });
 

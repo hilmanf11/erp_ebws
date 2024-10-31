@@ -92,20 +92,20 @@ class Generate_mrp extends CI_Controller
         $filter_cutoff = base64_decode($this->input->get('filter_cutoff'));
 
         //Select Query
-        $sql = $this->db->query("SELECT a.item_rm_id, COALESCE(SUM(a.qty_act) - SUM(c.qty), 0) AS qty
-            FROM supply_sheets a
-            LEFT JOIN issued_materials b ON a.item_rm_id = b.item_rm_id AND a.workorder = b.workorder
-            LEFT JOIN issued_material_details c ON a.item_rm_id = c.item_rm_id AND b.request_no = c.request_no
-            WHERE a.request_date >= '$filter_cutoff'
-            GROUP BY a.item_rm_id");
+        // $sql = $this->db->query("SELECT a.item_rm_id, COALESCE(SUM(a.qty_act) - SUM(c.qty), 0) AS qty
+        //     FROM supply_sheets a
+        //     LEFT JOIN issued_materials b ON a.item_rm_id = b.item_rm_id AND a.workorder = b.workorder
+        //     LEFT JOIN issued_material_details c ON a.item_rm_id = c.item_rm_id AND b.request_no = c.request_no
+        //     WHERE a.request_date >= '$filter_cutoff'
+        //     GROUP BY a.item_rm_id");
         // HAVING (SUM(a.qty_act) - SUM(c.qty)) > 0
-        $records = $sql->result_array();
+        // $records = $sql->result_array();
 
-        if (count($records) > 0) {
+        // if (count($records) > 0) {
             echo json_encode(array("theme" => "success"));
-        } else {
-            echo json_encode(array("theme" => "error"));
-        }
+        // } else {
+        //     echo json_encode(array("theme" => "error"));
+        // }
     }
 
     public function checkMpp()
@@ -188,27 +188,27 @@ class Generate_mrp extends CI_Controller
         $filter_cutoff = base64_decode($this->input->get('filter_cutoff'));
 
         //Select Query
-        $sql = $this->db->query("SELECT a.item_rm_id, COALESCE(SUM(a.qty_act) - SUM(c.qty), 0) AS qty
-            FROM supply_sheets a
-            LEFT JOIN issued_materials b ON a.item_rm_id = b.item_rm_id AND a.workorder = b.workorder
-            LEFT JOIN issued_material_details c ON a.item_rm_id = c.item_rm_id AND b.request_no = c.request_no
-            WHERE a.request_date >= '$filter_cutoff'
-            GROUP BY a.item_rm_id");
-        $records = $sql->result_array();
+        // $sql = $this->db->query("SELECT a.item_rm_id, COALESCE(SUM(a.qty_act) - SUM(c.qty), 0) AS qty
+        //     FROM supply_sheets a
+        //     LEFT JOIN issued_materials b ON a.item_rm_id = b.item_rm_id AND a.workorder = b.workorder
+        //     LEFT JOIN issued_material_details c ON a.item_rm_id = c.item_rm_id AND b.request_no = c.request_no
+        //     WHERE a.request_date >= '$filter_cutoff'
+        //     GROUP BY a.item_rm_id");
+        // $records = $sql->result_array();
         // HAVING (SUM(a.qty_act) - SUM(c.qty)) < 0");
 
-        if (count($records) > 0) {
+        // if (count($records) > 0) {
             echo json_encode(array("theme" => "success"));
-        } else {
-            echo json_encode(array("theme" => "error"));
-        }
+        // } else {
+        //     echo json_encode(array("theme" => "error"));
+        // }
     }
 
     public function checkBom(){
         $checkBom = $this->crud->reads("bom", [], [], "", "", "", ["item_rm_id"]);
         $checkSup = $this->crud->reads("supplier_items", [], [], "", "", "", ["item_rm_id"]);
 
-        if(count($checkBom) == count($checkSup)){
+        if(count($checkBom) <= count($checkSup)){
             die(json_encode(array("status" => "OK")));
         }else{
             die(json_encode(array("status" => "NG")));
@@ -418,8 +418,9 @@ class Generate_mrp extends CI_Controller
                     COALESCE(b.qty_receipt, 0) AS qty_receipt, 
                     COALESCE(c.qty_out, 0) AS qty_out, 
                     COALESCE(d.qty_return, 0) AS qty_return, 
-                    COALESCE((b.qty_receipt + d.qty_return - c.qty_out), 0) AS actual
+                    COALESCE((b.qty_receipt + e.qty + d.qty_return - c.qty_out), 0) AS actual
                 FROM item_rm a
+                LEFT JOIN os_rm e ON a.id = e.item_rm_id
                 LEFT JOIN (SELECT item_rm_id, SUM(qty_receipt) AS qty_receipt 
                         FROM purchase_order_receipts 
                         WHERE receipt_date <= '$filter_cutoff' 
@@ -1194,7 +1195,7 @@ class Generate_mrp extends CI_Controller
                                         <td>".$no."</td>
                                         <td style='mso-number-format:\@;'>".trim($record['item_rm_id'])."</td>
                                         <td style='mso-number-format:\@;'>".trim($record['item_rm_number'])."</td>
-                                        <td>".$record['item_rm_name']."</td>
+                                        <td style='mso-number-format:\@;'>".$record['item_rm_name']."</td>
                                         <td>".$record['product_family']."</td>
                                         <td>".$record['supplier_number']."</td>
                                         <td>".$record['supplier_name']."</td>

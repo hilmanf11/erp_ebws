@@ -22,6 +22,8 @@ class Purchase_order_receipts extends CI_Controller
             redirect('error_session');
         } elseif ($this->checkuserAccess($this->id_menu()) > 0) {
             $data['button'] = $this->getbutton($this->id_menu());
+            $data['id_menu'] = $this->id_menu();
+            
             $this->load->view('template/header', $data);
             $this->load->view('purchase/purchase_order_receipts');
         } else {
@@ -71,35 +73,52 @@ class Purchase_order_receipts extends CI_Controller
         $records = $this->crud->query("SELECT bc_document FROM purchase_order_receipts WHERE supplier_id = '$supplier_id' GROUP BY bc_document ORDER BY created_date desc");
         echo json_encode($records);
     }
+
     public function readReceiptNo()
     {
         $records = $this->crud->query("SELECT receipt_no FROM purchase_order_receipts WHERE status = '0' GROUP BY receipt_no ORDER BY created_date desc");
         echo json_encode($records);
     }
+
     public function readSupplier()
     {
         $records = $this->crud->query("SELECT b.id, b.number, b.name FROM purchase_order_receipts a JOIN suppliers b ON a.supplier_id = b.id WHERE a.status = '0' GROUP BY a.supplier_id ORDER BY a.created_date desc");
         echo json_encode($records);
     }
-    public function receipt_no($date = "")
+
+    public function receipt_no($id_menu)
     {
-        if ($date == "") {
-            $datenow = date("Ymd");
-        } else {
-            $datenow = date("Ymd", strtotime(base64_decode($date)));
+        $datenow = date("Y-m-d");
+        $sql_menu = $this->db->query("SELECT * FROM menus_no WHERE menus_id = '$id_menu' and `status` = '0' and `start_date` <= '$datenow' and end_date >= '$datenow'");
+        $row_menu = $sql_menu->row();
+
+        if(@$row_menu->number == ""){
+            //
+        }else{
+            $number = @$row_menu->number;
+            $yearnow = date("y", strtotime($row_menu->start_date));
+            $yearend = date("y", strtotime($row_menu->end_date));
+
+            $whereDate = $number.$yearnow.$yearend."1";
+
+            $sqlGetID	= $this->db->query("SELECT max(receipt_no) as kode FROM purchase_order_receipts WHERE receipt_no like '%$whereDate%'");
+            $rowID = $sqlGetID->row();
+            $kode = $rowID->kode;
+            
+            if ($kode == NULL) {
+                $autoID = sprintf("%0".$row_menu->sequence."s", $kode + 1);
+                $autoNo = $whereDate.$autoID;
+            } else {
+                $urutan = (int) substr($kode, -6);
+                $urutan++;
+                $autoID	= sprintf("%0".$row_menu->sequence."s", $urutan);
+                $autoNo = $whereDate.$autoID;
+            }
+
+            echo $autoNo;
         }
-        $sqlGetID   = $this->db->query("SELECT max(receipt_no) as kode FROM purchase_order_receipts WHERE receipt_no like '%$datenow%'");
-        $rowID      = $sqlGetID->row();
-        $kode       = $rowID->kode;
-        if ($kode == NULL) {
-            $autoID = sprintf("%04s", $kode + 1);
-        } else {
-            $urutan = (int) substr($kode, -4);
-            $urutan++;
-            $autoID = sprintf("%04s", $urutan);
-        }
-        echo "POR-" . $datenow . "-" . $autoID;
     }
+
     public function receipt_id($receipt_no)
     {
         $sqlGetID   = $this->db->query("SELECT max(receipt_id) as kode FROM purchase_order_receipts WHERE receipt_id like '%$receipt_no%'");
@@ -140,6 +159,18 @@ class Purchase_order_receipts extends CI_Controller
 
         // die ("SELECT * FROM receiving_system WHERE no_sj ='$invoice_no' and item_id = '$item_id'");
         $sqlLabel = $this->qas->query("SELECT * FROM receiving_system WHERE no_sj ='$invoice_no' and item_id = '$item_id'");
+        $rowLabel = $sqlLabel->row();
+
+        die(json_encode($rowLabel));
+    }
+
+    public function checkQasReceiving(){
+        $receipt_no = $this->input->post('bc_document');
+
+        // $this->qas = $this->load->database('qas', TRUE);
+
+        // die ("SELECT * FROM receiving_system WHERE no_sj ='$invoice_no' and item_id = '$item_id'");
+        $sqlLabel = $this->db->query("SELECT * FROM scan_item_receipts WHERE receipt_no ='$receipt_no'");
         $rowLabel = $sqlLabel->row();
 
         die(json_encode($rowLabel));
@@ -398,7 +429,7 @@ class Purchase_order_receipts extends CI_Controller
             }
         }
 
-        $this->db->select('a.*, b.receipt_date, c.number, c.name, b.location, c.uom');
+        $this->db->select('a.*, c.id as item_rm_id, b.receipt_date, b.bc_document, c.number, c.name, b.location, c.uom');
         $this->db->from('purchase_order_labels a');
         $this->db->join('purchase_order_receipts b', 'a.receipt_id = b.receipt_id');
         $this->db->join('item_rm c', 'b.item_rm_id = c.id');
@@ -416,7 +447,7 @@ class Purchase_order_receipts extends CI_Controller
                     </head>
                     <style>body {font-family: Arial, Helvetica, sans-serif; margin:5px;}#customers {border-collapse: collapse; width: 100%; font-size: 9px;}#customers td, #customers th {border: 1px solid black;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: #ddd;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: center;color: black;}</style><body>';
         if ($records) {
-            $html .= '<div style="width: 120mm;">';
+            $html .= '<div style="width: 44mm;">';
             $no = 1;
             foreach ($records as $record) {
                 if ($no == 3) {
@@ -425,7 +456,7 @@ class Purchase_order_receipts extends CI_Controller
                 if ($no == 1) {
                     $padding = "padding:2mm 3mm 3mm 2mm;";
                 } else {
-                    $padding = "padding:2mm 0mm 3mm 4mm;";
+                    $padding = "padding:2mm 3mm 3mm 2mm;";
                 }
                 //Generate QRcode
                 $this->createQrcode($record->label_no, "assets/image/qrcode/");
@@ -437,10 +468,10 @@ class Purchase_order_receipts extends CI_Controller
                                     <tr>
                                         <td colspan="3" style="height:35px;">
                                             <div style="float:left;">
-                                                <small style="font-size:7px;"><b>' . $record->id . '</b></small><br>
-                                                <small style="font-size:10px;"><b>' . $record->number . '</b></small>
+                                                <small style="font-size:7px;"><b>' . $record->number. '</b></small><br>
+                                                <small style="font-size:12px;"><b>' . $record->item_rm_id . '</b></small>
                                                 <br>
-                                                <b style="font-size:7px;">' . $record->name . '</b>
+                                                <b style="font-size:7px;">' . $record->bc_document . '</b>
                                             </div>
                                             
                                             <div style="float:right;">
@@ -487,15 +518,25 @@ class Purchase_order_receipts extends CI_Controller
     // <small style="float:right;">QC PASSED</small>
     // <small style="font-size: 10px; float:right;"><b>'. $this->session->name . '</b></small><br>
 
-    public function print_receiving($receipt_no)
+    public function print_receiving($receipt_no, $type = "")
     {
         $purchase_order_receipt_total = $this->crud->reads('purchase_order_receipts', [], ["receipt_no" => base64_decode($receipt_no)]);
         $po_receipt = $this->crud->read('purchase_order_receipts', [], ["receipt_no" => base64_decode($receipt_no)]);
         $config = $this->db->get('config')->row();
         $config_iso = $this->db->get('config_iso')->row();
+        
         //Config Page
         $rows = 8;
         $page = ceil(count($purchase_order_receipt_total) / $rows);
+
+        if($type == "QAS"){
+            $type_name = "MATERIAL";
+            $grn_no = "-";
+        }else{
+            $type_name = "GOOD";
+            $grn_no = "GRN".substr(@$po_receipt->receipt_no, 3);
+        }
+
         //Generate QRcode
         $this->createQrcode($po_receipt->receipt_no, "assets/image/qrcode/");
         $this->db->select('a.*, b.number as supplier_id, b.name as supplier_name, c.number as item_rm_id, c.name as item_name, c.uom, d.name as item_familys_name, e.mpq, b.currency');
@@ -512,6 +553,7 @@ class Purchase_order_receipts extends CI_Controller
         $this->db->group_by('a.supplier_id');
         $this->db->group_by('a.item_rm_id');
         $records = $this->db->get()->result_array();
+        
         if ($records) {
             $html = '<html>
                         <head>
@@ -560,21 +602,40 @@ class Purchase_order_receipts extends CI_Controller
             $hal = 1;
             $subtotal = 0;
             for ($i = 0; $i < $page; $i++) {
-                $this->db->select('a.*, b.id as supplier_id, b.name as supplier_name, c.name as item_rm_name, c.number as item_rm_number, c.uom, d.name as item_familys_name, e.mpq, b.currency');
-                $this->db->from('purchase_order_receipts a');
-                $this->db->join('suppliers b', 'a.supplier_id = b.id');
-                $this->db->join('item_rm c', 'a.item_rm_id = c.id');
-                $this->db->join('item_familys d', 'c.item_family_id = d.id');
-                $this->db->join('supplier_items e', 'b.id = e.supplier_id and c.id = e.item_rm_id');
-                // $this->db->join('warehouse_location_items g', 'a.item_rm_id = g.item_rm_id', 'left');
-                $this->db->where('a.deleted', 0);
-                // $this->db->where('a.status', 0);
-                $this->db->where('a.receipt_no', base64_decode($receipt_no));
-                $this->db->group_by('a.po_no');
-                $this->db->group_by('a.supplier_id');
-                $this->db->group_by('a.item_rm_id');
-                $this->db->limit(8, ($i * 8));
-                $records = $this->db->get()->result_array();
+
+                if($type == "QAS"){
+                    $this->db->select('a.*, b.id as supplier_id, b.name as supplier_name, c.name as item_rm_name, c.number as item_rm_number, c.uom, d.name as item_familys_name, e.mpq, b.currency');
+                    $this->db->from('purchase_order_receipts a');
+                    $this->db->join('suppliers b', 'a.supplier_id = b.id');
+                    $this->db->join('item_rm c', 'a.item_rm_id = c.id');
+                    $this->db->join('item_familys d', 'c.item_family_id = d.id');
+                    $this->db->join('supplier_items e', 'b.id = e.supplier_id and c.id = e.item_rm_id');
+                    // $this->db->join('warehouse_location_items g', 'a.item_rm_id = g.item_rm_id', 'left');
+                    $this->db->where('a.deleted', 0);
+                    // $this->db->where('a.status', 0);
+                    $this->db->where('a.receipt_no', base64_decode($receipt_no));
+                    $this->db->group_by('a.po_no');
+                    $this->db->group_by('a.supplier_id');
+                    $this->db->group_by('a.item_rm_id');
+                    $this->db->limit(8, ($i * 8));
+                    $records = $this->db->get()->result_array();
+                }else{
+                    $this->db->select('a.*, b.id as supplier_id, b.name as supplier_name, c.name as item_rm_name, c.number as item_rm_number, c.uom, d.name as item_familys_name, e.mpq, b.currency, SUM(g.qty) as qty_receipt');
+                    $this->db->from('purchase_order_receipts a');
+                    $this->db->join('suppliers b', 'a.supplier_id = b.id');
+                    $this->db->join('item_rm c', 'a.item_rm_id = c.id');
+                    $this->db->join('item_familys d', 'c.item_family_id = d.id');
+                    $this->db->join('supplier_items e', 'b.id = e.supplier_id and c.id = e.item_rm_id');
+                    $this->db->join('scan_item_receipts g', 'a.receipt_id = g.receipt_id');
+                    $this->db->where('a.deleted', 0);
+                    // $this->db->where('a.status', 0);
+                    $this->db->where('a.receipt_no', base64_decode($receipt_no));
+                    $this->db->group_by('a.po_no');
+                    $this->db->group_by('a.supplier_id');
+                    $this->db->group_by('a.item_rm_id');
+                    $this->db->limit(8, ($i * 8));
+                    $records = $this->db->get()->result_array();
+                }
 
                 $html .= '  <table style="width:100%;">
                                     <tr>
@@ -613,16 +674,21 @@ class Purchase_order_receipts extends CI_Controller
                                 <div style="border: 1px solid black; width:100%;">
                                     <div style="padding:10px;">
                                         <center>
-                                            <h3><u>GOOD RECEIVING NOTE</u></h3>
+                                            <h3><u>'.$type_name.' RECEIPT NOTE</u></h3>
                                         </center>
                                         <table style="width:50%; font-size:12px; margin-bottom:10px; float:left;">
                                             <tr>
-                                                <td width="100">Receipt No</td>
+                                                <td width="100">GRN No</td>
+                                                <td width="10">:</td>
+                                                <td><b>' . $grn_no . '</b></td>
+                                            </tr>
+                                            <tr>
+                                                <td width="100">MRN No</td>
                                                 <td width="10">:</td>
                                                 <td><b>' . @$po_receipt->receipt_no . '</b></td>
                                             </tr>
                                             <tr>
-                                                <td width="50">Receipt Date</td>
+                                                <td width="50">MRN Date</td>
                                                 <td width="10">:</td>
                                                 <td><b>' . @$po_receipt->receipt_date . '</b></td>
                                             </tr>

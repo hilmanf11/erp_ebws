@@ -73,7 +73,7 @@
         $('#dlg_insert').dialog('open');
         $('#number').textbox('enable');
         $('#username').textbox('enable');
-        $('#password').textbox('enable');
+        // $('#password').textbox('enable');
         url_save = '<?= base_url('admin/users/create') ?>';
         $('#frm_insert').form('clear');
     }
@@ -85,7 +85,7 @@
             $('#frm_insert').form('load', row);
             $('#number').textbox('disable');
             $('#username').textbox('disable');
-            $('#password').textbox('disable');
+            // $('#password').textbox('disable');
             url_save = '<?= base_url('admin/users/update') ?>?id=' + btoa(row.id);
         } else {
             toastr.info("Please select one of the data in the table first");

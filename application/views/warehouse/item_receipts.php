@@ -37,14 +37,47 @@
     <div style="width: 100%; padding: 10px;">
         <fieldset style="width: 100%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
             <legend><b>Form Scan Barcode</b></legend>
-            <div class="fitem" style="padding:0 200px 0 200px;">
-                <span style="display:inline-block;">Trans Date : <b><?= date("d F Y") ?></b> | Receive By : <b><?= $this->session->name ?></b></span>
+            <div style="width: 30%; float: left;">
+                <div class="fitem">
+                    <span style="width:25%; display:inline-block;">Location</span>
+                    <input style="width:70%;" name="location" id="location" class="easyui-combogrid">
+                </div>
+                <div style="width: 30%; float: left; margin: 5px;">
+                    <fieldset style="width: 100%; height: 100px; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
+                        <legend><b>Capacity</b></legend>
+                        <center>
+                            <b style="font-size:20px !important;" id="t_capacity">0</b>
+                        </center>
+                    </fieldset>
+                </div>
+                <div style="width: 30%; float: left; margin: 5px;">
+                    <fieldset style="width: 100%; height: 100px; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
+                        <legend><b>In Stock</b></legend>
+                        <center>
+                            <b style="font-size:20px !important; color:green;" id="t_instock">0</b>
+                        </center>
+                    </fieldset>
+                </div>
+                <div style="width: 30%; float: left; margin: 5px;">
+                    <fieldset style="width: 100%; height: 100px; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
+                        <legend><b>Balance</b></legend>
+                        <center>
+                            <b style="font-size:20px !important; color: red;" id="t_balance">0</b>
+                        </center>
+                    </fieldset>
+                </div>
             </div>
-            <div class="fitem" style="padding:0 200px 0 200px;">
-                <input style="width:100%; height: 80px;" type="text" id="label_no" name="label_no" class="scan" placeholder="SCAN LABEL HERE">
-            </div>
-            <div class="fitem" style="padding:0 200px 10px 200px;">
-                <a href="javascript:;" class="easyui-linkbutton" onclick="reload()"><i class="fa fa-rotate-right"></i> Reload</a>
+            <div style="width: 70%; float: left;">
+                <div class="fitem" style="padding:0 50px 0 50px;">
+                    <span style="display:inline-block;">Trans Date : <b><?= date("d F Y") ?></b> | Receive By : <b><?= $this->session->name ?></b></span>
+                    <input style="width:100%; height: 80px;" type="text" id="label_no" name="label_no" class="scan" placeholder="SCAN LABEL HERE">
+                </div>
+                <div class="fitem" style="padding:0 50px 10px 50px;">
+                    <input style="width:25%;" name="receipt_no" id="receipt_no" readonly data-options="prompt:'Receipt No'" class="easyui-textbox">
+                    <div style="float: right;">
+                        <a href="javascript:;" class="easyui-linkbutton" onclick="reload()"><i class="fa fa-rotate-right"></i> Reload</a>
+                    </div>
+                </div>
             </div>
         </fieldset>
     </div>
@@ -67,55 +100,110 @@
         var serialDuplicate = document.getElementById("serialDuplicate");
         var serialSuccess = document.getElementById("serialSuccess");
         var serialNotFound = document.getElementById("serialNotFound");
+
         //Scan Label
         $('#label_no').focus();
         $('#label_no').keypress(function(e) {
             if (e.which == 13) {
                 var label_no = $("#label_no").val();
-                $.ajax({
-                    type: "POST",
-                    url: "<?= base_url('warehouse/item_receipts/getPoReceipt') ?>",
-                    data: "label_no=" + label_no,
-                    dataType: "json",
-                    success: function(json) {
-                        if (json.total > 0) {
-                            var row = json.rows;
-                            for (let i = 0; i < json.total; i++) {
-                                $.ajax({
-                                    type: "POST",
-                                    url: "<?= base_url('warehouse/item_receipts/create') ?>",
-                                    data: "label_no=" + label_no +
-                                        "&receipt_no=" + row[i].receipt_no +
-                                        "&receipt_id=" + row[i].receipt_id +
-                                        "&po_no=" + row[i].po_no +
-                                        "&qty=" + row[i].qty,
-                                    dataType: "json",
-                                    success: function(result) {
-                                        if (result.theme == "success") {
-                                            serialSuccess.play();
-                                            toastr.success(result.message, result.title);
-                                            $("#label_no").val('');
-                                            $('#label_no').focus();
-                                        } else {
-                                            serialDuplicate.play();
-                                            toastr.error(result.message, result.title);
-                                            $("#label_no").val('');
-                                            $('#label_no').focus();
+                var location = $("#location").combogrid('getValue');
+
+                if(location != ""){
+                    $.ajax({
+                        type: "POST",
+                        url: "<?= base_url('warehouse/item_receipts/getPoReceipt') ?>",
+                        data: "label_no=" + label_no,
+                        dataType: "json",
+                        success: function(json) {
+                            if (json.total > 0) {
+                                var row = json.rows;
+                                for (let i = 0; i < json.total; i++) {
+                                    $.ajax({
+                                        type: "POST",
+                                        url: "<?= base_url('warehouse/item_receipts/create') ?>",
+                                        data: "label_no=" + label_no +
+                                            "&receipt_no=" + row[i].receipt_no +
+                                            "&receipt_id=" + row[i].receipt_id +
+                                            "&po_no=" + row[i].po_no +
+                                            "&warehouse=" + location +
+                                            "&qty=" + row[i].qty,
+                                        dataType: "json",
+                                        success: function(result) {
+                                            $("#receipt_no").textbox("setValue", row[i].receipt_no);
+
+                                            if (result.theme == "success") {
+                                                serialSuccess.play();
+                                                toastr.success(result.message, result.title);
+                                                $("#label_no").val('');
+                                                $('#label_no').focus();
+                                                var instock = $("#t_instock").html();
+                                                var balance = $("#t_balance").html();
+
+                                                $("#t_instock").html((parseInt(instock) + parseInt(row[i].qty)));
+                                                $("#t_balance").html((parseInt(balance) - parseInt(row[i].qty)));
+                                            } else {
+                                                serialDuplicate.play();
+                                                toastr.error(result.message, result.title);
+                                                $("#label_no").val('');
+                                                $('#label_no').focus();
+                                            }
                                         }
-                                    }
+                                    });
+                                }
+                                $('#dg').datagrid({
+                                    url: '<?= base_url('warehouse/item_receipts/datatables/') ?>' + window.btoa(label_no),
+                                    rownumbers: true
                                 });
+                            } else {
+                                serialNotFound.play();
+                                toastr.warning("Label not found!");
+                                $("#label_no").val('');
                             }
-                            $('#dg').datagrid({
-                                url: '<?= base_url('warehouse/item_receipts/datatables/') ?>' + window.btoa(label_no),
-                                rownumbers: true
-                            });
-                        } else {
-                            serialNotFound.play();
-                            toastr.warning("Label not found!");
-                            $("#label_no").val('');
                         }
-                    }
-                });
+                    });
+                }else{
+                    toastr.info("Please Select First Location");
+                    $("#label_no").val('');
+                    $('#label_no').focus();
+                }
+            }
+        });
+
+        $("#location").combogrid({
+            url: '<?= base_url('master/locations/readLocations?type=RM') ?>',
+            panelWidth: 460,
+            idField: 'number',
+            textField: 'number',
+            mode: 'remote',
+            fitColumns: true,
+            prompt: "Choose Location",
+            columns: [
+                [{
+                    field: 'number',
+                    title: 'Code',
+                    width: 80
+                }, {
+                    field: 'location',
+                    title: 'Location',
+                    width: 150
+                },{
+                    field: 'area',
+                    title: 'Area',
+                    width: 80
+                },{
+                    field: 'rack',
+                    title: 'Rack',
+                    width: 80
+                },{
+                    field: 'available',
+                    title: 'Available',
+                    width: 80
+                }, ]
+            ],
+            onSelect: function(val, loc){
+                $("#t_capacity").html(loc.capacity);
+                $("#t_instock").html((parseInt(loc.qty_receipt) + parseInt(loc.qty_issued)));
+                $("#t_balance").html(parseInt(loc.available));
             }
         });
     });

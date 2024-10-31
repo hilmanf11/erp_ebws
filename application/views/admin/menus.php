@@ -7,6 +7,7 @@
             <th data-options="field:'name',width:200">Menu Name</th>
             <th data-options="field:'link',width:200">Link</th>
             <th data-options="field:'sort',width:50">Sort</th>
+            <th data-options="field:'financial',width:80,formatter:seriesnoformat">Series No</th>
             <th data-options="field:'state',width:100">State</th>
         </tr>
     </thead>
@@ -35,6 +36,13 @@
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Sort</span>
                 <input style="width:60%;" name="sort" class="easyui-numberbox">
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Series No</span>
+                <select style="width:60%;" name="financial" class="easyui-combobox" panelHeight="auto">
+                    <option value="1">YES</option>
+                    <option value="0">NO</option>
+                </select>
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">State</span>
@@ -132,14 +140,25 @@
     function pdf() {
         $("#printout").get(0).contentWindow.print();
     }
+
     //EXPORT EXCEL
     function excel() {
         window.location.assign('<?= base_url('admin/menus/print/excel') ?>');
     }
+
     //RELOAD
     function reload() {
         window.location.reload();
     }
+
+    function seriesnoformat(val){
+        if(val == 0){
+            return "NO";
+        }else{
+            return "YES";
+        }
+    }
+
     $(function() {
         //SETTING DATAGRID EASYUI
         $('#dg').datagrid({

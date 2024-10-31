@@ -162,7 +162,7 @@
     function add() {
         $('#dlg_insert').dialog('open');
         $('#dg_request').datagrid('loadData', []);
-        request_no();
+        request_no("<?= $id_menu ?>");
         $("#period").combobox({
             url: '<?= base_url('planning/production_schedules/readPeriod') ?>',
             valueField: 'period',
@@ -325,18 +325,17 @@
         });
     }
 
-    function request_no(reqDate = "") {
-        if (reqDate == "") {
-            var request_date = $("#request_date").datebox('getValue');
-        } else {
-            var request_date = reqDate;
-        }
+    function request_no(id_menu) {
         $.ajax({
             type: "post",
-            url: "<?= base_url('planning/supply_sheets_pp/request_no') ?>/" + window.btoa(request_date),
+            url: "<?= base_url('planning/supply_sheets_pp/request_no') ?>/" + id_menu,
             dataType: "html",
             success: function(result) {
-                $("#request_no").textbox('setValue', result);
+                if(result == ""){
+                    toastr.info("Please Check Configuration in Serial No First");
+                }else{
+                    $("#request_no").textbox('setValue', result);
+                }
             }
         });
     }
@@ -856,12 +855,6 @@
                         });
                     }
                 });
-            }
-        });
-
-        $("#request_date").datebox({
-            onChange: function(val) {
-                request_no(val);
             }
         });
     });

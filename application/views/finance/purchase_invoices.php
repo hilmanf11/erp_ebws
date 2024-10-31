@@ -123,7 +123,7 @@
 </div>
 
 <!-- DIALOG SAVE AND UPDATE -->
-<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 99%; height: 600px; padding:10px; top: 5px; left:10px;">
+<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 99%; height: 550px; padding:10px; top: 5px; left:10px;">
     <form id="frm_insert" method="post" novalidate>
         <div style="width: 100%; display: grid; grid-template-columns: auto auto auto; grid-gap: 5px; display: flex;">
             <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px;">
@@ -139,7 +139,7 @@
                         </select>
                     </div>
                     <div class="fitem">
-                        <span style="width:35%; display:inline-block;">Purchase Invoice Date</span>
+                        <span style="width:35%; display:inline-block;">Supplier Invoice Date</span>
                         <input style="width:60%;" id="trans_date" name="trans_date" required="" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
                     </div>
                     <div class="fitem">
@@ -172,7 +172,7 @@
                         <span style="width:35%; display:inline-block;">Supplier Invoice</span>
                         <input style="width:60%;" required="" id="invoice_no" name="invoice_no" class="easyui-textbox">
                     </div>
-                    <div class="fitem">
+                    <div class="fitem" hidden>
                         <span style="width:35%; display:inline-block;">Taxes</span>
                         <input style="width:60%;" id="taxes" name="taxes" readonly class="easyui-numberbox">
                     </div>
@@ -182,7 +182,7 @@
                     </div>
                     <div class="fitem">
                         <span style="width:35%; display:inline-block;">Payment Due</span>
-                        <input style="width:60%;" id="due_date" name="due_date" required="" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
+                        <input style="width:60%;" id="due_date" name="due_date" required="" readonly class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
                     </div>
                     <div class="fitem" hidden>
                         <span style="width:35%; display:inline-block;">Voucher</span>
@@ -373,7 +373,7 @@
                     </div>
                     <div class="fitem">
                         <b style="width:35%; display:inline-block;">TDS <span id="txt_tds"></span> <span id="nom_tds"></span></b>
-                        <input style="width:30%;" id="total_tds" name="total_tds" class="easyui-numberbox" disabled data-options="precision:2,groupSeparator:','">
+                        <input style="width:30%;" id="total_tds" name="total_tds" class="easyui-numberbox" data-options="precision:2,groupSeparator:','">
                     </div>
                     <div class="fitem">
                         <b style="width:35%; display:inline-block;">INVOICE VALUE</b>
@@ -448,7 +448,7 @@
                     });
                 }
 
-                number(val);
+                number("<?= $id_menu ?>");
             }
         });
 
@@ -983,13 +983,17 @@
     }
 
     //NOMOR AUTOMATIC
-    function number(trans_date) {
+    function number(id_menu) {
         $.ajax({
             type: "post",
-            url: "<?= base_url('finance/purchase_invoices/number/') ?>" + window.btoa(trans_date),
+            url: "<?= base_url('finance/purchase_invoices/number/') ?>" + id_menu,
             dataType: "html",
             success: function(result) {
-                $("#number").textbox('setValue', result);
+                if(result == ""){
+                    toastr.info("Please Check Configuration in Serial No First");
+                }else{
+                    $("#number").textbox('setValue', result);
+                }
             }
         });
     }
@@ -1017,9 +1021,10 @@
                         $("#total_tds").numberbox('setValue', row.total_tds);
                         $("#txt_tds").html("("+row.tds+")");
                         $("#nom_tds").html(row.individual + "%");
-                        
+
                         var total_grand = (parseFloat(row.total_sub) + parseFloat(row.total_igst) + parseFloat(row.total_cgst) + parseFloat(row.total_sgst) + parseFloat(row.total_tds));
                         $("#total_grand").numberbox('setValue', (total_grand));
+
                         addTable2('<?= base_url('finance/purchase_invoices/readJournal/') ?>' + window.btoa(journal_type_id));
                     }
                 });
@@ -1304,6 +1309,17 @@
 
     $(function() {
         $("#total_pph").numberbox('disable');
+
+        $("#total_tds").numberbox({
+            onChange: function(total_tds){
+                var total_sub = $("#total_sub").numberbox("getValue");
+                var total_igst = $("#total_igst").numberbox("getValue");
+                var total_cgst = $("#total_cgst").numberbox("getValue");
+                var total_sgst = $("#total_sgst").numberbox("getValue");
+                var total_grand = (parseFloat(total_sub) + parseFloat(total_igst) + parseFloat(total_cgst) + parseFloat(total_sgst) + parseFloat(total_tds));
+                $("#total_grand").numberbox('setValue', (total_grand));
+            }
+        });
 
         //SETTING DATAGRID EASYUI
         $('#dg').datagrid({
@@ -1734,8 +1750,11 @@
                         url: '<?= base_url('finance/purchase_invoices/readReceipt?supplier_id=') ?>' + row.id,
                         valueField: 'receipt_no',
                         textField: 'receipt_no',
-                        multiple: true,
+                        // multiple: true,
                         prompt: "Choose Purchase Order Receipts",
+                        onSelect: function(row) {
+                            $("#invoice_no").textbox('setValue', row.bc_document);
+                        }
                     });
                 } else if (type == "dp") {
                     $("#por_no").combobox({
@@ -1744,6 +1763,7 @@
                         textField: 'receipt_no',
                         prompt: "Choose Purchase Order Receipts",
                         onSelect: function(row) {
+                            $("#invoice_no").textbox('setValue', row.bc_document);
                             $("#total_dp").numberbox('setValue', row.total_dp);
                         }
                     });

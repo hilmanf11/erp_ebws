@@ -8,8 +8,10 @@
             <th rowspan="2" data-options="field:'item_fg_name',width:100,halign:'center'">Product Name</th>
             <th rowspan="2" data-options="field:'trans_date',width:80,halign:'center'">Cut Off</th>
             <th rowspan="2" data-options="field:'uom',width:80,align:'center'">Uom</th>
+            <th rowspan="2" data-options="field:'qty_box',width:80,halign:'center',align:'right',formatter:numberFormat">Lot Box</th>
             <th rowspan="2" data-options="field:'qty',width:80,halign:'center',align:'right',formatter:numberFormat">Quantity</th>
             <th rowspan="2" data-options="field:'location',width:100,halign:'center'">Location</th>
+            <th rowspan="2" data-options="field:'label',width:80,align:'center',formatter:BtnPrintLabel">Label</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
         </tr>
@@ -307,8 +309,8 @@
 
     $('#location').combobox({
         url: '<?= base_url('master/locations/reads/FG'); ?>',
-        valueField: 'location',
-        textField: 'location',
+        valueField: 'number',
+        textField: 'number',
         prompt: 'Choose Locations',
     });
 
@@ -339,6 +341,36 @@
         } else {
             return new Date();
         }
+    }
+
+    function BtnPrintLabel(val, row) {
+        // if (val != "closed") {
+        var onClick = "createLabel('"+row.id+"','"+row.qty_box+"')";
+        return '<a class="btn btn-primary w-100" style="pointer-events: visible; opacity:1;" target="_blank" onClick="'+onClick+'"><i class="fa fa-print"></i> Print</a>';
+        // }
+    }
+
+    function createLabel(id, mpq){
+        Swal.fire({
+            title: 'Please Wait...',
+            showConfirmButton: false,
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            didOpen: () => {
+                Swal.showLoading();
+            },
+        });
+
+        $.ajax({
+            type: "post",
+            url: "<?= base_url("planning/os_fg/createLabel") ?>",
+            data: "id=" + id + "&mpq=" + mpq,
+            dataType: "html",
+            success: function (qas) {
+                swal.close();
+                window.open("<?= base_url('planning/os_fg/print_label/') ?>" + window.btoa(id), '_blank');
+            }
+        });
     }
 
     // UPLOAD DATA

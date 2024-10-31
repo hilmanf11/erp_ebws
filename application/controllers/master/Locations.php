@@ -31,7 +31,7 @@ class Locations extends CI_Controller
     public function reads($type)
     {
         $post = isset($_POST['q']) ? $_POST['q'] : "";
-        $send = $this->crud->reads('warehouse_locations', ["location" => $post], ["type" => $type], "", "location", "asc", ["location"]);
+        $send = $this->crud->reads('warehouse_locations', ["location" => $post], ["type" => $type], "", "number", "asc");
         echo json_encode($send);
     }
 
@@ -40,14 +40,13 @@ class Locations extends CI_Controller
         $post = isset($_POST['q']) ? $_POST['q'] : "";
         $type = $this->input->get('type');
         
-        $send = $this->crud->query("SELECT a.*, COALESCE(SUM(b.qty_receipt), 0) as qty_receipt, COALESCE(SUM(d.qty), 0) as qty_issued, (a.capacity - COALESCE(SUM(b.qty_receipt), 0) + COALESCE(SUM(d.qty), 0)) as available
+        $send = $this->crud->query("SELECT a.*, COALESCE(SUM(b.qty), 0) as qty_receipt, COALESCE(SUM(d.qty), 0) as qty_issued, (a.capacity - COALESCE(SUM(b.qty), 0) + COALESCE(SUM(d.qty), 0)) as available
             FROM warehouse_locations a 
-            LEFT JOIN purchase_order_receipts b ON a.number = b.location
-            LEFT JOIN purchase_order_labels c ON b.receipt_id = c.receipt_id
-            LEFT JOIN issued_material_details d ON c.label_no = d.label_no and b.item_rm_id = d.item_rm_id
+            LEFT JOIN scan_item_receipts b ON a.number = b.warehouse
+            LEFT JOIN issued_material_details d ON b.label_no = d.label_no
             WHERE a.type = '$type' and (a.number like '%$post%' or a.location like '%$post%' or a.area like '%$post%' or a.rack like '%$post%') 
             GROUP BY a.number 
-            HAVING (a.capacity - COALESCE(SUM(b.qty_receipt), 0) + COALESCE(SUM(d.qty), 0)) > 0
+            -- HAVING (a.capacity - COALESCE(SUM(b.qty_receipt), 0) + COALESCE(SUM(d.qty), 0)) > 0
             ORDER BY a.number ASC");
         echo json_encode($send);
     }
@@ -65,11 +64,12 @@ class Locations extends CI_Controller
             $offset = ($page - 1) * $rows;
             $result = array();
             //Select Query
-            $this->db->select('a.*, round(COALESCE(SUM(b.qty_receipt), 0) - COALESCE(SUM(d.qty), 0)) as filled, round(a.capacity - COALESCE(SUM(b.qty_receipt), 0) + COALESCE(SUM(d.qty), 0)) as available');
+            $this->db->select('a.*, e.name as item_family_name, round(COALESCE(SUM(b.qty_receipt), 0) - COALESCE(SUM(d.qty), 0)) as filled, round(a.capacity - COALESCE(SUM(b.qty_receipt), 0) + COALESCE(SUM(d.qty), 0)) as available');
             $this->db->from('warehouse_locations a');
             $this->db->join('purchase_order_receipts b', 'a.number = b.location', 'left');
             $this->db->join('purchase_order_labels c', 'b.receipt_id = c.receipt_id', 'left');
             $this->db->join('issued_material_details d', 'c.label_no = d.label_no and b.item_rm_id = d.item_rm_id', 'left');
+            $this->db->join('item_familys e', 'a.item_family_id = e.id', 'left');
             $this->db->where('a.deleted', 0);
             if (@count($filters) > 0) {
                 foreach ($filters as $filter) {
@@ -142,7 +142,7 @@ class Locations extends CI_Controller
         $total_row = $data->rowcount($sheet_index = 0);
         for ($i = 3; $i <= $total_row; $i++) {
             $datas[] = array(
-                'type' => $data->val($i, 2),
+                'item_family_number' => $data->val($i, 2),
                 'number' => $data->val($i, 3),
                 'location' => $data->val($i, 4),
                 'area' => $data->val($i, 5),
@@ -185,12 +185,31 @@ class Locations extends CI_Controller
     {
         if ($this->input->post()) {
             $data = $this->input->post('data');
-            $warehouse_locations = $this->crud->read('warehouse_locations', [], ["number" => $data['number'], "type" => $data['type']]);
+            $item_family = $this->crud->read('item_familys', [], ["number" => $data['item_family_number']]);
+            $warehouse_locations = $this->crud->read('warehouse_locations', [], ["number" => $data['number'], "item_family_id" => @$item_family->id]);
 
             if (!empty($warehouse_locations)) {
                 echo json_encode(array("title" => "Duplicate", "message" => "Code " . $data['number'] . " Duplicate", "theme" => "error"));
+            }elseif(empty($item_family)){
+                echo json_encode(array("title" => "Not Found", "message" => "Product Family " . $data['item_family_number'] . " is Not Found", "theme" => "error"));
             } else {
-                $send   = $this->crud->create('warehouse_locations', $data);
+                if(@$item_family->number != "FG"){
+                    $type = "RM";
+                }else{
+                    $type = "FG";
+                }
+                
+                $send   = $this->crud->create('warehouse_locations', [
+                    "type" => $type,
+                    "number" => $data['number'],
+                    "location" => $data['location'],
+                    "area" => $data['area'],
+                    "rack" => $data['rack'],
+                    "level" => $data['level'],
+                    "level_sub" => $data['level_sub'],
+                    "capacity" => $data['capacity'],
+                    "item_family_id" => $item_family->id,
+                ]);
                 echo $send;
             }
         }
@@ -209,11 +228,12 @@ class Locations extends CI_Controller
         $config = $this->db->get()->row();
         $this->db->select('*');
         
-        $this->db->select('a.*, round(COALESCE(SUM(b.qty_receipt), 0) - COALESCE(SUM(d.qty), 0)) as filled, round(a.capacity - COALESCE(SUM(b.qty_receipt), 0) + COALESCE(SUM(d.qty), 0)) as available');
+        $this->db->select('a.*, e.name as item_family_name, round(COALESCE(SUM(b.qty_receipt), 0) - COALESCE(SUM(d.qty), 0)) as filled, round(a.capacity - COALESCE(SUM(b.qty_receipt), 0) + COALESCE(SUM(d.qty), 0)) as available');
         $this->db->from('warehouse_locations a');
         $this->db->join('purchase_order_receipts b', 'a.number = b.location', 'left');
         $this->db->join('purchase_order_labels c', 'b.receipt_id = c.receipt_id', 'left');
         $this->db->join('issued_material_details d', 'c.label_no = d.label_no and b.item_rm_id = d.item_rm_id', 'left');
+        $this->db->join('item_familys e', 'a.item_family_id = e.id', 'left');
         $this->db->where('a.deleted', 0);
         $this->db->group_by('a.id');
         $this->db->order_by('a.number', 'ASC');
@@ -249,8 +269,8 @@ class Locations extends CI_Controller
         <table id="customers" border="1">
             <tr>
                 <th width="20">No</th>
-                <th>Type</th>
                 <th>Code</th>
+                <th>Product Family</th>
                 <th>Location</th>
                 <th>Area</th>
                 <th>Rack</th>
@@ -264,8 +284,8 @@ class Locations extends CI_Controller
         foreach ($records as $data) {
             $html .= '<tr>
                     <td>' . $no . '</td>
-                    <td>' . $data['type'] . '</td>
                     <td>' . $data['number'] . '</td>
+                    <td>' . $data['item_family_name'] . '</td>
                     <td>' . $data['location'] . '</td>
                     <td>' . $data['area'] . '</td>
                     <td>' . $data['rack'] . '</td>

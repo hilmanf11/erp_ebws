@@ -69,6 +69,7 @@ class Wos extends CI_Controller
             //Select Query
             $this->db->select('a.*, 
                 b.number as item_fg_number,
+                b.number,
                 b.number_customer, 
                 b.name as item_fg_name');
             $this->db->from('wos a');
@@ -164,34 +165,39 @@ class Wos extends CI_Controller
                 'kind' => $data->val($i, 4),
                 'size' => $data->val($i, 5),
                 'color' => $data->val($i, 6),
-                'cl' => $data->val($i, 7),
-                'jno' => $data->val($i, 8),
-                'twist' => $data->val($i, 9),
-                'mno' => $data->val($i, 10),
-                'dc_1' => $data->val($i, 11),
-                'terminal_1' => $data->val($i, 12),
-                'strip_1' => $data->val($i, 13),
-                'chc_1' => $data->val($i, 14),
-                'cwc_1' => $data->val($i, 15),
+                'line_color' => $data->val($i, 7),
+                'cl' => $data->val($i, 8),
+                'jno' => $data->val($i, 9),
+                'twist' => $data->val($i, 10),
+                'mno' => $data->val($i, 11),
+                'dc_1' => $data->val($i, 12),
+                'terminal_1' => $data->val($i, 13),
+                'strip_1' => $data->val($i, 14),
+                'chc_1' => $data->val($i, 15),
                 'chi_1' => $data->val($i, 16),
-                'cwi_1' => $data->val($i, 17),
-                'dc_2' => $data->val($i, 18),
-                'terminal_2' => $data->val($i, 19),
-                'strip_2' => $data->val($i, 20),
-                'chc_2' => $data->val($i, 21),
-                'cwc_2' => $data->val($i, 22),
+                'cwc_1' => $data->val($i, 17),
+                'cwi_1' => $data->val($i, 18),
+                'dc_2' => $data->val($i, 19),
+                'terminal_2' => $data->val($i, 20),
+                'strip_2' => $data->val($i, 21),
+                'chc_2' => $data->val($i, 22),
                 'chi_2' => $data->val($i, 23),
-                'cwi_2' => $data->val($i, 24),
-                'accessories_1' => $data->val($i, 25),
-                'accessories_2' => $data->val($i, 26),
-                'tube_1' => $data->val($i, 27),
-                'tube_2' => $data->val($i, 28),
-                'end_1' => $data->val($i, 29),
-                'end_2' => $data->val($i, 30),
-                'note_r' => $data->val($i, 31),
-                'note_f' => $data->val($i, 32),
-                'mc' => $data->val($i, 33),
-                'order' => $data->val($i, 34),
+                'cwc_2' => $data->val($i, 24),
+                'cwi_2' => $data->val($i, 25),
+                'accessories_1' => $data->val($i, 26),
+                'accessories_2' => $data->val($i, 27),
+                'tube_1' => $data->val($i, 28),
+                'tube_size_1' => $data->val($i, 29),
+                'end_1' => $data->val($i, 30),
+                'tube_2' => $data->val($i, 31),
+                'tube_size_2' => $data->val($i, 32),
+                'end_2' => $data->val($i, 33),
+                'note_r' => $data->val($i, 34),
+                'note_f' => $data->val($i, 35),
+                'cct_order' => $data->val($i, 36),
+                'cct_range' => $data->val($i, 37),
+                'mc' => $data->val($i, 38),
+                'order' => $data->val($i, 39),
             );
         }
         $datas['total'] = count($datas);
@@ -231,7 +237,7 @@ class Wos extends CI_Controller
         if ($this->input->post()) {
             $data = $this->input->post('data');
 
-            $item_fg = $this->crud->read('item_fg', [], ["number" => $data['item_fg_number']]);
+            $item_fg = $this->crud->read('item_fg', [], ["number_customer" => $data['item_fg_number']]);
             $wos = $this->crud->read('wos', [], ["item_fg_id" => @$item_fg->id, "circuit_no" => $data['circuit_no']]);
 
             if (empty($item_fg->id)) {
@@ -246,6 +252,124 @@ class Wos extends CI_Controller
                 $send = $this->crud->create('wos', $data);
                 echo $send;
             }
+        }
+    }
+
+    public function createSync()
+    {
+        $data = $this->input->post('data');
+        $this->dummy = $this->load->database('dummy', TRUE);
+
+        $this->dummy->select("mstwos_assyno");
+        $this->dummy->from("wip_mst_wos");
+        $this->dummy->where("mstwos_assyno", $data['number_customer']);
+        $this->dummy->where("mstwos_circuitno", $data['circuit_no']);
+        $read = $this->dummy->get()->result_array();
+
+        $whereDate = date("ym");
+        $sqlGetID	= $this->dummy->query("SELECT max(mstwos_idwos) as kode FROM wip_mst_wos");
+        $rowID = $sqlGetID->row();
+        $kode = $rowID->kode;
+        $getDate = substr($rowID->kode, 0, 4);
+        
+        if($whereDate == $getDate){
+            $urutan = (int) substr($kode, 4);
+            $urutan++;
+            $autoID	= sprintf("%05s", $urutan);
+            $autoNo = $whereDate.$autoID;
+        }else{
+            $autoID = sprintf("%05s", $kode + 1);
+            $autoNo = $whereDate.$autoID;
+        }
+
+        $dataFinal = array(
+            "mstwos_idwos" => $autoNo,
+            "mstwos_assyno" => @$data['number_customer'],
+            "mstwos_circuitno" => @$data['circuit_no'],
+            "kind" => @$data['kind'],
+            "size" => @$data['size'],
+            "color" => @$data['color'],
+            "line_colour" => @$data['line_color'],
+            "tube_size_r" => @$data['tube_size_1'],
+            "tube_size_f" => @$data['tube_size_2'],
+            "length" => @$data['cl'],
+            "joint_no" => @$data['jno'],
+            "twist" => @$data['twist'],
+            "mach1" => @$data['mno'],
+            "double_crimping_f" => @$data['dc_1'],
+            "double_crimping_r" => @$data['dc_2'],
+            "terminal_name_r" => @$data['terminal_1'],
+            "terminal_name_f" => @$data['terminal_2'],
+            "stripping_r" => @$data['strip_1'],
+            "stripping_f" => @$data['strip_2'],
+            "chc_r" => @$data['chc_1'],
+            "chc_f" => @$data['chc_2'],
+            "cwc_r" => @$data['cwc_1'],
+            "cwc_f" => @$data['cwc_2'],
+            "chi_r" => @$data['chi_1'],
+            "chi_f" => @$data['chi_2'],
+            "cwi_r" => @$data['cwi_1'],
+            "cwi_f" => @$data['cwi_2'],
+            "ass_number_r" => @$data['accessories_1'],
+            "ass_number_r2" => @$data['accessories_2'],
+            "tube_r" => @$data['tube_1'],
+            "tube_f" => @$data['tube_2'],
+            "drawing_r" => @$data['end_1'],
+            "drawing_f" => @$data['end_2'],
+            "mstwos_note1" => @$data['note_r'],
+            "mstwos_note2" => @$data['note_f'],
+            "cct_order" => @$data['cct_order'],
+            "cct_range" => @$data['cct_range'],
+            "no_mc" => @$data['mc'],
+            "no_urut_proses" => @$data['order'],
+            "ebws_partno" => @$data['number'],
+        );
+
+        if (empty($read)) {
+            $this->dummy->insert('wip_mst_wos', $dataFinal);
+            echo json_encode(array("title" => "Success", "message" => @$data['number_customer'] . " | ".@$data['circuit_no']." | Create Data Successfully", "theme" => "success"));
+        } else {
+            $this->dummy->update('wip_mst_wos', [
+                "kind" => @$data['kind'],
+                "size" => @$data['size'],
+                "color" => @$data['color'],
+                "line_colour" => @$data['line_color'],
+                "tube_size_r" => @$data['tube_size_1'],
+                "tube_size_f" => @$data['tube_size_2'],
+                "length" => @$data['cl'],
+                "joint_no" => @$data['jno'],
+                "twist" => @$data['twist'],
+                "mach1" => @$data['mno'],
+                "double_crimping_f" => @$data['dc_1'],
+                "double_crimping_r" => @$data['dc_2'],
+                "terminal_name_r" => @$data['terminal_1'],
+                "terminal_name_f" => @$data['terminal_2'],
+                "stripping_r" => @$data['strip_1'],
+                "stripping_f" => @$data['strip_2'],
+                "chc_r" => @$data['chc_1'],
+                "chc_f" => @$data['chc_2'],
+                "cwc_r" => @$data['cwc_1'],
+                "cwc_f" => @$data['cwc_2'],
+                "chi_r" => @$data['chi_1'],
+                "chi_f" => @$data['chi_2'],
+                "cwi_r" => @$data['cwi_1'],
+                "cwi_f" => @$data['cwi_2'],
+                "ass_number_r" => @$data['accessories_1'],
+                "ass_number_r2" => @$data['accessories_2'],
+                "tube_r" => @$data['tube_1'],
+                "tube_f" => @$data['tube_2'],
+                "drawing_r" => @$data['end_1'],
+                "drawing_f" => @$data['end_2'],
+                "mstwos_note1" => @$data['note_r'],
+                "mstwos_note2" => @$data['note_f'],
+                "cct_order" => @$data['cct_order'],
+                "cct_range" => @$data['cct_range'],
+                "no_mc" => @$data['mc'],
+                "no_urut_proses" => @$data['order'],
+                "ebws_partno" => @$data['number']
+            ], ["mstwos_assyno" => $data['number_customer'], "mstwos_circuitno" => $data['circuit_no']]);
+
+            echo json_encode(array("title" => "Updated", "message" => @$data['number_customer'] . " | ".@$data['circuit_no']." | Updated Data Successfully", "theme" => "success"));
         }
     }
 
@@ -307,7 +431,8 @@ class Wos extends CI_Controller
                 <th>Circuit No</th>
                 <th>Kind</th>
                 <th>Size</th>
-                <th>Color</th>
+                <th>Base Color</th>
+                <th>Line 1 Color</th>
                 <th>C/L</th>
                 <th>J. No</th>
                 <th>Twist</th>
@@ -329,13 +454,15 @@ class Wos extends CI_Controller
                 <th>Accessories 1</th>
                 <th>Accessories 2</th>
                 <th>Tube 1</th>
+                <th>Tube Size 1</th>
                 <th>Tube 2</th>
+                <th>Tube Size 2</th>
                 <th>End 1</th>
                 <th>End 2</th>
                 <th>Note R</th>
                 <th>Note F</th>
                 <th>MC No</th>
-                <th>Index</th>
+                <th>Process<br>Sequence 1</th>
             </tr>';
         $no = 1;
         foreach ($records as $data) {
@@ -348,6 +475,7 @@ class Wos extends CI_Controller
                     <td>' . $data['kind'] . '</td>
                     <td>' . $data['size'] . '</td>
                     <td>' . $data['color'] . '</td>
+                    <td>' . $data['line_color'] . '</td>
                     <td>' . $data['cl'] . '</td>
                     <td>' . $data['jno'] . '</td>
                     <td>' . $data['twist'] . '</td>
@@ -369,7 +497,9 @@ class Wos extends CI_Controller
                     <td>' . $data['accessories_1'] . '</td>
                     <td>' . $data['accessories_2'] . '</td>
                     <td>' . $data['tube_1'] . '</td>
+                    <td>' . $data['tube_size_1'] . '</td>
                     <td>' . $data['tube_2'] . '</td>
+                    <td>' . $data['tube_size_2'] . '</td>
                     <td>' . $data['end_1'] . '</td>
                     <td>' . $data['end_2'] . '</td>
                     <td>' . $data['note_r'] . '</td>

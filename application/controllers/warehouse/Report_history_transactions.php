@@ -129,7 +129,8 @@ class Report_history_transactions extends CI_Controller
         FROM item_rm a 
         JOIN item_familys b ON a.item_family_id = b.id and b.number != '006'
         LEFT JOIN purchase_order_receipts d ON a.id = d.item_rm_id and d.receipt_date between '$filter_from' and '$filter_to'
-        LEFT JOIN scan_item_receipts e ON d.receipt_id = e.receipt_id
+        LEFT JOIN os_rm h ON a.id = h.item_rm_id and h.trans_date between '$filter_from' and '$filter_to'
+        LEFT JOIN scan_item_receipts e ON d.receipt_id = e.receipt_id or h.id = e.receipt_id
         LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as qty FROM issued_material_details WHERE DATE_FORMAT(created_date, '%Y-%m-%d') between '$filter_from' and '$filter_to' GROUP BY item_rm_id) f ON a.id = f.item_rm_id
         LEFT JOIN (SELECT a.item_rm_id, SUM(c.qty) as return_qty
             FROM return_materials a 
@@ -225,10 +226,10 @@ class Report_history_transactions extends CI_Controller
                                 <th>Trans Type</th>
                                 <th>Created By</th>
                                 <th>Trans Date</th>
-                                <th>Custom. Kind</th>
-                                <th>Custom. No</th>
-                                <th>Doc. No</th>
-                                <th>Custom. Date</th>
+                                <th>Supplier ID</th>
+                                <th>Supplier Name</th>
+                                <th>Doc No</th>
+                                <th>Invoice No</th>
                                 <th>Begin</th>
                                 <th>In</th>
                                 <th>Out</th>
@@ -246,17 +247,18 @@ class Report_history_transactions extends CI_Controller
                     //RECEIPT
                     $receipts = $this->crud->query("SELECT
                         a.receipt_date, 
-                        a.bc_kind, 
-                        a.bc_aju, 
+                        a.receipt_no, 
                         a.bc_document, 
-                        a.bc_date, 
                         SUM(b.qty) as qty_receipt,
-                        c.name as username
+                        c.name as username,
+                        d.id as supplier_id,
+                        d.name as supplier_name
                     FROM purchase_order_receipts a 
                     JOIN scan_item_receipts b ON a.receipt_id = b.receipt_id
                     JOIN users c ON a.created_by = c.username
+                    JOIN suppliers d ON a.supplier_id = d.id
                     WHERE a.item_rm_id = '$item_rm_id' and a.receipt_date between '$working_date' and '$working_date'
-                    GROUP BY a.bc_kind, a.bc_aju, a.bc_document, a.bc_date");
+                    GROUP BY a.receipt_no, a.bc_document");
 
                     //ISSUED
                     $issueds = $this->crud->query("SELECT * FROM issued_material_details WHERE item_rm_id = '$item_rm_id' and DATE_FORMAT(created_date, '%Y-%m-%d') between '$working_date' and '$working_date'");
@@ -286,10 +288,10 @@ class Report_history_transactions extends CI_Controller
                                         <td>RECEIPT</td>
                                         <td>' . $receipt->username . '</td>
                                         <td>' . $receipt->receipt_date . '</td>
-                                        <td>' . $receipt->bc_kind . '</td>
-                                        <td>' . $receipt->bc_aju . '</td>
+                                        <td>' . $receipt->supplier_id . '</td>
+                                        <td>' . $receipt->supplier_name . '</td>
+                                        <td>' . $receipt->receipt_no . '</td>
                                         <td>' . $receipt->bc_document . '</td>
-                                        <td>' . $receipt->bc_date . '</td>
                                         <td style="text-align:right;">' . number_format($begin, 2) . '</td>
                                         <td style="text-align:right;">' . number_format($receipt->qty_receipt, 2) . '</td>
                                         <td style="text-align:right;">' . number_format(0)  . '</td>
@@ -310,7 +312,7 @@ class Report_history_transactions extends CI_Controller
                                         <td>' . $user->name . '</td>
                                         <td>' . date("Y-m-d", strtotime($issued->created_date)) . '</td>
                                         <td>-</td>
-                                        <td>' . $issued->label_no . '</td>
+                                        <td>-</td>
                                         <td>' . $issued->request_no . '</td>
                                         <td>-</td>
                                         <td style="text-align:right;">' . number_format($begin, 2) . '</td>
@@ -332,7 +334,7 @@ class Report_history_transactions extends CI_Controller
                                         <td>' . $return->username . '</td>
                                         <td>' . date("Y-m-d", strtotime($return->return_date)) . '</td>
                                         <td>-</td>
-                                        <td>' . $return->label_no . '</td>
+                                        <td>-</td>
                                         <td>' . $return->return_no . '</td>
                                         <td>-</td>
                                         <td style="text-align:right;">' . number_format($begin, 2) . '</td>

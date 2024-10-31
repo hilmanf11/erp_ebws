@@ -62,7 +62,7 @@
 </div>
 
 <!-- Insert & Update -->
-<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 800px; height: 600px; padding:10px; top: 20px;">
+<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 800px; height: 550px; padding:10px; top: 20px;">
     <form id="frm_insert" method="post" novalidate>
         <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
             <legend><b>Form Data</b></legend>
@@ -118,7 +118,7 @@
 
         $('#dg2').datagrid('loadData', []);
 
-        request_no();
+        request_no("<?= $id_menu ?>");
 
         $("#period").combobox({
 
@@ -156,40 +156,22 @@
 
     }
 
-
-
-    function request_no(reqDate = "") {
-
-        if (reqDate == "") {
-
-            var request_date = $("#request_date").datebox('getValue');
-
-        } else {
-
-            var request_date = reqDate;
-
-        }
-
+    function request_no(id_menu) {
         $.ajax({
-
             type: "post",
-
-            url: "<?= base_url('planning/supply_requestions/request_no') ?>/" + window.btoa(request_date),
-
+            url: "<?= base_url('planning/supply_requestions/request_no') ?>/" + id_menu,
             dataType: "html",
-
             success: function(result) {
-
-                $("#request_no").textbox('setValue', result);
-
+                if(result == ""){
+                    toastr.info("Please Check Configuration in Serial No First");
+                }else{
+                    $("#request_no").textbox('setValue', result);
+                }
             }
-
         });
-
     }
 
     //INSERT ADD ROW
-
     function addTable() {
         var lastIndex;
         var dg = $('#dg2').datagrid({

@@ -4,6 +4,8 @@ defined('BASEPATH') or exit('No direct script access allowed');
 
 class Purchase_requests extends CI_Controller
 {
+    public $menu_id;
+
     public function __construct()
     {
         parent::__construct();
@@ -23,6 +25,8 @@ class Purchase_requests extends CI_Controller
             redirect('error_session');
         } elseif ($this->checkuserAccess($this->id_menu()) > 0) {
             $data['button'] = $this->getbutton($this->id_menu());
+            $data['id_menu'] = $this->id_menu();
+            
             $this->load->view('template/header', $data);
             $this->load->view('purchase/purchase_requests');
         } else {
@@ -120,23 +124,39 @@ class Purchase_requests extends CI_Controller
         die(json_encode($monthName));
     }
 
-    public function purchaseRequestNo($add = ""){
-        $sqlGetID	= $this->db->query("SELECT max(request_no) as kode FROM purchase_requests");
-        $rowID      = $sqlGetID->row();
-        $kode 		= $rowID->kode;
-        
-        if ($kode == NULL) {
-            $autoID = sprintf("%08s", $kode + 1);
-        } else {
-            $urutan = (int) $kode;
-            $urutan++;
-            $autoID	= sprintf("%08s", $urutan);
-        }
+    public function purchaseRequestNo($id_menu, $add = ""){
+        $datenow = date("Y-m-d");
+        $sql_menu = $this->db->query("SELECT * FROM menus_no WHERE menus_id = '$id_menu' and `status` = '0' and `start_date` <= '$datenow' and end_date >= '$datenow'");
+        $row_menu = $sql_menu->row();
 
-        if($add == ""){
-            return $autoID;
+        if(@$row_menu->number == ""){
+            //
         }else{
-            echo $autoID;
+            $number = @$row_menu->number;
+            $yearnow = date("y", strtotime($row_menu->start_date));
+            $yearend = date("y", strtotime($row_menu->end_date));
+
+            $whereDate = $number.$yearnow.$yearend."1";
+
+            $sqlGetID	= $this->db->query("SELECT max(request_no) as kode FROM purchase_requests WHERE request_no like '%$whereDate%'");
+            $rowID = $sqlGetID->row();
+            $kode = $rowID->kode;
+            
+            if ($kode == NULL) {
+                $autoID = sprintf("%0".$row_menu->sequence."s", $kode + 1);
+                $autoNo = $whereDate.$autoID;
+            } else {
+                $urutan = (int) substr($kode, -6);
+                $urutan++;
+                $autoID	= sprintf("%0".$row_menu->sequence."s", $urutan);
+                $autoNo = $whereDate.$autoID;
+            }
+
+            if($add == ""){
+                return $autoNo;
+            }else{
+                echo $autoNo;
+            }
         }
     }
 
@@ -149,6 +169,7 @@ class Purchase_requests extends CI_Controller
             $filter_revision = base64_decode($this->input->get('filter_revision'));
             $filter_item_rm = trim(base64_decode($this->input->get('filter_item_rm')));
             $filter_item_family = base64_decode($this->input->get('filter_item_family'));
+            $id_menu = base64_decode($this->input->get('id_menu'));
 
             if($filter_item_family != ""){
                 if($filter_item_rm != ""){
@@ -221,7 +242,7 @@ class Purchase_requests extends CI_Controller
                     $no++;
                 }else{
                     // $request_no = $this->purchaseRequestNo("PR".@trim($supplier_no.date("Ym")). "-" .trim($generate['item_family_number']));
-                    $request_no = $this->purchaseRequestNo();
+                    $request_no = $this->purchaseRequestNo($id_menu);
                     $no = 1;
                 }
 
@@ -306,8 +327,12 @@ class Purchase_requests extends CI_Controller
             $this->db->where('a.p_month', $filter_month);
             $this->db->where('a.p_year', $filter_year);
             $this->db->where('a.revision', $filter_revision);
-            $this->db->like('a.item_family_id', $filter_item_family);
-            $this->db->like('a.item_rm_id', $filter_item_rm);
+            if($filter_item_family != ""){
+                $this->db->like('a.item_family_id', $filter_item_family);
+            }
+            if($filter_item_rm != ""){
+                $this->db->like('a.item_rm_id', $filter_item_rm);
+            }
             $this->db->group_by('a.request_no');
             $this->db->order_by('a.request_no', 'ASC');
             //Total Data

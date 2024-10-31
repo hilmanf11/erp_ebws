@@ -118,7 +118,7 @@
     function add() {
         $('#dlg_insert').dialog('open');
         $('#dg2').datagrid('loadData', []);
-        request_no();
+        request_no("<?= $id_menu ?>");
 
         $("#request_date").datebox('enable');
         $("#period").combobox({
@@ -155,21 +155,21 @@
         });
     }
 
-    function request_no(reqDate = "") {
-        if (reqDate == "") {
-            var request_date = $("#request_date").datebox('getValue');
-        } else {
-            var request_date = reqDate;
-        }
+    function request_no(id_menu = "") {
         $.ajax({
             type: "post",
-            url: "<?= base_url('planning/supply_materials/request_no') ?>/" + window.btoa(request_date),
+            url: "<?= base_url('planning/supply_materials/request_no') ?>/" + id_menu,
             dataType: "html",
             success: function(result) {
-                $("#request_no").textbox('setValue', result);
+                if(result == ""){
+                    toastr.info("Please Check Configuration in Serial No First");
+                }else{
+                    $("#request_no").textbox('setValue', result);
+                }
             }
         });
     }
+    
     //INSERT ADD ROW
     function addTable(url = "") {
         var lastIndex;
@@ -219,10 +219,10 @@
                                     index: rowIndex,
                                     field: 'uom'
                                 });
-                                var ed4 = dg.datagrid('getEditor', {
-                                    index: rowIndex,
-                                    field: 'stock'
-                                });
+                                // var ed4 = dg.datagrid('getEditor', {
+                                //     index: rowIndex,
+                                //     field: 'stock'
+                                // });
 
                                 var item_rm_id = $(ed.target).textbox('setValue', rows.id);
                                 var item_name = $(ed2.target).textbox('setValue', rows.name);
@@ -272,18 +272,6 @@
                         type: 'numberbox',
                         options: {
                             required: true,
-                            precision: 2
-                        }
-                    }
-                }, {
-                    field: 'stock',
-                    width: 100,
-                    halign: 'center',
-                    title: "Warehouse",
-                    editor: {
-                        type: 'numberbox',
-                        options: {
-                            readonly: true,
                             precision: 2
                         }
                     }
@@ -694,12 +682,6 @@
                         }, ]
                     ]
                 });
-            }
-        });
-
-        $("#request_date").datebox({
-            onChange: function(val) {
-                request_no(val);
             }
         });
     });

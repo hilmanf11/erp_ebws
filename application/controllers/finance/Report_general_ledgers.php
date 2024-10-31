@@ -193,6 +193,7 @@ class Report_general_ledgers extends CI_Controller
                     $journal_end_ori_debit = abs(($begin_balance_ori + @$journal_ori_credit) - @$journal_ori_debit);
                     $journal_end_ori_credit = 0;
                     $journal_end_local_debit = abs(($begin_balance_local + @$journal_local_credit) - @$journal_local_debit);
+                    $journal_end_local_credit = 0;
                 }
             }
         }

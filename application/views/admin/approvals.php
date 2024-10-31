@@ -47,6 +47,7 @@
                     <option value="forecasts">Forecasts</option>
                     <option value="supplier_items">Supplier Contract</option>
                     <option value="supplier_item_prices">Supplier Contract Prices</option>
+                    <option value="purchase_requests">Purchase Requests</option>
                 </select>
             </div>
             <div class="fitem">

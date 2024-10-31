@@ -49,10 +49,11 @@ class Delivery_confirm extends CI_Controller
         $post = isset($_POST['q']) ? $_POST['q'] : "";
         $po_no = base64_decode($po_no);
 
-        $data = $this->crud->query("SELECT b.id, b.number, b.name, a.qty, b.uom, a.delivery_date, DATE_FORMAT(now(), '%Y-%m-%d') as today, COALESCE(c.delivery, 0) as delivery FROM purchase_orders a 
+        $data = $this->crud->query("SELECT b.id, b.number, b.name, a.qty, b.uom, a.delivery_date, DATE_FORMAT(now(), '%Y-%m-%d') as today, COALESCE(c.delivery, 0) as delivery 
+            FROM purchase_orders a 
             JOIN item_rm b ON a.item_rm_id = b.id
             LEFT JOIN purchase_confirm c ON a.po_no = c.po_no and a.item_rm_id = c.item_rm_id and a.supplier_id = c.supplier_id
-            WHERE a.po_no = '$po_no' and a.status = 0 and b.number LIKE '%$post%'
+            WHERE a.po_no = '$po_no' and a.status = 0 and (b.number LIKE '%$post%' and b.id like '%$post%')
             GROUP BY a.item_rm_id ORDER BY b.number asc");
         echo json_encode($data);
     }

@@ -4,6 +4,7 @@
         <tr>
             <th rowspan="2" field="ck" checkbox="true"></th>
             <th rowspan="2" data-options="field:'type',width:60,align:'center'">Type</th>
+            <th rowspan="2" data-options="field:'item_family_name',width:150,halign:'center'">Product Family</th>
             <th rowspan="2" data-options="field:'number',width:60,align:'center'">Code</th>
             <th rowspan="2" data-options="field:'location',width:150,halign:'center'">Location</th>
             <th rowspan="2" data-options="field:'area',width:150,halign:'center'">Area</th>
@@ -33,14 +34,17 @@
     <form id="frm_insert" method="post" novalidate>
         <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
             <legend><b>Form Data</b></legend>
-            <div class="fitem" style="margin-bottom: 5px;">
+            <div class="fitem" hidden>
                 <span style="width:35%; display:inline-block;">Type</span>
-                <input value="RM" name="type" id="type" class="easyui-radiobutton"> &nbsp; RM &nbsp; &nbsp;
-                <input value="FG" name="type" class="easyui-radiobutton"> &nbsp; FG
+                <input style="width:30%;" name="type" id="type" required="" readonly class="easyui-textbox">
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Code</span>
                 <input style="width:30%;" name="number" required="" class="easyui-textbox">
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Product Family</span>
+                <input style="width:60%;" name="item_family_id" id="item_family_id" required="" class="easyui-combobox">
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Location</span>
@@ -96,9 +100,6 @@
         $('#dlg_insert').dialog('open');
         url_save = '<?= base_url('master/locations/create') ?>';
         $('#frm_insert').form('clear');
-        $("#type").radiobutton({
-            checked: true,
-        });
 
     }
     //EDIT DATA
@@ -222,6 +223,21 @@
             pageList: [20, 50, 100, 500, 1000],
             pageSize: 20,
         }).datagrid('enableFilter');
+
+        $('#item_family_id').combobox({
+            url: '<?php echo base_url('master/item_familys/readAll'); ?>',
+            valueField: 'id',
+            textField: 'name',
+            prompt: 'Choose Product Family',
+            onSelect: function(row){
+                if(row.number != "FG"){
+                    $("#type").textbox("setValue", "RM");
+                }else{
+                    $("#type").textbox("setValue", "FG");
+                }
+            }
+        });
+
         //SAVE DATA
         $('#dlg_insert').dialog({
             buttons: [{

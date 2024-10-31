@@ -59,11 +59,13 @@ class Report_history_transactions_fg extends CI_Controller
             (COALESCE(SUM(f.qty),0) - COALESCE(g.qty, 0)) as end_stock
         FROM item_fg a 
         LEFT JOIN production_schedules d ON a.id = d.item_fg_id
-        LEFT JOIN scan_item_receipts_fg f ON d.workorder = f.workorder and DATE_FORMAT(f.created_date, '%Y-%m-%d') between '$filter_from' and '$filter_to'
+        LEFT JOIN os_fg c ON a.id = c.item_fg_id
+        LEFT JOIN scan_item_receipts_fg f ON (d.workorder = f.workorder or c.id = f.workorder) and DATE_FORMAT(f.created_date, '%Y-%m-%d') between '$filter_from' and '$filter_to'
         LEFT JOIN (SELECT item_fg_id, delivery_note_date, COALESCE(SUM(qty), 0) as qty FROM delivery_notes WHERE delivery_note_date between '$filter_from' and '$filter_to' GROUP BY item_fg_id) g ON a.id = g.item_fg_id
         WHERE a.id like '%$filter_items%'
         GROUP BY a.id
         ORDER BY a.number");
+
         $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#customers {border-collapse: collapse;width: 100%;font-size: 12px;}#customers td, #customers th {border: 1px solid #ddd;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: #ddd;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: center;color: black;}</style><body>
             <center>
             <div style="float: left; font-size: 12px; text-align: left;">
@@ -110,8 +112,9 @@ class Report_history_transactions_fg extends CI_Controller
                 a.id,
                 (COALESCE(SUM(f.qty),0) - COALESCE(g.qty, 0)) as begin_stock
             FROM item_fg a 
+            LEFT JOIN os_fg c ON a.id = c.item_fg_id
             LEFT JOIN production_schedules d ON a.id = d.item_fg_id
-            LEFT JOIN scan_item_receipts_fg f ON d.workorder = f.workorder and DATE_FORMAT(f.created_date, '%Y-%m-%d') < '$filter_from'
+            LEFT JOIN scan_item_receipts_fg f ON (d.workorder = f.workorder or c.id = f.workorder)  and DATE_FORMAT(f.created_date, '%Y-%m-%d') < '$filter_from'
             LEFT JOIN (SELECT item_fg_id, delivery_note_date, COALESCE(SUM(qty), 0) as qty FROM delivery_notes WHERE delivery_note_date < '$filter_from' GROUP BY item_fg_id) g ON a.id = g.item_fg_id
             WHERE a.id = '$item_fg_id'
             GROUP BY a.id

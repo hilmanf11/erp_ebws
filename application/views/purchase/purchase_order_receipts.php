@@ -76,12 +76,14 @@
         <fieldset style="width: 30%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
             <legend><b>Form Print Data</b></legend>
             <div class="fitem">
-                <span style="width:35%; display:inline-block;">Receipt No</span>
-                <input style="width:60%;" id="filter_receipt_no" class="easyui-combobox">
+                <span style="width:35%; display:inline-block;">Material Receipt No</span>
+                <input style="width:55%;" id="filter_receipt_no" class="easyui-combobox">
+                <a href="javascript:;" class="easyui-linkbutton" onclick="print_receiving_note()"><i class="fa fa-print"></i></a>
             </div>
             <div class="fitem">
-                <span style="width:35%; display:inline-block;"></span>
-                <a href="javascript:;" class="easyui-linkbutton" onclick="print_receiving_note()"><i class="fa fa-print"></i> Receiving Note</a>
+                <span style="width:35%; display:inline-block;">Good Receipt No</span>
+                <input style="width:55%;" id="filter_good_receipt_no" class="easyui-combobox">
+                <a href="javascript:;" class="easyui-linkbutton" onclick="print_good_receiving_note()"><i class="fa fa-print"></i></a>
             </div>
         </fieldset>
     </div>
@@ -99,7 +101,7 @@
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Receipt No</span>
-                    <input style="width:60%;" name="receipt_no" id="receipt_no" readonly class="easyui-textbox">
+                    <input style="width:60%;" name="receipt_no" id="receipt_no" required readonly class="easyui-textbox">
                 </div>
                 <div class="fitem" hidden>
                     <span style="width:35%; display:inline-block;">Attachment</span>
@@ -186,7 +188,7 @@
         $('#dg_request').datagrid('loadData', []);
         $('#frm_insert').form('clear');
         $('#receipt_date').datebox('setValue', '<?= date("Y-m-d") ?>');
-        receipt_no();
+        receipt_no("<?= $id_menu ?>");
         // $("#bc_kind").combobox({
         //     url: '<?= base_url('master/bc_kind/reads') ?>',
         //     valueField: 'name',
@@ -252,13 +254,17 @@
         });
     }
 
-    function receipt_no(date = "") {
+    function receipt_no(id_menu) {
         $.ajax({
             type: "post",
-            url: "<?= base_url('purchase/purchase_order_receipts/receipt_no/') ?>" + window.btoa(date),
+            url: "<?= base_url('purchase/purchase_order_receipts/receipt_no/') ?>" + id_menu,
             dataType: "html",
             success: function(result) {
-                $("#receipt_no").textbox('setValue', result);
+                if(result == ""){
+                    toastr.info("Please Check Configuration in Serial No First");
+                }else{
+                    $("#receipt_no").textbox('setValue', result);
+                }
             }
         });
     }
@@ -475,18 +481,16 @@
         if (receipt_no == "") {
             toastr.warning("Please select Receipt No!", "Information");
         } else {
-        //     $.ajax({
-        //         type: "post",
-        //         url: "<?= base_url('purchase/purchase_order_receipts/checkLabel/') ?>" + window.btoa(receipt_no),
-        //         dataType: "json",
-        //         success: function (response) {
-                    // if(response.qty_label == response.label_no){
-                        window.open("<?= base_url('purchase/purchase_order_receipts/print_receiving/') ?>" + window.btoa(receipt_no), "_blank");
-                    // }else{
-                        // toastr.error("The labels haven't been scanned yet");
-                    // }
-        //         }
-        //     });            
+            window.open("<?= base_url('purchase/purchase_order_receipts/print_receiving/') ?>" + window.btoa(receipt_no) + "/QAS", "_blank");    
+        }
+    }
+
+    function print_good_receiving_note() {
+        var receipt_no = $("#filter_good_receipt_no").combobox('getValue');
+        if (receipt_no == "") {
+            toastr.warning("Please select Receipt No!", "Information");
+        } else {
+            checkQasReceiving(receipt_no);
         }
     }
 
@@ -496,6 +500,19 @@
 
     function readReceiptNo() {
         $("#filter_receipt_no").combobox({
+            url: '<?= base_url('purchase/purchase_order_receipts/readReceiptNo') ?>',
+            valueField: 'receipt_no',
+            textField: 'receipt_no',
+            prompt: "Select Receipt No",
+            icons: [{
+                iconCls: 'icon-clear',
+                handler: function(e) {
+                    $(e.data.target).combobox('clear').combobox('textbox').focus();
+                }
+            }],
+        });
+
+        $("#filter_good_receipt_no").combobox({
             url: '<?= base_url('purchase/purchase_order_receipts/readReceiptNo') ?>',
             valueField: 'receipt_no',
             textField: 'receipt_no',
@@ -662,12 +679,6 @@
                 }
             }]
         });
-        
-        $("#receipt_date").datebox({
-            onSelect: function(date) {
-                receipt_no(date.getFullYear() + "-" + (date.getMonth() + 1) + "-" + date.getDate());
-            }
-        });
 
         readReceiptNo();
         $("#filter_supplier").combobox({
@@ -823,13 +834,41 @@
                 swal.close();
 
                 if(qas == null){
-                    toastr.error("Invoice No and Part No in QAS not Found");
+                    toastr.error("Receipt No and Part No in QAS not Found");
                 }else{
                     if(qas.label == "OK"){
                         window.open("<?= base_url('purchase/purchase_order_receipts/print_label/') ?>" + window.btoa(id), '_blank');
                     }else{
-                        toastr.error("Invoice No and Part No is NG");
+                        toastr.error("Receipt No and Part No is NG");
                     }
+                }
+            }
+        });
+    }
+
+    function checkQasReceiving(receipt_no){
+        Swal.fire({
+            title: 'Please Wait...',
+            showConfirmButton: false,
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            didOpen: () => {
+                Swal.showLoading();
+            },
+        });
+
+        $.ajax({
+            type: "post",
+            url: "<?= base_url("purchase/purchase_order_receipts/checkQasReceiving") ?>",
+            data: "bc_document=" + receipt_no,
+            dataType: "json",
+            success: function (qas) {
+                swal.close();
+
+                if(qas == null){
+                    toastr.error("This Receipt No is Not Found, Please Scan First");
+                }else{
+                    window.open("<?= base_url('purchase/purchase_order_receipts/print_receiving/') ?>" + window.btoa(receipt_no), "_blank");
                 }
             }
         });
