@@ -35,6 +35,18 @@ class Locations extends CI_Controller
         echo json_encode($send);
     }
 
+    public function readNotRm($type)
+    {
+        $post = isset($_POST['q']) ? $_POST['q'] : "";
+        $send = $this->crud->query("SELECT a.*, b.name as product_family_name
+            FROM warehouse_locations a 
+            LEFT JOIN item_familys b ON a.item_family_id = b.id
+            WHERE a.type = '$type' and b.item_category_id != 'C01' and (a.number like '%$post%' or a.location like '%$post%' or a.area like '%$post%' or a.rack like '%$post%') 
+            GROUP BY a.number
+            ORDER BY a.number ASC");
+        echo json_encode($send);
+    }
+
     public function readLocations()
     {
         $post = isset($_POST['q']) ? $_POST['q'] : "";
@@ -73,7 +85,11 @@ class Locations extends CI_Controller
             $this->db->where('a.deleted', 0);
             if (@count($filters) > 0) {
                 foreach ($filters as $filter) {
-                    $this->db->like("a.".$filter->field, $filter->value);
+                    if($filter->field == "item_family_name"){
+                        $this->db->like("e.name", $filter->value);
+                    }else{
+                        $this->db->like("a.".$filter->field, $filter->value);
+                    }
                 }
             }
             $this->db->group_by('a.id');

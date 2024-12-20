@@ -11,8 +11,8 @@ class Exchange_rates extends CI_Controller
         $this->load->library('session');
         $this->load->model('crud');
         //VALIDASI FORM
-        $this->form_validation->set_rules('start_date', 'Start Date', 'required|min_length[1]|max_length[30]|is_unique[exchange_rates.start_date]');
-        $this->form_validation->set_rules('end_date', 'End DAte', 'required|min_length[1]|max_length[30]|is_unique[exchange_rates.end_date]');
+        $this->form_validation->set_rules('start_date', 'Start Date', 'required|min_length[1]|max_length[30]');
+        $this->form_validation->set_rules('end_date', 'End Date', 'required|min_length[1]|max_length[30]');
     }
     //HALAMAN UTAMA
     public function index()

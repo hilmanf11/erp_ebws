@@ -15,7 +15,7 @@ class Material_calculation extends CI_Controller
         //$this->pg = $this->load->database('pg', TRUE);
 
         //Validasi Form
-        $this->form_validation->set_rules('item_fg_id', 'Product No', 'required|min_length[2]|max_length[50]|is_unique[mpp_realization.item_fg_id]');
+        $this->form_validation->set_rules('item_rm_id', 'Product No', 'required|min_length[2]|max_length[50]|is_unique[mpp_realization.item_rm_id]');
     }
 
     public function index()
@@ -39,15 +39,15 @@ class Material_calculation extends CI_Controller
     }
 
     public function readItemFamily(){
-        $prodfam = $this->crud->query("SELECT * FROM item_familys");
+        $prodfam = $this->crud->query("SELECT * FROM item_familys WHERE `number` != '06'");
         echo json_encode($prodfam);
     }
 
-    // public function readProducts($pfm_id){
-    //     $post = isset($_POST['q']) ? $_POST['q'] : "";
-    //     $items = $this->crud->query("SELECT * FROM mst_item_raw WHERE pfm_id = '$pfm_id' and item_id like '%$post%'");
-    //     echo json_encode($items);
-    // }
+    public function readProducts($pfm_id){
+        $post = isset($_POST['q']) ? $_POST['q'] : "";
+        $items = $this->crud->query("SELECT * FROM item_rm WHERE pfm_id = '$pfm_id' and item_id like '%$post%'");
+        echo json_encode($items);
+    }
 
     public function getDataMpp(){
         //Filter Data
@@ -60,10 +60,182 @@ class Material_calculation extends CI_Controller
         $this->db->where('p_month', $filter_month);
         $this->db->where('p_year', $filter_year);
         $this->db->where('revision', $filter_revision);
-        $this->db->group_by('item_fg_id');
+        $this->db->group_by('item_rm_id');
         $records = $this->db->get()->result_array();
 
         echo json_decode($records);
+    }
+
+    public function datatables()
+    {
+        //Database Server MRP
+        // $this->db = $this->load->database('db', TRUE);
+        
+        if ($this->input->get()) {
+            $page = $this->input->post('page');
+            $rows = $this->input->post('rows');
+            //Pagination 1-10
+            $page   = isset($page) ? intval($page) : 1;
+            $rows   = isset($rows) ? intval($rows) : 10;
+            $offset = ($page - 1) * $rows;
+            $result = array();
+
+            $filter_month = base64_decode($this->input->get('filter_month'));
+            $filter_year = base64_decode($this->input->get('filter_year'));
+            $filter_revision = base64_decode($this->input->get('filter_revision'));
+            $filter_item_family = base64_decode($this->input->get('filter_item_family'));
+            $filter_item_id = base64_decode($this->input->get('filter_item_id'));
+            $filter_status = $this->input->get('filter_status');
+            $filter_date = base64_decode($this->input->get('filter_date'));
+
+            $this->db->select("a.*, c.number as item_rm_number, b.name as item_rm_name, b.name as item_family_name");
+            $this->db->from('generate_item_calculation a');
+            $this->db->join('item_rm c', 'a.item_rm_id = c.id');
+            $this->db->join('item_familys b', 'c.item_family_id = b.id');
+            $this->db->where('a.p_month', $filter_month);
+            $this->db->where('a.p_year', $filter_year);
+            $this->db->where('a.revision', $filter_revision);
+            $this->db->like('c.item_family_id', $filter_item_family);
+            $this->db->like('a.item_rm_id', $filter_item_id);
+            $this->db->order_by('b.number');
+            $this->db->group_by('a.item_rm_id');
+            //Total Data
+            $totalRows = $this->db->count_all_results('', false);
+            //Limit 1 - 10
+            $this->db->limit($rows, $offset);
+            //Get Data Array
+            $records = $this->db->get()->result_array();
+
+            $dataFinal = array();
+            foreach ($records as $record) {
+                $item_id = $record['item_rm_id'];
+                $firstDate = date('01 M Y', strtotime($filter_year . "-" . $filter_month . "-01"));
+                $endDate = date('t M Y', strtotime($filter_year . "-" . $filter_month . "-01"));
+                
+                $balances = ($record['stock_hand'] + $record['eta'] - $record['total']);
+
+                $day = 1;
+                $balance = $record['stock_hand'];
+                while (strtotime($firstDate) <= strtotime($endDate)) {
+                    $working_date = date("Y-m-d", strtotime($firstDate));
+                    
+                    //ETA
+                    $delivery_schedule = $this->db->query("SELECT item_rm_id, SUM(qty_receipt) as total FROM purchase_order_receipts WHERE item_rm_id = '$item_id' and receipt_date = '$working_date' GROUP BY item_rm_id");
+                    $totalRow = $delivery_schedule->row();
+                    $etaqty = empty(@$totalRow->total) ? 0 : @$totalRow->total;
+                    
+                    //Supply
+                    $ithSupply = $this->db->query("SELECT b.item_rm_id, COALESCE(SUM(a.qty), 0) as supply FROM issued_material_details a JOIN issued_materials b ON a.request_no = b.request_no WHERE b.item_rm_id = '$item_id' and a.created_date between '$working_date' and '$working_date' GROUP BY a.item_rm_id");
+                    $ithSupplyRow = $ithSupply->row();
+    
+                    $date_qty = $record["date_".$day];
+                    $balance += round($etaqty - $date_qty);
+                    
+                    $arr["eta_".$day] = (int) $etaqty;
+                    $arr["date_".$day] = round($date_qty);
+                    $arr["supply_".$day] = abs(round(@$ithSupplyRow->supply));
+                    $arr["bal_".$day] = round($balance);
+    
+                    $firstDate = date("d M Y", strtotime("+1 day", strtotime($firstDate)));
+                    $day++;
+                }
+
+                if($balances > 0){
+                    $free_stock = $balances;
+                }else{
+                    $free_stock = 0;
+                }
+
+                if($filter_status == "OK"){
+                    if($free_stock > 0){
+                        $dataFinal[] = array_merge($arr, [
+                            "id" => $record['id'],
+                            "item_rm_id" => $item_id,
+                            "item_rm_number" => $record['item_rm_number'],
+                            "item_rm_name" => $record['item_rm_name'],
+                            "product_family_name" => $record['item_family_name'],
+                            "stock_whs" => $record['stock_whs'],
+                            "os_supply" => $record['os_supply'],
+                            "os_wo" => $record['os_wo'],
+                            "stock_hand" => $record['stock_hand'],
+                            "eta" => $record['eta'],
+                            "total" => round($record['total']),
+                            "total_bal" => round($balances),
+                            "free_stock" => round($free_stock),
+                            "next_month_need1" => round($record['need_2'] / 4),
+                            "next_month_need2" => round($record['need_2'] / 4),
+                            "next_month_need3" => round($record['need_2'] / 4),
+                            "next_month_need4" => round($record['need_2'] / 4),
+                            "next_month_bal1" => ($balance - round($record['need_2'] / 4)),
+                            "next_month_bal2" => ($balance - round($record['need_2'] / 4) - round($record['need_2'] / 4)),
+                            "next_month_bal3" => ($balance - round($record['need_2'] / 4) - round($record['need_2'] / 4) - round($record['need_2'] / 4)),
+                            "next_month_bal4" => ($balance - round($record['need_2'] / 4) - round($record['need_2'] / 4) - round($record['need_2'] / 4) - round($record['need_2'] / 4)),
+                            "balance_wip" => $record['balance_wip'],
+                            "os_po" => @$record['os_po'],
+                        ]);
+                    }
+                }elseif($filter_status == "SHORTAGE"){
+                    if($free_stock == 0){
+                        $dataFinal[] = array_merge($arr, [
+                            "id" => $record['id'],
+                            "item_rm_id" => $item_id,
+                            "item_rm_number" => $record['item_rm_number'],
+                            "item_rm_name" => $record['item_rm_name'],
+                            "product_family_name" => $record['item_family_name'],
+                            "stock_whs" => $record['stock_whs'],
+                            "os_supply" => $record['os_supply'],
+                            "os_wo" => $record['os_wo'],
+                            "stock_hand" => $record['stock_hand'],
+                            "eta" => $record['eta'],
+                            "total" => round($record['total']),
+                            "total_bal" => round($balances),
+                            "free_stock" => round($free_stock),
+                            "next_month_need1" => round($record['need_2'] / 4),
+                            "next_month_need2" => round($record['need_2'] / 4),
+                            "next_month_need3" => round($record['need_2'] / 4),
+                            "next_month_need4" => round($record['need_2'] / 4),
+                            "next_month_bal1" => ($balance - round($record['need_2'] / 4)),
+                            "next_month_bal2" => ($balance - round($record['need_2'] / 4) - round($record['need_2'] / 4)),
+                            "next_month_bal3" => ($balance - round($record['need_2'] / 4) - round($record['need_2'] / 4) - round($record['need_2'] / 4)),
+                            "next_month_bal4" => ($balance - round($record['need_2'] / 4) - round($record['need_2'] / 4) - round($record['need_2'] / 4) - round($record['need_2'] / 4)),
+                            "balance_wip" => $record['balance_wip'],
+                            "os_po" => @$record['os_po'],
+                        ]);
+                    }
+                }else{
+                    $dataFinal[] = array_merge($arr, [
+                        "id" => $record['id'],
+                        "item_rm_id" => $item_id,
+                        "item_rm_number" => $record['item_rm_number'],
+                        "item_rm_name" => $record['item_rm_name'],
+                        "product_family_name" => $record['item_family_name'],
+                        "stock_whs" => $record['stock_whs'],
+                        "os_supply" => $record['os_supply'],
+                        "os_wo" => $record['os_wo'],
+                        "stock_hand" => $record['stock_hand'],
+                        "eta" => $record['eta'],
+                        "total" => round($record['total']),
+                        "total_bal" => round($balances),
+                        "free_stock" => round($free_stock),
+                        "next_month_need1" => round($record['need_2'] / 4),
+                        "next_month_need2" => round($record['need_2'] / 4),
+                        "next_month_need3" => round($record['need_2'] / 4),
+                        "next_month_need4" => round($record['need_2'] / 4),
+                        "next_month_bal1" => ($balance - round($record['need_2'] / 4)),
+                        "next_month_bal2" => ($balance - round($record['need_2'] / 4) - round($record['need_2'] / 4)),
+                        "next_month_bal3" => ($balance - round($record['need_2'] / 4) - round($record['need_2'] / 4) - round($record['need_2'] / 4)),
+                        "next_month_bal4" => ($balance - round($record['need_2'] / 4) - round($record['need_2'] / 4) - round($record['need_2'] / 4) - round($record['need_2'] / 4)),
+                        "balance_wip" => $record['balance_wip'],
+                        "os_po" => @$record['os_po'],
+                    ]);
+                }
+            }
+
+            //Mapping Data
+            $result['total'] = $totalRows;
+            $result = array_merge($result, ['rows' => $dataFinal]);
+            echo json_encode($result);
+        }
     }
 
     public function getData(){
@@ -152,11 +324,59 @@ class Material_calculation extends CI_Controller
     public function create(){
         if ($this->input->post()) {
             $post = $this->input->post('data');
+            
+            $cutoff = $this->input->post('cutoff');
+            $end = date("Y-m-t", strtotime($post['p_year'] . "-" . $post['p_month'] . "-01"));
+            $start = date("Y-m-01", strtotime($post['p_year'] . "-" . $post['p_month'] . "-01"));
+            $item_rm_id = $post['item_rm_id'];
 
-            // $supply = $this->db->query("SELECT item_fg_id, actual from os_supply where item_fg_id = '$item_id' and p_month = ''");
-            // $supplyRow = $supply->row();
+            $generate_mrp = $this->crud->read("generate_mrp_finals", [], ["item_rm_id" => $item_rm_id, "p_month" => $post['p_month'], "p_year" => $post['p_year'], "revision" => $post['revision']]);
+
+            $ospo = $this->db->query("SELECT a.id, (COALESCE(SUM(b.qty), 0) - COALESCE(c.qty_receipt, 0)) AS balance
+                FROM item_rm a
+                JOIN purchase_orders b ON a.id = b.item_rm_id
+                LEFT JOIN (SELECT item_rm_id, SUM(qty_receipt) AS qty_receipt FROM purchase_order_receipts WHERE receipt_date <= '$cutoff' GROUP BY item_rm_id) c ON a.id = c.item_rm_id
+                WHERE b.po_date <= '$cutoff' and a.id = '$item_rm_id' and b.status = 0
+                GROUP BY a.id");
+            $ospoRow = $ospo->row();
+
+            $os_supply = empty(@$generate_mrp->qty_supply) ? 0 : @$generate_mrp->qty_supply;
+            $os_wo = empty(@$generate_mrp->qty_wo) ? 0 : @$generate_mrp->qty_wo;
+
+            $eta = $this->db->query("SELECT item_rm_id, SUM(qty_receipt) as total FROM purchase_order_receipts WHERE item_rm_id = '$item_rm_id' and receipt_date between '$start' and '$end' GROUP BY item_rm_id");
+            $etaRow = $eta->row();
+
+            $ith = $this->db->query("SELECT
+                    a.id,
+                    ((COALESCE(SUM(c.qty_sto),0) + COALESCE(e.qty_receipt, 0)  + COALESCE(d.sto_qty_in, 0) + COALESCE(g.return_qty, 0)) - COALESCE(f.qty, 0) - COALESCE(d.sto_qty_out, 0)) as qty
+                FROM item_rm a 
+                JOIN item_familys b ON a.item_family_id = b.id and b.number != '006'
+                LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) as qty_sto FROM os_rm a JOIN scan_item_receipts b ON a.id  = b.receipt_id WHERE a.trans_date <= '$cutoff' GROUP BY item_rm_id) c ON a.id = c.item_rm_id
+                LEFT JOIN (SELECT a.item_rm_id, (CASE WHEN a.type = 'IN' THEN COALESCE(SUM(a.qty), 0) ELSE 0 END) as sto_qty_in, (CASE WHEN a.type = 'OUT' THEN COALESCE(SUM(a.qty), 0) ELSE 0 END) as sto_qty_out FROM sto_rm a WHERE a.trans_date <= '$cutoff' and a.approved_to = '' GROUP BY item_rm_id) d ON a.id = d.item_rm_id
+                LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) as qty_receipt FROM purchase_order_receipts a JOIN scan_item_receipts b ON a.receipt_id  = b.receipt_id WHERE a.receipt_date <= '$cutoff' GROUP BY item_rm_id) e ON a.id = e.item_rm_id
+                LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as qty FROM issued_material_details WHERE DATE_FORMAT(created_date, '%Y-%m-%d') <= '$cutoff' GROUP BY item_rm_id) f ON a.id = f.item_rm_id
+                LEFT JOIN (SELECT a.item_rm_id, SUM(c.qty) as return_qty
+                    FROM return_materials a 
+                    JOIN return_material_labels b ON a.return_id = b.return_id
+                    JOIN scan_item_receipts c ON a.return_id = c.receipt_id and b.label_no = c.label_no
+                    WHERE a.return_date <= '$cutoff'
+                    GROUP BY a.item_rm_id) g ON a.id = g.item_rm_id
+                WHERE a.id = '$item_rm_id'
+                GROUP BY a.id
+                ORDER BY a.number");
+            $ithRow = $ith->row();
+
+            $stock_hand = (@$ithRow->qty - $os_supply - $os_wo);
 
             $postFinal = array_merge($post, array(
+                "os_supply" => $os_supply,
+                "os_wo" => $os_wo,
+                "balance_wip" => empty(@$generate_mrp->qty_wip) ? 0 : @$generate_mrp->qty_wip,
+                "eta" => empty(@$etaRow->total) ? 0 : @$etaRow->total,
+                "stock_whs" => empty(@$ithRow->qty) ? 0 : @$ithRow->qty,
+                "stock_hand" => $stock_hand,
+                "os_po" => empty(@$ospoRow->balance) ? 0 : @$ospoRow->balance,
+                "need_2" => empty(@$generate_mrp->need_2) ? 0 : @$generate_mrp->need_2,
                 "total" => ($post['date_1'] + $post['date_2'] + $post['date_3'] + $post['date_4'] + $post['date_5'] + $post['date_6'] + 
                     $post['date_7'] + $post['date_8'] + $post['date_9'] + $post['date_10'] + $post['date_11'] + $post['date_12'] + 
                     $post['date_13'] + $post['date_14'] + $post['date_15'] + $post['date_16'] + $post['date_17'] + $post['date_18'] + 
@@ -171,15 +391,16 @@ class Material_calculation extends CI_Controller
                     $post['date_31']))
             ));
 
-            $send = $this->crud->create('generate_item_calculation', $postFinal);
-            echo $send;
+            if ($this->crud->create('generate_item_calculation', $postFinal)) {
+                echo json_encode(array("title" => "Good Job", "message" => $post['item_rm_id'] . " | Data Saved Successfully", "theme" => "success"));
+            } else {
+                echo json_encode(array("title" => "Error", "message" => $post['item_rm_id'] . " | Data Unsaved", "theme" => "error"));
+            }
         }
     }
 
     public function print($option = "")
     {
-        $this->dummy = $this->load->database('dummy', TRUE);
-
         if ($option == "excel") {
             $format  = date("Ymd");
             header("Content-type: application/vnd-ms-excel");
@@ -197,23 +418,26 @@ class Material_calculation extends CI_Controller
         $filter_revision = base64_decode($this->input->get('filter_revision'));
         $filter_item_family = base64_decode($this->input->get('filter_item_family'));
         $filter_item_id = base64_decode($this->input->get('filter_item_id'));
-        $filter_status = base64_decode($this->input->get('filter_status'));
+        $filter_status = $this->input->get('filter_status');
         $filter_date = base64_decode($this->input->get('filter_date'));
 
         $firstDate = date('01 M', strtotime($filter_year . "-" . $filter_month . "-01"));
         $endDate = date('t M', strtotime($filter_year . "-" . $filter_month . "-01"));
 
-        // $this->db->select("a.*, c.name as item_rm_name, b.name as item_family, d.actual as qty_supply, e.qty as balance_wip");
-        $this->db->select("a.*, c.number as item_rm_number, c.name as item_rm_name, b.name as item_family");
+        $period_start = $filter_year."-".$filter_month."-01";
+        $period_end = date("Y-m-t", strtotime($filter_year."-".$filter_month."-01"));
+        
+        $next_month = date("F", strtotime("+1 month", strtotime($filter_year."-".$filter_month."-01")));
+
+        $this->db->select("a.*, c.item_name as product_name, b.name as item_family, d.need_2");
         $this->db->from('generate_item_calculation a');
-        $this->db->join('item_rm c', 'a.item_rm_id = c.id');
-        $this->db->join('item_familys b', 'c.item_family_id = b.id');
-        // $this->db->join('os_supply d', "a.item_fg_id = d.item_fg_id and d.p_month = '$filter_month' and d.p_year = '$filter_year'", 'left');
-        // $this->db->join('balance_wip e', "a.item_fg_id = e.item_fg_id and e.p_month = '$filter_month' and e.p_year = '$filter_year'", 'left');
+        $this->db->join('item_rm c', 'a.item_rm_id = c.item_id');
+        $this->db->join('item_familys b', 'c.pfm_id = b.number');
+        $this->db->join('generate_mrp_finals d', 'a.item_rm_id = d.part_no and a.p_month = d.p_month and a.p_year = d.p_year and a.revision = d.revision', 'left');
         $this->db->where('a.p_month', $filter_month);
         $this->db->where('a.p_year', $filter_year);
         $this->db->where('a.revision', $filter_revision);
-        $this->db->like('c.item_family_id', $filter_item_family);
+        $this->db->where('c.pfm_id', $filter_item_family);
         $this->db->like('a.item_rm_id', $filter_item_id);
         $this->db->order_by('b.number');
         $this->db->group_by('a.item_rm_id');
@@ -225,230 +449,6 @@ class Material_calculation extends CI_Controller
         $cut_no = 0;
         $cut_content = "";
         $date = '<tr>';
-        $content = '';
-        $no = 1;
-        $colspan = 0;
-
-        while (strtotime($firstDate) <= strtotime($endDate)) {
-            $working_date = date("Y-m-d", strtotime($firstDate));
-
-            $this->db->select('remarks');
-            $this->db->from('calendars');
-            $this->db->where('working_date', $working_date);
-            $holiday = $this->db->get()->row();
-
-            if (date('w', strtotime($firstDate)) !== '0' && date('w', strtotime($firstDate)) !== '6') {
-                if (@$holiday->remarks != null or @$holiday->remarks != "") {
-                    $styles = 'background:#FFD974;';
-                    $cut_no += 0;
-                    $cut_content = "";
-                } else{
-                    $styles = "";
-                    $cut_no += 1;
-                    $cut_content = "W/P ". $cut_no;
-                }
-            } else {
-                $styles = 'background:#FFD974;';
-                $cut_no += 0;
-                $cut_content = "";
-            }
-
-            //Setting Header
-            $cut .= '<th width="50" colspan="2" style="text-align:center; ' . $styles . '">' . $cut_content . '</th>';
-            $date .= '<th width="50" style="text-align:center; ' . $styles . '">' . $firstDate . '</th>
-                      <th width="50" style="text-align:center; ' . $styles . '">BAL</th>';
-
-            $colspan++;
-            $firstDate = date("d M", strtotime("+1 day", strtotime($firstDate)));
-        }
-
-        //Setting Header
-        $cut .= '</tr>';
-        $date .= '</tr>';
-
-        foreach ($records as $record) {
-            $day = 1;
-            $i = 0;
-            $firstDate2 = date('01 M', strtotime($filter_year . "-" . $filter_month . "-01"));
-            $endDate2 = date('t M', strtotime($filter_year . "-" . $filter_month . "-01"));
-
-            $item_id = $record['item_rm_number'];
-            $ith = $this->dummy->query("SELECT sum(ith_qty) as qty from ith where ith_item_id = '$item_id' and ith_date <= '$filter_date'");
-            $ithRow = $ith->row();
-
-            $balances = (@$ithRow->qty - $record['balance'] - $record['qty_supply']);
-            $stock_hand = (@$ithRow->qty - $record['qty_supply']);
-            $content .= "<tr>
-                        <td>" . $no . "</td>
-                        <td style='mso-number-format:\@;'>" . $record['item_fg_id'] . "</td>
-                        <td>" . $record['product_name'] . "</td>
-                        <td>" . $record['item_family'] . "</td>
-                        <td style='text-align:right;'>" . number_format(@$ithRow->qty, 2) . "</td>
-                        <td style='text-align:right;'>" . number_format($record['qty_supply'], 2) . "</td>
-                        <td style='text-align:right;'>" . number_format($stock_hand, 2) . "</td>";
-
-            $wp = "";
-            $styles2 = "";
-            $balance = @$stock_hand;
-            while (strtotime($firstDate2) <= strtotime($endDate2)) {
-                $working_date2 = date("Y-m-d", strtotime($firstDate2));
-
-                $date_qty = $record["date_".$day];
-                $balance -= $record["date_".$day];
-
-                $this->db->select('remarks');
-                $this->db->from('working_calendar');
-                $this->db->where('working_date', $working_date2);
-                $holiday = $this->db->get()->row();
-
-                if (date('w', strtotime($firstDate2)) !== '0' && date('w', strtotime($firstDate2)) !== '6') {
-                    if (@$holiday->remarks != null or @$holiday->remarks != ""){
-                        $styles2 = 'background:#FFD974;';
-                    }else{
-                        if($balance < 0){
-                            $styles2 = 'background:#FFC2C2;';
-                        }else{
-                            $styles2 = '';
-                        }
-                    }
-                } else {
-                    $styles2 = 'background:#FFD974;';
-                }
-
-                $content .= "<td style='text-align:right; ".$styles2."'>".number_format($record["date_".$day], 2)."</td>
-                            <td style='text-align:right; ".$styles2."'>".number_format($balance, 2)."</td>";
-
-                $firstDate2 = date("d M", strtotime("+1 day", strtotime($firstDate2)));
-                $day++;
-            }
-
-            $ospo = $this->dummy->query("SELECT a.item_id, SUM(a.request - b.receive) as balance 
-                FROM (select item_id, SUM(por_pocreqqty) as request from por GROUP BY por_pocid, item_id) a 
-                JOIN (select item_id, sum(por_receiveqty) as receive from por GROUP BY item_id) b ON a.item_id = b.item_id
-                WHERE a.item_id = '$item_id' and (a.request - b.receive) >= 0 GROUP BY a.item_id");
-            $ospoRow = $ospo->row();
-
-            // die("SELECT a.item_id, a.request, b.receive, (a.request - b.receive) as balance 
-            // FROM (select item_id, SUM(por_pocreqqty) as request from por GROUP BY por_pocid, item_id) a 
-            // JOIN (select item_id, sum(por_receiveqty) as receive from por GROUP BY item_id) b ON a.item_id = b.item_id
-            // WHERE a.item_id = '$item_id' and (a.request - b.receive) >= 0");
-
-            if($balances > 0){
-                $free_stock = $balances;
-                $styles = "";
-            }else{
-                $free_stock = 0;
-                $styles = 'background:#FFC2C2;';
-            }
-
-            $onclick = 'window.open("' . base_url('planning/material_calculation/printOsPo/' . base64_encode($record['item_rm_id'])) . '","_blank","width=600,height=300")';
-            $onclickBalance = 'window.open("' . base_url('planning/material_calculation/printBalance/'.$filter_month.'/'.$filter_year.'/'.$filter_revision.'/'.base64_encode($record['item_rm_id'])) . '","_blank","width=600,height=300")';
-            $content .= "   <td style='text-align:right;'>" . number_format($record['total']) . "</td>
-                            <td style='text-align:right; ".$styles."'><a href='#' onclick='".$onclickBalance."'>". number_format(@$balances) ."</a></td>
-                            <td style='text-align:right; ".$styles."'>" . number_format($free_stock) . "</td>
-                            <td style='text-align:right;'>" . number_format($record['balance_wip']) . "</td>
-                            <td style='text-align:right;'><a href='#' onclick='".$onclick."'>". number_format(@$ospoRow->balance) ."</a></td>
-                        </tr>";
-            $no++;
-        }
-
-        $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#customers {border-collapse: collapse;font-size: 10px;}#customers td, #customers th {border: 1px solid #ddd;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: #ddd;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: left;color: black;} .str{ mso-number-format:\@; } </style><body>
-        <center>
-            <div style="float: left; font-size: 12px; text-align: left;">
-                <table style="width: 100%;">
-                    <tr>
-                        <td width="50" style="font-size: 12px; vertical-align: top; text-align: center; vertical-align:jus margin-right:10px;">
-                            <img src="' . $config->favicon . '" width="30">
-                        </td>
-                        <td style="font-size: 14px; text-align: left; margin:2px;">
-                            <b>' . $config->name . '</b><br>
-                            <small>' . $config->description . '</small>
-                        </td>
-                    </tr>
-                </table>
-            </div>
-            <div style="float: right; font-size: 12px; text-align: right;">
-                Print Date ' . date("d M Y H:m:s") . ' <br>
-                Print By ' . $this->session->username . '  
-            </div>
-        </center>
-        <br><br><br>
-        <center>
-            <h3 style="margin:0;">MATERIAL CALCULATION</h3>
-            PERIOD <b>' . $filter_year . '/' . $filter_month . '</b>
-            REVISION <b>' . $filter_revision . '</b>
-        </center>
-        <br>
-
-        <table id="customers" border="1" style="width:400%;">
-            <tr>
-                <th style="text-align:center;" rowspan="3" width="20">NO</th>
-                <th style="text-align:center;" width="100" rowspan="3">PRODUCT NO</th>
-                <th style="text-align:center;" width="80" rowspan="3">PRODUCT NAME</th>
-                <th style="text-align:center;" width="80" rowspan="3">PRODUCT FAMILY</th>
-                <th style="text-align:center;" width="50" rowspan="3">STOCK WHS</th>
-                <th style="text-align:center;" width="50" rowspan="3">OS SUPPLY</th>
-                <th style="text-align:center;" width="50" rowspan="3">ON HAND<br>STOCK</th>
-                <th style="text-align:center;" width="50" colspan="'.($colspan * 2).'">QUANTITY NEED FROM WORKORDER</th>
-                <th style="text-align:center;" width="50" rowspan="3">TOTAL</th>
-                <th style="text-align:center;" width="50" rowspan="3">BALANCE</th>
-                <th style="text-align:center;" width="50" rowspan="3">FREE STOCK</th>
-                <th style="text-align:center;" width="50" rowspan="3">Balance WIP</th>
-                <th style="text-align:center;" width="50" rowspan="3">OS PO</th>
-            </tr>' . $cut . $date . $content;
-        echo $html;
-    }
-
-    public function printMaterialShortage($option = "")
-    {
-        if ($option == "excel") {
-            $format  = date("Ymd");
-            header("Content-type: application/vnd-ms-excel");
-            header("Content-Disposition: attachment; filename=material_calculation_$format.xls");
-        }
-
-        //Config
-        $this->db->select('*');
-        $this->db->from('config');
-        $config = $this->db->get()->row();
-
-        //Database Server MRP
-        $this->dummy = $this->load->database('dummy', TRUE);
-
-        //Filter Data
-        $filter_month = base64_decode($this->input->get('filter_month'));
-        $filter_year = base64_decode($this->input->get('filter_year'));
-        $filter_revision = base64_decode($this->input->get('filter_revision'));
-        $filter_item_family = base64_decode($this->input->get('filter_item_family'));
-        $filter_item_id = base64_decode($this->input->get('filter_item_id'));
-        $filter_status = base64_decode($this->input->get('filter_status'));
-        $filter_date = base64_decode($this->input->get('filter_date'));
-
-        $firstDate = date('01 M', strtotime($filter_year . "-" . $filter_month . "-01"));
-        $endDate = date('t M', strtotime($filter_year . "-" . $filter_month . "-01"));
-
-        $this->db->select("a.*, c.item_name as product_name, b.name as item_family, d.actual as qty_supply, e.qty as balance_wip");
-        $this->db->from('generate_item_calculation a');
-        $this->db->join('mst_item_raw c', 'a.item_fg_id = c.item_id');
-        $this->db->join('mst_item_family b', 'c.pfm_id = b.number');
-        $this->db->join('os_supply d', "a.item_fg_id = d.item_fg_id and d.p_month = '$filter_month' and d.p_year = '$filter_year'", 'left');
-        $this->db->join('balance_wip e', "a.item_fg_id = e.item_fg_id and e.p_month = '$filter_month' and e.p_year = '$filter_year'", 'left');
-        $this->db->where('a.p_month', $filter_month);
-        $this->db->where('a.p_year', $filter_year);
-        $this->db->where('a.revision', $filter_revision);
-        $this->db->like('c.pfm_id', $filter_item_family);
-        $this->db->like('a.item_fg_id', $filter_item_id);
-        $this->db->order_by('b.number');
-        $this->db->group_by('a.item_fg_id');
-        $records = $this->db->get()->result_array();
-
-        //Setting Header
-        $styles = "";
-        $cut = '<tr>';
-        $cut_no = 0;
-        $cut_content = "";
-        $date = '<tr>';
-        $content = '';
         $no = 1;
         $colspan = 0;
 
@@ -477,103 +477,156 @@ class Material_calculation extends CI_Controller
             }
 
             //Setting Header
-            $cut .= '<th width="50" colspan="2" style="text-align:center; ' . $styles . '">' . $cut_content . '</th>';
-            $date .= '<th width="50" style="text-align:center; ' . $styles . '">' . $firstDate . '</th>
+            $cut .= '<th width="50" colspan="4" style="text-align:center; ' . $styles . '">' . $cut_content . ' ('.$firstDate.')</th>';
+            $date .= '<th width="50" style="text-align:center; ' . $styles . '">ETA</th>
+                      <th width="50" style="text-align:center; ' . $styles . '">NEED</th>
+                      <th width="50" style="text-align:center; ' . $styles . '">SUPPLY</th>
                       <th width="50" style="text-align:center; ' . $styles . '">BAL</th>';
 
             $colspan++;
             $firstDate = date("d M", strtotime("+1 day", strtotime($firstDate)));
         }
 
+        $date .= '  <th width="50" style="text-align:center;">WEEK 1</th>
+                    <th width="50" style="text-align:center;">BALANCE</th>
+                    <th width="50" style="text-align:center;">WEEK 2</th>
+                    <th width="50" style="text-align:center;">BALANCE</th>
+                    <th width="50" style="text-align:center;">WEEK 3</th>
+                    <th width="50" style="text-align:center;">BALANCE</th>
+                    <th width="50" style="text-align:center;">WEEK 4</th>
+                    <th width="50" style="text-align:center;">BALANCE</th>';
+
         //Setting Header
         $cut .= '</tr>';
         $date .= '</tr>';
 
+        $content2 = "";
         foreach ($records as $record) {
+            $content = '';
             $day = 1;
             $i = 0;
             $firstDate2 = date('01 M', strtotime($filter_year . "-" . $filter_month . "-01"));
             $endDate2 = date('t M', strtotime($filter_year . "-" . $filter_month . "-01"));
 
-            $item_id = $record['item_fg_id'];
-            $ith = $this->dummy->query("SELECT sum(ith_qty) as qty from ith where ith_item_id = '$item_id' and ith_date <= '$filter_date'");
+            $item_id = $record['item_rm_id'];
+            $ith = $this->db->query("SELECT sum(ith_qty) as qty from ith where ith_item_id = '$item_id' and ith_date <= '$filter_date'");
             $ithRow = $ith->row();
 
-            $balances = (@$ithRow->qty - $record['balance'] - $record['qty_supply']);
+            $queryEta = $this->db->query("SELECT SUM(por_receiveqty) as total from por where item_id = '$item_id' and por_docno not like '%PEMUTIHAN%' and por_date between '$period_start' and '$period_end'");
+            $totalEta = $queryEta->row();
+            $etaTotal = empty(@$totalEta->total) ? 0 : @$totalEta->total;
+
+            $stock_hand = (@$ithRow->qty - $record['os_supply'] - $record['os_wo']);
+            $balances = ($stock_hand + $etaTotal - $record['total']);
+
+            if($balances > 0){
+                $free_stock = $balances;
+                $styles = "";
+            }else{
+                $free_stock = 0;
+                $styles = 'background:#FFC2C2;';
+            }
+
+            $content .= "<tr>
+                        <td>" . $no . "</td>
+                        <td style='mso-number-format:\@;'>" . $record['item_rm_id'] . "</td>
+                        <td>" . $record['product_name'] . "</td>
+                        <td>" . $record['item_family'] . "</td>
+                        <td style='text-align:right;'>" . round(@$ithRow->qty) . "</td>
+                        <td style='text-align:right;'>" . round($record['os_supply']) . "</td>
+                        <td style='text-align:right;'>" . round($record['os_wo']) . "</td>
+                        <td style='text-align:right;'>" . round($stock_hand) . "</td>
+                        <td style='text-align:right;'>" . round($etaTotal) . "</td>
+                        <td style='text-align:right;'>" . round($record['total']) . "</td>
+                        <td style='text-align:right; ".$styles."'>". number_format(@$balances) ."</td>";
             
-            if($balances < 0){
-                $stock_hand = (@$ithRow->qty - $record['qty_supply']);
-                $content .= "<tr>
-                            <td>" . $no . "</td>
-                            <td style='mso-number-format:\@;'>" . $record['item_fg_id'] . "</td>
-                            <td>" . $record['product_name'] . "</td>
-                            <td>" . $record['item_family'] . "</td>
-                            <td style='text-align:right;'>" . number_format(@$ithRow->qty, 2) . "</td>
-                            <td style='text-align:right;'>" . number_format($record['qty_supply'], 2) . "</td>
-                            <td style='text-align:right;'>" . number_format($stock_hand, 2) . "</td>";
+            //ini di ambil dari total ETA yang harian
+            //$record['eta']
+            $wp = "";
+            $styles2 = "";
+            $balance = @$stock_hand;
+            while (strtotime($firstDate2) <= strtotime($endDate2)) {
+                $working_date2 = date("Y-m-d", strtotime($firstDate2));
 
-                $wp = "";
-                $styles2 = "";
-                $balance = @$stock_hand;
-                while (strtotime($firstDate2) <= strtotime($endDate2)) {
-                    $working_date2 = date("Y-m-d", strtotime($firstDate2));
+                // $delivery_schedule = $this->crud->read("delivery_schedules", [], ["part_no" => $item_id, "p_month" => $filter_month, "p_year" => $filter_year, "revision" => $filter_revision, "delivey_date_1" => $working_date2]);
+                // $qty_delivery_schedule = empty($delivery_schedule->delivey_qty_1) ? 0 : $delivery_schedule->delivey_qty_1;
 
-                    $date_qty = $record["date_".$day];
-                    $balance -= $record["date_".$day];
+                $delivery_schedule = $this->db->query("SELECT SUM(por_receiveqty) as total from por where item_id = '$item_id' and por_docno not like '%PEMUTIHAN%' and por_date = '$working_date2'");
+                $totalRow = $delivery_schedule->row();
+                $qty_delivery_schedule = empty(@$totalRow->total) ? 0 : @$totalRow->total;
+                
+                $ithSupply = $this->db->query("SELECT SUM(ith_qty) as supply from ith where ith_form like '%OU%' and ith_date = '$working_date2' and ith_item_id = '$item_id'");
+                $ithSupplyRow = $ithSupply->row();
 
-                    $this->db->select('remarks');
-                    $this->db->from('working_calendar');
-                    $this->db->where('working_date', $working_date2);
-                    $holiday = $this->db->get()->row();
+                $date_qty = $record["date_".$day];
+                $balance += ($qty_delivery_schedule - $date_qty);
 
-                    if (date('w', strtotime($firstDate2)) !== '0' && date('w', strtotime($firstDate2)) !== '6') {
-                        if (@$holiday->remarks != null or @$holiday->remarks != ""){
-                            $styles2 = 'background:#FFD974;';
-                        }else{
-                            if($balance < 0){
-                                $styles2 = 'background:#FFC2C2;';
-                            }else{
-                                $styles2 = '';
-                            }
-                        }
-                    } else {
+                $this->db->select('remarks');
+                $this->db->from('working_calendar');
+                $this->db->where('working_date', $working_date2);
+                $holiday = $this->db->get()->row();
+
+                if (date('w', strtotime($firstDate2)) !== '0' && date('w', strtotime($firstDate2)) !== '6') {
+                    if (@$holiday->remarks != null or @$holiday->remarks != ""){
                         $styles2 = 'background:#FFD974;';
+                    }else{
+                        if($balance < 0){
+                            $styles2 = 'background:#FFC2C2;';
+                        }else{
+                            $styles2 = '';
+                        }
                     }
-
-                    $content .= "<td style='text-align:right; ".$styles2."'>".number_format($record["date_".$day], 2)."</td>
-                                <td style='text-align:right; ".$styles2."'>".number_format($balance, 2)."</td>";
-
-                    $firstDate2 = date("d M", strtotime("+1 day", strtotime($firstDate2)));
-                    $day++;
+                } else {
+                    $styles2 = 'background:#FFD974;';
                 }
 
-                $ospo = $this->dummy->query("SELECT a.item_id, SUM(a.request - b.receive) as balance 
-                    FROM (select item_id, SUM(por_pocreqqty) as request from por GROUP BY por_pocid, item_id) a 
-                    JOIN (select item_id, sum(por_receiveqty) as receive from por GROUP BY item_id) b ON a.item_id = b.item_id
-                    WHERE a.item_id = '$item_id' and (a.request - b.receive) >= 0 GROUP BY a.item_id");
-                $ospoRow = $ospo->row();
+                $content .= "<td style='text-align:right; ".$styles2."'>".@$qty_delivery_schedule."</td>
+                            <td style='text-align:right; ".$styles2."'>".round($date_qty)."</td>
+                            <td style='text-align:right; ".$styles2."'>".abs(round(@$ithSupplyRow->supply))."</td>
+                            <td style='text-align:right; ".$styles2."'>".round($balance)."</td>";
 
-                // die("SELECT a.item_id, a.request, b.receive, (a.request - b.receive) as balance 
-                // FROM (select item_id, SUM(por_pocreqqty) as request from por GROUP BY por_pocid, item_id) a 
-                // JOIN (select item_id, sum(por_receiveqty) as receive from por GROUP BY item_id) b ON a.item_id = b.item_id
-                // WHERE a.item_id = '$item_id' and (a.request - b.receive) >= 0");
+                $firstDate2 = date("d M", strtotime("+1 day", strtotime($firstDate2)));
+                $day++;
+            }
 
-                if($balances > 0){
-                    $free_stock = $balances;
-                    $styles = "";
-                }else{
-                    $free_stock = 0;
-                    $styles = 'background:#FFC2C2;';
+            $ospo = $this->db->query("SELECT SUM(z.balance) as balance FROM (
+                SELECT a.item_id, b.poc_id, b.poc_reqdate, COALESCE(b.request, 0) as request, COALESCE(a.receive, 0) as receive, (COALESCE(b.request, 0) - COALESCE(a.receive, 0)) as balance
+                FROM (select item_id, poc_id, poc_reqdate, sum(poc_reqqty) as request from poc WHERE item_id = '$item_id' GROUP BY item_id, poc_id, poc_reqdate) b 
+                LEFT JOIN (select item_id, por_pocid, SUM(por_receiveqty) as receive from por WHERE item_id = '$item_id' GROUP BY por_pocid, item_id) a ON a.item_id = b.item_id and a.por_pocid = b.poc_id
+                WHERE (COALESCE(b.request, 0) - COALESCE(a.receive, 0)) > 0
+                ORDER BY b.poc_reqdate ASC) z");
+            $ospoRow = $ospo->row();
+
+            // die("SELECT a.item_id, a.request, b.receive, (a.request - b.receive) as balance 
+            // FROM (select item_id, SUM(por_pocreqqty) as request from por GROUP BY por_pocid, item_id) a 
+            // JOIN (select item_id, sum(por_receiveqty) as receive from por GROUP BY item_id) b ON a.item_id = b.item_id
+            // WHERE a.item_id = '$item_id' and (a.request - b.receive) >= 0");
+
+            $content .= "   <td style='text-align:right; ".$styles."'>" . round($free_stock) . "</td>
+                            <td style='text-align:right;'>" . round($record['need_2'] / 4) . "</td>
+                            <td style='text-align:right;'>" . round($balance - round($record['need_2'] / 4)) . "</td>
+                            <td style='text-align:right;'>" . round($record['need_2'] / 4) . "</td>
+                            <td style='text-align:right;'>" . round($balance - round($record['need_2'] / 4) - round($record['need_2'] / 4)) . "</td>
+                            <td style='text-align:right;'>" . round($record['need_2'] / 4) . "</td>
+                            <td style='text-align:right;'>" . round($balance - round($record['need_2'] / 4) - round($record['need_2'] / 4) - round($record['need_2'] / 4)) . "</td>
+                            <td style='text-align:right;'>" . round($record['need_2'] / 4) . "</td>
+                            <td style='text-align:right;'>" . round($balance - round($record['need_2'] / 4) - round($record['need_2'] / 4) - round($record['need_2'] / 4) - round($record['need_2'] / 4)) . "</td>
+                            <td style='text-align:right;'>" . round($record['balance_wip']) . "</td>
+                            <td style='text-align:right;'>". round(@$ospoRow->balance) ."</td>
+                        </tr>";
+
+            if($filter_status == "OK"){
+                if($free_stock > 0){
+                    $content2 .= $content;
+                    $no++;
                 }
-
-                $onclick = 'window.open("' . base_url('planning/material_calculation/printOsPo/' . base64_encode($record['item_fg_id'])) . '","_blank","width=600,height=300")';
-                $onclickBalance = 'window.open("' . base_url('planning/material_calculation/printBalance/'.$filter_month.'/'.$filter_year.'/'.$filter_revision.'/'.base64_encode($record['item_fg_id'])) . '","_blank","width=600,height=300")';
-                $content .= "   <td style='text-align:right;'>" . number_format($record['total']) . "</td>
-                                <td style='text-align:right; ".$styles."'><a href='#' onclick='".$onclickBalance."'>". number_format(@$balances) ."</a></td>
-                                <td style='text-align:right; ".$styles."'>" . number_format($free_stock) . "</td>
-                                <td style='text-align:right;'>" . number_format($record['balance_wip']) . "</td>
-                                <td style='text-align:right;'><a href='#' onclick='".$onclick."'>". number_format(@$ospoRow->balance) ."</a></td>
-                            </tr>";
+            }elseif($filter_status == "SHORTAGE"){
+                if($free_stock == 0){
+                    $content2 .= $content;
+                    $no++;
+                }
+            }else{
+                $content2 .= $content;
                 $no++;
             }
         }
@@ -600,76 +653,57 @@ class Material_calculation extends CI_Controller
         </center>
         <br><br><br>
 
-        <table id="customers" border="1" style="width:400%;">
+        <table id="customers" border="1" style="width:520%;">
             <tr>
                 <th style="text-align:center;" rowspan="3" width="20">NO</th>
-                <th style="text-align:center;" width="100" rowspan="3">PRODUCT NO</th>
+                <th style="text-align:center;" width="150" rowspan="3">PRODUCT NO</th>
                 <th style="text-align:center;" width="80" rowspan="3">PRODUCT NAME</th>
                 <th style="text-align:center;" width="80" rowspan="3">PRODUCT FAMILY</th>
                 <th style="text-align:center;" width="50" rowspan="3">STOCK WHS</th>
                 <th style="text-align:center;" width="50" rowspan="3">OS SUPPLY</th>
+                <th style="text-align:center;" width="50" rowspan="3">OS WO</th>
                 <th style="text-align:center;" width="50" rowspan="3">ON HAND<br>STOCK</th>
-                <th style="text-align:center;" width="50" colspan="'.($colspan * 2).'">QUANTITY NEED FROM WORKORDER</th>
-                <th style="text-align:center;" width="50" rowspan="3">TOTAL</th>
-                <th style="text-align:center;" width="50" rowspan="3">BALANCE</th>
+                <th style="text-align:center;" width="50" rowspan="3">ETA</th>
+                <th style="text-align:center;" width="50" rowspan="3">TOTAL NEED</th>
+                <th style="text-align:center;" width="50" rowspan="3">TOTAL BAL</th>
+                <th style="text-align:center;" width="50" colspan="'.($colspan * 4).'">QUANTITY NEED FROM WORKORDER</th>
                 <th style="text-align:center;" width="50" rowspan="3">FREE STOCK</th>
+                <th style="text-align:center;" width="50" colspan="8" rowspan="2">'.$next_month.'</th>
                 <th style="text-align:center;" width="50" rowspan="3">Balance WIP</th>
                 <th style="text-align:center;" width="50" rowspan="3">OS PO</th>
-            </tr>' . $cut . $date . $content;
+            </tr>' . $cut . $date . $content2;
         echo $html;
     }
 
-    public function printOsPo($item_fg_id){
-        $this->dummy = $this->load->database('dummy', TRUE);
-        $item_fg_id = base64_decode($item_fg_id);
+    public function printOsPo(){
+        $this->db = $this->load->database('db', TRUE);
+        $item_rm_id = base64_decode($this->input->get("item_rm_id"));
 
-        //Config
-        $this->db->select('*');
-        $this->db->from('config');
-        $config = $this->db->get()->row();
-
-        $ospo = $this->dummy->query("SELECT a.item_id, a.por_pocid, a.por_pocreqdate, a.request, b.receive, (a.request - b.receive) as balance 
-            FROM (select item_id, por_pocid, por_pocreqdate, SUM(por_pocreqqty) as request from por GROUP BY por_pocid, por_pocreqdate, item_id) a 
-            JOIN (select item_id, sum(por_receiveqty) as receive from por GROUP BY item_id) b ON a.item_id = b.item_id
-            WHERE a.item_id = '$item_fg_id' and (a.request - b.receive) >= 0");
+        $ospo = $this->db->query("SELECT b.item_id, b.poc_id, b.poc_reqdate, COALESCE(b.request, 0) as request, COALESCE(a.receive, 0) as receive, (COALESCE(b.request, 0) - COALESCE(a.receive, 0)) as balance
+            FROM (select item_id, poc_id, poc_reqdate, sum(poc_reqqty) as request from poc WHERE item_id = '$item_rm_id' GROUP BY item_id, poc_id, poc_reqdate) b 
+            LEFT JOIN (select item_id, por_pocid, SUM(por_receiveqty) as receive from por WHERE item_id = '$item_rm_id' GROUP BY por_pocid, item_id) a ON a.item_id = b.item_id and a.por_pocid = b.poc_id
+            WHERE (COALESCE(b.request, 0) - COALESCE(a.receive, 0)) > 0");
         $records = $ospo->result_array();
 
-        $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#customers {border-collapse: collapse;width: 100%;font-size: 12px;}#customers td, #customers th {border: 1px solid #ddd;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: #ddd;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: left;color: black;}</style><body>
-        <table id="customers" border="1">
-            <tr>
-                <th width="20">No</th>
-                <th>Product No</th>
-                <th>PO No</th>
-                <th>PO Date</th>
-                <th>Qty</th>
-                <th>Plan Delivery</th>
-                <th>ETA</th>
-                <th>Document No</th>
-            </tr>';
-        $no = 1;
-        foreach ($records as $data) {
-            $html .= '  <tr>
-                            <td>' . $no . '</td>
-                            <td style="mso-number-format:\@;">' . $data['item_id'] . '</td>
-                            <td>' . $data['por_pocid'] . '</td>
-                            <td>' . $data['por_pocreqdate'] . '</td>
-                            <td>' . number_format($data['balance']) . '</td>
-                            <td>0</td>
-                            <td>' . $data['por_pocreqdate'] . '</td>
-                            <td>-</td>
-                            <td></td>
-                        </tr>';
-            $no++;
+        $balance = 0;
+        $request = 0;
+        $receive = 0;
+        foreach ($records as $record) {
+            $request += $record['request'];
+            $receive += $record['receive'];
+            $balance += $record['balance'];
         }
 
-        $html .= '</table></body></html>';
-        echo $html;
+        die(json_encode(array_merge(array("rows" => $records), ["footer" => [["item_id" => "Grand Total", "balance" => $balance, "receive" => $receive, "request" => $request, "plan" => 0]]])));
     }
 
-    public function printBalance($filter_month, $filter_year, $filter_revision, $item_fg_id){
-        $item_fg_id = base64_decode($item_fg_id);
+    public function printBalance(){
+        $item_rm_id = base64_decode($this->input->get("item_rm_id"));
+        $filter_month = base64_decode($this->input->get("filter_month"));
+        $filter_year = base64_decode($this->input->get("filter_year"));
+        $filter_revision = base64_decode($this->input->get("filter_revision"));
 
-        $ospo = $this->db->query("SELECT z.p_month, z.p_year, z.revision, z.item_fg_id, z.customer_name, (
+        $ospo = $this->db->query("SELECT z.p_month, z.p_year, z.revision, z.item_fg_id, z.number_customer, z.item_rm_id, z.item_rm_number, z.item_rm_name, (
             SUM(total_date_1) +
             SUM(total_date_2) +
             SUM(total_date_3) +
@@ -702,7 +736,7 @@ class Material_calculation extends CI_Controller
             SUM(total_date_30) +
             SUM(total_date_31)) as total
         FROM (
-            SELECT a.p_month, a.p_year, a.revision, a.item_fg_id, b.component_id, c.name as customer_name,
+            SELECT a.p_month, a.p_year, a.revision, a.item_fg_id, d.number_customer, b.item_rm_id, c.number as item_rm_number, c.name as item_rm_name,
             (a.date_1 * b.composition) as total_date_1,
             (a.date_2 * b.composition) as total_date_2,
             (a.date_3 * b.composition) as total_date_3,
@@ -735,38 +769,20 @@ class Material_calculation extends CI_Controller
             (a.date_30 * b.composition) as total_date_30,
             (a.date_31 * b.composition) as total_date_31
         FROM generate_mpp a
-        JOIN mst_bom b ON a.item_fg_id = b.item_id
-        LEFT JOIN mst_customer c ON a.customer_id = c.number
-        WHERE a.p_month = '$filter_month' and a.p_year = '$filter_year' and a.revision = '$filter_revision' and b.component_id = '$item_fg_id'
-        GROUP BY a.item_fg_id, b.component_id
-        ORDER BY a.item_fg_id, b.component_id asc) z
-        GROUP BY z.item_fg_id");
+        JOIN bom b ON a.item_fg_id = b.item_fg_id
+        JOIN item_rm c ON b.item_rm_id = c.id
+        JOIN item_fg d ON a.item_fg_id = d.id
+        WHERE a.p_month = '$filter_month' and a.p_year = '$filter_year' and a.revision = '$filter_revision' and b.item_rm_id = '$item_rm_id'
+        GROUP BY a.item_fg_id, b.item_rm_id
+        ORDER BY a.item_fg_id, b.item_rm_id asc) z
+        GROUP BY z.item_rm_id, z.item_fg_id");
         $records = $ospo->result_array();
 
-        $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#customers {border-collapse: collapse;width: 100%;font-size: 12px;}#customers td, #customers th {border: 1px solid #ddd;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: #ddd;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: left;color: black;}</style><body>
-        <p>Period : <b>'.date("F Y", strtotime($filter_year . "-" . $filter_month . "-01")).'</b> | Revision : <b>'.$filter_revision.'</b></p>
-        
-        <table id="customers" border="1">
-            <tr>
-                <th width="20">No</th>
-                <th>Product No</th>
-                <th>Customer Name</th>
-                <th>Qty</th>
-            </tr>';
-        $no = 1;
-        foreach ($records as $data) {
-            if($data['total'] > 0){
-                $html .= '  <tr>
-                                <td>' . $no . '</td>
-                                <td style="mso-number-format:\@;">' . $data['item_fg_id'] . '</td>
-                                <td>' . $data['customer_name'] . '</td>
-                                <td>' . number_format($data['total']) . '</td>
-                            </tr>';
-                $no++;
-            }
+        $balance = 0;
+        foreach ($records as $record) {
+            $balance += $record['total'];
         }
 
-        $html .= '</table></body></html>';
-        echo $html;
+        die(json_encode(array_merge(array("rows" => $records), ["footer" => [["item_rm_id" => "Grand Total", "total" => $balance]]])));
     }
 }

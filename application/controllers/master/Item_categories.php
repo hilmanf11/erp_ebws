@@ -15,6 +15,7 @@ class Item_categories extends CI_Controller
         //VALIDASI FORM
         $this->form_validation->set_rules('number', 'Category code', 'required|min_length[1]|max_length[20]|is_unique[item_categories.number]');
     }
+
     //HALAMAN UTAMA
     public function index()
     {
@@ -28,12 +29,29 @@ class Item_categories extends CI_Controller
             redirect('error_access');
         }
     }
+
     //GET DATA
-    public function reads()
+    public function reads($type = "")
     {
         $post = isset($_POST['q']) ? $_POST['q'] : "";
-        // $send = $this->crud->query("SELECT * FROM item_categories WHERE name LIKE '%$post%'AND number != 'FG'");
-        $send = $this->crud->reads('item_categories', ["name" => $post]);
+
+        if($type == ""){
+            //master/item_familys
+            $send = $this->crud->reads('item_categories', ["name" => $post]);
+        }elseif($type == "FG"){
+            //master/item_kinds
+            //master/item_sizes
+            //master/item_rm
+            $send = $this->crud->query("SELECT * FROM item_categories WHERE name LIKE '%$post%' AND number != 'FG'");
+        }
+
+        echo json_encode($send);
+    }
+
+    public function readAsset($number)
+    {
+        $post = isset($_POST['q']) ? $_POST['q'] : "";
+        $send = $this->crud->query("SELECT * FROM item_categories WHERE name LIKE '%$post%'AND number = '$number'");
         echo json_encode($send);
     }
     
@@ -41,7 +59,6 @@ class Item_categories extends CI_Controller
     {
         $post = isset($_POST['q']) ? $_POST['q'] : "";
         $send = $this->crud->query("SELECT * FROM item_categories WHERE name LIKE '%$post%'AND number != 'FG'");
-        // $send = $this->crud->reads('item_categories', ["name" => $post]);
         echo json_encode($send);
     }
 

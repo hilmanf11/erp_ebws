@@ -19,30 +19,30 @@
 <table id="dg" class="easyui-datagrid" style="width:100%;" toolbar="#toolbar">
     <thead>
         <tr>
-                <th rowspan="2" field="ck" checkbox="true"></th>
-                <th rowspan="2" data-options="field:'request_no',width:120,halign:'center'">PR No</th>
-                <th rowspan="2" data-options="field:'request_date',width:100,halign:'center'">PR Date</th>
-                <th rowspan="2" data-options="field:'supplier_name',width:250,halign:'center'">Vendor Name</th>
-                <th rowspan="2" data-options="field:'item_family_name',width:120,halign:'center'">Product Family</th>
-                <th rowspan="2" data-options="field:'total_pr',width:100,halign:'center',align:'right',formatter:numberformat">Total PR</th>
-                <th rowspan="2" data-options="field:'detail',width:80,halign:'center',formatter:BtnDetail">Detail</th>
-                <th rowspan="2" data-options="field:'print_pr',width:80,halign:'center',formatter:BtnPrint">Print PR</th>
-                <th colspan="2" data-options="field:'',width:100,halign:'center'">Create PO</th>
-                <!-- <th colspan="2" data-options="field:'',width:100,halign:'center'">Confirm PR</th> -->
-                <th colspan="3" data-options="field:'',width:100,halign:'center'">Approved</th>
-                <th colspan="2" data-options="field:'',width:100,halign:'center'">Created</th>
-            </tr>
-            <tr>
-                <th data-options="field:'send',width:120,align:'center',formatter:BtnSend">Create</th>
-                <th data-options="field:'create_po',width:150,align:'center'">Date</th>
-                <!-- <th data-options="field:'confirm',width:100,align:'center', styler:cellStylerConfirm, formatter:cellFormatterConfirm">Status</th> -->
-                <!-- <th data-options="field:'confirm_date',width:150,align:'center'">Date</th> -->
-                <th data-options="field:'approved_to',width:80,align:'center', styler:cellStylerApproval, formatter:cellFormatterApproval">Status</th>
-                <th data-options="field:'approved_by',width:100,align:'center'">By</th>
-                <th data-options="field:'approved_date',width:120,align:'center'">Date</th>
-                <th data-options="field:'created_by',width:100,align:'center'">By</th>
-                <th data-options="field:'created_date',width:120,align:'center'">Date</th>
-            </tr>
+            <th rowspan="2" field="ck" checkbox="true"></th>
+            <th rowspan="2" data-options="field:'request_no',width:120,halign:'center'">PR No</th>
+            <th rowspan="2" data-options="field:'request_date',width:100,halign:'center'">PR Date</th>
+            <th rowspan="2" data-options="field:'supplier_name',width:250,halign:'center'">Vendor Name</th>
+            <th rowspan="2" data-options="field:'item_family_name',width:120,halign:'center'">Product Family</th>
+            <th rowspan="2" data-options="field:'total_pr',width:100,halign:'center',align:'right',formatter:numberformat">Total PR</th>
+            <th rowspan="2" data-options="field:'detail',width:80,halign:'center',formatter:BtnDetail">Detail</th>
+            <th rowspan="2" data-options="field:'print_pr',width:80,halign:'center',formatter:BtnPrint">Print PR</th>
+            <th colspan="2" data-options="field:'',width:100,halign:'center'">Create PO</th>
+            <!-- <th colspan="2" data-options="field:'',width:100,halign:'center'">Confirm PR</th> -->
+            <th colspan="3" data-options="field:'',width:100,halign:'center'">Approved</th>
+            <th colspan="2" data-options="field:'',width:100,halign:'center'">Created</th>
+        </tr>
+        <tr>
+            <th data-options="field:'send',width:120,align:'center',formatter:BtnSend">Create</th>
+            <th data-options="field:'create_po',width:150,align:'center'">Date</th>
+            <!-- <th data-options="field:'confirm',width:100,align:'center', styler:cellStylerConfirm, formatter:cellFormatterConfirm">Status</th> -->
+            <!-- <th data-options="field:'confirm_date',width:150,align:'center'">Date</th> -->
+            <th data-options="field:'approved_to',width:80,align:'center', styler:cellStylerApproval, formatter:cellFormatterApproval">Status</th>
+            <th data-options="field:'approved_by',width:100,align:'center'">By</th>
+            <th data-options="field:'approved_date',width:120,align:'center'">Date</th>
+            <th data-options="field:'created_by',width:100,align:'center'">By</th>
+            <th data-options="field:'created_date',width:120,align:'center'">Date</th>
+        </tr>
     </thead>
 </table>
 
@@ -218,7 +218,7 @@
 </div>
 
 <!-- DIALOG SAVE AND UPDATE -->
-<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 1200px; height: 600px; padding:10px; top: 20px; left:10px;">
+<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 1200px; height: 550px; padding:10px; top: 20px; left:10px;">
     <form id="frm_insert" method="post" novalidate>
         <div style="width: 100%; display: grid; grid-template-columns: auto auto auto; grid-gap: 5px; display: flex;">
             <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px;">
@@ -267,11 +267,11 @@
     </form>
 </div>
 
-<div id="dlg_purchase_request" class="easyui-dialog" title="Detail Purchase Request" data-options="closed: true,modal:true" style="width: 100%; height: 600px; top: 0px; left: 0px;">
+<div id="dlg_purchase_request" class="easyui-dialog" title="Detail Purchase Request" data-options="closed: true,modal:true" style="width: 100%; height: 550px; top: 0px; left: 0px;">
     <table id="dg_purchase_request" class="easyui-datagrid" style="width:100%;" toolbar="#toolbar3" showFooter="true"></table>
 </div>
 
-<div id="dlg_confirm" class="easyui-dialog" title="Confrim Edit PO" data-options="closed: true,modal:true" style="width: 100%; height: 600px; top: 0px; left: 0px;">
+<div id="dlg_confirm" class="easyui-dialog" title="Confrim Edit PO" data-options="closed: true,modal:true" style="width: 100%; height: 550px; top: 0px; left: 0px;">
     <table id="dg_confirm" class="easyui-datagrid" style="width:100%;">
         <thead>
             <tr>

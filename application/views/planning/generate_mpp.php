@@ -3,13 +3,14 @@
         <th field="ck" checkbox="true"></th>
         <th data-options="field:'item_fg_number',width:150,halign:'center'">Product EBWS</th>
         <th data-options="field:'number_customer',width:200,halign:'center'">Product Customer</th>
-        <th data-options="field:'item_fg_name',width:200,halign:'center'">Description</th>
     </thead>
     <thead>
         <!-- <tr>   
             <th colspan="34" data-options="field:'',width:500,halign:'center',align:'right'">Date Prodplan</th>
         </tr> -->
         <tr>
+            <th data-options="field:'item_fg_name',width:200,halign:'center'">Description</th>
+            <th data-options="field:'customer_name',width:200,halign:'center'">Customer</th>
             <th data-options="field:'mpsprod',width:80,halign:'center',align:'right'">Prod Plan</th>
             <th data-options="field:'floating',width:80,halign:'center',align:'right',styler:floating">Plotting</th>
             <th data-options="field:'circuit_no',width:80,align:'center'">CCT</th>
@@ -41,61 +42,61 @@
                 while (strtotime($firstDate) <= strtotime($endDate)) {
                     $working_date = date('Y-m-d', strtotime($firstDate));
 
-                    $this->db->select('remarks');
-                    $this->db->from('calendars');
-                    $this->db->where('working_date', $working_date);
-                    $holiday = $this->db->get()->row();
+                    // $this->db->select('remarks');
+                    // $this->db->from('calendars');
+                    // $this->db->where('working_date', $working_date);
+                    // $holiday = $this->db->get()->row();
 
-                    if (@$holiday->remarks != null or @$holiday->remarks != "") {
-                        if($alfabet == "z"){
-                            $alfabets = "A";
-                        }elseif($alfabet == "A"){
-                            $alfabets = "B";
-                        }elseif($alfabet == "B"){
-                            $alfabets = "C";
-                        }elseif($alfabet == "C"){
-                            $alfabets = "D";
-                        }elseif($alfabet == "D"){
-                            $alfabets = "E";
-                        }elseif($alfabet == "E"){
-                            $alfabets = "F";
-                        }elseif($alfabet == "F"){
-                            $alfabets = "G";
-                        }elseif($alfabet == "G"){
-                            $alfabets = "H";
-                        }elseif($alfabet == "H"){
-                            $alfabets = "I";
-                        }elseif($alfabet == "I"){
-                            $alfabets = "J";
-                        }elseif($alfabet == "J"){
-                            $alfabets = "K";
-                        }elseif($alfabet == "K"){
-                            $alfabets = "L";
-                        }elseif($alfabet == "L"){
-                            $alfabets = "M";
-                        }elseif($alfabet == "M"){
-                            $alfabets = "N";
-                        }elseif($alfabet == "N"){
-                            $alfabets = "O";
-                        }else{  
-                            $alfabets = "";
-                        }
+                    // if (@$holiday->remarks != null or @$holiday->remarks != "") {
+                    //     if($alfabet == "z"){
+                    //         $alfabets = "A";
+                    //     }elseif($alfabet == "A"){
+                    //         $alfabets = "B";
+                    //     }elseif($alfabet == "B"){
+                    //         $alfabets = "C";
+                    //     }elseif($alfabet == "C"){
+                    //         $alfabets = "D";
+                    //     }elseif($alfabet == "D"){
+                    //         $alfabets = "E";
+                    //     }elseif($alfabet == "E"){
+                    //         $alfabets = "F";
+                    //     }elseif($alfabet == "F"){
+                    //         $alfabets = "G";
+                    //     }elseif($alfabet == "G"){
+                    //         $alfabets = "H";
+                    //     }elseif($alfabet == "H"){
+                    //         $alfabets = "I";
+                    //     }elseif($alfabet == "I"){
+                    //         $alfabets = "J";
+                    //     }elseif($alfabet == "J"){
+                    //         $alfabets = "K";
+                    //     }elseif($alfabet == "K"){
+                    //         $alfabets = "L";
+                    //     }elseif($alfabet == "L"){
+                    //         $alfabets = "M";
+                    //     }elseif($alfabet == "M"){
+                    //         $alfabets = "N";
+                    //     }elseif($alfabet == "N"){
+                    //         $alfabets = "O";
+                    //     }else{  
+                    //         $alfabets = "";
+                    //     }
 
-                        $wpp = "WP ".$wp.$alfabets;
-                        $alfabet = $alfabets;
-                        $firstDate_check = date("d M", strtotime("+1 day", strtotime($firstDate)));
-                        $working_date_check = date('Y-m-d', strtotime($firstDate_check));
-                        $this->db->select('remarks');
-                        $this->db->from('calendars');
-                        $this->db->where('working_date', $working_date_check);
-                        $holiday_check = $this->db->get()->row();
+                    //     $wpp = "WP ".$wp.$alfabets;
+                    //     $alfabet = $alfabets;
+                    //     $firstDate_check = date("d M", strtotime("+1 day", strtotime($firstDate)));
+                    //     $working_date_check = date('Y-m-d', strtotime($firstDate_check));
+                    //     $this->db->select('remarks');
+                    //     $this->db->from('calendars');
+                    //     $this->db->where('working_date', $working_date_check);
+                    //     $holiday_check = $this->db->get()->row();
 
-                        // if (date('w', strtotime($firstDate_check)) !== '0' && date('w', strtotime($firstDate_check)) !== '6') {
-                            if (@$holiday_check->remarks == null or @$holiday_check->remarks == "") {
-                                $wp++;
-                            }
-                        // }
-                    }else{
+                    //     // if (date('w', strtotime($firstDate_check)) !== '0' && date('w', strtotime($firstDate_check)) !== '6') {
+                    //         if (@$holiday_check->remarks == null or @$holiday_check->remarks == "") {
+                    //             $wp++;
+                    //         }
+                    //     // }
+                    // }else{
                         if($wp == 0){
                             $wp = 1;
                         }
@@ -110,18 +111,18 @@
                         $holiday_check = $this->db->get()->row();
 
                         // if (date('w', strtotime($firstDate_check)) !== '0' && date('w', strtotime($firstDate_check)) !== '6') {
-                            if (@$holiday_check->remarks == null or @$holiday_check->remarks == "") {
+                            // if (@$holiday_check->remarks == null or @$holiday_check->remarks == "") {
                                 $wp++;
-                            }
+                            // }
                         // }
-                    }
+                    // }
                   
             ?>
-            <th data-options="field:'date_<?= $tgl ?>',width:60,halign:'center',align:'right',editor:'textbox',styler:dates,formatter:datef"><?= $tgl ?><br><?= $wpp ?></th>
+            <th data-options="field:'wds_<?= $tgl ?>',width:60,halign:'center',align:'right',styler:dates,formatter:datef"><?= $wpp ?></th>
             <?php
                     $form_input .= ' <div style="float: left; width: 14%;">
                                         <div class="fitem">
-                                            <span style="width:40%; display:inline-block;">'.$tgl.' | '.$wpp.'</span>
+                                            <span style="width:40%; display:inline-block;">'.$wpp.'</span>
                                             <input style="width:50%;" name="date_'.$tgl.'" id="date_'.$tgl.'" class="easyui-textbox" data-options="onChange: function(){ hitung(); }">
                                         </div>
                                     </div>';
@@ -326,14 +327,14 @@
                                 method: 'post',
                                 url: '<?= base_url('planning/generate_mpp/createProductionSchedules') ?>',
                                 data: {
-                                    id: row.id,
+                                    data: row,
                                 },
                                 success: function(result) {
                                     var result = eval('(' + result + ')');
                                     requestCreate(total, json, number + 1, value);
 
                                     if (number == total) {
-                                        $('#dg').datagrid('reload');
+                                        // $('#dg').datagrid('reload');
                                         Swal.close();
                                         Swal.fire(
                                             'Create Completed',
@@ -367,37 +368,37 @@
                 $('#frm_insert').form('load', row);
                 url_update = '<?= base_url('planning/generate_mpp/update'); ?>?id=' + btoa(row.id);
 
-                if(row.wds_1 == "F"){ $("#date_1").textbox('disable'); }
-                if(row.wds_2 == "F"){ $("#date_2").textbox('disable'); }
-                if(row.wds_3 == "F"){ $("#date_3").textbox('disable'); }
-                if(row.wds_4 == "F"){ $("#date_4").textbox('disable'); }
-                if(row.wds_5 == "F"){ $("#date_5").textbox('disable'); }
-                if(row.wds_6 == "F"){ $("#date_6").textbox('disable'); }
-                if(row.wds_7 == "F"){ $("#date_7").textbox('disable'); }
-                if(row.wds_8 == "F"){ $("#date_8").textbox('disable'); }
-                if(row.wds_9 == "F"){ $("#date_9").textbox('disable'); }
-                if(row.wds_10 == "F"){ $("#date_10").textbox('disable'); }
-                if(row.wds_11 == "F"){ $("#date_11").textbox('disable'); }
-                if(row.wds_12 == "F"){ $("#date_12").textbox('disable'); }
-                if(row.wds_13 == "F"){ $("#date_13").textbox('disable'); }
-                if(row.wds_14 == "F"){ $("#date_14").textbox('disable'); }
-                if(row.wds_15 == "F"){ $("#date_15").textbox('disable'); }
-                if(row.wds_16 == "F"){ $("#date_16").textbox('disable'); }
-                if(row.wds_17 == "F"){ $("#date_17").textbox('disable'); }
-                if(row.wds_18 == "F"){ $("#date_18").textbox('disable'); }
-                if(row.wds_19 == "F"){ $("#date_19").textbox('disable'); }
-                if(row.wds_20 == "F"){ $("#date_20").textbox('disable'); }
-                if(row.wds_21 == "F"){ $("#date_21").textbox('disable'); }
-                if(row.wds_22 == "F"){ $("#date_22").textbox('disable'); }
-                if(row.wds_23 == "F"){ $("#date_23").textbox('disable'); }
-                if(row.wds_24 == "F"){ $("#date_24").textbox('disable'); }
-                if(row.wds_25 == "F"){ $("#date_25").textbox('disable'); }
-                if(row.wds_26 == "F"){ $("#date_26").textbox('disable'); }
-                if(row.wds_27 == "F"){ $("#date_27").textbox('disable'); }
-                if(row.wds_28 == "F"){ $("#date_28").textbox('disable'); }
-                if(row.wds_29 == "F"){ $("#date_29").textbox('disable'); }
-                if(row.wds_30 == "F"){ $("#date_30").textbox('disable'); }
-                if(row.wds_31 == "F"){ $("#date_31").textbox('disable'); }
+                if(row.wds_1 < 0){ $("#date_1").textbox('disable'); }
+                if(row.wds_2 < 0){ $("#date_2").textbox('disable'); }
+                if(row.wds_3 < 0){ $("#date_3").textbox('disable'); }
+                if(row.wds_4 < 0){ $("#date_4").textbox('disable'); }
+                if(row.wds_5 < 0){ $("#date_5").textbox('disable'); }
+                if(row.wds_6 < 0){ $("#date_6").textbox('disable'); }
+                if(row.wds_7 < 0){ $("#date_7").textbox('disable'); }
+                if(row.wds_8 < 0){ $("#date_8").textbox('disable'); }
+                if(row.wds_9 < 0){ $("#date_9").textbox('disable'); }
+                if(row.wds_10 < 0){ $("#date_10").textbox('disable'); }
+                if(row.wds_11 < 0){ $("#date_11").textbox('disable'); }
+                if(row.wds_12 < 0){ $("#date_12").textbox('disable'); }
+                if(row.wds_13 < 0){ $("#date_13").textbox('disable'); }
+                if(row.wds_14 < 0){ $("#date_14").textbox('disable'); }
+                if(row.wds_15 < 0){ $("#date_15").textbox('disable'); }
+                if(row.wds_16 < 0){ $("#date_16").textbox('disable'); }
+                if(row.wds_17 < 0){ $("#date_17").textbox('disable'); }
+                if(row.wds_18 < 0){ $("#date_18").textbox('disable'); }
+                if(row.wds_19 < 0){ $("#date_19").textbox('disable'); }
+                if(row.wds_20 < 0){ $("#date_20").textbox('disable'); }
+                if(row.wds_21 < 0){ $("#date_21").textbox('disable'); }
+                if(row.wds_22 < 0){ $("#date_22").textbox('disable'); }
+                if(row.wds_23 < 0){ $("#date_23").textbox('disable'); }
+                if(row.wds_24 < 0){ $("#date_24").textbox('disable'); }
+                if(row.wds_25 < 0){ $("#date_25").textbox('disable'); }
+                if(row.wds_26 < 0){ $("#date_26").textbox('disable'); }
+                if(row.wds_27 < 0){ $("#date_27").textbox('disable'); }
+                if(row.wds_28 < 0){ $("#date_28").textbox('disable'); }
+                if(row.wds_29 < 0){ $("#date_29").textbox('disable'); }
+                if(row.wds_30 < 0){ $("#date_30").textbox('disable'); }
+                if(row.wds_31 < 0){ $("#date_31").textbox('disable'); }
             }else{
                 toastr.warning("Next Product No cannot Found");
             }
@@ -407,204 +408,212 @@
     }
 
     function push_data(){
-        var filter_month = $("#filter_month").combobox('getValue');
-        var filter_year = $("#filter_year").textbox('getValue');
-        var filter_revision = $("#filter_revision").textbox('getValue');
-        var filter_customer = $("#filter_customer").combobox('getValue');
-        var filter_item_fg = $("#filter_item_fg").combogrid('getValue');
-
-        if(filter_revision != ""){
+        var rowsPush = $('#dg').datagrid('getSelections');
+        if (rowsPush.length > 0) {
             $.messager.prompt('Generate MPP', 'Please input Password Push Data', function(r){
                 if (r == "PUSHDATAMPP"){
-                    Swal.fire({
-                        title: 'Please Wait for Push Data WIP',
-                        showConfirmButton: false,
-                        allowOutsideClick: false,
-                        allowEscapeKey: false,
-                        didOpen: () => {
-                            Swal.showLoading();
-                        },
-                    });
 
-                    $.ajax({
-                        type: "get",
-                        url: "<?= base_url('planning/generate_mpp/push_data') ?>",
-                        data: "filter_month=" + window.btoa(filter_month) +
-                            "&filter_year=" + window.btoa(filter_year) +
-                            "&filter_revision=" + window.btoa(filter_revision) +
-                            "&filter_customer=" + window.btoa(filter_customer) +
-                            "&filter_item_fg=" + window.btoa(filter_item_fg),
-                        dataType: "json",
-                        success: function(rows) {
-                            Swal.close();
-                            if(rows.theme == "error"){
-                                Swal.close();
-                                Swal.fire(rows.title, rows.message, 'error');
-                                return false;
-                            }else{
-                                Swal.close();
-                                $("#push_data").linkbutton('disable');
-                                requestDataPush(rows['total'], rows);
+                    requestPush(rowsPush.length, rowsPush);
+                    function requestPush(totalPush, jsonPush, numberPush = 1, valuePush = 0) {
+                        Swal.fire({
+                            title: 'Please Wait for Push Data MPP',
+                            showConfirmButton: false,
+                            allowOutsideClick: false,
+                            allowEscapeKey: false,
+                            didOpen: () => {
+                                Swal.showLoading();
+                            },
+                        });
 
-                                function requestDataPush(total, json, number = 1, value = 0, success = 1, failed = 1) {
-                                    if (value < 100) {
-                                        value = Math.floor((number / total) * 100);
-                                        $('#p_upload').progressbar('setValue', value);
-                                        $('#p_start').html(number);
-                                        $('#p_finish').html(total);
-
-                                        $.post('<?= base_url('planning/generate_mpp/push_data_create') ?>', {
-                                            data: json[number - 1]
-                                        }, function(note) {
-                                            var result = eval('(' + note + ')');
-                                            if (result.theme == "success") {
-                                                Swal.close();
-                                                $('#p_success').html(success);
-                                                var title = "<b style='color: green;'>" + result.title + "</b> | " + result.message;
-                                                requestDataPush(total, json, number + 1, value, success + 1, failed + 0);
-                                            } else {
-                                                $('#p_failed').html(failed);
-                                                var title = "<b style='color: red;'>" + result.title + "</b> | " + result.message;
-
-                                                //Json Failed
-                                                $.ajax({
-                                                    type: "POST",
-                                                    async: true,
-                                                    url: "<?= base_url('planning/generate_mpp/uploadcreateFailed') ?>",
-                                                    data: {
-                                                        data: json[number - 1],
-                                                        message: result.message
-                                                    },
-                                                    cache: false
-                                                });
-
-                                                requestDataPush(total, json, number + 1, value, success + 0, failed + 1);
-                                            }
-
-                                            if (value == 100) {
-                                                push_data_mpp_generate();
-                                            }
-
-                                            $("#p_remarks").append(title + "<br>");
-                                        }).fail(function(jqXHR, textStatus) {
-                                            if (textStatus == "error") {
-                                                toastr.error("Data has been created in WIP and WDS");
-                                                var title = "<b style='color: red;'>Duplicate</b> | Data has been created in WIP and WDS";
-                                                $('#p_failed').html(failed);
-                                                $("#p_remarks").append(title + "<br>");
-                                                requestDataPush(total, json, number + 1, value, success + 0, failed + 1);
-                                            }
-                                        });
-                                    }
-                                }
-                            }
-                        }
-                    });
-                }else{
-                    Swal.fire('Wrong!', 'Password do not match!', 'error');
-                }
-            });
-        }else{
-            toastr.warning("Please select revision!", "Information");
-        }
-    }
-
-    function push_data_mpp_generate(){
-        var filter_month = $("#filter_month").combobox('getValue');
-        var filter_year = $("#filter_year").textbox('getValue');
-        var filter_revision = $("#filter_revision").textbox('getValue');
-        var filter_customer = $("#filter_customer").combobox('getValue');
-        var filter_item_fg = $("#filter_item_fg").combogrid('getValue');
-
-        Swal.fire({
-            title: 'Please Wait for Push Data MPP Generate',
-            showConfirmButton: false,
-            allowOutsideClick: false,
-            allowEscapeKey: false,
-            didOpen: () => {
-                Swal.showLoading();
-            },
-        });
-
-        $.ajax({
-            type: "get",
-            url: "<?= base_url('planning/generate_mpp/push_data_mpp_generate') ?>",
-            data: "filter_month=" + window.btoa(filter_month) +
-                "&filter_year=" + window.btoa(filter_year) +
-                "&filter_revision=" + window.btoa(filter_revision) +
-                "&filter_customer=" + window.btoa(filter_customer) +
-                "&filter_item_fg=" + window.btoa(filter_item_fg),
-            dataType: "json",
-            success: function(rows) {
-                if(rows.theme == "error"){
-                    Swal.close();
-                    Swal.fire(rows.title, rows.message, 'error');
-                    return false;
-                }else{
-                    Swal.close();
-                    requestDataPushMppGenerate(rows['total'], rows);
-
-                    function requestDataPushMppGenerate(total, json, number = 1, value = 0, success = 1, failed = 1) {
-                        if (value < 100) {
-                            value = Math.floor((number / total) * 100);
-                            $('#p_upload_mpp_generate').progressbar('setValue', value);
-                            $('#p_start_mpp_generate').html(number);
-                            $('#p_finish_mpp_generate').html(total);
-
-                            $.post('<?= base_url('planning/generate_mpp/push_data_create_mpp_generate') ?>', {
-                                data: json[number - 1]
-                            }, function(note) {
-                                var result = eval('(' + note + ')');
-                                if (result.theme == "success") {
+                        if (valuePush < 100) {
+                            valuePush = Math.floor((numberPush / totalPush) * 100);
+                            var rowPush = jsonPush[numberPush-1];
+                            
+                            $.ajax({
+                                type: "get",
+                                url: "<?= base_url('planning/generate_mpp/push_data') ?>",
+                                data: "filter_month=" + window.btoa(rowPush.p_month) +
+                                    "&filter_year=" + window.btoa(rowPush.p_year) +
+                                    "&filter_revision=" + window.btoa(rowPush.revision) +
+                                    "&filter_customer=" + window.btoa(rowPush.customer_id) +
+                                    "&filter_item_fg=" + window.btoa(rowPush.item_fg_id),
+                                dataType: "json",
+                                success: function(rows) {
                                     Swal.close();
-                                    $('#p_success').html(success);
-                                    var title = "<b style='color: green;'>" + result.title + "</b> | " + result.message;
-                                    requestDataPushMppGenerate(total, json, number + 1, value, success + 1, failed + 0);
-                                } else {
-                                    $('#p_failed').html(failed);
-                                    var title = "<b style='color: red;'>" + result.title + "</b> | " + result.message;
+                                    if(rows.theme == "error"){
+                                        Swal.close();
+                                        Swal.fire(rows.title, rows.message, 'error');
+                                        return false;
+                                    }else{
+                                        Swal.close();
+                                        $("#push_data").linkbutton('disable');
+                                        requestDataPush(rows['total'], rows);
 
-                                    //Json Failed
-                                    $.ajax({
-                                        type: "POST",
-                                        async: true,
-                                        url: "<?= base_url('planning/generate_mpp/uploadcreateFailed') ?>",
-                                        data: {
-                                            data: json[number - 1],
-                                            message: result.message
-                                        },
-                                        cache: false
-                                    });
+                                        function requestDataPush(total, json, number = 1, value = 0, success = 1, failed = 1) {
+                                            if (value < 100) {
+                                                value = Math.floor((number / total) * 100);
+                                                $('#p_upload').progressbar('setValue', value);
+                                                $('#p_start').html(number);
+                                                $('#p_finish').html(total);
 
-                                    requestDataPushMppGenerate(total, json, number + 1, value, success + 0, failed + 1);
-                                }
+                                                $.post('<?= base_url('planning/generate_mpp/push_data_create') ?>', {
+                                                    data: json[number - 1]
+                                                }, function(note) {
+                                                    var result = eval('(' + note + ')');
+                                                    if (result.theme == "success") {
+                                                        Swal.close();
+                                                        $('#p_success').html(success);
+                                                        var title = "<b style='color: green;'>" + result.title + "</b> | " + result.message;
+                                                        requestDataPush(total, json, number + 1, value, success + 1, failed + 0);
+                                                    } else {
+                                                        $('#p_failed').html(failed);
+                                                        var title = "<b style='color: red;'>" + result.title + "</b> | " + result.message;
 
-                                if (value == 100) {
-                                    // push_data_plan_schedule();
-                                    Swal.fire('Good job!', 'Process Save Data Completed!', 'success');
-                                }
+                                                        //Json Failed
+                                                        $.ajax({
+                                                            type: "POST",
+                                                            async: true,
+                                                            url: "<?= base_url('planning/generate_mpp/uploadcreateFailed') ?>",
+                                                            data: {
+                                                                data: json[number - 1],
+                                                                message: result.message
+                                                            },
+                                                            cache: false
+                                                        });
 
-                                $("#p_remarks").append(title + "<br>");
-                            }).fail(function(jqXHR, textStatus) {
-                                if (textStatus == "error") {
-                                    Swal.fire({
-                                        title: 'Connection Time Out, Check Your Connection',
-                                        showConfirmButton: false,
-                                        allowOutsideClick: false,
-                                        allowEscapeKey: false,
-                                        didOpen: () => {
-                                            Swal.showLoading();
-                                        },
-                                    });
+                                                        requestDataPush(total, json, number + 1, value, success + 0, failed + 1);
+                                                    }
 
-                                    requestDataPushMppGenerate(total, json, number, value, success + 0, failed + 0);
+                                                    if (value == 100) {
+                                                        push_data_mpp_generate(rowPush.p_month, rowPush.p_year, rowPush.revision, rowPush.customer_id, rowPush.item_fg_id);
+                                                        function push_data_mpp_generate(filter_month, filter_year, filter_revision, filter_customer, filter_item_fg){
+                                                            Swal.fire({
+                                                                title: 'Please Wait for Push Data MPP Generate',
+                                                                showConfirmButton: false,
+                                                                allowOutsideClick: false,
+                                                                allowEscapeKey: false,
+                                                                didOpen: () => {
+                                                                    Swal.showLoading();
+                                                                },
+                                                            });
+
+                                                            $.ajax({
+                                                                type: "get",
+                                                                url: "<?= base_url('planning/generate_mpp/push_data_mpp_generate') ?>",
+                                                                data: "filter_month=" + window.btoa(filter_month) +
+                                                                    "&filter_year=" + window.btoa(filter_year) +
+                                                                    "&filter_revision=" + window.btoa(filter_revision) +
+                                                                    "&filter_customer=" + window.btoa(filter_customer) +
+                                                                    "&filter_item_fg=" + window.btoa(filter_item_fg),
+                                                                dataType: "json",
+                                                                success: function(rows2) {
+                                                                    if(rows2.theme == "error"){
+                                                                        Swal.close();
+                                                                        Swal.fire(rows2.title, rows2.message, 'error');
+                                                                        return false;
+                                                                    }else{
+                                                                        Swal.close();
+                                                                        requestDataPushMppGenerate(rows2['total'], rows2);
+
+                                                                        function requestDataPushMppGenerate(total2, json2, number2 = 1, value2 = 0, success2 = 1, failed2 = 1) {
+                                                                            if (value2 < 100) {
+                                                                                value2 = Math.floor((number2 / total2) * 100);
+                                                                                $('#p_upload_mpp_generate').progressbar('setValue', value2);
+                                                                                $('#p_start_mpp_generate').html(number2);
+                                                                                $('#p_finish_mpp_generate').html(total2);
+
+                                                                                $.post('<?= base_url('planning/generate_mpp/push_data_create_mpp_generate') ?>', {
+                                                                                    data: json2[number2 - 1]
+                                                                                }, function(note) {
+                                                                                    var result = eval('(' + note + ')');
+                                                                                    if (result.theme == "success") {
+                                                                                        Swal.close();
+                                                                                        $('#p_success').html(success);
+                                                                                        var title = "<b style='color: green;'>" + result.title + "</b> | " + result.message;
+                                                                                        requestDataPushMppGenerate(total2, json2, number2 + 1, value2, success2 + 1, failed2 + 0);
+                                                                                    } else {
+                                                                                        $('#p_failed').html(failed);
+                                                                                        var title = "<b style='color: red;'>" + result.title + "</b> | " + result.message;
+
+                                                                                        //Json Failed
+                                                                                        $.ajax({
+                                                                                            type: "POST",
+                                                                                            async: true,
+                                                                                            url: "<?= base_url('planning/generate_mpp/uploadcreateFailed') ?>",
+                                                                                            data: {
+                                                                                                data: json[number - 1],
+                                                                                                message: result.message
+                                                                                            },
+                                                                                            cache: false
+                                                                                        });
+
+                                                                                        requestDataPushMppGenerate(total2, json2, number2 + 1, value2, success2 + 1, failed2 + 0);
+                                                                                    }
+
+                                                                                    if (numberPush == totalPush) {
+                                                                                        $('#dg').datagrid('reload');
+                                                                                        Swal.close();
+                                                                                        Swal.fire(
+                                                                                            'Push Data Completed',
+                                                                                            'Push Data has been completed, You can Check in MRP Banshu for the results',
+                                                                                            'success'
+                                                                                        );
+
+                                                                                        return false;
+                                                                                    }
+
+                                                                                    if (value2 == 100) {
+                                                                                        requestPush(totalPush, jsonPush, numberPush + 1, valuePush);
+                                                                                    }
+
+                                                                                    $("#p_remarks").append(title + "<br>");
+                                                                                }).fail(function(jqXHR, textStatus) {
+                                                                                    if (textStatus == "error") {
+                                                                                        Swal.fire({
+                                                                                            title: 'Connection Time Out, Check Your Connection',
+                                                                                            showConfirmButton: false,
+                                                                                            allowOutsideClick: false,
+                                                                                            allowEscapeKey: false,
+                                                                                            didOpen: () => {
+                                                                                                Swal.showLoading();
+                                                                                            },
+                                                                                        });
+
+                                                                                        requestDataPushMppGenerate(total, json, number, value, success + 0, failed + 0);
+                                                                                    }
+                                                                                });
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            });
+                                                        }
+                                                    }
+
+                                                    $("#p_remarks").append(title + "<br>");
+                                                }).fail(function(jqXHR, textStatus) {
+                                                    if (textStatus == "error") {
+                                                        toastr.error("Data has been created in WIP and WDS");
+                                                        var title = "<b style='color: red;'>Duplicate</b> | Data has been created in WIP and WDS";
+                                                        $('#p_failed').html(failed);
+                                                        $("#p_remarks").append(title + "<br>");
+                                                        requestDataPush(total, json, number + 1, value, success + 0, failed + 1);
+                                                    }
+                                                });
+                                            }
+                                        }
+                                    }
                                 }
                             });
                         }
                     }
+                }else{
+                    Swal.fire('Wrong!', 'Password do not match!', 'error');
                 }
-            }
-        });
+            });
+        } else {
+            toastr.info("Please select one of the data in the table first");
+        }
     }
 
     //Add Data
@@ -1118,7 +1127,7 @@
     function dates(value, row, index) {
         if (value == "W") {
             return 'background: #FFB73F; color:white;';
-        }else if(value == "F"){
+        }else if(value < 0){
             return 'background: #FF1D1D; color:white;';
         }
     }
@@ -1126,8 +1135,8 @@
     function datef(value, row, index) {
         if (value == "W") {
             return "OFF";
-        }else if(value == "F"){
-            return "PROD";
+        }else if(value < 0){
+            return Math.abs(value);
         }else{
             return value;
         }

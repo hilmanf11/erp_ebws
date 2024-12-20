@@ -107,6 +107,7 @@
                 });
             }
         });
+
         //Scan Label
         $('#checksheet_label').keypress(function(e) {
             if (e.which == 13) {
@@ -128,6 +129,8 @@
                                     data: "checksheet_label=" + checksheet_label +
                                         "&delivery_order_no=" + delivery_order_no +
                                         "&workorder=" + row[i].workorder +
+                                        "&item_fg_id=" + row[i].item_fg_id +
+                                        "&checksheet_number=" + row[i].checksheet_number +
                                         "&qty=" + row[i].qty,
                                     dataType: "json",
                                     success: function(result) {
@@ -156,7 +159,7 @@
                             });
                         } else {
                             serialNotFound.play();
-                            toastr.warning("Label not found!");
+                            toastr.warning("Label already Scaned or Label not Registered in Warehouse!");
                             $("#checksheet_label").val('');
                             $('#checksheet_label').focus();
                         }

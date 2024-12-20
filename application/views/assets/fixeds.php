@@ -1,33 +1,42 @@
 <table id="dg" class="easyui-datagrid" style="width:99.5%;" toolbar="#toolbar">
+    <thead frozen="true">
+        <tr>
+            <th field="ck" checkbox="true"></th>
+            <th data-options="field:'number',width:150,halign:'center'">Asset No</th>
+            <th data-options="field:'name',width:200,halign:'center'">Asset Description</th>
+        </tr>
+    </thead>
     <thead>
         <tr>
-            <th rowspan="2" field="ck" checkbox="true"></th>
-            <th rowspan="2" data-options="field:'number',width:150,halign:'center'">Asset No</th>
-            <th rowspan="2" data-options="field:'name',width:200,halign:'center'">Asset Name</th>
-            <th rowspan="2" data-options="field:'asset_category_name',width:120,halign:'center'">Asset Category</th>
-            <th rowspan="2" data-options="field:'asset_category_type',width:120,halign:'center'">Asset Type</th>
-            <th rowspan="2" data-options="field:'purchase_invoice_number',width:150,halign:'center'">Purchase Invoice No</th>
+            <th rowspan="2" data-options="field:'asset_category_name',width:120,halign:'center'">Asset<br>Category</th>
+            <th rowspan="2" data-options="field:'purchase_invoice_no',width:150,halign:'center'">Purchase Invoice No</th>
             <th rowspan="2" data-options="field:'supplier_name',width:200,halign:'center'">Supplier Name</th>
-            <th rowspan="2" data-options="field:'trans_date',width:100,align:'center'">Purchase Date</th>
-            <th rowspan="2" data-options="field:'usage_date',width:100,align:'center'">Usage Date</th>
+            <th rowspan="2" data-options="field:'trans_date',width:100,align:'center'">Capitalization<br>Date</th>
+            <th rowspan="2" data-options="field:'uom',width:80,align:'center'">Uom</th>
             <th rowspan="2" data-options="field:'qty',width:80,halign:'center',align:'right'">Qty</th>
-            <th rowspan="2" data-options="field:'cost',width:100,halign:'center',align:'right', formatter:priceformat">Cost</th>
-            <th rowspan="2" data-options="field:'residual',width:100,halign:'center',align:'right', formatter:priceformat">Residual Value</th>
+            <th rowspan="2" data-options="field:'cost',width:100,halign:'center',align:'right', formatter:priceformat">Opening<br>Acq.Value</th>
+            <th rowspan="2" data-options="field:'acq_period',width:100,halign:'center',align:'right', formatter:priceformat">Acquisition for<br>the period</th>
+            <th rowspan="2" data-options="field:'acq_closing',width:100,halign:'center',align:'right', formatter:priceformat">Closing Acq<br>value</th>
+            <th rowspan="2" data-options="field:'residual',width:100,halign:'center',align:'right', formatter:priceformat">Residual value<br>@5% of cost</th>
+            <th colspan="3" data-options="field:'',width:100,align:'center'">Estimated</th>
+            <th rowspan="2" data-options="field:'addition_op',width:100,halign:'center',align:'right', formatter:priceformat">Dep. on<br>opening value</th>
+            <th rowspan="2" data-options="field:'addition',width:100,halign:'center',align:'right', formatter:priceformat">Dep. on<br>Addition</th>
+            <th rowspan="2" data-options="field:'addition_total',width:100,halign:'center',align:'right', formatter:priceformat">Total Dep. For<br>the period</th>
+            <th rowspan="2" data-options="field:'accum_op',width:100,halign:'center',align:'right', formatter:priceformat">Opening<br>Accum Dep</th>
+            <th rowspan="2" data-options="field:'accum_close',width:100,halign:'center',align:'right', formatter:priceformat">Closing<br>Accum Dep</th>
+            <th rowspan="2" data-options="field:'wdv',width:100,halign:'center',align:'right', formatter:priceformat">Opening<br>WDV</th>
+            <th rowspan="2" data-options="field:'posting_date',width:100,align:'center'">Posting Date</th>
+            <th rowspan="2" data-options="field:'expired_date',width:100,align:'center'">Expired Date</th>
             <th rowspan="2" data-options="field:'depreciation',width:100,halign:'center',align:'right', formatter:priceformat">Depreciation</th>
-            <th rowspan="2" data-options="field:'depreciation_month',width:100,halign:'center',align:'right', formatter:priceformat">Depreciation<br>(month)</th>
-            <th rowspan="2" data-options="field:'depreciation_amount',width:100,halign:'center',align:'right', formatter:priceformat">Depreciation<br>(amount)</th>
-            <th rowspan="2" data-options="field:'book_value',width:100,halign:'center',align:'right', formatter:priceformat">Book<br>Value</th>
-            <th colspan="2" data-options="field:'',width:100,align:'center'">Estimated<br>Economic</th>
-            <th rowspan="2" data-options="field:'method',width:100,halign:'center'">Depreciation<br>Method</th>
             <th rowspan="2" data-options="field:'departement',width:100,halign:'center'">Departement</th>
-            <th rowspan="2" data-options="field:'location',width:100,halign:'center'">Location</th>
-            <th rowspan="2" data-options="field:'status',width:100,align:'center',formatter:statusformat,styler:statusStyle">Status</th>
+            <th rowspan="2" data-options="field:'status_expired',width:100,align:'center',formatter:statusformat,styler:statusStyle">Status</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
         </tr>
         <tr>
             <th data-options="field:'estimate_year',width:80,align:'center'"> Year</th>
             <th data-options="field:'estimate_month',width:80,align:'center'"> Month</th>
+            <th data-options="field:'estimate_day',width:80,align:'center'"> Day</th>
             <th data-options="field:'created_by',width:100,align:'center'"> By</th>
             <th data-options="field:'created_date',width:150,align:'center'"> Date</th>
             <th data-options="field:'updated_by',width:100,align:'center'"> By</th>
@@ -36,7 +45,7 @@
     </thead>
 </table>
 
-<div id="toolbar" style="height: 225px;">
+<div id="toolbar" style="height: 235px; padding: 10px;">
     <!-- <div style="width: 100%; display: grid; grid-template-columns: auto auto auto; grid-gap: 5px; display: flex;"> -->
     <div style="width: 100%;">
         <fieldset style="width: 100%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
@@ -44,7 +53,7 @@
             <div style="width: 50%; float: left;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Purchase Date</span>
-                    <input style="width:28%;" id="filter_from" value="<?= date("Y-m-01") ?>" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false"> To
+                    <input style="width:28%;" id="filter_from" value="<?= $filter_from ?>" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false"> To
                     <input style="width:28%;" id="filter_to" value="<?= date("Y-m-t") ?>" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
                 </div>
                 <div class="fitem">
@@ -92,7 +101,7 @@
 </div>
 
 <!-- Insert & Update -->
-<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 1000px; padding:10px; top: 20px;">
+<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 1000px; height: 550px; padding:10px; top: 20px;">
     <form id="frm_insert" method="post" novalidate>
         <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
             <legend><b>Form Data</b></legend>
@@ -133,21 +142,17 @@
             </div>
             <div style="width: 50%; float: left;">
                 <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Usage Date</span>
-                    <input style="width:60%;" name="usage_date" id="usage_date" class="easyui-datebox" required data-options="formatter:myformatter,parser:myparser, editable:false">
-                </div>
-                <div class="fitem">
                     <span style="width:35%; display:inline-block;">Estimated Economic</span>
                     <input style="width:30%;" name="estimate_year" id="estimate_year" required class="easyui-numberbox" data-options="prompt:'Year'">
                     <input style="width:30%;" name="estimate_month" id="estimate_month" required readonly class="easyui-numberbox" data-options="prompt:'Month'">
                 </div>
                 <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Residual</span>
-                    <input style="width:40%;" name="residual" id="residual" required class="easyui-numberbox" data-options="groupSeparator:'.',decimalSeparator:','">
+                    <span style="width:35%; display:inline-block;">Expired Date</span>
+                    <input style="width:60%;" name="expired_date" id="expired_date" class="easyui-datebox" required readonly data-options="formatter:myformatter,parser:myparser, editable:false">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Depreciation</span>
-                    <input style="width:40%;" name="depreciation" id="depreciation" readonly class="easyui-numberbox" data-options="groupSeparator:'.',decimalSeparator:','">
+                    <input style="width:40%;" name="depreciation" id="depreciation" readonly required class="easyui-numberbox" data-options="groupSeparator:'.',decimalSeparator:','">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Remarks</span>
@@ -216,21 +221,90 @@
 <script>
     //Add Data
     function add() {
-        $('#dlg_insert').dialog('open');
-        url_save = '<?= base_url('assets/fixeds/create') ?>';
-        $('#frm_insert').form('clear');
+        toastr.info("Create data From Purchase Invoicing");
+        // $('#dlg_insert').dialog('open');
+        // url_save = '<?= base_url('assets/fixeds/create') ?>';
+        // $('#frm_insert').form('clear');
+
+        // //GET PURCHASE INVOICING
+        // $('#purchase_invoice_number').combogrid({
+        //     url: '<?= base_url('assets/fixeds/readPi') ?>',
+        //     panelWidth: 300,
+        //     idField: 'number',
+        //     textField: 'number',
+        //     mode: 'remote',
+        //     fitColumns: true,
+        //     prompt: "Choose Purchase Invoice",
+        //     columns: [
+        //         [{
+        //             field: 'number',
+        //             title: 'Purchase Invoice',
+        //             width: 120
+        //         }, {
+        //             field: 'name',
+        //             title: 'Product Family',
+        //             width: 150
+        //         }, ]
+        //     ],
+        //     onSelect: function(val, row) {
+        //         $('#number').combogrid({
+        //             url: '<?= base_url('assets/fixeds/readProductPi/') ?>' + window.btoa(row.number),
+        //             panelWidth: 400,
+        //             idField: 'item_no',
+        //             textField: 'item_no',
+        //             mode: 'remote',
+        //             fitColumns: true,
+        //             prompt: "Choose Asset No",
+        //             columns: [
+        //                 [{
+        //                     field: 'item_no',
+        //                     title: 'Asset No',
+        //                     width: 200
+        //                 }, {
+        //                     field: 'item_name',
+        //                     title: 'Asset Name',
+        //                     width: 150
+        //                 }, ]
+        //             ],
+        //             onSelect: function(val2, row2) {
+        //                 $.ajax({
+        //                     type: "post",
+        //                     url: "<?= base_url('assets/fixeds/readExchangeRates') ?>",
+        //                     data: "trans_date=" + row2.trans_date + "&currency=" + row2.currency,
+        //                     dataType: "json",
+        //                     success: function(exchange) {
+        //                         if (exchange.length > 0) {
+        //                             $("#cost").numberbox('setValue', parseFloat(row2.price * parseFloat(exchange[0].middle)));
+        //                             $("#total").numberbox('setValue', (parseFloat(row2.qty) * parseFloat(row2.price * parseFloat(exchange[0].middle))));
+        //                         } else {
+        //                             $("#cost").numberbox('setValue', row2.price);
+        //                             $("#total").numberbox('setValue', (parseFloat(row2.qty) * parseFloat(row2.price)));
+        //                         }
+        //                     }
+        //                 });
+
+        //                 $("#name").textbox('setValue', row2.item_name);
+        //                 $("#trans_date").datebox('setValue', row2.trans_date);
+        //                 $("#supplier_name").textbox('setValue', row2.supplier_name);
+        //                 $("#qty").numberbox('setValue', row2.qty);
+        //                 $("#currency").textbox('setValue', "IDR");
+        //             }
+        //         });
+        //     }
+        // });
     }
 
     //Edit Data
     function update() {
-        var row = $('#dg').datagrid('getSelected');
-        if (row) {
-            $('#dlg_insert').dialog('open');
-            $('#frm_insert').form('load', row);
-            url_save = '<?= base_url('assets/fixeds/update') ?>?id=' + btoa(row.id);
-        } else {
-            toastr.warning("Please select one of the data in the table first!", "Information");
-        }
+        toastr.info("Cannot Update Data");
+        // var row = $('#dg').datagrid('getSelected');
+        // if (row) {
+        //     $('#dlg_insert').dialog('open');
+        //     $('#frm_insert').form('load', row);
+        //     url_save = '<?= base_url('assets/fixeds/update') ?>?id=' + btoa(row.id);
+        // } else {
+        //     toastr.warning("Please select one of the data in the table first!", "Information");
+        // }
     }
 
     //Delete Data
@@ -239,26 +313,57 @@
         if (rows.length > 0) {
             $.messager.confirm('Warning', 'Are you sure you want to delete this data?', function(r) {
                 if (r) {
+                    Swal.fire({
+                        title: 'Please Wait for Deleting Data',
+                        showConfirmButton: false,
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        },
+                    });
+
                     for (var i = 0; i < rows.length; i++) {
                         var row = rows[i];
+
                         $.ajax({
-                            method: 'post',
-                            url: '<?= base_url('assets/fixeds/delete') ?>',
-                            data: {
-                                id: row.id
-                            },
-                            success: function(result) {
-                                var result = eval('(' + result + ')');
-                            },
-                            error: function(jqXHR, textStatus, errorThrown) {
-                                toastr.error("This data is already used in other modules, You must delete it First", "Error");
-                                
-                            },
-                            complete: function(data) {
-                                $('#dg').datagrid('reload');
+                            type: "post",
+                            url: "<?= base_url('closing/locks/checkLock') ?>",
+                            data: "period=" + row.trans_date + "&menus_id=<?= $menus_id ?>",
+                            dataType: "json",
+                            success: function (lock) {
+                                if(lock.total > 0){
+                                    toastr.error("This period is not active by Accounting");
+                                    return false;
+                                }
+
+                                $.ajax({
+                                    method: 'post',
+                                    url: '<?= base_url('assets/fixeds/delete') ?>',
+                                    data: {
+                                        id: row.id
+                                    },
+                                    success: function(result) {
+                                        var result = eval('(' + result + ')');
+
+                                        if (i == rows.length) {
+                                            Swal.close();
+                                            $('#dg').datagrid('reload');
+                                        }
+                                    },
+                                    error: function(jqXHR, textStatus, errorThrown) {
+                                        toastr.error(jqXHR.statusText);
+                                        $.messager.alert("Error", jqXHR.statusText, 'error');
+                                    },
+                                    complete: function(data) {
+                                        $('#dg').datagrid('reload');
+                                    }
+                                });
                             }
                         });
                     }
+
+                    $('#dg').datagrid('reload');
                 }
             });
         } else {
@@ -333,7 +438,8 @@
             pagination: true,
             clientPaging: false,
             remoteFilter: true,
-            rownumbers: true
+            rownumbers: true,
+            fit: true,
         });
 
         //Save Data
@@ -342,32 +448,47 @@
                 text: 'Save',
                 iconCls: 'icon-ok',
                 handler: function() {
-                    $('#frm_insert').form('submit', {
-                        url: url_save,
-                        onSubmit: function() {
-                            if ($(this).form('validate') == true) {
-                                $('#dlg_insert').dialog('close');
-                                Swal.fire({
-                                    title: 'Please Wait for Saving Data',
-                                    showConfirmButton: false,
-                                    allowOutsideClick: false,
-                                    allowEscapeKey: false,
-                                    didOpen: () => {
-                                        Swal.showLoading();
-                                    },
-                                });
-                            }
-                        },
-                        success: function(result) {
-                            Swal.close();
-                            var result = eval('(' + result + ')');
-                            if (result.theme == "success") {
-                                toastr.success(result.message, result.title);
-                            } else {
-                                toastr.error(result.message, result.title);
+                    var trans_date = $("#trans_date").datebox('getValue');
+
+                    $.ajax({
+                        type: "post",
+                        url: "<?= base_url('closing/locks/checkLock') ?>",
+                        data: "period=" + trans_date + "&menus_id=<?= $menus_id ?>",
+                        dataType: "json",
+                        success: function (lock) {
+                            if(lock.total > 0){
+                                toastr.error("This period is not active by Accounting");
+                                return false;
                             }
 
-                            $('#dg').datagrid('reload');
+                            $('#frm_insert').form('submit', {
+                                url: url_save,
+                                onSubmit: function() {
+                                    if ($(this).form('validate') == true) {
+                                        $('#dlg_insert').dialog('close');
+                                        Swal.fire({
+                                            title: 'Please Wait for Saving Data',
+                                            showConfirmButton: false,
+                                            allowOutsideClick: false,
+                                            allowEscapeKey: false,
+                                            didOpen: () => {
+                                                Swal.showLoading();
+                                            },
+                                        });
+                                    }
+                                },
+                                success: function(result) {
+                                    Swal.close();
+                                    var result = eval('(' + result + ')');
+                                    if (result.theme == "success") {
+                                        toastr.success(result.message, result.title);
+                                    } else {
+                                        toastr.error(result.message, result.title);
+                                    }
+
+                                    $('#dg').datagrid('reload');
+                                }
+                            });
                         }
                     });
                 }
@@ -453,59 +574,6 @@
             }]
         });
 
-        //GET PURCHASE INVOICING
-        $('#purchase_invoice_number').combogrid({
-            url: '<?= base_url('assets/fixeds/readPi') ?>',
-            panelWidth: 300,
-            idField: 'number',
-            textField: 'number',
-            mode: 'remote',
-            fitColumns: true,
-            prompt: "Choose Purchase Invoice",
-            columns: [
-                [{
-                    field: 'number',
-                    title: 'Purchase Invoice',
-                    width: 120
-                }, {
-                    field: 'name',
-                    title: 'Product Family',
-                    width: 150
-                }, ]
-            ],
-            onSelect: function(val, row) {
-                $('#number').combogrid({
-                    url: '<?= base_url('assets/fixeds/readProductPi/') ?>' + window.btoa(row.number),
-                    panelWidth: 400,
-                    idField: 'item_no',
-                    textField: 'item_no',
-                    mode: 'remote',
-                    fitColumns: true,
-                    prompt: "Choose Asset No",
-                    columns: [
-                        [{
-                            field: 'item_no',
-                            title: 'Asset No',
-                            width: 200
-                        }, {
-                            field: 'item_name',
-                            title: 'Asset Name',
-                            width: 150
-                        }, ]
-                    ],
-                    onSelect: function(val2, row2) {
-                        $("#name").textbox('setValue', row2.item_name);
-                        $("#trans_date").datebox('setValue', row2.trans_date);
-                        $("#supplier_name").textbox('setValue', row2.supplier_name);
-                        $("#qty").numberbox('setValue', row2.qty);
-                        $("#currency").textbox('setValue', row2.currency);
-                        $("#cost").numberbox('setValue', row2.price);
-                        $("#total").numberbox('setValue', (parseFloat(row2.qty) * parseFloat(row2.price)));
-                    }
-                });
-            }
-        });
-
         $("#asset_category_number").combobox({
             url: '<?= base_url('assets/categories/reads') ?>',
             valueField: 'number',
@@ -526,7 +594,7 @@
             }],
             onSelect: function(category) {
                 $("#filter_number").combogrid({
-                    url: '<?= base_url('assets/fixeds/readNumber/') ?>' + category.number,
+                    url: '<?= base_url('assets/fixeds/readNumber/') ?>' + btoa(category.number),
                     panelWidth: 450,
                     idField: 'number',
                     textField: 'number',
@@ -583,9 +651,24 @@
         $("#estimate_year").numberbox({
             onChange: function(val) {
                 var cost = $("#cost").numberbox('getValue');
+                var trans_date = $("#trans_date").datebox('getValue');
 
-                $("#estimate_month").numberbox('setValue', (parseInt(val) * 12));
-                $("#depreciation").numberbox('setValue', (cost / (parseInt(val) * 12)));
+                if(trans_date != ""){
+                    $("#estimate_month").numberbox('setValue', (parseInt(val) * 12));
+                    $("#depreciation").numberbox('setValue', (cost / (parseInt(val) * 12)));
+
+                    $.ajax({
+                        type: "post",
+                        url: "<?= base_url('assets/fixeds/readExpired/') ?>" + (parseInt(val) * 12) + "/" + btoa(trans_date),
+                        dataType: "html",
+                        success: function (response) {
+                            $("#expired_date").datebox('setValue', response);
+                        }
+                    });
+                }else{
+                    toastr.error("Please Select Purchase Date First");
+                    $("#estimate_year").numberbox('clear');
+                }
             }
         })
     });
@@ -615,7 +698,7 @@
         if (value == 0) {
             return "<b style='color:green;'>ACTIVE</b>";
         } else if (value == 1) {
-            return "<b style='color:red;'>INACTIVE</b>";
+            return "<b style='color:red;'>EXPIRED</b>";
         }
     }
 
@@ -629,7 +712,7 @@
 
     function priceformat(value, row) {
         if (value != null) {
-            const formatter = new Intl.NumberFormat("id-ID", {
+            const formatter = new Intl.NumberFormat("ja-JP", {
                 minimumFractionDigits: 0
             });
             return "<b>" + formatter.format(value) + "</b>";

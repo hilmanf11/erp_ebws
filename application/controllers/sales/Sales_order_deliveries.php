@@ -44,7 +44,20 @@ class Sales_order_deliveries extends CI_Controller
             JOIN customers b ON a.customer_id = b.id
             WHERE b.id = '$customer_id'
             AND a.status = 0
-            GROUP BY a.trans_date ORDER BY a.trans_date ASC");
+            GROUP BY a.trans_date ORDER BY a.trans_date DESC");
+        echo json_encode($send);
+    }
+
+    public function readPlant($customer_id, $trans_date)
+    {  
+        $customer_id = base64_decode($customer_id);
+        $trans_date = base64_decode($trans_date);
+        $send = $this->crud->query("SELECT plant
+            FROM sales_order_deliveries
+            WHERE customer_id = '$customer_id'
+            AND trans_date = '$trans_date'
+            AND `status` = 0
+            GROUP BY plant ORDER BY plant ASC");
         echo json_encode($send);
     }
 
@@ -54,6 +67,7 @@ class Sales_order_deliveries extends CI_Controller
         $tahun = $this->input->post('year');
         $customer_id = $this->input->post('customer_id');
         $item_fg_id = $this->input->post('item_fg_id');
+        $plant = $this->input->post('plant');
 
         if ($bulan == "" or $tahun == "") {
             $bulan = date('m');
@@ -127,6 +141,7 @@ class Sales_order_deliveries extends CI_Controller
             $this->db->where('customer_id', $customer_id);
             $this->db->where('item_fg_id', $item_fg_id);
             $this->db->where('trans_date', $tanggal);
+            $this->db->where('plant', $plant);
             $data = $this->db->get()->result_array();
 
             if(@$data[0]['status'] == 1){
@@ -170,6 +185,7 @@ class Sales_order_deliveries extends CI_Controller
             $filter_month = base64_decode($this->input->get('filter_month'));
             $filter_year = base64_decode($this->input->get('filter_year'));
             $filter_customer = base64_decode($this->input->get('filter_customer'));
+            $filter_plant = base64_decode($this->input->get('filter_plant'));
             $filter_item_fg = base64_decode($this->input->get('filter_item_fg'));
 
             //Select Query
@@ -182,11 +198,15 @@ class Sales_order_deliveries extends CI_Controller
             if($filter_customer != ""){
                 $this->db->where('a.customer_id', $filter_customer);
             }
+            if($filter_plant != ""){
+                $this->db->where('a.plant', $filter_plant);
+            }
             if($filter_item_fg != ""){
                 $this->db->where('b.id', $filter_item_fg);
             }
             $this->db->group_by('a.item_fg_id');
             $this->db->group_by('a.customer_id');
+            $this->db->group_by('a.plant');
             $this->db->order_by('c.name', 'asc');
             $this->db->order_by('b.number', 'asc');
             //Total Data
@@ -198,8 +218,8 @@ class Sales_order_deliveries extends CI_Controller
 
             $dataFinal = array();
             foreach ($records as $record) {
-                $firstDate = date('01 M', strtotime($filter_year . "-" . $filter_month . "-01"));
-                $endDate = date('t M', strtotime($filter_year . "-" . $filter_month . "-01"));
+                $firstDate = date('01 M Y', strtotime($filter_year . "-" . $filter_month . "-01"));
+                $endDate = date('t M Y', strtotime($filter_year . "-" . $filter_month . "-01"));
 
                 $day = 1;
                 $arr = array();
@@ -211,6 +231,7 @@ class Sales_order_deliveries extends CI_Controller
                     $this->db->from('sales_order_deliveries');
                     $this->db->where('customer_id', $record['customer_id']);
                     $this->db->where('item_fg_id', $record['item_fg_id']);
+                    $this->db->where('plant', $record['plant']);
                     $this->db->where('trans_date', $trans_date);
                     $row = $this->db->get()->row();
 
@@ -220,7 +241,7 @@ class Sales_order_deliveries extends CI_Controller
                         "qty_".$day => $actual_qty,
                     ]);
 
-                    $firstDate = date("d M", strtotime("+1 day", strtotime($firstDate)));
+                    $firstDate = date("d M Y", strtotime("+1 day", strtotime($firstDate)));
                     $day++;
                     $total_qty += $actual_qty;
                 }
@@ -235,6 +256,7 @@ class Sales_order_deliveries extends CI_Controller
                     "number_customer" => $record['number_customer'],
                     "item_fg_name" => $record['item_fg_name'],
                     "customer_name" => $record['customer_name'],
+                    "plant" => $record['plant'],
                     "total_qty" => $total_qty,
                     "created_by" => $record['created_by'],
                     "created_date" => $record['created_date'],
@@ -260,7 +282,8 @@ class Sales_order_deliveries extends CI_Controller
                 $check = $this->crud->read("sales_order_deliveries", [], [
                     "item_fg_id" => $post['item_fg_id'], 
                     "trans_date" => $post['trans_date'][$i], 
-                    "customer_id" => $post['customer_id']
+                    "customer_id" => $post['customer_id'],
+                    "plant" => $post['plant'],
                 ]);
 
                 if(empty($check)){
@@ -272,25 +295,11 @@ class Sales_order_deliveries extends CI_Controller
                             "item_fg_id" => $post['item_fg_id'],
                             "qty" => $val,
                             "trans_date" => $post['trans_date'][$i],
+                            "plant" => $post['plant'],
                         ];
     
                         $this->crud->create('sales_order_deliveries', $dataFinal);
                     }
-                }else{
-                    $dataFinal = [
-                        "p_month" => $post['p_month'],
-                        "p_year" => $post['p_year'],
-                        "customer_id" => $post['customer_id'],
-                        "item_fg_id" => $post['item_fg_id'],
-                        "qty" => $val,
-                        "trans_date" => $post['trans_date'][$i],
-                    ];
-
-                    $this->crud->update('sales_order_deliveries', [
-                        "item_fg_id" => $post['item_fg_id'], 
-                        "trans_date" => $post['trans_date'][$i], 
-                        "customer_id" => $post['customer_id']
-                    ], $dataFinal);
                 }
 
                 $i++;
@@ -298,6 +307,54 @@ class Sales_order_deliveries extends CI_Controller
             
             echo json_encode(array("title" => "Good Job", "message" => "Data Saved Successfully", "theme" => "success"));
         }
+    }
+
+    public function update(){
+        if ($this->input->post()) {
+            $post = $this->input->post();
+
+            $i = 0;
+            foreach ($post['qty'] as $row => $val) {
+                $check = $this->crud->read("sales_order_deliveries", [], [
+                    "item_fg_id" => $post['item_fg_id'], 
+                    "trans_date" => $post['trans_date'][$i], 
+                    "customer_id" => $post['customer_id'],
+                    "plant" => $post['plant'],
+                ]);
+
+                if(!empty($check)){
+                    if($val != "" || $val != 0){
+                        $dataFinal = [
+                            "p_month" => $post['p_month'],
+                            "p_year" => $post['p_year'],
+                            "customer_id" => $post['customer_id'],
+                            "item_fg_id" => $post['item_fg_id'],
+                            "qty" => $val,
+                            "trans_date" => $post['trans_date'][$i],
+                            "plant" => $post['plant'],
+                        ];
+    
+                        $this->crud->update('sales_order_deliveries', [
+                            "item_fg_id" => $post['item_fg_id'], 
+                            "trans_date" => $post['trans_date'][$i], 
+                            "customer_id" => $post['customer_id']
+                        ], $dataFinal);
+                    }
+                }
+
+                $i++;
+            }
+            
+            echo json_encode(array("title" => "Good Job", "message" => "Data Saved Successfully", "theme" => "success"));
+        }
+    }
+
+    //DELETE DATA
+    public function delete()
+    {
+        $data = $this->input->post();
+        $send = $this->crud->delete('sales_order_deliveries', $data);
+        echo $send;
     }
 
     public function upload()
@@ -311,7 +368,7 @@ class Sales_order_deliveries extends CI_Controller
         $data = new Spreadsheet_Excel_Reader($file, false);
         $total_row = $data->rowcount($sheet_index = 0);
 
-        for ($i = 5; $i <= $total_row; $i++) {
+        for ($i = 3; $i <= $total_row; $i++) {
             $datas[] = array(
                 'p_month' => $data->val($i, 2),
                 'p_year' => $data->val($i, 3),
@@ -336,7 +393,7 @@ class Sales_order_deliveries extends CI_Controller
             //Cek Data
             $item_fg = $this->crud->read("item_fg", [], ["number" => $data['item_fg_number']]);
             $customer = $this->crud->read("customers", [], ["id" => $data['customer_id']]);
-            $sales_order_deliveries = $this->api->read('sales_order_deliveries', [], [
+            $sales_order_deliveries = $this->crud->read('sales_order_deliveries', [], [
                 "p_month" => $data['p_month'], 
                 "p_year" => $data['p_year'], 
                 "customer_id" => $data['customer_id'], 
@@ -352,16 +409,16 @@ class Sales_order_deliveries extends CI_Controller
                 echo json_encode(array("title" => "Duplicate", "message" => "Product No EBWS " . $data['item_fg_id'] . " and Customer ".$data['customer_id']." is Duplicate ", "theme" => "error"));
             } else {
                 $dataFinal = [
-                    "p_month" => $post['p_month'],
-                    "p_year" => $post['p_year'],
-                    "customer_id" => $post['customer_id'],
+                    "p_month" => $data['p_month'],
+                    "p_year" => $data['p_year'],
+                    "customer_id" => $data['customer_id'],
                     "item_fg_id" => @$item_fg->id,
                     "qty" => $data['qty'],
-                    "trans_date" => $post['trans_date'],
+                    "trans_date" => $data['trans_date'],
                 ];
                 
                 $this->crud->create('sales_order_deliveries', $dataFinal);
-                echo json_encode(array("title" => "Good Job", "message" => "Part No" . $data['part_no'] . " Saved Successfully", "theme" => "success"));
+                echo json_encode(array("title" => "Good Job", "message" => "Data Saved Successfully", "theme" => "success"));
             }
         }
     }
@@ -412,6 +469,7 @@ class Sales_order_deliveries extends CI_Controller
         $filter_month = base64_decode($this->input->get('filter_month'));
         $filter_year = base64_decode($this->input->get('filter_year'));
         $filter_customer = base64_decode($this->input->get('filter_customer'));
+        $filter_plant = base64_decode($this->input->get('filter_plant'));
         $filter_item_fg = base64_decode($this->input->get('filter_item_fg'));
 
         $firstDate = date('01 M', strtotime($filter_year . "-" . $filter_month . "-01"));
@@ -426,11 +484,15 @@ class Sales_order_deliveries extends CI_Controller
         if($filter_customer != ""){
             $this->db->where('a.customer_id', $filter_customer);
         }
+        if($filter_plant != ""){
+            $this->db->where('a.plant', $filter_plant);
+        }
         if($filter_item_fg != ""){
             $this->db->where('b.id', $filter_item_fg);
         }
         $this->db->group_by('a.item_fg_id');
         $this->db->group_by('a.customer_id');
+        $this->db->group_by('a.plant');
         $this->db->order_by('c.name', 'asc');
         $this->db->order_by('b.number', 'asc');
         $records = $this->db->get()->result_array();
@@ -465,13 +527,13 @@ class Sales_order_deliveries extends CI_Controller
             $date .= '<th width="50" style="text-align:center; ' . $styles . '">'.$working_date2.'</th>';
 
             $colspan++;
-            $firstDate = date("d M", strtotime("+1 day", strtotime($firstDate)));
+            $firstDate = date("d M Y", strtotime("+1 day", strtotime($firstDate)));
         }
 
         foreach ($records as $record) {
             $day = 1;
-            $firstDate2 = date('01 M', strtotime($filter_year . "-" . $filter_month . "-01"));
-            $endDate2 = date('t M', strtotime($filter_year . "-" . $filter_month . "-01"));
+            $firstDate2 = date('01 M Y', strtotime($filter_year . "-" . $filter_month . "-01"));
+            $endDate2 = date('t M Y', strtotime($filter_year . "-" . $filter_month . "-01"));
 
             $day = 1;
             $styles2 = "";
@@ -503,6 +565,7 @@ class Sales_order_deliveries extends CI_Controller
                 $this->db->from('sales_order_deliveries');
                 $this->db->where('customer_id', $record['customer_id']);
                 $this->db->where('item_fg_id', $record['item_fg_id']);
+                $this->db->where('plant', $record['plant']);
                 $this->db->where('trans_date', $trans_date);
                 $row = $this->db->get()->row();
 
@@ -510,7 +573,7 @@ class Sales_order_deliveries extends CI_Controller
 
                 $isi .= "<td style='text-align:right; ".$styles2."'>".$actual_qty."</td>";
 
-                $firstDate2 = date("d M", strtotime("+1 day", strtotime($firstDate2)));
+                $firstDate2 = date("d M Y", strtotime("+1 day", strtotime($firstDate2)));
                 $day++;
                 $total_qty += $actual_qty;
             }

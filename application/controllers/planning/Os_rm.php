@@ -14,7 +14,7 @@ class Os_rm extends CI_Controller
         $this->load->model('crud');
 
         //VALIDASI FORM
-        $this->form_validation->set_rules('item_rm_id', 'Item RM', 'required|min_length[1]|max_length[30]|is_unique[os_rm.item_rm_id]');
+        // $this->form_validation->set_rules('item_rm_id', 'Item RM', 'required|min_length[1]|max_length[30]|is_unique[os_rm.item_rm_id]');
     }
 
     //HALAMAN UTAMA
@@ -43,10 +43,11 @@ class Os_rm extends CI_Controller
         $id = base64_decode($id);
 
         $records = $this->crud->query("SELECT a.mpq, c.name as supplier_name 
-            from supplier_items a 
+            from item_mpq a 
             join os_rm b on a.item_rm_id = b.item_rm_id 
             join suppliers c on a.supplier_id = c.id 
-            where b.id = '$id'");
+            where b.id = '$id'
+            GROUP BY a.mpq");
             
         if($type == "rows"){
             echo json_encode($records);
@@ -82,16 +83,22 @@ class Os_rm extends CI_Controller
             $this->db->join('item_rm b', 'a.item_rm_id = b.id');
             $this->db->join('item_categories c', 'b.item_category_id = c.id');
             $this->db->join('item_familys d', 'b.item_family_id = d.id');
-            $this->db->join('supplier_items e', 'a.item_rm_id = e.item_rm_id');
+            $this->db->join('item_mpq e', 'a.item_rm_id = e.item_rm_id', 'left');
             if($filter_from != "" && $filter_to != ""){
                 $this->db->where('a.trans_date >=', $filter_from);
                 $this->db->where('a.trans_date <=', $filter_to);
             }
-            $this->db->like('c.id', $filter_category);
-            $this->db->like('d.id', $filter_product_family);
-            $this->db->like('b.id', $filter_item_rm);
-            $this->db->group_by('a.item_rm_id');
-            $this->db->order_by('a.trans_date', 'DESC');
+            if($filter_category != ""){
+                $this->db->like('c.id', $filter_category);
+            }
+            if($filter_product_family != ""){
+                $this->db->like('d.id', $filter_product_family);
+            }
+            if($filter_item_rm != ""){
+                $this->db->like('b.id', $filter_item_rm);
+            }
+            $this->db->group_by('a.id');
+            $this->db->order_by('b.number', 'ASC');
 
             //Total Data
             $totalRows = $this->db->count_all_results('', false);
@@ -110,12 +117,18 @@ class Os_rm extends CI_Controller
     public function create()
     {
         if ($this->input->post()) {
-            if ($this->form_validation->run() == TRUE) {
-                $post   = $this->input->post();
-                $send   = $this->crud->create('os_rm', $post);
+            $post = $this->input->post();
+
+            $whereDate = date("ymd", strtotime($post['trans_date']));
+            $document_no = "STO-RM-".$whereDate."-1";
+
+            $os_rm = $this->crud->read('os_rm', [], ["item_rm_id" => $post['item_rm_id'], "document_no" => $document_no]);
+
+            if(empty($os_rm->id)){
+                $send = $this->crud->create('os_rm', array_merge($post, array("document_no" => $document_no)));
                 echo $send;
-            } else {
-                show_error(validation_errors());
+            }else{
+                echo json_encode(array("title" => "Duplicate", "message" => "Duplicate Data for Product No and Document No", "theme" => "error"));
             }
         } else {
             show_error("Cannot Process your request");
@@ -159,7 +172,8 @@ class Os_rm extends CI_Controller
         for ($i = 3; $i <= $total_row; $i++) {
             $datas[] = array(
                 'item_rm_id' => $data->val($i, 2),
-                'qty' => $data->val($i, 3)
+                'qty' => $data->val($i, 3),
+                'trans_date' => $data->val($i, 4),
             );
         }
 
@@ -203,7 +217,10 @@ class Os_rm extends CI_Controller
         if ($this->input->post()) {
             $data = $this->input->post('data');
 
-            $os_rm = $this->crud->read('os_rm', [], ["item_rm_id" => $data['item_rm_id']]);
+            $whereDate = date("ymd", strtotime($data['trans_date']));
+            $document_no = "STO-RM-".$whereDate."-1";
+
+            $os_rm = $this->crud->read('os_rm', [], ["item_rm_id" => $data['item_rm_id'], "document_no" => $document_no]);
             $item_rm = $this->crud->read('item_rm', [], ["id" => $data['item_rm_id']]);
 
             if (!empty($os_rm->item_rm_id)) {
@@ -216,8 +233,9 @@ class Os_rm extends CI_Controller
                 if(empty($location->number)){
                     $dataFinal = array(
                         "item_rm_id" => $data['item_rm_id'],
-                        "trans_date" => date("Y-m-d"),
+                        "trans_date" => $data['trans_date'],
                         "location" => @$location[0]->number,
+                        "document_no" => $document_no,
                         "qty" => $data['qty']
                     );
     
@@ -230,7 +248,7 @@ class Os_rm extends CI_Controller
         }
     }
 
-    public function createLabel(){
+    public function getLabel(){
         $post = $this->input->post();
         $id = $post['id'];
         $mpq = $post['mpq'];
@@ -241,40 +259,72 @@ class Os_rm extends CI_Controller
         $qty_receipt = $os_rm->qty;
         $qty_label = ceil($qty_receipt / $mpq);
 
+        $arrLabel = array();
         if (!$po_receipt_label) {
             for ($i = 0; $i < $qty_label; $i++) {
-                //Read Label ID
-                $sqlGetID = $this->db->query("SELECT max(label_no) as kode FROM scan_item_receipts WHERE receipt_id = '$id'");
-                $rowID = $sqlGetID->row();
-                $label = $rowID->kode;
-
-                if ($label == NULL) {
-                    $autoID = "STO".$id . sprintf("%04s", $label + 1);
-                } else {
-                    $urutan = (int) substr($label, -4);
-                    $autoID = "STO".$id . sprintf("%04s", $urutan + 1);
-                }
-
                 if ($qty_receipt > $mpq) {
                     $qty = $mpq;
                 } else {
                     $qty = $qty_receipt;
-                }   
+                }
 
                 //Simpan Label
-                $arrLabel = [
+                $arrLabel[] = [
                     "receipt_id" => $id,
-                    "label_no" => $autoID,
                     "qty" => $qty,
                     "warehouse" => $os_rm->location
                 ];
 
-                $this->crud->create('scan_item_receipts', $arrLabel);
                 $qty_receipt = ($qty_receipt - $mpq);
             }
-
-            echo "OK";
         }
+
+        $this->db->update("os_rm", ["created_label" => date("Y-m-d H:i:s")], ["id" => $id]);
+        $arrLabel['total'] = count($arrLabel);
+        die(json_encode($arrLabel));
+    }
+
+    public function testingCreate(){
+        $id = "20241111000001";
+
+        for ($i=0; $i < 61; $i++) { 
+           //Read Label ID
+            $sqlGetID = $this->db->query("SELECT max(label_no) as kode FROM scan_item_receipts WHERE receipt_id = '$id'");
+            $rowID = $sqlGetID->row();
+            $label = $rowID->kode;
+
+            if ($label == NULL) {
+                $autoID = "STO".$id . sprintf("%04s", $label + 1);
+            } else {
+                $urutan = (int) substr($label, -4);
+                $autoID = "STO".$id . sprintf("%04s", $urutan + 1);
+            }
+
+            $send = $this->crud->create('scan_item_receipts', array("receipt_id" => $id, "label_no" => $autoID, "qty" => 100, "warehouse" => "W01"));
+        
+        }
+
+        echo $send;
+    }
+
+    public function createLabel(){
+        $post = $this->input->post('data');
+        $id = $post['receipt_id'];
+
+        //Read Label ID
+        $sqlGetID = $this->db->query("SELECT max(label_no) as kode FROM scan_item_receipts WHERE receipt_id = '$id'");
+        $rowID = $sqlGetID->row();
+        $label = $rowID->kode;
+
+        if ($label == NULL) {
+            $autoID = "STO".$id . sprintf("%04s", $label + 1);
+        } else {
+            $urutan = (int) substr($label, -4);
+            $autoID = "STO".$id . sprintf("%04s", $urutan + 1);
+        }
+
+        $send = $this->crud->create('scan_item_receipts', array_merge($post, array("label_no" => $autoID)));
+        echo $send;
     }
 
     public function print_label($id)
@@ -293,6 +343,7 @@ class Os_rm extends CI_Controller
         $this->db->join('item_familys e', 'c.item_family_id = e.id');
         $this->db->where('a.deleted', 0);
         $this->db->where('a.receipt_id', $id);
+        $this->db->group_by('a.id');
         $this->db->order_by('a.label_no', 'asc');
         $records = $this->db->get()->result_object();
 
@@ -323,14 +374,14 @@ class Os_rm extends CI_Controller
                                     </tr>
                                     <tr>
                                         <td colspan="3" style="height:35px;">
-                                            <div style="float:left;">
+                                            <div style="float:left; width:70%;">
                                                 <small style="font-size:7px;"><b>' . $record->number. '</b></small><br>
                                                 <small style="font-size:12px;"><b>' . $record->item_rm_id . '</b></small>
                                                 <br>
                                                 <b style="font-size:7px;">STO</b>
                                             </div>
                                             
-                                            <div style="float:right;">
+                                            <div style="float:right; width:30%;">
                                                 <small style="font-size:15px;"><b>' . date("m", strtotime($record->trans_date)) . '</b></small><small style="font-size:10px;"><b>' ." - ". date("Y", strtotime($record->trans_date)) . '</b></small>
                                             </div>
                                         </td>
@@ -452,9 +503,9 @@ class Os_rm extends CI_Controller
             <table id="os_rm" border="1">
                 <tr>
                     <th width="20">No</th>
-                    <th>Part ID</th>
-                    <th>Part No</th>
-                    <th>Part Name</th>
+                    <th>Part No EBWS</th>
+                    <th>Part No Supplier</th>
+                    <th>Description</th>
                     <th>Category</th>
                     <th>Product Family</th>
                     <th>Cut Off</th>
@@ -465,9 +516,9 @@ class Os_rm extends CI_Controller
             foreach ($records as $data) {
                 $html .= '<tr>
                             <td>' . $no . '</td>
-                            <td>' . $data['item_rm_id'] . '</td>
-                            <td>' . $data['item_rm_number'] . '</td>
-                            <td>' . $data['item_rm_name'] . '</td>
+                            <td style="mso-number-format:\@;">' . $data['item_rm_id'] . '</td>
+                            <td style="mso-number-format:\@;">' . $data['item_rm_number'] . '</td>
+                            <td style="mso-number-format:\@;">' . $data['item_rm_name'] . '</td>
                             <td>' . $data['category_name'] . '</td>
                             <td>' . $data['product_family_name'] . '</td>
                             <td>' . $data['trans_date'] . '</td>

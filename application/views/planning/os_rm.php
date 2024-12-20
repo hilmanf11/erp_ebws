@@ -3,6 +3,8 @@
     <thead>
         <tr>
             <th rowspan="2" field="ck" checkbox="true"></th>
+            <th rowspan="2" data-options="field:'id',width:120,halign:'center'">STO ID</th>
+            <th rowspan="2" data-options="field:'document_no',width:120,halign:'center'">Document No</th>
             <th rowspan="2" data-options="field:'item_rm_id',width:150,halign:'center'">Part No EBWS</th>
             <th rowspan="2" data-options="field:'item_rm_number',width:150,halign:'center'">Part No Supplier</th>
             <th rowspan="2" data-options="field:'item_rm_name',width:100,halign:'center'">Description</th>
@@ -15,6 +17,7 @@
             <th rowspan="2" data-options="field:'qty',width:80,halign:'center',align:'right',formatter:numberFormat">Quantity</th>
             <th rowspan="2" data-options="field:'location',width:100,halign:'center'">Location</th>
             <th rowspan="2" data-options="field:'label',width:80,align:'center',formatter:BtnPrintLabel">Label</th>
+            <th rowspan="2" data-options="field:'created_label',width:150,halign:'center'">Label Create</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
         </tr>
@@ -108,6 +111,17 @@
     <center><b id="p_start">0</b> Of <b id="p_finish">0</b></center>
     <div id="p_remarks" title="History Upload" class="easyui-panel" style="width:100%; height:200px; padding:10px; margin-top: 10px;">
         <ul id="remarks">
+        </ul>
+    </div>
+</div>
+
+<!-- Label -->
+<div id="dlg_label" class="easyui-dialog" title="Create Label Data" data-options="closed: true,modal:true" style="width: 500px; padding:10px; top: 20px;">
+    <span style="float: left; color:green;">SUCCESS : <b id="p_success2">0</b></span><span style="float: right; color:red;"> FAILED : <b id="p_failed2">0</b></span>
+    <div id="p_upload2" class="easyui-progressbar" style="width:100%; margin-top: 10px;"></div>
+    <center><b id="p_start2">0</b> Of <b id="p_finish2">0</b></center>
+    <div id="p_remarks2" title="History Upload" class="easyui-panel" style="width:100%; height:200px; padding:10px; margin-top: 10px;">
+        <ul id="remarks2">
         </ul>
     </div>
 </div>
@@ -289,12 +303,56 @@
 
             $.ajax({
                 type: "post",
-                url: "<?= base_url("planning/os_rm/createLabel") ?>",
+                url: "<?= base_url("planning/os_rm/getLabel") ?>",
                 data: "id=" + id + "&mpq=" + mpq,
-                dataType: "html",
-                success: function (qas) {
-                    swal.close();
-                    window.open("<?= base_url('planning/os_rm/print_label/') ?>" + window.btoa(id), '_blank');
+                dataType: "json",
+                success: function (json) {
+                    Swal.close();
+
+                    if(json.total > 0){
+                        $("#dlg_label").dialog('open');
+                        requestData2(json.total, json);
+                        function requestData2(total, json, number = 1, value = 0, success = 1, failed = 1) {
+                            if (value < 100) {
+                                value = Math.floor((number / total) * 100);
+                                $('#p_upload2').progressbar('setValue', value);
+                                $('#p_start2').html(number);
+                                $('#p_finish2').html(total);
+                                
+                                $.ajax({
+                                    type: "POST",
+                                    async: true,
+                                    url: "<?= base_url('planning/os_rm/createLabel') ?>",
+                                    data: {
+                                        "data": json[number - 1]
+                                    },
+                                    cache: false,
+                                    dataType: "json",
+                                    success: function(result) {
+                                        if (result.theme == "success") {
+                                            $('#p_success2').html(success);
+                                            var title = "<b style='color: green;'>" + result.title + "</b> | " + result.message;
+                                            requestData2(total, json, number + 1, value, success + 1, failed + 0);
+                                        } else {
+                                            $('#p_failed2').html(failed);
+                                            var title = "<b style='color: red;'>" + result.title + "</b> | " + result.message;
+                                            requestData2(total, json, number + 1, value, success + 0, failed + 1);
+                                        }
+                                        
+                                        $("#p_remarks2").append(title + "<br>");
+
+                                        if (number == total) {
+                                            $("#dlg_label").dialog('close');
+                                            $("#dg").datagrid("reload");
+                                            window.open("<?= base_url('planning/os_rm/print_label/') ?>" + window.btoa(id), '_blank');
+                                        }
+                                    }
+                                });
+                            }
+                        }
+                    }else{
+                        window.open("<?= base_url('planning/os_rm/print_label/') ?>" + window.btoa(id), '_blank');
+                    }
                 }
             });
         }else{
@@ -305,63 +363,111 @@
     function createLabel(id, mpq){
         $("#id").textbox('setValue', id);
 
-        $.ajax({
-            type: "post",
-            url: '<?= base_url('planning/os_rm/readMpq/'); ?>' + window.btoa(id) + "/total",
-            dataType: "json",
-            success: function (response) {
-                if(response.total > 1){
-                    $("#dlg_mpq").dialog('open');
-                    $('#mpq').combogrid({
-                        url: '<?= base_url('planning/os_rm/readMpq/'); ?>' + window.btoa(id) + "/rows",
-                        panelWidth: 300,
-                        idField: 'mpq',
-                        textField: 'mpq',
-                        mode: 'remote',
-                        fitColumns: true,
-                        prompt: "Choose Supplier No",
-                        icons: [{
-                            iconCls: 'icon-clear',
-                            handler: function(e) {
-                                $(e.data.target).combogrid('clear').combogrid('textbox').focus();
-                            }
-                        }],
-                        columns: [
-                            [{
-                                field: 'supplier_name',
-                                title: 'Supplier',
-                                width: 200
-                            }, {
-                                field: 'mpq',
-                                title: 'MPQ',
-                                width: 80
-                            }]
-                        ],
-                    });
-                }else{
-                    Swal.fire({
-                        title: 'Please Wait...',
-                        showConfirmButton: false,
-                        allowOutsideClick: false,
-                        allowEscapeKey: false,
-                        didOpen: () => {
-                            Swal.showLoading();
-                        },
-                    });
+        if(mpq > 0){
+            $.ajax({
+                type: "post",
+                url: '<?= base_url('planning/os_rm/readMpq/'); ?>' + window.btoa(id) + "/total",
+                dataType: "json",
+                success: function (response) {
+                    if(response.total > 1){
+                        $("#dlg_mpq").dialog('open');
+                        $('#mpq').combogrid({
+                            url: '<?= base_url('planning/os_rm/readMpq/'); ?>' + window.btoa(id) + "/rows",
+                            panelWidth: 300,
+                            idField: 'mpq',
+                            textField: 'mpq',
+                            mode: 'remote',
+                            fitColumns: true,
+                            prompt: "Choose Supplier No",
+                            icons: [{
+                                iconCls: 'icon-clear',
+                                handler: function(e) {
+                                    $(e.data.target).combogrid('clear').combogrid('textbox').focus();
+                                }
+                            }],
+                            columns: [
+                                [{
+                                    field: 'supplier_name',
+                                    title: 'Supplier',
+                                    width: 200
+                                }, {
+                                    field: 'mpq',
+                                    title: 'MPQ',
+                                    width: 80
+                                }]
+                            ],
+                        });
+                    }else{
+                        Swal.fire({
+                            title: 'Please Wait...',
+                            showConfirmButton: false,
+                            allowOutsideClick: false,
+                            allowEscapeKey: false,
+                            didOpen: () => {
+                                Swal.showLoading();
+                            },
+                        });
 
-                    $.ajax({
-                        type: "post",
-                        url: "<?= base_url("planning/os_rm/createLabel") ?>",
-                        data: "id=" + id + "&mpq=" + mpq,
-                        dataType: "html",
-                        success: function (qas) {
-                            swal.close();
-                            window.open("<?= base_url('planning/os_rm/print_label/') ?>" + window.btoa(id), '_blank');
-                        }
-                    });
+                        $.ajax({
+                            type: "post",
+                            url: "<?= base_url("planning/os_rm/getLabel") ?>",
+                            data: "id=" + id + "&mpq=" + mpq,
+                            dataType: "json",
+                            success: function (json) {
+                                Swal.close();
+
+                                if(json.total > 0){
+                                    $("#dlg_label").dialog('open');
+                                    requestData2(json.total, json);
+                                    function requestData2(total, json, number = 1, value = 0, success = 1, failed = 1) {
+                                        if (value < 100) {
+                                            value = Math.floor((number / total) * 100);
+                                            $('#p_upload2').progressbar('setValue', value);
+                                            $('#p_start2').html(number);
+                                            $('#p_finish2').html(total);
+
+                                            $.ajax({
+                                                type: "POST",
+                                                async: true,
+                                                url: "<?= base_url('planning/os_rm/createLabel') ?>",
+                                                data: {
+                                                    "data": json[number - 1]
+                                                },
+                                                cache: false,
+                                                dataType: "json",
+                                                success: function(result) {
+                                                    if (result.theme == "success") {
+                                                        $('#p_success2').html(success);
+                                                        var title = "<b style='color: green;'>" + result.title + "</b> | " + result.message;
+                                                        requestData2(total, json, number + 1, value, success + 1, failed + 0);
+                                                    } else {
+                                                        $('#p_failed2').html(failed);
+                                                        var title = "<b style='color: red;'>" + result.title + "</b> | " + result.message;
+                                                        requestData2(total, json, number + 1, value, success + 0, failed + 1);
+                                                    }
+                                                    
+                                                    $("#p_remarks2").append(title + "<br>");
+
+                                                    if (number == total) {
+                                                        $("#dlg_label").dialog('close');
+                                                        $("#dg").datagrid("reload");
+                                                        window.open("<?= base_url('planning/os_rm/print_label/') ?>" + window.btoa(id), '_blank');
+                                                    }
+                                                }
+                                            });
+                                        }
+                                    }
+                                }else{
+                                    window.open("<?= base_url('planning/os_rm/print_label/') ?>" + window.btoa(id), '_blank');
+                                }
+                            }
+                        });
+                    }
                 }
-            }
-        });
+            });
+        }else{
+            toastr.info("MPQ is 0, Please change MPQ first");
+        }
     }
 
     $(function() {
@@ -532,7 +638,7 @@
     });
 
     function numberFormat(value, row) {
-        const formatter = new Intl.NumberFormat('id-ID', {
+        const formatter = new Intl.NumberFormat('ja-JP', {
             minimumFractionDigits: 0
         });
         return "<b>" + formatter.format(value) + "</b>";

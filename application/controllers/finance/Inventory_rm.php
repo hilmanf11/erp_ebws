@@ -30,72 +30,6 @@ class Inventory_rm extends CI_Controller
         }
     }
 
-    public function readEndingStock()
-    {
-        if ($this->input->post()) {
-            $item_rm_id = $this->input->post('item_rm_id');
-            $trans_date = @$this->input->post('trans_date');
-
-            if (@$trans_date == "") {
-                $date = date("Y-m-d");
-            } else {
-                $date = $trans_date;
-            }
-
-            $records = $this->crud->query("SELECT
-                a.id,
-                a.number, 
-                a.name, 
-                b.name as prodfam, 
-                a.uom, 
-                COALESCE(0,0) as begin_stock,
-                (COALESCE(SUM(e.qty),0) + COALESCE(g.return_qty, 0)) as qty_in,
-                f.qty as qty_out,
-                (COALESCE(SUM(e.qty),0) - COALESCE(f.qty, 0) + COALESCE(g.return_qty, 0)) as end_stock
-            FROM item_rm a 
-            JOIN item_familys b ON a.item_family_id = b.id
-            LEFT JOIN purchase_order_receipts d ON a.id = d.item_rm_id and d.receipt_date <= '$date'
-            LEFT JOIN scan_item_receipts e ON d.receipt_id = e.receipt_id
-            LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as qty FROM issued_material_details WHERE DATE_FORMAT(created_date, '%Y-%m-%d') <= '$date' GROUP BY item_rm_id) f ON a.id = f.item_rm_id
-            LEFT JOIN (SELECT a.item_rm_id, SUM(c.qty) as return_qty
-                FROM return_materials a 
-                JOIN return_material_labels b ON a.return_id = b.return_id
-                JOIN scan_item_receipts c ON a.return_id = c.receipt_id and b.label_no = c.label_no
-                WHERE a.return_date <=  '$date'
-                GROUP BY a.item_rm_id) g ON a.id = g.item_rm_id
-            WHERE a.id like '$item_rm_id'
-            GROUP BY a.id
-            ORDER BY a.number");
-
-            echo json_encode($records);
-        }
-    }
-
-    public function readBalanceWip()
-    {
-        if ($this->input->post()) {
-            $item_rm_id = $this->input->post('item_rm_id');
-            $wip_balances = $this->crud->read("wip_balances", [], ["item_rm_id" => $item_rm_id], "", "id", "desc");
-
-            echo json_encode($wip_balances);
-        }
-    }
-
-    public function readItemFamily($number = "")
-    {
-        $this->db->select('*');
-        $this->db->from('item_familys');
-        $this->db->where('deleted', 0);
-        if ($number != "001") {
-            $this->db->where("number", $number);
-        } else {
-            $this->db->where("number !=", $number);
-        }
-        $this->db->order_by('name', 'ASC');
-        $records = $this->db->get()->result_array();
-        echo json_encode($records);
-    }
-
     public function getData(){
         $filter_from = $this->input->post('filter_from');
         $filter_to   = $this->input->post('filter_to');
@@ -110,7 +44,7 @@ class Inventory_rm extends CI_Controller
         $itemReceipts = $this->crud->query("SELECT
             a.id, a.number, a.name, c.name as uom, a.uom, b.id as prodfam_id, COALESCE(d.qty, 0) as qty, COALESCE(d.amount, 0) as amount
         FROM item_rm a 
-        JOIN item_familys b ON a.item_family_id = b.id
+        JOIN item_familys b ON a.item_family_id = b.id and b.item_category_id = 'C01'
         LEFT JOIN (SELECT item_rm_id, SUM(qty) as qty, SUM(amount) as amount FROM inventory_rm WHERE trans_date < '$filter_from' GROUP BY item_rm_id) d ON a.id = d.item_rm_id
         WHERE a.id like '%$filter_item_rm%' and b.number like '%$filter_item_family%'
         GROUP BY a.id
@@ -192,9 +126,9 @@ class Inventory_rm extends CI_Controller
                     }
 
                     $monthBf = date('Y-m-01', strtotime('-1 month', strtotime($receipt_date)));
-                    $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $monthBf, "currency_from" => $currency, "currency_to" => "IDR"]);
+                    $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $monthBf, "currency_from" => $currency, "currency_to" => "INR"]);
 
-                    if ($currency != "IDR") {
+                    if ($currency != "INR") {
                         if ($exchange) {
                             $price = (@$receipt->price * @$exchange->middle);
                         } else {
@@ -323,6 +257,116 @@ class Inventory_rm extends CI_Controller
         }
     }
 
+    public function downloadTemplate(){
+        header("Content-type: application/vnd-ms-excel");
+        header("Content-Disposition: attachment; filename=tmp_inventory_rm_".time().".xls");
+
+        $this->db->select('a.*, SUM(b.qty) as qty, b.trans_date, b.document_no');
+        $this->db->from('item_rm a');
+        $this->db->join('os_rm b', 'a.id = b.item_rm_id', 'left');
+        $this->db->where('a.deleted', 0);
+        $this->db->group_by('a.id');
+        $this->db->order_by('a.id', 'ASC');
+        $records = $this->db->get()->result_array();
+
+        $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#item_rm {border-collapse: collapse;width: 100%;font-size: 12px;}#item_rm td, #item_rm th {border: 1px solid #ddd;padding: 2px;}#item_rm tr:nth-child(even){background-color: #f2f2f2;}#item_rm tr:hover {background-color: #ddd;}#item_rm th {padding-top: 2px;padding-bottom: 2px;text-align: left;color: black;}</style><body>
+        <center>
+            <div style="float: centet; font-size: 16px; text-align: center;">
+                <h3>TEMPLATE UPLOAD BALANCE INVENTORY RM</h3>
+            </div>
+        </center>
+        
+        <table id="item_rm" border="1">
+            <tr>
+                <th width="20">No</th>
+                <th>Part No EBWS</th>
+                <th>Period</th>
+                <th>Product Family ID</th>
+                <th>Trans Type</th>
+                <th>Created Name</th>
+                <th>PO Date</th>
+                <th>Trans Date</th>
+                <th>Document No</th>
+                <th>Uom</th>
+                <th>Qty</th>
+                <th>Price</th>
+                <th>Amount</th>
+            </tr>';
+        $no = 1;
+        foreach ($records as $data) {
+            $html .= '<tr>
+                        <td>' . $no . '</td>
+                        <td style="mso-number-format:\@;">' . $data['id'] . '</td>
+                        <td style="mso-number-format:\@;">' . date("Y-m", strtotime($data['trans_date'])) . '</td>
+                        <td>' . $data['item_family_id'] . '</td>
+                        <td>BEGINING</td>
+                        <td>' . $this->session->name . '</td>
+                        <td style="mso-number-format:\@;">' . $data['trans_date'] . '</td>
+                        <td style="mso-number-format:\@;">' . $data['trans_date'] . '</td>
+                        <td>' . $data['document_no'] . '</td>
+                        <td>' . $data['uom'] . '</td>
+                        <td>' . $data['qty'] . '</td>
+                        <td></td>
+                        <td></td>
+                    </tr>';
+            $no++;
+        }
+
+        $html .= '</table></body></html>';
+        echo $html;
+    }
+
+    //UPLOAD DATA
+    public function upload()
+    {
+        error_reporting(0);
+        require_once 'assets/vendors/excel_reader2.php';
+        $target = basename($_FILES['file_upload']['name']);
+        move_uploaded_file($_FILES['file_upload']['tmp_name'], $target);
+        chmod($_FILES['file_upload']['name'], 0777);
+        $file = $_FILES['file_upload']['name'];
+        $data = new Spreadsheet_Excel_Reader($file, false);
+        $total_row = $data->rowcount($sheet_index = 0);
+        $datas = array();
+        for ($i = 4; $i <= $total_row; $i++) {
+            $datas[] = array(
+                'item_rm_id' => $data->val($i, 2),
+                'period' => $data->val($i, 3),
+                'item_family_id' => $data->val($i, 4),
+                'trans_type' => $data->val($i, 5),
+                'created_name' => $data->val($i, 6),
+                'po_date' => $data->val($i, 7),
+                'trans_date' => $data->val($i, 8),
+                'document_no' => $data->val($i, 9),
+                'uom' => $data->val($i, 10),
+                'qty' => $data->val($i, 11),
+                'price' => $data->val($i, 12),
+                'amount' => $data->val($i, 13),
+            );
+        }
+        $datas['total'] = count($datas);
+        echo json_encode($datas);
+        unlink($_FILES['file_upload']['name']);
+    }
+
+    //UPLOAD CREATE DATA
+    public function uploadcreate()
+    {
+        if ($this->input->post()) {
+            $data = $this->input->post('data');
+
+            $inventory_rm = $this->crud->read('inventory_rm', [], ["period" => $data['period'], "item_rm_id" => $data['item_rm_id']]);
+
+            if (!empty($inventory_rm->id)) {
+                $send = $this->crud->update('inventory_rm', ["period" => $data['period'], "item_rm_id" => $data['item_rm_id']], $data);
+                echo $send;
+            } else {
+                $send = $this->crud->create('inventory_rm', $data);
+                echo $send;
+            }
+        }
+    }
+
     public function print($option = "")
     {
         if ($option == "excel") {
@@ -387,18 +431,19 @@ class Inventory_rm extends CI_Controller
         $itemReceipts = $this->crud->query("SELECT
             a.id, a.number, a.name, a.uom, b.name as prodfam, b.id as prodfam_id, COALESCE(d.qty, 0) as qty, COALESCE(d.amount, 0) as amount
             FROM item_rm a 
-            JOIN item_familys b ON a.item_family_id = b.id
+            JOIN item_familys b ON a.item_family_id = b.id and b.item_category_id = 'C01'
             LEFT JOIN (SELECT item_rm_id, SUM(qty) as qty, SUM(amount) as amount FROM inventory_rm WHERE trans_date < '$filter_from' GROUP BY item_rm_id) d ON a.id = d.item_rm_id
             WHERE a.id like '%$filter_item_rm%' and b.number like '%$filter_item_family%'
             GROUP BY a.id
-            ORDER BY a.number");
+            ORDER BY b.number, a.number asc");
 
         if ($filter_display == "RECAP") {
             $html .= '<table id="customers" border="1" style="width: 100%">
                             <tr>
                                 <th rowspan="2"width="20">No</th>
-                                <th rowspan="2">Part No</th>
-                                <th rowspan="2">Part Name</th>
+                                <th rowspan="2">Part No EBWS</th>
+                                <th rowspan="2">Part No Supplier</th>
+                                <th rowspan="2">Description</th>
                                 <th rowspan="2">Uom</th>
                                 <th rowspan="2">Product Family</th>
                                 <th colspan="2" width="100">Begining Stock</th>
@@ -490,6 +535,7 @@ class Inventory_rm extends CI_Controller
             if ($filter_display != "RECAP") {
                 $html .= '  <tr style="background:#D8D8D8;">
                                 <td>' . $noh . '</td>
+                                <td>' . $itemReceipt->id . '</td>
                                 <td>' . $itemReceipt->number . '</td>
                                 <td>' . $itemReceipt->name . '</td>
                                 <td>BEGIN STOCK</td>
@@ -520,7 +566,7 @@ class Inventory_rm extends CI_Controller
                 $working_date = date('Y-m-d', $i);
 
                 //RECEIPT
-                $receipts = $this->crud->query("SELECT * FROM inventory_rm WHERE item_rm_id = '$item_rm_id' and trans_date = '$working_date' and trans_type = 'RECEIPT' 
+                $receipts = $this->crud->query("SELECT * FROM inventory_rm WHERE item_rm_id = '$item_rm_id' and trans_date = '$working_date' and trans_type IN ('RECEIPT','BEGINING') 
                     ORDER BY custom_no ASC");
 
                 //ISSUED
@@ -536,6 +582,7 @@ class Inventory_rm extends CI_Controller
                     if ($filter_display != "RECAP") {
                         $html .= '  <tr>
                                     <td>' . $noh . '.' . $nod . '</td>
+                                    <td>' . $itemReceipt->id . '</td>
                                     <td>' . $itemReceipt->number . '</td>
                                     <td>' . $itemReceipt->name . '</td>
                                     <td>RECEIPT</td>
@@ -579,6 +626,7 @@ class Inventory_rm extends CI_Controller
                     if ($filter_display != "RECAP") {
                         $html .= '  <tr>
                                     <td>' . $noh . '.' . $nod . '</td>
+                                    <td>' . $itemReceipt->id . '</td>
                                     <td>' . $itemReceipt->number . '</td>
                                     <td>' . $itemReceipt->name . '</td>
                                     <td>ISSUED</td>
@@ -626,6 +674,7 @@ class Inventory_rm extends CI_Controller
             if ($filter_display == "RECAP") {
                 $html .= '  <tr>
                                 <td>' . $noh . '</td>
+                                <td>' . $itemReceipt->id . '</td>
                                 <td>' . $itemReceipt->number . '</td>
                                 <td>' . $itemReceipt->name . '</td>
                                 <td>' . $itemReceipt->uom . '</td>
@@ -655,7 +704,7 @@ class Inventory_rm extends CI_Controller
 
         if ($filter_display == "RECAP") {
             $html .= '  <tr>
-                            <td colspan="5" style="text-align:right;"><b>GRAND TOTAL</b></td>
+                            <td colspan="6" style="text-align:right;"><b>GRAND TOTAL</b></td>
                             <td style="text-align:right;"><b>' . number_format($total_begin_recap, 2) . '</b></td>
                             <td style="text-align:right;"><b>' . substr(number_format($total_begin_amount_recap, 3), 0, -1) . '</b></td>
                             <td style="text-align:right;"><b>' . number_format($total_in_recap, 2) . '</b></td>

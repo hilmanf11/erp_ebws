@@ -12,8 +12,9 @@ class Item_familys extends CI_Controller
         $this->load->library('session');
         $this->load->model('crud');
         //VALIDASI FORM
-        $this->form_validation->set_rules('number', 'Product Family code', 'required|min_length[1]|max_length[20]|is_unique[item_familys.number]');
+        $this->form_validation->set_rules('number', 'Product Family code', 'required|min_length[1]|max_length[2]|is_unique[item_familys.number]');
     }
+
     //HALAMAN UTAMA
     public function index()
     {
@@ -27,19 +28,30 @@ class Item_familys extends CI_Controller
             redirect('error_access');
         }
     }
-    //GET DATA
 
+    //GET DATA
     public function readAll()
     {
+        //master/locations - bf
         $post = isset($_POST['q']) ? $_POST['q'] : "";
         $send = $this->crud->reads('item_familys', ["name" => $post]);
         echo json_encode($send);
     }
 
-    public function reads($item_category_id)
+    public function reads($item_category_id = "")
     {
         $post = isset($_POST['q']) ? $_POST['q'] : "";
-        $send = $this->crud->reads('item_familys', ["name" => $post],["item_category_id" => $item_category_id]);
+        
+        if($item_category_id == ""){
+            //master/locations
+            $send = $this->crud->reads('item_familys', ["name" => $post]);
+        }else{
+            //master/item_kinds
+            //master/item_sizes
+            //master/item_rm
+            $send = $this->crud->reads('item_familys', ["name" => $post], ["item_category_id" => $item_category_id]);
+        }
+
         echo json_encode($send);
     }
 
@@ -47,21 +59,20 @@ class Item_familys extends CI_Controller
     {
         $post = isset($_POST['q']) ? $_POST['q'] : "";
         $send = $this->crud->query("SELECT * FROM item_familys WHERE item_category_id = 'C02'");
-        // $send = $this->crud->reads('item_categories', ["name" => $post]);
         echo json_encode($send);
     }
 
     public function readNotFg()
     {
         $post = isset($_POST['q']) ? $_POST['q'] : "";
-        $send = $this->crud->query("SELECT * FROM item_familys WHERE number != 'FG'");
+        $send = $this->crud->query("SELECT * FROM item_familys WHERE name like '%$post%' and number != 'FG'");
         echo json_encode($send);
     }
 
     public function readNotRm()
     {
         $post = isset($_POST['q']) ? $_POST['q'] : "";
-        $send = $this->crud->query("SELECT * FROM item_familys WHERE item_category_id NOT IN ('C01','C03')");
+        $send = $this->crud->query("SELECT * FROM item_familys WHERE name like '%$post%' and item_category_id NOT IN ('C01','C08','C02')");
         echo json_encode($send);
     }
 

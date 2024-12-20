@@ -6,14 +6,18 @@
             <th rowspan="2" data-options="field:'status',width:80,align:'center', styler:cellStyler, formatter:cellFormatter">Status</th>
             <th rowspan="2" data-options="field:'sales_order_no',width:150,halign:'center'">Sales Order No</th>
             <th rowspan="2" data-options="field:'customer_order_no',width:150,halign:'center'">Customer Order No</th>
+            <th rowspan="2" data-options="field:'plant',width:100,halign:'center'">Plant</th>
             <th rowspan="2" data-options="field:'forecast_no',width:150,halign:'center'">Forecast No</th>
             <th rowspan="2" data-options="field:'revision',width:80,halign:'center'">Revision</th>
             <th rowspan="2" data-options="field:'customer_name',width:200,halign:'center'">Customer Name</th>
             <th rowspan="2" data-options="field:'sales_order_date',width:150,halign:'center'">Sales Order Date</th>
             <th rowspan="2" data-options="field:'delivery_date',width:150,halign:'center'">Delivery Date</th>
             <th rowspan="2" data-options="field:'currency',width:80,align:'center'">Currency</th>
+            <th rowspan="2" data-options="field:'qty_so',width:80,halign:'center',align:'right',formatter: numberFormat">Qty SO</th>
+            <th rowspan="2" data-options="field:'qty_delivery',width:80,halign:'center',align:'right',formatter: numberFormat">Delivery</th>
+            <th rowspan="2" data-options="field:'qty_outstanding',width:90,halign:'center',align:'right',formatter: numberFormat">Outstanding</th>
             <th rowspan="2" data-options="field:'total_sub2',width:100,halign:'center',align:'right',formatter: numberFormat">Sub Total</th>
-            <th rowspan="2" data-options="field:'total_grand2',width:100,halign:'center',align:'right',formatter: numberFormat">Grand Total</th>
+            <!-- <th rowspan="2" data-options="field:'total_grand2',width:100,halign:'center',align:'right',formatter: numberFormat">Grand Total</th> -->
             <th rowspan="2" data-options="field:'remarks',width:150,halign:'center'">Remarks</th>
             <th rowspan="2" data-options="field:'attachment',width:80,align:'center',formatter: btnDetails">Attachment</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
@@ -69,7 +73,7 @@
             </div>
         </fieldset>
         <?= $button ?>
-        <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="formula()"><i class="fa fa-info"></i> Help</a>
+        <!-- <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="formula()"><i class="fa fa-info"></i> Help</a> -->
     </div>
 </div>
 
@@ -103,6 +107,10 @@
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Delivery Date</span>
                     <input style="width:40%;" name="delivery_date" id="delivery_date" required data-options="formatter:myformatter,parser:myparser,editable:false" class="easyui-datebox">
+                </div>
+                <div class="fitem" id="btn-close">
+                    <span style="width:35%; display:inline-block;"></span>
+                    <a href="javascript:void(0)" class="easyui-linkbutton c3" data-options="plain:true" onclick="closingso()"><i class="fa fa-times"></i> Closing Manual</a>
                 </div>
             </div>
             
@@ -234,6 +242,7 @@
         $('#frm_insert').form('clear');
 
         // $("#customer_id").textbox('enable');
+        $("#btn-close").hide();
         $("#sales_order_no").textbox('enable');
         $("#sales_order_date").datebox('enable');
         $("#pph").numberbox('setValue', 0);
@@ -298,6 +307,48 @@
                         $("#customer_address_name").textbox('setValue', row.ship_address);
                         $("#department").textbox('setValue', row.department);
                         addTable(customer.id, row.plant);
+                    }
+                });
+            }
+        });
+    }
+
+    function closingso(){
+        $.messager.prompt('Closing SO', 'Please input password for Closing SO', function(r){
+            if (r == "CLOSESO"){
+                $.messager.prompt('Reason SO', 'Why you want close this SO??', function(s){
+                    if (s){
+                        var sales_order_no = $("#sales_order_no").textbox('getValue');
+                        
+                        Swal.fire({
+                            title: 'Please Wait...',
+                            showConfirmButton: false,
+                            allowOutsideClick: false,
+                            allowEscapeKey: false,
+                            didOpen: () => {
+                                Swal.showLoading();
+                            },
+                        });
+
+                        $.ajax({
+                            type: "post",
+                            url: "<?= base_url("sales/sales_orders/closeSo") ?>",
+                            data: "sales_order_no=" + sales_order_no + "&closing_reason=" + s,
+                            dataType: "json",
+                            success: function (label) {
+                                swal.close();
+                                $('#dg').datagrid('reload');
+                                $("#dlg_insert").dialog("close");
+
+                                if(label.theme == "error"){
+                                    toastr.error("Closing SO Failed");
+                                }else{
+                                    toastr.success("Closing SO Success");
+                                }
+                            }
+                        });
+                    }else{
+                        toastr.error("Please Input the reason");
                     }
                 });
             }
@@ -670,6 +721,7 @@
         var row = $('#dg').treegrid('getSelected');
         if (row) {
             $('#dlg_insert').dialog('open');
+            $("#btn-close").show();
             $('#frm_insert').form('load', row);
             $("#customer_id").combobox('disable');
             $("#sales_order_no").textbox('disable');
@@ -775,7 +827,7 @@
                 var ddv = $(this).datagrid('getRowDetail', index).find('table.ddv');
 
                 ddv.datagrid({
-                    url: '<?= base_url('sales/sales_orders/datatableDetails?sales_order_no=') ?>' + window.btoa(row.sales_order_no),
+                    url: '<?= base_url('sales/sales_orders/datatableDetails?sales_order_no=') ?>' + window.btoa(row.sales_order_no) + "&filter_from=" + btoa(filter_from) + "&filter_to=" + btoa(filter_to),
                     singleSelect: true,
                     rownumbers: true,
                     columns: [
@@ -800,21 +852,21 @@
                             align: 'center',
                             width: 80
                         }, {
-                            field: 'qty',
+                            field: 'qty_so',
                             title: 'Qty',
                             halign: 'center',
                             align: 'right',
                             width: 80,
                             formatter: numberFormat
                         }, {
-                            field: 'delivery',
+                            field: 'qty_delivery',
                             title: 'Delivery',
                             halign: 'center',
                             align: 'right',
                             width: 80,
                             formatter: numberFormat
                         }, {
-                            field: 'outstanding',
+                            field: 'qty_outstanding',
                             title: 'OS SO',
                             halign: 'center',
                             align: 'right',
@@ -1111,7 +1163,7 @@
         }],
         onSelect: function(customer) {
             $('#filter_sales_order_no').combobox({
-                url: '<?= base_url('sales/sales_orders/readSalesOrder/'); ?>' + customer.id,
+                url: '<?= base_url('sales/sales_orders/readSalesOrder/'); ?>' + btoa(customer.id),
                 valueField: 'sales_order_no',
                 textField: 'sales_order_no',
                 prompt: 'Choose All',
@@ -1124,7 +1176,7 @@
             });
 
             $('#filter_customer_order_no').combobox({
-                url: '<?= base_url('sales/sales_orders/readCustomerOrder/'); ?>' + customer.id,
+                url: '<?= base_url('sales/sales_orders/readCustomerOrder/'); ?>' + btoa(customer.id),
                 valueField: 'customer_order_no',
                 textField: 'customer_order_no',
                 prompt: 'Choose All',
@@ -1140,15 +1192,15 @@
 
     //CELLSTYLE STATUS
     function cellStyler(value, row, index) {
-        if (value == 0) {
+        if (row.qty_outstanding > 0 && value == 0) {
             return 'background: #53D636; color:white;';
         } else {
             return 'background: #FF5F5F; color:white;';
         }
     }
     //FORMATTER STATUS
-    function cellFormatter(value) {
-        if (value == 0) {
+    function cellFormatter(value, row) {
+        if (row.qty_outstanding > 0 && value == 0) {
             return 'OPEN';
         } else {
             return 'CLOSE';

@@ -2,25 +2,28 @@
     <thead data-options="frozen:true">
         <tr>
             <th field="ck" checkbox="true"></th>
-            <th data-options="field:'item_fg_number',width:150,halign:'center'">Product No EBWS</th>
-            <th data-options="field:'number_customer',width:200,halign:'center'">Product No Customer</th>
+            <th data-options="field:'item_fg_number',width:100,halign:'center'">Product No<br>EBWS</th>
+            <th data-options="field:'number_customer',width:180,halign:'center'">Product No<br>Customer</th>
         </tr>
     </thead>
     <thead>
         <tr>
-            <th rowspan="2" data-options="field:'item_fg_name',width:200,halign:'center'">Description</th>
+            <th rowspan="2" data-options="field:'item_fg_name',width:150,halign:'center'">Description</th>
             <th rowspan="2" data-options="field:'customer_name',width:200,halign:'center'">Customer</th>
+            <th rowspan="2" data-options="field:'plant',width:80,halign:'center'">Plant</th>
             <th rowspan="2"data-options="field:'total_qty',width:80,halign:'center',align:'right', formatter:numberformat">Total Qty</th>
             <?php 
                 if($this->input->get('filter_month')){
                     $filter_month = base64_decode($this->input->get('filter_month'));
                     $filter_year = base64_decode($this->input->get('filter_year'));
                     $filter_customer = base64_decode($this->input->get('filter_customer'));
+                    $filter_plant = base64_decode($this->input->get('filter_plant'));
                     $filter_item_fg = base64_decode($this->input->get('filter_item_fg'));
                 }else{
                     $filter_month = date("m");
                     $filter_year = date("Y");
                     $filter_customer = "";
+                    $filter_plant = "";
                     $filter_item_fg = "";
                 }
 
@@ -75,7 +78,13 @@
                     <input style="width:60%;" id="filter_customer" value="<?= $filter_customer ?>" class="easyui-combobox">
                 </div>
             </div>
-            <div style="width: 30%; float: left;">
+            <div style="width: 20%; float: left;">
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Plant</span>
+                    <input style="width:60%;" id="filter_plant" value="<?= $filter_plant ?>" class="easyui-combobox">
+                </div>
+            </div>
+            <div style="width: 20%; float: left;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Product No</span>
                     <input style="width:60%;" id="filter_item_fg" value="<?= $filter_item_fg ?>" class="easyui-combogrid">
@@ -87,11 +96,11 @@
 </div>
 
 <!-- Insert & Update -->
-<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 80%; padding:10px; top: 20px; left:10px;">
+<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 99%; height: 550px; padding:10px;">
     <form id="frm_insert" method="post" novalidate>
         <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
             <legend><b>Form Data</b></legend>
-            <div style="float: left; width: 30%;">
+            <div style="float: left; width: 25%;">
                 <div class="fitem" hidden>
                     <span style="width:30%; display:inline-block;">ID</span>
                     <input style="width:60%;" name="id" id="id" required="" disabled class="easyui-textbox">
@@ -106,10 +115,16 @@
                     <a href="javascript:;" class="easyui-linkbutton" onclick="saveData()"><i class="fa fa-save"></i> Save Data</a>
                 </div>
             </div>
-            <div style="float: left; width: 30%;">
+            <div style="float: left; width: 25%;">
                 <div class="fitem">
                     <span style="width:30%; display:inline-block;">Customer</span>
                     <input style="width:60%;" name="customer_id" id="customer_id" required class="easyui-combobox">
+                </div>
+            </div>
+            <div style="float: left; width: 20%;">
+                <div class="fitem">
+                    <span style="width:30%; display:inline-block;">Plant</span>
+                    <input style="width:60%;" name="plant" id="plant" required class="easyui-combobox">
                 </div>
             </div>
             <div style="float: left; width: 30%;">
@@ -148,14 +163,14 @@
 <iframe id="printout" src="" style="width: 100%; height:90%; border: 0;" hidden></iframe>
 
 <script>
-    function calendars(m, y, item_fg_id = "", customer_id = ""){
+    function calendars(m, y, item_fg_id = "", customer_id = "", plant = ""){
         if(m == "" || y == ""){
             toastr.info("Please Choose Month and Year");
         }else{
             $.ajax({
                 type: "post",
                 url: "<?= base_url('sales/sales_order_deliveries/calendars') ?>",
-                data: "month=" + m + "&year=" + y + "&customer_id=" + customer_id + "&item_fg_id=" + item_fg_id,
+                data: "month=" + m + "&year=" + y + "&customer_id=" + customer_id + "&item_fg_id=" + item_fg_id + "&plant=" + plant,
                 dataType: "html",
                 success: function(response) {
                     $("#calendar").html(response);
@@ -172,7 +187,6 @@
         $("#p_month").combobox('readonly', false);
         $("#p_year").combobox('readonly', false);
         $("#customer_id").combobox('readonly', false);
-        $("#item_fg_id").combogrid('readonly', false);
     }
 
     //EDIT DATA
@@ -184,11 +198,10 @@
             $("#p_month").combobox('readonly', true);
             $("#p_year").combobox('readonly', true);
             $("#customer_id").combobox('readonly', true);
-            $("#item_fg_id").combogrid('readonly', true);
             $("#item_fg_id").combogrid('setValue', row.item_fg_id);
 
-            calendars(row.p_month, row.p_year, row.item_fg_id, row.customer_id);
-            url_save = '<?= base_url('sales/sales_order_deliveries/create') ?>';
+            calendars(row.p_month, row.p_year, row.item_fg_id, row.customer_id, row.plant);
+            url_save = '<?= base_url('sales/sales_order_deliveries/update') ?>';
         } else {
             toastr.warning("Please select one of the data in the table first!", "Information");
         }
@@ -198,9 +211,10 @@
         var p_month = $("#p_month").combobox('getValue');
         var p_year = $("#p_year").combobox('getValue');
         var customer_id = $("#customer_id").combobox('getValue');
+        var plant = $("#plant").combobox('getValue');
         var item_fg_id = $("#item_fg_id").combogrid('getValue');
 
-        if(customer_id == "" || item_fg_id == "" || p_month == "" || p_year == ""){
+        if(customer_id == "" || plant == "" || item_fg_id == "" || p_month == "" || p_year == ""){
             toastr.error("Please Completed your data");
         }else{
             $('#frm_insert').form('submit', {
@@ -273,7 +287,9 @@
                                 data: {
                                     item_fg_id: row.item_fg_id,
                                     p_month: row.p_month,
-                                    p_year: row.p_year
+                                    p_year: row.p_year,
+                                    customer_id: row.customer_id,
+                                    plant: row.plant
                                 },
                                 success: function(result) {
                                     var result = eval('(' + result + ')');
@@ -306,11 +322,13 @@
         var filter_month = $("#filter_month").combobox('getValue');
         var filter_year = $("#filter_year").textbox('getValue');
         var filter_customer = $("#filter_customer").combobox('getValue');
+        var filter_plant = $("#filter_plant").combobox('getValue');
         var filter_item_fg = $("#filter_item_fg").combogrid('getValue');
 
         var url = "?filter_month=" + window.btoa(filter_month) +
             "&filter_year=" + window.btoa(filter_year) +
             "&filter_customer=" + window.btoa(filter_customer) +
+            "&filter_plant=" + window.btoa(filter_plant) +
             "&filter_item_fg=" + window.btoa(filter_item_fg);
 
         if (filter_month == "" || filter_year == "") {
@@ -328,11 +346,13 @@
         var filter_month = $("#filter_month").combobox('getValue');
         var filter_year = $("#filter_year").textbox('getValue');
         var filter_customer = $("#filter_customer").combobox('getValue');
+        var filter_plant = $("#filter_customer").combobox('getValue');
         var filter_item_fg = $("#filter_item_fg").combogrid('getValue');
 
         var url = "?filter_month=" + window.btoa(filter_month) +
             "&filter_year=" + window.btoa(filter_year) +
             "&filter_customer=" + window.btoa(filter_customer) +
+            "&filter_plant=" + window.btoa(filter_plant) +
             "&filter_item_fg=" + window.btoa(filter_item_fg);
 
         if (filter_month == "" || filter_year == "") {
@@ -360,11 +380,13 @@
         var filter_month = $("#filter_month").combobox('getValue');
         var filter_year = $("#filter_year").textbox('getValue');
         var filter_customer = $("#filter_customer").combobox('getValue');
+        var filter_plant = $("#filter_plant").combobox('getValue');
         var filter_item_fg = $("#filter_item_fg").combogrid('getValue');
 
         var url = "?filter_month=" + window.btoa(filter_month) +
             "&filter_year=" + window.btoa(filter_year) +
             "&filter_customer=" + window.btoa(filter_customer) +
+            "&filter_plant=" + window.btoa(filter_plant) +
             "&filter_item_fg=" + window.btoa(filter_item_fg);
 
         if (filter_month != "" && filter_year != "") {
@@ -500,6 +522,19 @@
                 }
             }],
             onSelect: function(row){
+                $('#filter_plant').combobox({
+                    url: '<?= base_url('master/customers/readAddress/') ?>' + btoa(row.id),
+                    valueField: 'plant',
+                    textField: 'plant',
+                    prompt: 'Select Plant',
+                    icons: [{
+                        iconCls: 'icon-clear',
+                        handler: function(e) {
+                            $(e.data.target).combobox('clear').combobox('textbox').focus();
+                        }
+                    }],
+                });
+
                 $('#filter_item_fg').combogrid({
                     url: '<?= base_url('master/customer_items/reads/') ?>' + btoa(row.id),
                     panelWidth: 550,
@@ -561,6 +596,13 @@
             textField: 'name',
             prompt: 'Select Customer',
             onSelect: function(row){
+                $('#plant').combobox({
+                    url: '<?php echo base_url('master/customers/readAddress/'); ?>' + btoa(row.id),
+                    valueField: 'plant',
+                    textField: 'plant',
+                    prompt: 'Select plant'
+                });
+
                 $('#item_fg_id').combogrid({
                     url: '<?= base_url('master/customer_items/reads/') ?>' + btoa(row.id),
                     panelWidth: 550,
@@ -590,7 +632,7 @@
     });
 
     function numberformat(value, row) {
-        const formatter = new Intl.NumberFormat('id-ID', {
+        const formatter = new Intl.NumberFormat('ja-JP', {
             minimumFractionDigits: 0
         });
 

@@ -11,6 +11,8 @@ class Item_receipts_fg extends CI_Controller
         $this->load->library('form_validation');
         $this->load->library('session');
         $this->load->model('crud');
+        // $this->dummy = $this->load->database('dummy', TRUE);
+
         //Validasi Form
         $this->form_validation->set_rules('checksheet_label', 'Label No', 'required|min_length[1]|max_length[50]');
     }
@@ -30,12 +32,12 @@ class Item_receipts_fg extends CI_Controller
     {
         if ($this->input->get()) {
             $checksheet_number = $this->input->get('checksheet_number');
-            $this->db->select('f.checksheet_number, c.workorder, d.number as item_fg_number, g.checksheet_label, d.number_customer, d.name as item_fg_name, d.uom, COALESCE(g.qty, 0) as qty, g.created_by, g.created_date');
+            $this->db->select('f.checksheet_number, a.workorder, d.number as item_fg_number, g.checksheet_label, d.number_customer, d.name as item_fg_name, d.uom, COALESCE(g.qty, 0) as qty, g.created_by, g.created_date');
             $this->db->from('wip_receipts a');
-            $this->db->join('production_schedules c', 'a.workorder = c.workorder');
-            $this->db->join('item_fg d', 'c.item_fg_id = d.id');
+            // $this->db->join('production_schedules c', 'a.workorder = c.workorder');
+            $this->db->join('item_fg d', 'a.item_fg_id = d.id');
             // $this->db->join('uom e', 'd.uom_id = e.id');
-            $this->db->join('wip_receipt_boxs f', 'a.checksheet_number = f.checksheet_number and a.workorder = f.workorder');
+            $this->db->join('wip_receipt_boxs f', 'a.checksheet_number = f.checksheet_number');
             $this->db->join('scan_item_receipts_fg g', 'a.checksheet_number = g.checksheet_number and f.checksheet_label = g.checksheet_label and a.workorder = g.workorder', 'left');
             $this->db->where('a.checksheet_number', $checksheet_number);
             $this->db->group_by('f.checksheet_label');
@@ -54,16 +56,16 @@ class Item_receipts_fg extends CI_Controller
     {
         if ($this->input->post()) {
             $checksheet_label = $this->input->post('checksheet_label');
-            $checksheet_number = $this->input->post('checksheet_number');
+            // $checksheet_number = $this->input->post('checksheet_number');
 
-            $this->db->select('f.checksheet_label, c.workorder, COALESCE(f.qty, 0) as qty');
+            $this->db->select('f.checksheet_number, f.checksheet_label, a.workorder, COALESCE(f.qty, 0) as qty');
             $this->db->from('wip_receipts a');
             // $this->db->join('checksheets b', 'a.checksheet_number = b.number');
-            $this->db->join('production_schedules c', 'a.workorder = c.workorder');
-            $this->db->join('item_fg d', 'c.item_fg_id = d.id');
+            // $this->db->join('production_schedules c', 'a.workorder = c.workorder');
+            $this->db->join('item_fg d', 'a.item_fg_id = d.id');
             // $this->db->join('uom e', 'd.uom = e.name');
-            $this->db->join('wip_receipt_boxs f', 'a.checksheet_number = f.checksheet_number and a.workorder = f.workorder');
-            $this->db->where('f.checksheet_number', $checksheet_number);
+            $this->db->join('wip_receipt_boxs f', 'a.checksheet_number = f.checksheet_number');
+            // $this->db->where('f.checksheet_number', $checksheet_number);
             $this->db->where('f.checksheet_label', $checksheet_label);
             $this->db->group_by('f.checksheet_label');
 
@@ -80,11 +82,27 @@ class Item_receipts_fg extends CI_Controller
     {
         if ($this->input->post()) {
             if ($this->form_validation->run() == TRUE) {
-                $post   = $this->input->post();
+                $post = $this->input->post();
 
                 $item_receipts_fg = $this->crud->read("scan_item_receipts_fg", [], ["checksheet_number" => $post['checksheet_number'], "checksheet_label" => $post['checksheet_label']]);
+
                 if (!$item_receipts_fg) {
-                    $send   = $this->crud->create('scan_item_receipts_fg', $post);
+                    $send = $this->crud->create('scan_item_receipts_fg', [
+                        "checksheet_label" => strtoupper($post['checksheet_label']),
+                        "checksheet_number" => strtoupper($post['checksheet_number']),
+                        "workorder" => $post['workorder'],
+                        "qty" => $post['qty']
+                    ]);
+                    
+                    // $this->dummy->update('serial_barcode_packing', [
+                    //     "sts_in" => "true",
+                    // ], [
+                    //     "mpp_periode" => date("Ym", strtotime(@$wip_receipts->trans_date)),
+                    //     "wp" => @$wip_receipts->wp,
+                    //     "item_id" => @$item_fg->number_customer,
+                    //     "sts_in" => "false",
+                    // ]);
+                    
                     echo $send;
                 } else {
                     echo json_encode(array("title" => "Available", "message" => "Data Receipt FG has been Scanning", "theme" => "error"));

@@ -11,14 +11,14 @@
     <thead>
         <tr>
             <th rowspan="2" data-options="field:'number_customer',width:150,halign:'center'">Part No Customer</th>
-            <th rowspan="2" data-options="field:'alias',width:150,halign:'center'">Product Alias</th>
-            <th rowspan="2" data-options="field:'cct',width:80,halign:'center'">CCT Qty</th>
+            <th rowspan="2" data-options="field:'alias',width:150,halign:'center'">Product No Invoice</th>
+            <th rowspan="2" data-options="field:'cct',width:80,halign:'center', styler:cellStylerCct">CCT Qty</th>
             <th rowspan="2" data-options="field:'customer_name',width:250,halign:'center'">Customer</th>
             <th rowspan="2" data-options="field:'harnes_type_name',width:100,halign:'center'">Harness Type</th>
             <th rowspan="2" data-options="field:'control_id',width:100,halign:'center'">Control No</th>
             <th rowspan="2" data-options="field:'polybag',width:150,halign:'center'">Polybag Label</th>
             <th rowspan="2" data-options="field:'box_label',width:70,align:'center'">Box Label</th>
-            <!-- <th rowspan="2" data-options="field:'lot',width:100,align:'center'">Lot No</th> -->
+            <th rowspan="2" data-options="field:'lot',width:80,align:'center'">Lot<br>Production</th>
             <!-- <th rowspan="2" data-options="field:'ng_ration',width:90,align:'center'">NG Ratio (%)</th> -->
             <!-- <th rowspan="2" data-options="field:'is_no',width:100,halign:'center'">IS No.</th> -->
             <th rowspan="2" data-options="field:'weight',width:100,align:'center'">Weight (gram)</th>
@@ -27,6 +27,7 @@
             <th rowspan="2" data-options="field:'moq',width:50,align:'center'">MOQ</th>
             <th rowspan="2" data-options="field:'uom',width:50,align:'center'">UoM</th>
             <th rowspan="2" data-options="field:'qty_box',width:80,align:'center'">QTY/Box</th>
+            <th rowspan="2" data-options="field:'safety_stock',width:100,align:'center'">Safety Stock %</th>
             <!-- <th rowspan="2" data-options="field:'box_sub',width:80,align:'center'">QTY/Sub Box</th> -->
             <th rowspan="2" data-options="field:'hsn_code',width:100,halign:'center'">HSN No</th>
             <th rowspan="2" data-options="field:'type',width:100,align:'center'">Type</th>
@@ -89,7 +90,7 @@
                     <input style="width:60%;" name="cct" id="cct" class="easyui-numberbox">
                 </div>
                 <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Product Alias</span>
+                    <span style="width:35%; display:inline-block;">Product No Invoice</span>
                     <input style="width:60%;" name="alias" id="alias" class="easyui-textbox">
                 </div>
             </div>
@@ -122,8 +123,8 @@
                     <span style="width:35%; display:inline-block;">Control No</span>
                     <input style="width:60%;" name="control_id" id="control_id" class="easyui-textbox">
                 </div>
-                <div class="fitem" hidden>
-                    <span style="width:35%; display:inline-block;">Lot No</span>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Lot Production (MPP)</span>
                     <input style="width:60%;" name="lot" id="lot" class="easyui-numberbox">
                 </div>
                 <div class="fitem">
@@ -153,6 +154,10 @@
                     <span style="width:35%; display:inline-block;">Prod. Leadtime</span>
                     <input style="width:60%;" name="leadtime" id="leadtime" data-options="buttonText:'Day',buttonAlign:'right'" class="easyui-numberbox">
                 </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Safety Stock</span>
+                    <input style="width:30%;" name="safety_stock" id="safety_stock" data-options="buttonText:'%',buttonAlign:'right', precision:2" class="easyui-numberbox">
+                </div>
             </div>
             <div style="float:left; width:33%;">
                 <div class="fitem">
@@ -168,7 +173,7 @@
                     <input style="width:60%;" name="uom" id="uom" required="" class="easyui-combobox">
                 </div>
                 <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Lot Qty</span>
+                    <span style="width:35%; display:inline-block;">Lot Qty/Box</span>
                     <input style="width:60%;" name="qty_box" id="qty_box" class="easyui-numberbox">
                 </div>
                 <div class="fitem" hidden>
@@ -529,27 +534,6 @@
         });
     });
 
-    $('#process').combobox({
-        url: '<?= base_url('master/item_process_flow/reads'); ?>',
-        valueField: 'name',
-        textField: 'name',
-        prompt: 'Choose Process Type',
-    });
-
-    $('#boxs').combobox({
-        url: '<?= base_url('master/item_boxs/reads'); ?>',
-        valueField: 'name',
-        textField: 'name',
-        prompt: 'Choose Boxs',
-    });
-
-    $('#color').combobox({
-        url: '<?= base_url('master/item_colors/reads'); ?>',
-        valueField: 'name',
-        textField: 'name',
-        prompt: 'Choose Colors',
-    });
-
     $('#account_number').combogrid({
         url: '<?= base_url('finance/account_coa/reads'); ?>',
         panelWidth: 300,
@@ -678,6 +662,16 @@
             return 'background: #FF5F5F; color:white;';
         }
     }
+
+    //CELLSTYLE CCT
+    function cellStylerCct(value, row, index) {
+        if (row.total_cct == row.cct) {
+            return 'background: #53D636; color:white;';
+        } else {
+            return 'background: #FF5F5F; color:white;';
+        }
+    }
+
     //FORMATTER STATUS
     function cellFormatter(value) {
         if (value == 0) {

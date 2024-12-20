@@ -29,6 +29,26 @@
     <?= $button ?>
 </div>
 
+<!-- Upload -->
+<div id="dlg_upload" class="easyui-dialog" title="Upload Data" data-options="closed: true,modal:true" style="width: 500px; padding:10px; top: 20px;">
+    <form id="frm_upload" method="post" enctype="multipart/form-data" novalidate>
+        <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
+            <legend><b>Form Data</b></legend>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">File Upload</span>
+                <input name="file_upload" style="width: 60%;" required="" accept=".xls" id="file_excel" class="easyui-filebox">
+            </div>
+        </fieldset>
+    </form>
+    <span style="float: left; color:green;">SUCCESS : <b id="p_success2">0</b></span><span style="float: right; color:red;"> FAILED : <b id="p_failed2">0</b></span>
+    <div id="p_upload2" class="easyui-progressbar" style="width:100%; margin-top: 10px;"></div>
+    <center><b id="p_start2">0</b> Of <b id="p_finish2">0</b></center>
+    <div id="p_remarks2" title="History Upload" class="easyui-panel" style="width:100%; height:200px; padding:10px; margin-top: 10px;">
+        <ul id="remarks2">
+        </ul>
+    </div>
+</div>
+
 <div id="dlg_generate" class="easyui-dialog" title="Save Data" data-options="closed: true,modal:true,closable: false" style="width: 500px; padding:10px; top: 20px;">
     <div class="alert alert-warning" role="alert">
         Please wait until the save process is complete
@@ -155,6 +175,16 @@
         });
     }
 
+    // UPLOAD DATA
+    function upload() {
+        $('#dlg_upload').dialog('open');
+    }
+
+    // DOWNLOAD
+    function download_excel() {
+        window.location.assign('<?= base_url('finance/inventory_fg/downloadTemplate') ?>');
+    }
+
     function reload() {
         window.location.reload();
     }
@@ -187,9 +217,69 @@
     $(function() {
         $("#add").html("Save Inventory FG");
 
+        // UPLOAD DATA
+        $('#dlg_upload').dialog({
+            buttons: [{
+                text: 'Upload',
+                iconCls: 'icon-ok',
+                handler: function() {
+                    $('#frm_upload').form('submit', {
+                        url: '<?= base_url('finance/inventory_fg/upload') ?>',
+                        onSubmit: function() {
+                            if ($(this).form('validate') == false) {
+                                return $(this).form('validate');
+                            } else {
+                                $.messager.progress({
+                                    title: 'Please Wait',
+                                    msg: 'Importing Excel to Database'
+                                });
+                            }
+                        },
+                        success: function(result) {
+                            $.messager.progress('close');
+                            var json = eval('(' + result + ')');
+                            requestData(json.total, json);
+
+                            function requestData(total, json, number = 1, value = 0, success = 1, failed = 1) {
+                                if (value < 100) {
+                                    value = Math.floor((number / total) * 100);
+                                    $('#p_upload2').progressbar('setValue', value);
+                                    $('#p_start2').html(number);
+                                    $('#p_finish2').html(total);
+
+                                    $.ajax({
+                                        type: "POST",
+                                        async: true,
+                                        url: "<?= base_url('finance/inventory_fg/uploadCreate') ?>",
+                                        data: {
+                                            "data": json[number - 1]
+                                        },
+                                        cache: false,
+                                        dataType: "json",
+                                        success: function(result) {
+                                            if (result.theme == "success") {
+                                                $('#p_success2').html(success);
+                                                var title = "<b style='color: green;'>" + result.title + "</b> | " + result.message;
+                                                requestData(total, json, number + 1, value, success + 1, failed + 0);
+                                            } else {
+                                                $('#p_failed2').html(failed);
+                                                var title = "<b style='color: red;'>" + result.title + "</b> | " + result.message;
+                                                requestData(total, json, number + 1, value, success + 0, failed + 1);
+                                            }
+                                            $("#p_remarks2").append(title + "<br>");
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                    });
+                }
+            }]
+        });
+
         $('#filter_item_fg').combogrid({
             url: '<?= base_url('master/item_fg/reads') ?>',
-            panelWidth: 420,
+            panelWidth: 550,
             idField: 'id',
             textField: 'number',
             mode: 'remote',
@@ -204,11 +294,15 @@
             columns: [
                 [{
                     field: 'number',
-                    title: 'Product No',
-                    width: 100
+                    title: 'Product No EBWS',
+                    width: 120
+                },{
+                    field: 'number_customer',
+                    title: 'Product No Customer',
+                    width: 200
                 }, {
                     field: 'name',
-                    title: 'Product Name',
+                    title: 'Description',
                     width: 200
                 }, ]
             ]

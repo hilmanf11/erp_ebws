@@ -3,9 +3,10 @@
     <thead>
         <tr>
             <th rowspan="2" field="ck" checkbox="true"></th>
-            <th rowspan="2" data-options="field:'number',width:100,halign:'center'">Code</th>
-            <th rowspan="2" data-options="field:'name',width:200,halign:'center'">Name</th>
+            <th rowspan="2" data-options="field:'number',width:200,halign:'center'">Code</th>
+            <th rowspan="2" data-options="field:'name',width:300,halign:'center'">Name</th>
             <th rowspan="2" data-options="field:'type',width:150,halign:'center'">Type</th>
+            <th rowspan="2" data-options="field:'journal_type_name',width:250,halign:'center'">Journal Name</th>
             <th rowspan="2" data-options="field:'account_number',width:100,halign:'center'">Account No</th>
             <th rowspan="2" data-options="field:'account_name',width:200,halign:'center'">Account Name</th>
             <th rowspan="2" data-options="field:'account_type',width:100,align:'center'">Debit/Credit</th>
@@ -36,17 +37,25 @@
     <form id="frm_insert" method="post" novalidate>
         <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
             <legend><b>Form Data</b></legend>
-            <div class="fitem">
-                <span style="width:35%; display:inline-block;">Code</span>
-                <input style="width:30%;" name="number" id="number" required="" class="easyui-textbox">
+            <div style="float:left; width: 50%;">
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Code</span>
+                    <input style="width:60%;" name="number" id="number" required="" class="easyui-textbox">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Name</span>
+                    <input style="width:60%;" name="name" id="name" required="" class="easyui-textbox">
+                </div>
             </div>
-            <div class="fitem">
-                <span style="width:35%; display:inline-block;">Name</span>
-                <input style="width:60%;" name="name" id="name" required="" class="easyui-textbox">
-            </div>
-            <div class="fitem">
-                <span style="width:35%; display:inline-block;">Type</span>
-                <input style="width:40%;" name="type" id="type" required="" class="easyui-textbox">
+            <div style="float:left; width: 50%;">
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Journal Type</span>
+                    <input style="width:60%;" name="journal_type_id" id="journal_type_id" required="" class="easyui-combogrid">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Type</span>
+                    <input style="width:60%;" name="type" id="type" required="" class="easyui-textbox">
+                </div>
             </div>
         </fieldset>
         <table id="dg2" class="easyui-datagrid" style="width:100%;" title="Asset Category List" toolbar="#toolbar2"></table>
@@ -267,8 +276,8 @@
                                     }
                                 },
                                 error: function(jqXHR, textStatus, errorThrown) {
-                                    toastr.error("This data is already used in other modules, You must delete it First", "Error");
-                                    
+                                    toastr.error(jqXHR.statusText);
+                                    $.messager.alert("Error", jqXHR.statusText, 'error');
                                 },
                             });
                         }
@@ -323,6 +332,7 @@
                     var number = $("#number").textbox('getValue');
                     var name = $("#name").textbox('getValue');
                     var type = $("#type").textbox('getValue');
+                    var journal_type_id = $("#journal_type_id").combogrid('getValue');
 
                     var rows = $('#dg2').datagrid('getRows');
                     var totalrows = rows.length;
@@ -337,6 +347,7 @@
                                     number: number,
                                     name: name,
                                     type: type,
+                                    journal_type_id: journal_type_id,
                                     account_number: rows[i].account_number,
                                     account_name: rows[i].account_name,
                                     account_type: rows[i].account_type,
@@ -364,6 +375,31 @@
                     $('#dlg_insert').dialog('close');
                 }
             }]
+        });
+
+        $("#journal_type_id").combogrid({
+            url: '<?= base_url('finance/journal_types/reads/') ?>' + btoa("ASSET"),
+            panelWidth: 600,
+            idField: 'id',
+            textField: 'name',
+            mode: 'remote',
+            fitColumns: true,
+            prompt: "Choose Journal Type",
+            columns: [
+                [{
+                    field: 'number',
+                    title: 'Code',
+                    width: 100
+                }, {
+                    field: 'name',
+                    title: 'Name',
+                    width: 250
+                }, {
+                    field: 'module',
+                    title: 'Module',
+                    width: 200
+                }, ]
+            ],
         });
     });
 </script>

@@ -35,17 +35,30 @@ class purchase_returns extends CI_Controller
         if ($this->input->get()) {
             $post = isset($_POST['q']) ? $_POST['q'] : "";
             $po_no = $this->input->get('po_no');
+            // $receipt_id = $this->input->get('receipt_id');
 
-            $this->db->select('a.supplier_id, a.item_rm_id, b.number, b.name, c.mpq, a.qty');// b.specification,
-            $this->db->from('purchase_orders a');
+            $this->db->select('a.supplier_id, a.receipt_id, a.item_rm_id, b.number as item_rm_number, SUM(d.qty) as qty');
+            $this->db->from('purchase_order_receipts a');
             $this->db->join('item_rm b', 'a.item_rm_id = b.id');
             $this->db->join('supplier_items c', 'a.supplier_id = c.supplier_id and a.item_rm_id = c.item_rm_id');
+            $this->db->join('scan_item_rejections d', 'a.receipt_id = d.receipt_id and a.po_no = d.po_no');
             $this->db->where('a.po_no', $po_no);
+            // $this->db->where('a.receipt_id', $receipt_id);
             $this->db->like('b.number', $post);
+            $this->db->group_by('a.receipt_id');
             $this->db->order_by('b.number', 'asc');
             $records = $this->db->get()->result_array();
+            
             echo json_encode($records);
         }
+    }
+
+    public function readPono()
+    {
+        $records = $this->crud->query("SELECT po_no
+            FROM scan_item_rejections
+            WHERE `status` = 0 GROUP BY po_no ORDER BY po_no desc");
+        echo json_encode($records);
     }
 
     public function readReturnNo()
@@ -89,7 +102,7 @@ class purchase_returns extends CI_Controller
         //Select Query
         $id = $_POST['id'];
         if ($id === "0") {
-            $this->db->select('return_no, return_date, return_name, sum(a.qty) as qty, a.status');
+            $this->db->select('return_no, return_date, return_name, po_no, sum(a.qty) as qty, a.status');
             $this->db->from('purchase_returns a');
             $this->db->join('item_rm b', 'a.item_rm_id = b.id');
             $this->db->join('suppliers c', 'a.supplier_id = c.id');
@@ -113,6 +126,7 @@ class purchase_returns extends CI_Controller
                     "return_no" => $record['return_no'],
                     "return_date" => $record['return_date'],
                     "return_name" => $record['return_name'],
+                    "po_no" => $record['po_no'],
                     "qty" => $record['qty'],
                     "status" => $record['status'],
                     "state" => "closed",
@@ -148,10 +162,10 @@ class purchase_returns extends CI_Controller
                     "return_no" => $record['return_no'],
                     "return_date" => $record['return_date'],
                     "return_name" => $record['return_name'],
-                    "item_number" => $record['item_number'],
-                    "item_name" => $record['item_name'],
+                    "receipt_id" => $record['receipt_id'],
+                    "item_rm_id" => $record['item_rm_id'],
+                    "item_rm_number" => $record['item_rm_number'],
                     "supplier_name" => $record['supplier_name'],
-                    
                     "remarks" => $record['remarks'],
                     "uom" => $record['uom'],
                     "qty" => $record['qty'],
@@ -177,7 +191,8 @@ class purchase_returns extends CI_Controller
                 if (@$purchase_returns->id != "") {
                     echo json_encode(array("title" => "Duplicated", "message" => "Product No " . $post['item_rm_id'] . " Data Duplicated", "theme" => "error"));
                 } else {
-                    $send   = $this->crud->create('purchase_returns', $post);
+                    $send = $this->crud->create('purchase_returns', $post);
+                    $this->crud->update('scan_item_rejections', ["receipt_id" => $post['receipt_id']], ["status" => 1]);
                     echo $send;
                 }
             } else {
@@ -204,6 +219,7 @@ class purchase_returns extends CI_Controller
     {
         $data = $this->input->post();
         $send = $this->crud->delete('purchase_returns', $data);
+        $this->crud->update('scan_item_rejections', ["receipt_id" => $post['receipt_id']], ["status" => 0]);
         echo $send;
     }
 
@@ -241,14 +257,14 @@ class purchase_returns extends CI_Controller
         $page = 1;
         foreach ($suppliers as $supplier) {
             $this->db->select('a.*, 
-                b.number as item_rm_id, 
-                b.name as item_name,  
+                b.number as item_rm_number, 
+                b.name as item_rm_name,  
                 b.uom, 
-                d.number as supplier_number, 
+                d.id as supplier_number, 
                 d.name as supplier_name,
                 d.type, 
                 d.address,
-                d.attention, 
+                d.contact_person, 
                 d.telp');
                 // b.specification,
             $this->db->from('purchase_returns a');
@@ -320,7 +336,7 @@ class purchase_returns extends CI_Controller
                                         <tr>
                                             <td>Attention</td>
                                             <td>:</td>
-                                            <td><b>' . $records[0]['attention'] . '</b></td>
+                                            <td><b>' . $records[0]['contact_person'] . '</b></td>
                                         </tr>
                                         <tr>
                                             <td>Telp</td>
@@ -361,17 +377,21 @@ class purchase_returns extends CI_Controller
                                 <table id="customers">
                                     <tr>
                                         <th width="20">No</th>
-                                        <th>Product No</th>
-                                        <th>Product Name</th>
-                                        <th width="60">UoM</th>
-                                        <th width="60">Qty</th>
+                                        <th>Part No EBWS</th>
+                                        <th>Part No Supplier</th>
+                                        <th>Description</th>
+                                        <th>Receipt ID</th>
+                                        <th width="100">UoM</th>
+                                        <th width="100">Qty</th>
                                     </tr>';
             foreach ($records as $record) {
                 $html .= '  <tr>
                                 <td style="text-align:center">' . $no . '</td>
                                 <td style="font-size:10px;">' . $record['item_rm_id'] . '</td>
-                                <td><span style="font-size:10px;">' . $record['item_name'] . '</span></td>
-                                <td style="text-align:center;"><span style="font-size:10px;">' . $record['uom'] . '</span></td>
+                                <td>' . $record['item_rm_number'] . '</td>
+                                <td>' . $record['item_rm_name'] . '</td>
+                                <td>' . $record['receipt_id'] . '</td>
+                                <td style="text-align:center;">' . $record['uom'] . '</span></td>
                                 <td style="text-align:right">' . number_format($record['qty'], 2, ",", ".") . '</td>
                             </tr>';
                 $no++;

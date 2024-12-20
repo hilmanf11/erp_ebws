@@ -41,10 +41,11 @@ class Delivery_notes extends CI_Controller
             b.number_customer, 
             b.number as item_fg_number, 
             b.name as item_fg_name,
-            a.qty_do as qty,
+            c.shipping as qty,
             (CASE WHEN a.delivery_order_date >= '$delivery_note_date' THEN 0 ELSE 1 END) as status_delivery,
             b.uom");
         $this->db->from('delivery_orders a');
+        $this->db->join("(SELECT item_fg_id, delivery_order_no, SUM(qty) AS shipping FROM shipping_orders GROUP BY item_fg_id, delivery_order_no) c", 'a.item_fg_id = c.item_fg_id and a.delivery_order_no = c.delivery_order_no');
         $this->db->join('item_fg b', 'a.item_fg_id = b.id');
         $this->db->where('a.deleted', 0);
         $this->db->where_in('a.delivery_order_no', $delivery_order_no);
@@ -53,13 +54,14 @@ class Delivery_notes extends CI_Controller
         echo json_encode($records);
     }
 
-    public function readDo($customer_id)
+    public function readDo($customer_id, $plant)
     {
         $customer_id = base64_decode($customer_id);
+        $plant = base64_decode($plant);
         $send = $this->crud->query("SELECT DISTINCT a.delivery_order_no 
             FROM delivery_orders a 
             JOIN shipping_orders b ON a.delivery_order_no = b.delivery_order_no 
-            WHERE a.status = 0 and a.customer_id = '$customer_id'");
+            WHERE a.status = 0 and a.customer_id = '$customer_id' and a.plant = '$plant'");
         echo json_encode($send);
     }
  
@@ -411,6 +413,11 @@ class Delivery_notes extends CI_Controller
                             <td>' . @$records[0]['ship_by'] . '</td>
                         </tr>
                         <tr>
+                            <td width="100">Vehicle No</td>
+                            <td width="5">:</td>
+                            <td>' . @$records[0]['vehicle_no'] . '</td>
+                        </tr>
+                        <tr>
                             <td width="100">Incoterms</td>
                             <td width="5">:</td>
                             <td>' . @$records[0]['incoterm'] . '</b></td>
@@ -525,24 +532,24 @@ class Delivery_notes extends CI_Controller
         $this->db->from('config');
         $config = $this->db->get()->row();
 
-        $this->db->select("a.*, b.name as customer_name, d.address as shipping_address, e.number as item_fg_number, e.name as item_fg_name");
-            $this->db->from('delivery_notes a');
-            $this->db->join('customers b', 'a.customer_id = b.id');
-            $this->db->join('customer_address d', 'b.id = d.customer_id');
-            $this->db->join('sales_orders c', 'a.sales_order_no = c.sales_order_no and a.item_fg_id = c.item_fg_id and a.customer_id = c.customer_id');
-            $this->db->join('item_fg e', 'a.item_fg_id = e.id');
-            if ($filter_from != "" && $filter_to != "") {
-                $this->db->where('a.delivery_note_date >=', $filter_from);
-                $this->db->where('a.delivery_note_date <=', $filter_to);
-            }
-            $this->db->like('a.customer_id', $filter_customer_id);
-            $this->db->like('a.delivery_order_no', $filter_delivery_order_no);
-            $this->db->like('a.sales_order_no', $filter_sales_order_no);
-            $this->db->like('c.customer_order_no', $filter_customer_order_no);
-            $this->db->like('a.item_fg_id', $filter_item_fg);
-            $this->db->like('a.status', $filter_status);
-            $this->db->group_by('a.delivery_note_no');
-            $this->db->order_by('a.status', 'ASC');
+        $this->db->select("a.*, b.name as customer_name, e.number_customer, e.name as item_fg_name");
+        $this->db->from('delivery_notes a');
+        $this->db->join('customers b', 'a.customer_id = b.id');
+        $this->db->join('customer_address d', 'b.id = d.customer_id');
+        $this->db->join('sales_orders c', 'a.sales_order_no = c.sales_order_no and a.item_fg_id = c.item_fg_id and a.customer_id = c.customer_id');
+        $this->db->join('item_fg e', 'a.item_fg_id = e.id');
+        if ($filter_from != "" && $filter_to != "") {
+            $this->db->where('a.delivery_note_date >=', $filter_from);
+            $this->db->where('a.delivery_note_date <=', $filter_to);
+        }
+        $this->db->like('a.customer_id', $filter_customer_id);
+        $this->db->like('a.delivery_order_no', $filter_delivery_order_no);
+        $this->db->like('a.sales_order_no', $filter_sales_order_no);
+        $this->db->like('c.customer_order_no', $filter_customer_order_no);
+        $this->db->like('a.item_fg_id', $filter_item_fg);
+        $this->db->like('a.status', $filter_status);
+        $this->db->group_by('a.delivery_note_no');
+        $this->db->order_by('a.status', 'ASC');
         $records = $this->db->get()->result_array();
 
         $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#customer_items {border-collapse: collapse;width: 100%;font-size: 12px;}#customer_items td, #customer_items th {border: 1px solid #ddd;padding: 2px;}#customer_items tr:nth-child(even){background-color: #f2f2f2;}#customer_items tr:hover {background-color: #ddd;}#customer_items th {padding-top: 2px;padding-bottom: 2px;text-align: left;color: black;}</style><body>
@@ -577,17 +584,14 @@ class Delivery_notes extends CI_Controller
                 <th>Delivery Note No</th>
                 <th>Delivery Note Date</th>
                 <th>Delivery Order No</th>
-                <th>Product ID</th>
-                <th>Product No</th>
-                <th>Product Name</th>
+                <th>Product No EBWS</th>
+                <th>Product No Customer</th>
+                <th>Description</th>
                 <th>Sales Order No</th>
                 <th>Customer Order No</th>
                 <th>Uom</th>
                 <th>Qty</th>
-                <th>Shipping Address</th>
-                <th>Trans Type</th>
                 <th>Note</th>
-                <th>Delivery Status</th>
                 <th>Status</th>
               
             </tr>';
@@ -600,16 +604,13 @@ class Delivery_notes extends CI_Controller
                         <td>' . $data['delivery_note_date'] . '</td>
                         <td>' . $data['delivery_order_no'] . '</td>
                         <td>' . $data['item_fg_id'] . '</td>
-                        <td>' . $data['item_fg_number'] . '</td>
-                        <td>' . $data['item_fg_name'] . '</td>
+                        <td style="mso-number-format:\@;">' . $data['number_customer'] . '</td>
+                        <td style="mso-number-format:\@;">' . $data['item_fg_name'] . '</td>
                         <td>' . $data['sales_order_no'] . '</td>
                         <td>' . $data['customer_order_no'] . '</td>
                         <td>' . $data['uom'] . '</td>
                         <td>' . $data['qty'] . '</td>
-                        <td>' . $data['shipping_address'] . '</td>
-                        <td>' . $data['trans_type'] . '</td>
                         <td>' . $data['note'] . '</td>
-                        <td>' . $data['status_delivery'] . '</td>
                         <td>' . $data['status'] . '</td>
                        
                     </tr>';

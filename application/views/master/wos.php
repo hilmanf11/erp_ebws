@@ -6,7 +6,7 @@
             <th rowspan="2" data-options="field:'item_fg_number',width:150,halign:'center'">Part No EBWS</th>
             <th rowspan="2" data-options="field:'number_customer',width:200,halign:'center'">Part No Customer</th>
             <th rowspan="2" data-options="field:'item_fg_name',width:200,halign:'center'">Description</th>
-            <th rowspan="2" data-options="field:'circuit_no',width:50,align:'center'">CCT</th>
+            <th rowspan="2" data-options="field:'circuit_no',width:100,align:'center'">CCT</th>
             <th rowspan="2" data-options="field:'kind',width:80,halign:'center'">Kind</th>
             <th rowspan="2" data-options="field:'size',width:80,halign:'center'">Size</th>
             <th rowspan="2" data-options="field:'color',width:80,halign:'center'">Base Color</th>
@@ -31,6 +31,8 @@
             <th rowspan="2" data-options="field:'cwi_2',width:100,halign:'center'">CW/I 2</th>
             <th rowspan="2" data-options="field:'accessories_1',width:100,halign:'center'">Accessories 1</th>
             <th rowspan="2" data-options="field:'accessories_2',width:100,halign:'center'">Accessories 2</th>
+            <th rowspan="2" data-options="field:'mark_r',width:100,halign:'center'">Mark R</th>
+            <th rowspan="2" data-options="field:'mark_f',width:100,halign:'center'">Mark F</th>
             <th rowspan="2" data-options="field:'tube_1',width:100,halign:'center'">Tube 1</th>
             <th rowspan="2" data-options="field:'tube_size_1',width:100,halign:'center'">Tube Size 1</th>
             <th rowspan="2" data-options="field:'tube_2',width:100,halign:'center'">Tube 2</th>
@@ -39,6 +41,8 @@
             <th rowspan="2" data-options="field:'end_2',width:100,halign:'center'">End 2</th>
             <th rowspan="2" data-options="field:'note_r',width:100,halign:'center'">Note R</th>
             <th rowspan="2" data-options="field:'note_f',width:100,halign:'center'">Note F</th>
+            <th rowspan="2" data-options="field:'cct_order',width:80,halign:'center'">CCT<br>Order</th>
+            <th rowspan="2" data-options="field:'cct_range',width:80,halign:'center'">CCT<br>Range</th>
             <th rowspan="2" data-options="field:'mc',width:100,halign:'center'">MC No</th>
             <th rowspan="2" data-options="field:'order',width:100,halign:'center'">Process<br>Sequence</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
@@ -58,7 +62,7 @@
     <?= $button ?>
 </div>
 <!-- DIALOG SAVE AND UPDATE -->
-<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 700px; height: 90%; padding:10px; top: 20px;">
+<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 700px; height: 550px; padding:10px; top: 20px;">
     <form id="frm_insert" method="post" novalidate>
         <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
             <legend><b>Form Data</b></legend>
@@ -69,7 +73,7 @@
             <div style="width: 50%; float: left;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Circuit No</span>
-                    <input style="width:60%;" name="circuit_no" id="circuit_no" required="true" class="easyui-numberbox">
+                    <input style="width:60%;" name="circuit_no" id="circuit_no" required="true" class="easyui-textbox">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Kind</span>
@@ -104,6 +108,10 @@
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">M. No</span>
                     <input style="width:60%;" name="mno" id="mno" class="easyui-textbox">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">CCT Range</span>
+                    <input style="width:60%;" name="cct_range" id="cct_range" class="easyui-textbox">
                 </div>
             </div>
         </fieldset>
@@ -140,6 +148,10 @@
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Accessories</span>
                 <input style="width:60%;" name="accessories_1" id="accessories_1" class="easyui-textbox">
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Mark R</span>
+                <input style="width:60%;" name="mark_r" id="mark_r" class="easyui-textbox">
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Tube</span>
@@ -195,6 +207,10 @@
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Accessories</span>
                 <input style="width:60%;" name="accessories_2" id="accessories_2" class="easyui-textbox">
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Mark F</span>
+                <input style="width:60%;" name="mark_f" id="mark_f" class="easyui-textbox">
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Tube</span>
@@ -394,12 +410,14 @@
 
     //PRINT PDF
     function pdf() {
-        $("#printout").get(0).contentWindow.print();
+        // $("#printout").get(0).contentWindow.print();
+        $('#dg').datagrid('print','DataGrid');
     }
     
     //PRINT EXCEL
     function excel() {
-        window.location.assign('<?= base_url('master/wos/print/excel') ?>');
+        // window.location.assign('<?= base_url('master/wos/print/excel') ?>');
+        $('#dg').datagrid('toExcel','wos_<?= time() ?>.xls');
     }
 
     //RELOAD
@@ -559,7 +577,7 @@
 
         $('#item_fg_id').combogrid({
             url: '<?= base_url('master/item_fg/reads'); ?>',
-            panelWidth: 450,
+            panelWidth: 550,
             idField: 'id',
             textField: 'number',
             mode: 'remote',
@@ -568,11 +586,15 @@
             columns: [
                 [{
                     field: 'number',
-                    title: 'Product No',
+                    title: 'Product No EBWS',
+                    width: 100
+                },{
+                    field: 'number_customer',
+                    title: 'Product No Customer',
                     width: 200
                 }, {
                     field: 'name',
-                    title: 'Product Name',
+                    title: 'Description',
                     width: 200
                 }]
             ],

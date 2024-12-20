@@ -51,15 +51,15 @@
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Selling</span>
-                <input style="width:60%;" name="selling" id="selling" required="" class="easyui-numberbox" data-options="precision:2">
+                <input style="width:60%;" name="selling" id="selling" required="" class="easyui-numberbox" data-options="precision:4">
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Buying</span>
-                <input style="width:60%;" name="buying" id="buying" required="" class="easyui-numberbox" data-options="precision:2">
+                <input style="width:60%;" name="buying" id="buying" required="" class="easyui-numberbox" data-options="precision:4">
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Middle</span>
-                <input style="width:60%;" name="middle" id="middle" required class="easyui-numberbox" data-options="precision:2">
+                <input style="width:60%;" name="middle" id="middle" required class="easyui-numberbox" data-options="precision:4">
             </div>
         </fieldset>
     </form>
@@ -258,7 +258,7 @@
             const formatter = new Intl.NumberFormat('id-ID', {
                 // style: 'currency',
                 // currency: row.currency,
-                minimumFractionDigits: 2
+                minimumFractionDigits: 4
             });
             return "<b>" + formatter.format(value) + "</b>";
         }

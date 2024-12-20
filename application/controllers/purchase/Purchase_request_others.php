@@ -23,6 +23,8 @@ class Purchase_request_others extends CI_Controller
             redirect('error_session');
         } elseif ($this->checkuserAccess($this->id_menu()) > 0) {
             $data['button'] = $this->getbutton($this->id_menu());
+            $data['id_menu'] = $this->id_menu();
+
             $this->load->view('template/header', $data);
             $this->load->view('purchase/purchase_request_others');
         } else {
@@ -30,76 +32,122 @@ class Purchase_request_others extends CI_Controller
         }
     }
 
+    public function readPono($supplier_id){
+        $supplier_id = base64_decode($supplier_id);
+        $records = $this->crud->query("SELECT DISTINCT po_no FROM purchase_request_others WHERE `status` = '0' and supplier_id = '$supplier_id' GROUP BY po_no ORDER BY created_date desc");
+        echo json_encode($records);
+    }
+
     public function reads()
     {
-        $request_no = $this->input->get('request_no');
+        $request_no = base64_decode($this->input->get('request_no'));
+        $supplier_id = base64_decode($this->input->get('supplier_id'));
+
         //Select Query
-        $this->db->select('a.*, 
+        $this->db->select("a.*, 
             b.number as item_rm_number, 
             b.name as item_rm_name, 
             b.uom,
-            e.mpq,
-            e.moq,
-            d.number as supplier_number,
-            d.name as supplier_name,
-            c.name as category_name');
-        $this->db->from('purchase_requests a');
+            d.mpq,
+            d.moq,
+            e.id as supplier_id,
+            e.number as supplier_number,
+            e.name as supplier_name,
+            c.name as category_name,
+            (CASE WHEN d.approved_to = '' THEN d.price ELSE 0 END) as price,
+            (a.qty * (CASE WHEN d.approved_to = '' THEN d.price ELSE 0 END)) as total,
+            DATE_FORMAT(now(), '%Y-%m-%d') as delivery_date");
+        $this->db->from('purchase_request_others a');
         $this->db->join('item_rm b', 'a.item_rm_id = b.id');
         $this->db->join('item_familys c', 'b.item_family_id = c.id');
-        $this->db->join('suppliers d', 'a.supplier_id = d.id');
-        $this->db->join('supplier_items e', 'a.supplier_id = e.supplier_id and a.item_rm_id = e.item_rm_id and e.share_order > 0');
+        $this->db->join('supplier_items d', "a.item_rm_id = d.item_rm_id");
+        $this->db->join('suppliers e', 'd.supplier_id = e.id');
         $this->db->where('a.status', 0);
+        $this->db->where('d.supplier_id', $supplier_id);
         $this->db->where('a.request_no', $request_no);
         $this->db->order_by('b.number', 'ASC');
         $records = $this->db->get()->result_array();
+        
         echo json_encode($records);
     }
 
-    public function readRequestno($status = 0)
+    public function readRm()
     {
-        $records = $this->crud->query("SELECT request_no, request_date, request_name FROM purchase_requests WHERE `status` = '$status' and request_type = 'OTHER' GROUP BY request_no ORDER BY created_date desc");
+        $supplier_id = base64_decode($this->input->get('supplier_id'));
+
+        //Select Query
+        $this->db->select("a.*, d.price");
+        $this->db->from('item_rm a');
+        $this->db->join('supplier_items d', "a.id = d.item_rm_id", 'left');
+        $this->db->where('a.item_category_id !=', 'C01');
+        $this->db->where('d.supplier_id', $supplier_id);
+        $this->db->order_by('a.number', 'ASC');
+        $records = $this->db->get()->result_array();
+        
         echo json_encode($records);
     }
 
-    public function readSupplier($item_rm_id = ""){
-        $item_rm_id = base64_decode($item_rm_id);
-        $query = $this->db->query("SELECT c.id, c.number, c.name, a.mpq, a.moq
-            FROM supplier_items a 
-            JOIN item_rm b ON a.item_rm_id = b.id
-            JOIN suppliers c ON a.supplier_id = c.id
-            WHERE b.item_category_id NOT IN ('C01','C03') and a.item_rm_id like '%$item_rm_id%'
-            GROUP BY c.id");
-        $records = $query->result_array();
-
-        echo json_encode($records);
-    }
-
-    public function readprodfam($supplier_id){
+    public function readRequestno($supplier_id = "", $status = 0)
+    {
+        if($supplier_id == ""){
+            $where_supplier = "";
+        }else{
+            $where_supplier = "b.supplier_id = '$supplier_id' and";
+        }
+        
         $supplier_id = base64_decode($supplier_id);
+        $records = $this->crud->query("SELECT a.request_no, a.request_date, a.request_name 
+            FROM purchase_request_others a 
+            JOIN supplier_items b ON a.item_rm_id = b.item_rm_id 
+            WHERE $where_supplier a.status = 0 and (a.approved_to = '' or a.approved_to is null) 
+            GROUP BY a.request_no ORDER BY a.created_date desc");
+        echo json_encode($records);
+    }
+
+    public function readprodfam(){
         $query = $this->db->query("SELECT DISTINCT a.id, a.number, a.name 
             FROM item_familys a 
             JOIN item_rm b ON a.id = b.item_family_id
-            JOIN supplier_items c ON b.id = c.item_rm_id
-            WHERE a.item_category_id NOT IN ('C01','C03') and c.supplier_id = '$supplier_id'");
+            WHERE a.item_category_id NOT IN ('C01','C08')");
         $records = $query->result_array();
 
         echo json_encode($records);
     }
 
-    public function request_no(){
-        $sqlGetID	= $this->db->query("SELECT max(request_no) as kode FROM purchase_requests");
-        $rowID      = $sqlGetID->row();
-        $kode 		= $rowID->kode;
-        
-        if ($kode == NULL) {
-            $autoID = sprintf("%08s", $kode + 1);
-        } else {
-            $urutan = (int) $kode;
-            $urutan++;
-            $autoID	= sprintf("%08s", $urutan);
-        }
+    public function request_no($id_menu, $add = ""){
+        $datenow = date("Y-m-d");
+        $sql_menu = $this->db->query("SELECT * FROM menus_no WHERE menus_id = '$id_menu' and `status` = '0' and `start_date` <= '$datenow' and end_date >= '$datenow'");
+        $row_menu = $sql_menu->row();
 
-        echo $autoID;
+        if(@$row_menu->number == ""){
+            //
+        }else{
+            $number = @$row_menu->number;
+            $yearnow = date("y", strtotime($row_menu->start_date));
+            $yearend = date("y", strtotime($row_menu->end_date));
+
+            $whereDate = $number.$yearnow.$yearend."1";
+
+            $sqlGetID	= $this->db->query("SELECT max(request_no) as kode FROM purchase_request_others WHERE request_no like '%$whereDate%'");
+            $rowID = $sqlGetID->row();
+            $kode = $rowID->kode;
+            
+            if ($kode == NULL) {
+                $autoID = sprintf("%0".$row_menu->sequence."s", $kode + 1);
+                $autoNo = $whereDate.$autoID;
+            } else {
+                $urutan = (int) substr($kode, -6);
+                $urutan++;
+                $autoID	= sprintf("%0".$row_menu->sequence."s", $urutan);
+                $autoNo = $whereDate.$autoID;
+            }
+
+            if($add == ""){
+                return $autoNo;
+            }else{
+                die(json_encode(array("code" => $autoNo)));
+            }
+        }
     }
 
     public function datatables()
@@ -107,7 +155,7 @@ class Purchase_request_others extends CI_Controller
         $filter_from = $this->input->get('filter_from');
         $filter_to   = $this->input->get('filter_to');
         $filter_request_no = $this->input->get('filter_request_no');
-        $filter_supplier = $this->input->get('filter_supplier');
+        $filter_item_rm = $this->input->get('filter_item_rm');
         $filter_item_familys = $this->input->get('filter_item_familys');
 
         $page = $this->input->post('page');
@@ -120,21 +168,23 @@ class Purchase_request_others extends CI_Controller
         //Select Query
         $id = $_POST['id'];
         if ($id === "0") {
-            $this->db->select('a.request_no, a.request_date, a.expected_date, a.request_name, sum(a.qty) as qty, a.status, c.id as item_family_id, c.name as item_family_name, a.supplier_id, d.name as supplier_name');
-            $this->db->from('purchase_requests a');
+            $this->db->select('a.request_no, a.request_date, a.expected_date, a.item_family_id, a.request_name, sum(a.qty) as qty, a.status');
+            $this->db->from('purchase_request_others a');
             $this->db->join('item_rm b', 'a.item_rm_id = b.id');
-            $this->db->join('item_familys c', "b.item_family_id = c.id and c.item_category_id NOT IN ('C01','C03')");
-            $this->db->join('suppliers d', 'a.supplier_id = d.id');
+            $this->db->join('item_familys c', "b.item_family_id = c.id");
             $this->db->where('a.deleted', 0);
+            if(!in_array($this->session->username, ["PURCHASE-03", "Purchase-01", "PURCHASE-02", "admin", "hariom_bhardwaj", "ITADMIN"])){
+                $this->db->where('a.created_by', $this->session->username);
+            }
             if ($filter_from != "" or $filter_to != "") {
                 $this->db->where('a.request_date >=', $filter_from);
                 $this->db->where('a.request_date <=', $filter_to);
             }
             $this->db->like('a.request_no', $filter_request_no);
             $this->db->like('c.id', $filter_item_familys);
-            $this->db->like('d.id', $filter_supplier);
-            $this->db->group_by('request_no');
-            $this->db->order_by('a.request_date', 'DESC');
+            $this->db->like('b.id', $filter_item_rm);
+            $this->db->group_by('a.request_no');
+            $this->db->order_by('a.request_no', 'DESC');
             //Total Data
             $totalRows = $this->db->count_all_results('', false);
             //Limit 1 - 10
@@ -144,36 +194,32 @@ class Purchase_request_others extends CI_Controller
             foreach ($records as $record) {
                 $arr[] = array(
                     "id" => $record['request_no'],
-                    "item_family_id" => $record['item_family_id'],
-                    "item_family_name" => $record['item_family_name'],
-                    "supplier_id" => $record['supplier_id'],
-                    "supplier_name" => $record['supplier_name'],
                     "request_no" => $record['request_no'],
                     "request_date" => $record['request_date'],
                     "expected_date" => $record['expected_date'],
                     "request_name" => $record['request_name'],
+                    "item_family_id" => $record['item_family_id'],
                     "qty" => $record['qty'],
                     "status" => $record['status'],
                     "state" => "closed",
                     "datatable" => 1
                 );
             }
+            
             $result['total'] = $totalRows;
             $result = array_merge($result, ['rows' => @$arr]);
             echo json_encode($result);
         } else {
             $this->db->select('a.*, 
-                b.number as item_number, 
-                b.name as item_name,
+                b.number as item_rm_number, 
+                b.name as item_rm_name,
                 b.uom, 
-                c.name as category_name,
-                e.name as supplier_name,
+                c.name as item_family_name,
                 d.po_no');
-            $this->db->from('purchase_requests a');
+            $this->db->from('purchase_request_others a');
             $this->db->join('item_rm b', 'a.item_rm_id = b.id');
-            $this->db->join('item_familys c', "b.item_family_id = c.id and c.item_category_id NOT IN ('C01','C03')");
-            $this->db->join('purchase_orders d', 'a.request_no = d.request_no and a.item_rm_id = d.item_rm_id', 'left');
-            $this->db->join('suppliers e', 'a.supplier_id = e.id');
+            $this->db->join('item_familys c', "b.item_family_id = c.id");
+            $this->db->join('purchase_order_others d', 'a.request_no = d.request_no and a.item_rm_id = d.item_rm_id', 'left');
             $this->db->where('a.deleted', 0);
             if ($filter_from != "" or $filter_to != "") {
                 $this->db->where('a.request_date >=', $filter_from);
@@ -181,6 +227,7 @@ class Purchase_request_others extends CI_Controller
             }
             $this->db->where('a.request_no', $id);
             $this->db->like('c.id', $filter_item_familys);
+            $this->db->like('b.id', $filter_item_rm);
             $this->db->order_by('b.number', 'ASC');
             $records = $this->db->get()->result_array();
             echo json_encode($records);
@@ -189,9 +236,11 @@ class Purchase_request_others extends CI_Controller
 
     public function datatable_updates(){
         $request_no = base64_decode($this->input->get('request_no'));
-        $records = $this->crud->query("SELECT c.number as item_number, c.name as item_name, c.id as item_rm_id, a.qty, a.forecast_m1, a.forecast_m2, a.forecast_m3, a.remarks
-            FROM purchase_requests a
+        
+        $records = $this->crud->query("SELECT a.*, c.number as item_number, c.name as item_rm_name, d.name as item_family_name
+            FROM purchase_request_others a
             JOIN item_rm c on a.item_rm_id = c.id
+            JOIN item_familys d ON c.item_family_id = d.id
             WHERE a.status = '0' and a.request_no = '$request_no'
             GROUP BY c.number");
         echo json_encode($records);
@@ -205,11 +254,11 @@ class Purchase_request_others extends CI_Controller
                 $p_month = date("m", strtotime($post['request_date']));
                 $p_year = date("Y", strtotime($post['request_date']));
 
-                $purchase_request_item = $this->crud->read('purchase_requests', [], ["request_no" => $post['request_no'], "item_rm_id" => $post['item_rm_id']]);
+                $purchase_request_item = $this->crud->read('purchase_request_others', [], ["request_no" => $post['request_no'], "item_rm_id" => $post['item_rm_id']]);
                 if (@$purchase_request_item->id != "") {
-                    $send = $this->crud->update('purchase_requests', ["request_no" => $post['request_no'], "item_rm_id" => $post['item_rm_id']], $post);
+                    $send = $this->crud->update('purchase_request_others', ["request_no" => $post['request_no'], "item_rm_id" => $post['item_rm_id']], $post);
                 } else {
-                    $send = $this->crud->create('purchase_requests', array_merge($post, ["request_type" => "OTHER", "p_month" => $p_month, "p_year" => $p_year]));
+                    $send = $this->crud->create('purchase_request_others', array_merge($post, ["request_type" => "OTHER", "p_month" => $p_month, "p_year" => $p_year]));
                 }
 
                 echo $send;
@@ -226,7 +275,7 @@ class Purchase_request_others extends CI_Controller
         if ($this->input->post()) {
             $id   = $this->input->post('id');
             $post = $this->input->post();
-            $send = $this->crud->update('purchase_requests', ["id" => $id], ["qty" => $post['qty'], "remarks" => $post['remarks']]);
+            $send = $this->crud->update('purchase_request_others', ["id" => $id], ["qty" => $post['qty'], "remarks" => $post['remarks']]);
             echo $send;
         } else {
             show_error("Cannot Process your request");
@@ -236,7 +285,7 @@ class Purchase_request_others extends CI_Controller
     public function delete()
     {
         $data = $this->input->post();
-        $send = $this->crud->delete('purchase_requests', $data);
+        $send = $this->crud->delete('purchase_request_others', $data);
         echo $send;
     }
 
@@ -251,49 +300,36 @@ class Purchase_request_others extends CI_Controller
         $data = new Spreadsheet_Excel_Reader($file, false);
         $total_row = $data->rowcount($sheet_index = 0);
         $category = $data->val(2, 3);
-        $item_family = $this->crud->read('item_familys', [], ["number" => $category]);
-        if (!empty($item_family)) {
-            $datenow    = $item_family->number . date("ymd");
-            $sqlGetID   = $this->db->query("SELECT max(request_no) as kode FROM purchase_requests WHERE request_no like '%$datenow%'");
-            $rowID      = $sqlGetID->row();
-            $kode       = $rowID->kode;
-            if ($kode == NULL) {
-                $autoID = sprintf("%04s", $kode + 1);
-            } else {
-                $urutan = (int) substr($kode, -4);
-                $urutan++;
-                $autoID = sprintf("%04s", $urutan);
-            }
-            $request_no = "PR-" . $datenow . "-" . $autoID;
-            for ($i = 4; $i <= $total_row; $i++) {
-                $datas[] = array(
-                    'request_no' => $request_no,
-                    'request_date' => date("Y-m-d", $data->val($i, 2)),
-                    'request_name' => $data->val($i, 3),
-                    'supplier_number' => $data->val($i, 4),
-                    'product_number' => $data->val($i, 5),
-                    'qty' => $data->val($i, 6),
-                    'remarks' => $data->val($i, 7)
-                );
-            }
-            $datas['total'] = count($datas);
-            echo json_encode($datas);
-        } else {
-            echo json_encode(array("title" => "Not Found", "message" => "Product Family " . $category . " Not Found Data", "theme" => "error"));
+        
+        for ($i = 3; $i <= $total_row; $i++) {
+            $datas[] = array(
+                'request_no' => $data->val($i, 2),
+                'request_date' => $data->val($i, 3),
+                'request_name' => $this->session->name,
+                'request_type' => "UPLOAD",
+                'p_month' => date("m", strtotime($data->val($i, 3))),
+                'p_year' => date("Y", strtotime($data->val($i, 3))),
+                'item_rm_id' => $data->val($i, 4),
+                'qty' => $data->val($i, 5),
+                'expected_date' => $data->val($i, 6),
+                'remarks' => $data->val($i, 7)
+            );
         }
+        $datas['total'] = count($datas);
+        echo json_encode($datas);
         unlink($_FILES['file_upload']['name']);
     }
 
     public function uploadclearFailed()
     {
-        @unlink('failed/purchase_requests.txt');
+        @unlink('failed/purchase_request_others.txt');
     }
     
     public function uploadcreateFailed()
     {
         if ($this->input->post()) {
             $message = $this->input->post('message');
-            $textFailed = fopen('failed/purchase_requests.txt', 'a');
+            $textFailed = fopen('failed/purchase_request_others.txt', 'a');
             fwrite($textFailed, $message . "\n");
             fclose($textFailed);
         }
@@ -301,7 +337,7 @@ class Purchase_request_others extends CI_Controller
 
     public function uploadDownloadFailed()
     {
-        $file = "failed/purchase_requests.txt";
+        $file = "failed/purchase_request_others.txt";
         header('Content-Description: File Failed');
         header('Content-Disposition: attachment; filename=' . basename($file));
         header('Expires: 0');
@@ -315,19 +351,17 @@ class Purchase_request_others extends CI_Controller
     public function uploadcreate()
     {
         if ($this->input->post()) {
-            $data       = $this->input->post('data');
+            $data = $this->input->post('data');
             //Cek Process Number
-            $item = $this->crud->read('item_rm', [], ["number" => $data['product_number']]);
-            $supplier = $this->crud->read('suppliers', [], ["number" => $data['supplier_number']]);
-            $purchase_requests = $this->crud->read('purchase_requests', [], ["request_no" => $data['request_no'], "item_rm_id" => $item->id]);
+            $item = $this->crud->read('item_rm', [], ["id" => $data['item_rm_id']]);
+            $purchase_request_others = $this->crud->read('purchase_request_others', [], ["request_no" => $data['request_no'], "item_rm_id" => $data['item_rm_id']]);
+
             if (empty($item->id)) {
-                echo json_encode(array("title" => "Not Found", "message" => "Product No " . $data['product_number'] . " Not Found", "theme" => "error"));
-            } elseif (empty($supplier->id)) {
-                echo json_encode(array("title" => "Not Found", "message" => "Supplier No " . $data['supplier_number'] . " Not Found", "theme" => "error"));
-            } elseif (!empty($purchase_requests->id)) {
-                echo json_encode(array("title" => "Duplicated", "message" => "Product No " . $data['product_number'] . " Duplicate Data", "theme" => "error"));
+                echo json_encode(array("title" => "Not Found", "message" => "Part No " . $data['item_rm_id'] . " Not Found", "theme" => "error"));
+            } elseif (!empty($purchase_request_others->id)) {
+                echo json_encode(array("title" => "Duplicated", "message" => "Part No " . $data['item_rm_id'] . " Duplicate Data", "theme" => "error"));
             } else {
-                $send   = $this->crud->create('purchase_requests', array_merge(["item_rm_id" => $item->id, "supplier_id" => $supplier->id]));
+                $send = $this->crud->create('purchase_request_others', array_merge($data, ["item_family_id" => $item->item_family_id]));
                 echo $send;
             }
         }
@@ -336,134 +370,166 @@ class Purchase_request_others extends CI_Controller
     public function print_request($request_no)
     {
         $request_no = base64_decode($request_no);
-        $purchase_request_total = $this->crud->reads('purchase_requests', [], ["request_no" => $request_no]);
-        $purchase_requests = $this->crud->read('purchase_requests', [], ["request_no" => $request_no]);
+        $purchase_request_total = $this->crud->reads('purchase_request_others', [], ["request_no" => $request_no]);
+        $purchase_requests = $this->crud->read('purchase_request_others', [], ["request_no" => $request_no]);
+
         $config = $this->db->get('config')->row();
         $config_iso = $this->db->get('config_iso')->row();
+
+        $approval = $this->crud->read("approvals", [], ["table_name" => "purchase_request_others"]);
+        $user_1 = $this->crud->read("users", [], ["username" => @$approval->user_approval_1]);
+        $user_2 = $this->crud->read("users", [], ["username" => @$approval->user_approval_2]);
+        
+        if($purchase_requests->approved_by == @$approval->user_approval_1){
+            $imge_1 = '<img src="'.base_url('assets/image/approved.png').'" width="100"/>';
+            $imge_2 = "";
+        }elseif($purchase_requests->approved_by == @$approval->user_approval_2){
+            $imge_1 = '<img src="'.base_url('assets/image/approved.png').'" width="100"/>';
+            $imge_2 = '<img src="'.base_url('assets/image/approved.png').'" width="100"/>';
+        }else{
+            $imge_1 = "";
+            $imge_2 = "";
+        }
+
         //Config Page
         $rows = 15;
         $page = ceil(count($purchase_request_total) / $rows);
         //Generate QRcode
-        $this->createQrcode($request_no, "assets/image/qrcode/");
+        // $this->createQrcode($request_no, "assets/image/qrcode/");
         //Header Print
         $html = '<html><head><title>' . $purchase_requests->request_no . '</title><link rel="icon" href="' . $config->favicon . '" type="image/png" sizes="16x16"></head>';
         $html .= '<style>body {font-family: Arial, Helvetica, sans-serif;}';
         $html .= '#customers {border-collapse: collapse;width: 100%;font-size: 12px;}#customers {border-collapse: collapse;width: 100%;font-size: 12px;}#customers td, #customers th {border: 1px solid black;padding: 2px;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: center;color: black;}';
         $html .= '@media screen {.print {display: none !important;}}@media print {.noprint {display: none !important;}}</style>';
-        $html .= '<body><div style="margin:20%;" class="noprint"><center>
-                    <h1>Press CTRL + P for Print</h1>
-                    <p>Display pages for 15 rows</p>
-                    <p>Paper Size A4, Layout Landscape</p>
-                    <p>Margin Default, Scale 98</p>
-                </center></div><div class="print">';
+        $html .= '<body>
+                    <div style="margin:20%;" class="noprint">
+                        <center>
+                            <h1>Press CTRL + P for Print</h1>
+                            <p>Display pages for 15 rows</p>
+                            <p>Paper Size A4, Layout Landscape</p>
+                            <p>Margin Default, Scale 98</p>
+                        </center>
+                    </div>
+                    <div class="print">';
         //Loop Page
         $no = 1;
         for ($i = 0; $i < $page; $i++) {
-            $this->db->select('a.*, b.number as item_rm_id, b.description as item_name, c.name as uom');
-            $this->db->from('purchase_requests a');
+            $this->db->select('a.*, b.number as item_rm_number, b.name as item_rm_name, b.uom');
+            $this->db->from('purchase_request_others a');
             $this->db->join('item_rm b', 'a.item_rm_id = b.id');
-            $this->db->join('uom c', 'b.uom_id = c.id');
             $this->db->where('a.deleted', 0);
             $this->db->where('a.request_no', $request_no);
             $this->db->order_by('b.number', 'asc');
             $this->db->limit(15, ($i * 15));
             $records = $this->db->get()->result_array();
-            $html .= '  <table style="width:100%;" border="1">
-                            <tr>
-                                <th width="10"><img src="' . $config->favicon . '" width="60" /></th>
-                                <td width="250" style="padding:10px;">
-                                    <b style="font-size:14px;">' . $config->name . '</b><br>
-                                    <span style="font-size:10px;">' . $config->address . '</span><br>
-                                </td>
-                                <th width="100" style="text-align:right;">
-                                    <table style="width:100%; font-size:10px;">
-                                        <tr>
-                                            <td width="50" rowspan="4"><img src="' . base_url('assets/image/qrcode/' . $purchase_requests->request_no . '.png') . '" width="60"/></td>
-                                            <td width="60">Doc No</td>
-                                            <td width="5">:</td>
-                                            <td width="100">' . $config_iso->doc_purchase_request . '</td>
-                                        </tr>
-                                        <tr>
-                                            <td>Form</td>
-                                            <td>:</td>
-                                            <td>' . $config_iso->form_purchase_request . '</td>
-                                        </tr>
-                                        <tr>
-                                            <td>Print Date</td>
-                                            <td>:</td>
-                                            <td>' . date("Y-m-d H:i") . '</td>
-                                        </tr>
-                                        <tr>
-                                            <td>Print By</td>
-                                            <td>:</td>
-                                            <td>' . $this->session->name . '</td>
-                                        </tr>
-                                    </table>
-                                </th>
-                            </tr>
-                        </table>
-                        <div style="border: 1px solid black; width:100%;">
+
+            $html .= '  <div style="border: 1px solid black; width:100%; float:left;">
                             <div style="padding:10px;">
-                                <center>
-                                    <h3><u>PURCHASE ORDER REQUESTION</u></h3>
-                                </center>
-                                <table style="width:100%; font-size:12px; margin-bottom:10px;">
+                                <table style="width:100%;" border="0">
                                     <tr>
-                                        <td width="100">Request No</td>
-                                        <td width="30">:</td>
-                                        <td><b>' . @$purchase_requests->request_no . '</b></td>
-                                    </tr>
-                                    <tr>
-                                        <td width="50">Request Date</td>
-                                        <td width="10">:</td>
-                                        <td><b>' . @$purchase_requests->request_date . '</b></td>
+                                        <td width="200" style="text-align:left; font-size:10px;">
+                                            <b>Elcon Banshu Wiring System</b><br>
+                                            <b>Office : </b> 1622, 16th Floor, World Trade Tower,<br>
+                                            Sec-16, Noida-201301, UP, INDIA<br>
+                                            GST No : 09AAFCE7558R1ZN, <br>
+                                            CIN No: U35999UP2019PTC124726<br><br>
+                                            <b>Factory</b> :  A-47 (A) , Industrial Area,Khuskhera<br>
+                                            Bhiwadi, Alwar Rajasthan 301019 INDIA<br>
+                                            GST NO : 08AAFCE7558R1ZP
+                                        </td>
+                                        <th width="100" style="text-align:right;"><img src="' . $config->favicon . '" width="150"/></th>
                                     </tr>
                                 </table>
+                                <center>
+                                    <h3><u>PURCHASE REQUISITION</u></h3>
+                                </center>
+                                <div style="float:left; width:50%;">
+                                    <table style="width:100%; font-size:12px; margin-bottom:10px;">
+                                        <tr>
+                                            <td width="100">Order No</td>
+                                            <td width="30">:</td>
+                                            <td><b>' . @$purchase_requests->request_no . '</b></td>
+                                        </tr>
+                                        <tr>
+                                            <td width="50">Date</td>
+                                            <td width="10">:</td>
+                                            <td><b>' . @$purchase_requests->request_date . '</b></td>
+                                        </tr>
+                                        <tr>
+                                            <td width="50">Plant</td>
+                                            <td width="10">:</td>
+                                            <td><b>01 - Bhiwadi</b></td>
+                                        </tr>
+                                        <tr>
+                                            <td width="50">Revision</td>
+                                            <td width="10">:</td>
+                                            <td><b>' . @$purchase_requests->revision . '</b></td>
+                                        </tr>
+                                    </table>
+                                </div>
                                 <table id="customers">
                                     <tr>
                                         <th width="20">No</th>
-                                        <th width="120">Product No</th>
-                                        <th>Specification</th>
-                                        <th width="60">Qty</th>
+                                        <th width="120">Part No EBWS</th>
+                                        <th width="120">Part No Supplier</th>
+                                        <th width="50">Qty</th>
                                         <th width="50">Uom</th>
-                                        <th>Remarks</th>
+                                        <th width="100">Remarks</th>
                                     </tr>';
             foreach ($records as $record) {
                 $html .= '  <tr>
                                 <td style="text-align:center">' . $no . '</td>
                                 <td>' . $record['item_rm_id'] . '</td>
-                                <td><span style="font-size:10px;">' . $record['item_name'] . '</span></td>
-                                <td style="text-align:right">' . number_format($record['qty'], 2, ",", ".") . '</td>
-                                <td>' . $record['uom'] . '</tdstyle=>
+                                <td>' . $record['item_rm_number'] . '</td>
+                                <td style="text-align:right">' . number_format($record['qty'], 2) . '</td>
+                                <td>' . $record['uom'] . '</td>
                                 <td>' . $record['remarks'] . '</td>
                             </tr>';
                 $no++;
             }
             $html .= '</table>';
-            if ($i + 1 != $page) {
+
+            if (($i + 1) == $page) {
+                $html .= '  <div style="width:20%; float:left; margin-bottom:20px;">
+                                <table id="customers" style="margin-top:20px;">
+                                    <tr>
+                                        <th width="200" style="text-align:center;">ACCEPTED</th>
+                                    </tr>
+                                    <tr>
+                                        <th style="height:80px;"></th>
+                                    </tr>
+                                    <tr>
+                                        <th style="height:20px; text-align:center;">' . @$supplier->name . '</th>
+                                    </tr>
+                                </table>
+                            </div>
+                            <div style="width:30%; float:left;">
+                                <br>
+                            </div>
+                            <div style="width:40%; float:right; margin-bottom: 10px;">
+                                <table id="customers" style="margin-top:20px;">
+                                    <tr>
+                                        <th colspan="2" style="text-align:center;">'.$config->name.'</th>
+                                    </tr>
+                                    <tr>
+                                        <th style="height:80px;">'.@$imge_1.'</th>
+                                        <th style="height:80px;">'.@$imge_2.'</th>
+                                    </tr>
+                                    <tr>
+                                        <th style="height:20px; text-align:center;">'.@$user_1->name.'</th>
+                                        <th style="height:20px; text-align:center;">'.@$user_2->name.'</th>
+                                    </tr>
+                                </table>
+                            </div>';
+            }else{
+                $html .= "</div></div>";
+            }
+
+            if (($i + 1) != $page) {
                 $html .= '<div style="page-break-after:always;"></div>';
             }
-            if (($i + 1) == $page) {
-                $html .= '  <table id="customers" style="margin-top:20px;">
-                                <tr>
-                                    <th width="200" style="text-align:center;">Prepared By</th>
-                                    <th width="200" style="text-align:center;">Knowed By</th>
-                                    <th width="200" style="text-align:center;">Approved By</th>
-                                </tr>
-                                <tr>
-                                    <th style="height:80px;"></th>
-                                    <th style="height:80px;"></th>
-                                    <th style="height:80px;"></th>
-                                </tr>
-                                <tr>
-                                    <th style="height:20px; text-align:center;">' . $this->session->name . '</th>
-                                    <th style="height:20px; text-align:center;"></th>
-                                    <th style="height:20px; text-align:center;"></th>
-                                </tr>
-                            </table>';
-            }
-            $html .= '</div></div>';
         }
+
         $html .= '</div><script>window.print()</script>';
         die($html);
     }
@@ -473,35 +539,39 @@ class Purchase_request_others extends CI_Controller
         if ($option == "excel") {
             $format  = date("Ymd");
             header("Content-type: application/vnd-ms-excel");
-            header("Content-Disposition: attachment; filename=purchase_requests_$format.xls");
+            header("Content-Disposition: attachment; filename=purchase_request_others_$format.xls");
         }
 
         $filter_from = $this->input->get('filter_from');
         $filter_to   = $this->input->get('filter_to');
         $filter_request_no = $this->input->get('filter_request_no');
-        $filter_supplier = $this->input->get('filter_supplier');
+        $filter_item_rm = $this->input->get('filter_item_rm');
         $filter_item_familys = $this->input->get('filter_item_familys');
 
         //Config
         $this->db->select('*');
         $this->db->from('config');
         $config = $this->db->get()->row();
-        $this->db->select('a.*, b.number as item_rm_id, b.name as item_name, c.name as item_family_name, e.po_no, b.uom, d.name as supplier_name');
-        $this->db->from('purchase_requests a');
+        
+        $this->db->select('a.*, b.number as item_rm_number, b.name as item_rm_name, c.name as item_family_name, e.po_no, b.uom');
+        $this->db->from('purchase_request_others a');
         $this->db->join('item_rm b', 'a.item_rm_id = b.id');
-        $this->db->join('item_familys c', "b.item_family_id = c.id and c.item_category_id NOT IN ('C01','C03')");
-        $this->db->join('suppliers d', 'a.supplier_id = d.id');
-        $this->db->join('purchase_orders e', 'a.request_no = e.request_no and a.item_rm_id = e.item_rm_id', 'left');
+        $this->db->join('item_familys c', "b.item_family_id = c.id");
+        $this->db->join('purchase_order_others e', 'a.request_no = e.request_no and a.item_rm_id = e.item_rm_id', 'left');
         $this->db->where('a.deleted', 0);
+        if(!in_array($this->session->username, ["PURCHASE-03", "Purchase-01", "PURCHASE-02", "admin", "hariom_bhardwaj", "ITADMIN"])){
+            $this->db->where('a.created_by', $this->session->username);
+        }
         if ($filter_from != "" or $filter_to != "") {
             $this->db->where('a.request_date >=', $filter_from);
             $this->db->where('a.request_date <=', $filter_to);
         }
         $this->db->like('a.request_no', $filter_request_no);
         $this->db->like('c.id', $filter_item_familys);
-        $this->db->like('d.id', $filter_supplier);
+        $this->db->like('b.id', $filter_item_rm);
         $this->db->order_by('a.request_date', 'DESC');
         $records = $this->db->get()->result_array();
+        
         $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#customers {border-collapse: collapse;width: 100%;font-size: 12px;}#customers td, #customers th {border: 1px solid black;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: black;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: center;color: black;}</style><body>
             <center>
                 <div style="float: left; font-size: 12px; text-align: left;">
@@ -512,7 +582,7 @@ class Purchase_request_others extends CI_Controller
                             </td>
                             <td style="font-size: 14px; text-align: left; margin:2px;">
                                 <b>' . $config->name . '</b><br>
-                                <small>PURCHASE REQUEST</small>
+                                <small>PURCHASE REQUEST OTHERS</small>
                             </td>
                         </tr>
                     </table>
@@ -531,13 +601,12 @@ class Purchase_request_others extends CI_Controller
                 <th>Request Date</th>
                 <th>Request Name</th>
                 <th>Expected Date</th>
-                <th>Part No</th>
-                <th>Part Name</th>
+                <th>Part No EBWS</th>
+                <th>Part No Supplier</th>
+                <th>Description</th>
+                <th>Product Family</th>
                 <th>Qty</th>
                 <th>Uom</th>
-                <th>Forecast M1</th>
-                <th>Forecast M2</th>
-                <th>Forecast M3</th>
                 <th>Status</th>
                 <th>PO No</th>
                 <th>Remarks</th>
@@ -545,9 +614,9 @@ class Purchase_request_others extends CI_Controller
         $no = 1;
         foreach ($records as $data) {
             if ($data['status'] == 0) {
-                $status = "OPEN";
+                $status = "UN CONVERTED";
             } else {
-                $status = "CLOSED";
+                $status = "CONVERTED";
             }
             $html .= '<tr>
                         <td style="text-align:center">' . $no . '</td>
@@ -556,12 +625,11 @@ class Purchase_request_others extends CI_Controller
                         <td>' . $data['expected_date'] . '</td>
                         <td>' . $data['request_name'] . '</td>
                         <td>' . $data['item_rm_id'] . '</td>
-                        <td>' . $data['item_name'] . '</td>
+                        <td>' . $data['item_rm_number'] . '</td>
+                        <td>' . $data['item_rm_name'] . '</td>
+                        <td>' . $data['item_family_name'] . '</td>
                         <td>' . number_format($data['qty'], 2) . '</td>
                         <td>' . $data['uom'] . '</td>
-                        <td>' . $data['forecast_m1'] . '</td>
-                        <td>' . $data['forecast_m2'] . '</td>
-                        <td>' . $data['forecast_m3'] . '</td>
                         <td>' . $status . '</td>
                         <td>' . $data['po_no'] . '</td>
                         <td>' . $data['remarks'] . '</td>

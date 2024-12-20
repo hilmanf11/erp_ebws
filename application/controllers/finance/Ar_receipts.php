@@ -57,7 +57,8 @@ class Ar_receipts extends CI_Controller
     {
         $receipt_date = $this->input->post('receipt_date');
         $currency = $this->input->post('currency');
-        $monthBf = date('Y-m-01', strtotime('-1 month', strtotime($receipt_date)));
+        // $monthBf = date('Y-m-01', strtotime($receipt_date));
+        $monthBf = $receipt_date;
 
         $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $monthBf, "currency_from" => $currency, "currency_to" => "INR"]);
 
@@ -70,14 +71,15 @@ class Ar_receipts extends CI_Controller
         echo "Rate $currency to INR : " . number_format($amount, 2);
     }
 
-    public function calculateJournal($journal_type_id = "", $bank_account = "")
+    public function calculateJournal($journal_type_id = "", $bank_account = "", $rate = "")
     {
         $journal_type_id = base64_decode($journal_type_id);
         $bank_account = base64_decode($bank_account);
+        $rate = base64_decode($rate);
 
         $banks = $this->crud->query("SELECT a.*, b.account_name FROM account_banks a 
             JOIN account_coa b ON a.account_number = b.account_number 
-            WHERE a.bank_account = '$bank_account'");
+            WHERE a.account_number = '$bank_account'");
 
         $jsonDatas = json_decode(file_get_contents("json/ar_receipts.json"), true);
         $total = 0;
@@ -99,14 +101,15 @@ class Ar_receipts extends CI_Controller
 
         foreach ($banks as $bank) {
             if ($currency != "INR") {
-                $monthBf = date('Y-m-01', strtotime('-1 month', strtotime($receipt_date)));
-                $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $monthBf, "currency_from" => $currency, "currency_to" => "INR"]);
+                // $monthBf = date('Y-m-01', strtotime($receipt_date));
+                // $monthBf = $receipt_date;
+                // $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $monthBf, "currency_from" => $currency, "currency_to" => "INR"]);
 
-                if ($exchange) {
-                    $amount = ($grand_total * $exchange->middle);
-                } else {
-                    $amount = 0;
-                }
+                // if ($exchange) {
+                    $amount = ($grand_total * $rate);
+                // } else {
+                //     $amount = 0;
+                // }
             } else {
                 $amount = $grand_total;
             }
@@ -133,16 +136,16 @@ class Ar_receipts extends CI_Controller
             $receipt_date = $jsonData['receipt_date'];
             $total = $jsonData["receipt"];
 
-            $monthBf = date('Y-m-01', strtotime('-1 month', strtotime($receipt_date)));
-
-            $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $monthBf, "currency_from" => $currency, "currency_to" => "INR"]);
+            // $monthBf = date('Y-m-01', strtotime($receipt_date));
+            // $monthBf = $receipt_date;
+            // $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $monthBf, "currency_from" => $currency, "currency_to" => "INR"]);
 
             if ($currency != "INR") {
-                if ($exchange) {
-                    $amount = ($total * $exchange->middle);
-                } else {
-                    $amount = 0;
-                }
+                // if ($exchange) {
+                    $amount = ($total * $rate);
+                // } else {
+                //     $amount = 0;
+                // }
             } else {
                 $amount = $total;
             }
@@ -194,20 +197,24 @@ class Ar_receipts extends CI_Controller
     {
         $customer_id = $this->input->get('customer_id');
         $receipt_type = $this->input->get('receipt_type');
+        $plant = base64_decode($this->input->get('plant'));
 
-        $records = $this->crud->query("SELECT `number`, journal_type_id FROM sales_invoices WHERE customer_id = '$customer_id' and `status` = 0 GROUP BY `number` ORDER BY `number` ASC");
+        $records = $this->crud->query("SELECT `number`, journal_type_id FROM sales_invoices WHERE customer_id = '$customer_id' and plant = '$plant' and `status` = 0 GROUP BY `number` ORDER BY `number` ASC");
         echo json_encode($records);
     }
 
     public function readReceipts($customer_id)
     {
+        $customer_id = base64_decode($customer_id);
         $data = $this->crud->query("SELECT DISTINCT receipt_no FROM ar_receipts WHERE customer_id = '$customer_id' ORDER BY `receipt_no` ASC");
         echo json_encode($data);
     }
-
-    public function readInvoices($customer_id)
+    
+    public function readInvoices($customer_id, $plant = "")
     {
-        $data = $this->crud->query("SELECT DISTINCT `sales_invoice` FROM ar_receipts WHERE customer_id = '$customer_id' ORDER BY `sales_invoice` ASC");
+        $plant = base64_decode($plant);
+        $customer_id = base64_decode($customer_id);
+        $data = $this->crud->query("SELECT DISTINCT `sales_invoice` FROM ar_receipts WHERE customer_id = '$customer_id' and plant like '%$plant%' ORDER BY `sales_invoice` ASC");
         echo json_encode($data);
     }
 
@@ -215,12 +222,14 @@ class Ar_receipts extends CI_Controller
     {
         $customer_id = $this->input->post('customer_id');
         $sales_invoice = $this->input->post('sales_invoice');
+        $plant = $this->input->post('plant');
 
         $this->db->select('a.*, b.account_name');
         $this->db->from('ar_receipts a');
         $this->db->join('account_coa b', 'a.account_number = b.account_number', 'left');
         $this->db->where('a.customer_id', $customer_id);
         $this->db->where('a.sales_invoice', $sales_invoice);
+        $this->db->where('a.plant', $plant);
         $this->db->where('a.journal_type_id', '20230823000001');
         $this->db->where('a.account_number', '2041101');
         //$this->db->where('a.status_dp', '0');
@@ -310,6 +319,7 @@ class Ar_receipts extends CI_Controller
                 "amount" => $record['receipt'],
                 "balance" => $record['receipt'],
                 "receipt" => $record['receipt'],
+                "rate" => $record['rate'],
                 "account_number" => @$journal[0]->account_number,
                 "account_name" => @$journal[0]->account_name,
                 "account_type" => "CREDIT",
@@ -328,9 +338,11 @@ class Ar_receipts extends CI_Controller
         $filter_receipt_date_to = base64_decode($this->input->get('filter_receipt_date_to'));
         $filter_receipt_no = base64_decode($this->input->get('filter_receipt_no'));
         $filter_customer = base64_decode($this->input->get('filter_customer'));
+        $filter_plant = base64_decode($this->input->get('filter_plant'));
         $filter_invoice_no = base64_decode($this->input->get('filter_invoice_no'));
         $filter_bank_no = base64_decode($this->input->get('filter_bank_no'));
         $filter_receipt_by = base64_decode($this->input->get('filter_receipt_by'));
+        $filter_status = base64_decode($this->input->get('filter_status'));
 
         $date_from = date("Y-m-01");
         $date_to = date("Y-m-t");
@@ -344,15 +356,22 @@ class Ar_receipts extends CI_Controller
             $offset = ($page - 1) * $rows;
             $result = array();
             //Select Query
-            $this->db->select('a.*, c.number as gl_no, b.name as customer_name');
+            $this->db->select("a.*, c.number as gl_no, c.status_bank, (CASE WHEN d.account_name is null THEN b.name ELSE CONCAT(b.name, ' | ', d.account_name) END) as customer_name");
             $this->db->from('ar_receipts a');
             $this->db->join('customers b', 'a.customer_id = b.id');
             $this->db->join('journal_postings c', 'a.receipt_no = c.document_no', 'left');
+            $this->db->join('account_coa d', 'a.other_account = d.account_number', 'left');
             $this->db->like('a.receipt_type', $filter_receipt_type);
             if ($filter_receipt_date_from != "" && $filter_receipt_date_to != "") {
                 $this->db->where("a.receipt_date between '$filter_receipt_date_from' and '$filter_receipt_date_to'");
             }else{
                 $this->db->where("a.receipt_date between '$date_from' and '$date_to'");
+            }
+            if($filter_status != ""){
+                $this->db->like('c.status_bank', $filter_status);
+            }
+            if($filter_plant != ""){
+                $this->db->where('a.plant', $filter_plant);
             }
             $this->db->like('a.receipt_no', $filter_receipt_no);
             $this->db->like('a.customer_id', $filter_customer);
@@ -566,7 +585,8 @@ class Ar_receipts extends CI_Controller
             //Exchange Rate
             $receipt_date = $records[0]['receipt_date'];
             $currency = $records[0]['currency'];
-            $monthBf = date('Y-m-01', strtotime('-1 month', strtotime($receipt_date)));
+            // $monthBf = date('Y-m-01', strtotime($receipt_date));
+            $monthBf = $receipt_date;
             $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $monthBf, "currency_from" => $currency, "currency_to" => "INR"]);
 
             if ($exchange) {
@@ -811,9 +831,11 @@ class Ar_receipts extends CI_Controller
         $filter_receipt_date_to = base64_decode($this->input->get('filter_receipt_date_to'));
         $filter_receipt_no = base64_decode($this->input->get('filter_receipt_no'));
         $filter_customer = base64_decode($this->input->get('filter_customer'));
+        $filter_plant = base64_decode($this->input->get('filter_plant'));
         $filter_invoice_no = base64_decode($this->input->get('filter_invoice_no'));
         $filter_bank_no = base64_decode($this->input->get('filter_bank_no'));
         $filter_receipt_by = base64_decode($this->input->get('filter_receipt_by'));
+        $filter_status = base64_decode($this->input->get('filter_status'));
 
         //Config
         $this->db->select('*');
@@ -823,12 +845,17 @@ class Ar_receipts extends CI_Controller
         $this->db->select('a.*, b.name as customer_name');
         $this->db->from('ar_receipts a');
         $this->db->join('customers b', 'a.customer_id = b.id');
+        $this->db->join('journal_postings c', 'a.receipt_no = c.document_no', 'left');
         $this->db->like('a.receipt_type', $filter_receipt_type);
         if ($filter_receipt_date_from != "" && $filter_receipt_date_to == "") {
             $this->db->where("a.receipt_date between '$filter_receipt_date_from' and '$filter_receipt_date_to'");
         }
+        if ($filter_status != "") {
+            $this->db->where("c.status_bank = '$filter_status'");
+        }
         $this->db->like('a.receipt_no', $filter_receipt_no);
         $this->db->like('a.customer_id', $filter_customer);
+        $this->db->like('a.plant', $filter_plant);
         $this->db->like('a.sales_invoice', $filter_invoice_no);
         $this->db->like('a.bank_account', $filter_bank_no);
         $this->db->like('a.receipt_by', $filter_receipt_by);
@@ -956,6 +983,7 @@ class Ar_receipts extends CI_Controller
         $filter_receipt_date_to = base64_decode($this->input->get('filter_receipt_date_to'));
         $filter_receipt_no = base64_decode($this->input->get('filter_receipt_no'));
         $filter_customer = base64_decode($this->input->get('filter_customer'));
+        $filter_plant = base64_decode($this->input->get('filter_plant'));
         $filter_invoice_no = base64_decode($this->input->get('filter_invoice_no'));
         $filter_bank_no = base64_decode($this->input->get('filter_bank_no'));
         $filter_receipt_by = base64_decode($this->input->get('filter_receipt_by'));
@@ -977,6 +1005,7 @@ class Ar_receipts extends CI_Controller
         }
         $this->db->like('a.receipt_no', $filter_receipt_no);
         $this->db->like('a.customer_id', $filter_customer);
+        $this->db->like('a.filter_plant', $filter_plant);
         $this->db->like('a.sales_invoice', $filter_invoice_no);
         $this->db->like('a.bank_account', $filter_bank_no);
         $this->db->like('a.receipt_by', $filter_receipt_by);
@@ -1025,6 +1054,7 @@ class Ar_receipts extends CI_Controller
                     <th>Receipt No</th>
                     <th>Receipt Date</th>
                     <th>Customer Name</th>
+                    <th>Plant</th>
                     <th>Bank Account</th>
                     <th>Receipt By</th>
                     <th>Note</th>
@@ -1048,6 +1078,7 @@ class Ar_receipts extends CI_Controller
                             <td>' . $data['receipt_no'] . '</td>
                             <td>' . $data['receipt_date'] . '</td>
                             <td>' . $data['customer_name'] . '</td>
+                            <td>' . $data['plant'] . '</td>
                             <td>' . $data['bank_account'] . ' - ' . $data['bank_name'] . '</td>
                             <td>' . $data['receipt_by'] . '</td>
                             <td>' . $data['note'] . '</td>
@@ -1081,6 +1112,7 @@ class Ar_receipts extends CI_Controller
         $filter_receipt_date_to = base64_decode($this->input->get('filter_receipt_date_to'));
         $filter_receipt_no = base64_decode($this->input->get('filter_receipt_no'));
         $filter_customer = base64_decode($this->input->get('filter_customer'));
+        $filter_plant = base64_decode($this->input->get('filter_plant'));
         $filter_invoice_no = base64_decode($this->input->get('filter_invoice_no'));
         $filter_bank_no = base64_decode($this->input->get('filter_bank_no'));
         $filter_receipt_by = base64_decode($this->input->get('filter_receipt_by'));
@@ -1103,6 +1135,7 @@ class Ar_receipts extends CI_Controller
         }
         $this->db->like('b.receipt_no', $filter_receipt_no);
         $this->db->like('b.customer_id', $filter_customer);
+        $this->db->like('b.plant', $filter_plant);
         $this->db->like('b.sales_invoice', $filter_invoice_no);
         $this->db->like('b.bank_account', $filter_bank_no);
         $this->db->like('b.receipt_by', $filter_receipt_by);
@@ -1154,6 +1187,7 @@ class Ar_receipts extends CI_Controller
                     <th rowspan="2">Receipt By</th>
                     <th rowspan="2">Sales Invoice</th>
                     <th rowspan="2">Customer Name</th>
+                    <th rowspan="2">Plant</th>
                     <th rowspan="2">Bank Account</th>
                     <th rowspan="2">Note</th>
                     <th rowspan="2">Currency</th>
@@ -1179,6 +1213,7 @@ class Ar_receipts extends CI_Controller
                             <td>' . $data['receipt_by'] . '</td>
                             <td>' . $data['sales_invoice'] . '</td>
                             <td>' . $data['customer_name'] . '</td>
+                            <td>' . $data['plant'] . '</td>
                             <td>' . $data['bank_account'] . ' - ' . $data['bank_name'] . '</td>
                             <td>' . $data['note'] . '</td>
                             <td>' . $data['currency'] . '</td>

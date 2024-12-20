@@ -122,6 +122,7 @@ class Supplier_items extends CI_Controller
         $filter_item_vendor = base64_decode($this->input->get('filter_item_vendor'));
         $filter_share_order = base64_decode($this->input->get('filter_share_order'));
         $filter_status_price = base64_decode($this->input->get('filter_status_price'));
+        $filter_type = base64_decode($this->input->get('filter_type'));
         $filter_check = $this->input->get('filter_check');
 
         $page = $this->input->post('page');
@@ -132,9 +133,9 @@ class Supplier_items extends CI_Controller
         $offset = ($page - 1) * $rows;
         $result = array();
 
-        $this->db->select('a.*, c.number as item_rm_number, 
+        $this->db->select('a.*, c.number as item_rm_number, (case when g.uom_po is not null then g.uom_po else c.uom end) as uom,
             c.name as item_rm_name, a.item_supplier, b.number as supplier_number, b.origin, b.name as supplier_name,
-            d.name as item_family_name, b.type, c.uom, e.name as maker_name, e.type as maker_type,
+            d.name as item_family_name, b.type, e.name as maker_name, e.type as maker_type,
             f.number as hsn_number, f.name as hsn_name, f.igst, f.sgst, f.cgst');
         $this->db->from('supplier_items a');
         $this->db->join('suppliers b', 'b.id = a.supplier_id');
@@ -142,11 +143,15 @@ class Supplier_items extends CI_Controller
         $this->db->join('item_familys d', "c.item_family_id = d.id and d.item_category_id IN ('C01')");
         $this->db->join('makers e', 'c.maker_id = e.id', 'left');
         $this->db->join('hsn f', 'c.hsn_code = f.number', 'left');
+        $this->db->join('convertions g', 'a.item_rm_id = g.item_rm_id', 'left');
         if($filter_check == "true"){
             $this->db->join("(SELECT item_rm_id FROM supplier_items GROUP BY item_rm_id HAVING COUNT(*) > 1) h", 'a.item_rm_id = h.item_rm_id');
         }
         if($filter_category != ""){
             $this->db->like('c.item_family_id', $filter_category);
+        }
+        if($filter_type != ""){
+            $this->db->like('b.type', $filter_type);
         }
         if($filter_suppliers != ""){
             $this->db->like('a.supplier_id', $filter_suppliers);
@@ -205,7 +210,7 @@ class Supplier_items extends CI_Controller
         $this->db->join('suppliers b', 'b.id = a.supplier_id');
         $this->db->join('item_rm c', 'c.id = a.item_rm_id');
         $this->db->join('item_familys e', 'c.item_family_id = e.id', 'left');
-        $this->db->join('makers f', 'c.maker_id = f.id');
+        $this->db->join('makers f', 'c.maker_id = f.id', 'left');
         $this->db->where('a.supplier_id', $supplier_id);
         $this->db->where('a.item_rm_id', $item_rm_id);
         $this->db->order_by('b.name', 'ASC');
@@ -227,14 +232,34 @@ class Supplier_items extends CI_Controller
     public function create()
     {
         if ($this->input->post()) {
-            $post   = $this->input->post();
+            $post = $this->input->post();
+            $item_rm_id = $post['item_rm_id'];
             $supplier_items = $this->crud->read('supplier_items', [], ["supplier_id" => $post['supplier_id'], "item_rm_id" => $post['item_rm_id']]);
-            if (!$supplier_items) {
-                $send = $this->crud->create('supplier_items', $post);
-                echo $send;
-            } else {
-                $send = $this->crud->update('supplier_items', ["supplier_id" => $post['supplier_id'], "item_rm_id" => $post['item_rm_id']], $post);
-                echo $send;
+            $sqlSupItm = $this->db->query("SELECT SUM(share_order) as share_order FROM supplier_items WHERE item_rm_id = '$item_rm_id' GROUP BY item_rm_id");
+            $rowSupItm = $sqlSupItm->row();
+
+            if((@$rowSupItm->share_order + $post['share_order']) <= 100){
+                if($post['mpq'] > 0 && $post['moq'] > 0){
+                    if (!$supplier_items) {
+                        $attachment = $this->crud->upload('attachment', ["jpg", "png", "jpeg", "pdf", "xls", "docx"], 'assets/documents/supplier_items/', [], "supplier_items", "attachment");
+                        $postFinal = array_merge($post, ["attachment" => $attachment]);
+
+                        $send = $this->crud->create('supplier_items', $postFinal);
+                        echo $send;
+                    } else {
+                        if($supplier_items->price == $post['price']){
+                            $this->db->update('supplier_items', $post, ["supplier_id" => $post['supplier_id'], "item_rm_id" => $post['item_rm_id']]);
+                            echo json_encode(array("title" => "Good Job", "message" => "Change Data Success, By Pass Approval", "theme" => "success"));
+                        }else{
+                            $send = $this->crud->update('supplier_items', ["supplier_id" => $post['supplier_id'], "item_rm_id" => $post['item_rm_id']], $post);
+                            echo $send;
+                        }
+                    }   
+                }else{
+                    echo json_encode(array("title" => "MPQ 0", "message" => "MPQ or MOQ for Part No " . $post['item_rm_id'] . " Cannot <= 0", "theme" => "error"));
+                }
+            }else{
+                echo json_encode(array("title" => "Share Order", "message" => "Share Order for Part No " . $post['item_rm_id'] . " Cannot >= 100", "theme" => "error"));
             }
         } else {
             show_error("Cannot Process your request");
@@ -248,8 +273,7 @@ class Supplier_items extends CI_Controller
             $id   = base64_decode($this->input->get('id'));
             $post = $this->input->post();
             $read = $this->crud->read("supplier_items", ["id" => $id]);
-            
-            $send = $this->crud->update('supplier_items', ["id" => $id], $post);
+        
             $history = array(
                 "supplier_id" => $read->supplier_id,
                 "item_rm_id" => $read->item_rm_id,
@@ -266,12 +290,29 @@ class Supplier_items extends CI_Controller
                 "currency" => $read->currency,
                 "valid_date" => $read->valid_date,
                 "calculate" => $read->calculate,
+                "attachment" => $read->attachment,
                 "remarks" => $read->remarks,
             );
 
-            $this->crud->create("supplier_item_histories", $history);
+            $sqlSupItm = $this->db->query("SELECT SUM(share_order) as share_order FROM supplier_items WHERE item_rm_id = '$read->item_rm_id' and id != '$id' GROUP BY item_rm_id");
+            $rowSupItm = $sqlSupItm->row();
 
-            echo $send;
+            $attachment = $this->crud->upload('attachment', ["jpg", "png", "jpeg", "pdf", "xls", "docx"], 'assets/documents/supplier_items/', ["id" => $id], "supplier_items", "attachment");
+            $postFinal = array_merge($post, ["attachment" => $attachment]);
+
+            if((@$rowSupItm->share_order + $post['share_order']) <= 100){
+                if(@$read->price == $post['price']){
+                    $this->db->update('supplier_items', $postFinal, ["id" => $id]);
+                    echo json_encode(array("title" => "Good Job", "message" => "Change Data Success, By Pass Approval", "theme" => "success"));
+                }else{
+                    $send = $this->crud->update('supplier_items', ["id" => $id], $postFinal);
+                    echo $send;
+
+                    $this->crud->create("supplier_item_histories", $history);
+                }
+            }else{
+                echo json_encode(array("title" => "Share Order", "message" => "Share Order for Part No " . $read->item_rm_id . " Cannot >= 100", "theme" => "error"));
+            }
         } else {
             show_error("Cannot Process your request");
         }
@@ -360,8 +401,11 @@ class Supplier_items extends CI_Controller
             //Cek Process Number          //table       //field        //field excel
             $supplier = $this->crud->read('suppliers', [], ["id" => $data['supplier_id']]);
             $item_rm = $this->crud->read('item_rm', [], ["id" => $data['item_rm_id']]);
+            // $supplier_item_share = $this->crud->read('supplier_items', [], ["item_rm_id" => @$item_rm->id]);
             $supplier_items = $this->crud->read('supplier_items', [], ["supplier_id" => $data['supplier_id'], "item_rm_id" => @$item_rm->id]);
-            $supplier_item_histories = $this->crud->read("supplier_item_histories", [], ["supplier_id" => $data['supplier_id'], "item_rm_id" => @$item_rm->id, "price" => $data['price']]);
+            // $supplier_item_histories = $this->crud->read("supplier_item_histories", [], ["supplier_id" => $data['supplier_id'], "item_rm_id" => @$item_rm->id, "price" => $data['price']]);
+            $sqlSupItm = $this->db->query("SELECT SUM(share_order) as share_order FROM supplier_items WHERE item_rm_id = '$item_rm->id' GROUP BY item_rm_id");
+            $rowSupItm = $sqlSupItm->row();
 
             $dataFinal = array(
                 //field
@@ -385,12 +429,19 @@ class Supplier_items extends CI_Controller
                 echo json_encode(array("title" => "Not Found", "message" => "Supplier Code " . $data['supplier_id'] . " Not Found", "theme" => "error"));
             }elseif(empty($item_rm->id)){
                 echo json_encode(array("title" => "Not Found", "message" => "Part No " . $data['item_rm_id'] . " Not Found", "theme" => "error"));
+            }elseif(($rowSupItm->share_order + $data['share_order']) > 100){
+                echo json_encode(array("title" => "Share Order", "message" => "Share Order for Part No " . $post['item_rm_id'] . " Cannot >= 100", "theme" => "error"));
+            }elseif($data['mpq'] <= 0 || $data['moq'] <= 0){
+                echo json_encode(array("title" => "MPQ 0", "message" => "MPQ or MOQ for Part No " . $data['item_rm_id'] . " Cannot <= 0", "theme" => "error"));
             }elseif(@$supplier_items->supplier_id != "") {
-                $send = $this->crud->update('supplier_items', ["supplier_id" => @$supplier->id, "item_rm_id" => @$item_rm->id], $dataFinal);
-                if (@$supplier_item_histories->supplier_id == "") {
+                if(@$supplier_items->price == $data['price']){
+                    $this->db->update('supplier_items', $dataFinal, ["supplier_id" => @$supplier->id, "item_rm_id" => @$item_rm->id]);
+                    echo json_encode(array("title" => "Good Job", "message" => "Change Data Success, By Pass Approval", "theme" => "success"));
+                }else{
+                    $send = $this->crud->update('supplier_items', ["supplier_id" => @$supplier->id, "item_rm_id" => @$item_rm->id], $dataFinal);
                     $send2 = $this->crud->create('supplier_item_histories', $dataFinal);
+                    echo $send;
                 }
-                echo $send;
             } else {
                 $send = $this->crud->create('supplier_items', $dataFinal);
                 $send2 = $this->crud->create('supplier_item_histories', $dataFinal);
@@ -417,6 +468,7 @@ class Supplier_items extends CI_Controller
         $filter_item_vendor = base64_decode($this->input->get('filter_item_vendor'));
         $filter_share_order = base64_decode($this->input->get('filter_share_order'));
         $filter_status_price = base64_decode($this->input->get('filter_status_price'));
+        $filter_type = base64_decode($this->input->get('filter_type'));
         $filter_check = $this->input->get('filter_check');
 
         //Config
@@ -424,9 +476,9 @@ class Supplier_items extends CI_Controller
         $this->db->from('config');
         $config = $this->db->get()->row();
 
-        $this->db->select('a.*, c.number as item_rm_number, 
+        $this->db->select('a.*, c.number as item_rm_number, (case when g.uom_po is not null then g.uom_po else c.uom end) as uom,
             c.name as item_rm_name, a.item_supplier, b.number as supplier_number, b.origin, b.name as supplier_name,
-            d.name as item_family_name, b.type, c.uom, e.name as maker_name, e.type as maker_type,
+            d.name as item_family_name, b.type, e.name as maker_name, e.type as maker_type,
             f.number as hsn_number, f.name as hsn_name, f.igst, f.sgst, f.cgst');
         $this->db->from('supplier_items a');
         $this->db->join('suppliers b', 'b.id = a.supplier_id');
@@ -434,6 +486,7 @@ class Supplier_items extends CI_Controller
         $this->db->join('item_familys d', "c.item_family_id = d.id and d.item_category_id IN ('C01')");
         $this->db->join('makers e', 'c.maker_id = e.id', 'left');
         $this->db->join('hsn f', 'c.hsn_code = f.number', 'left');
+        $this->db->join('convertions g', 'a.item_rm_id = g.item_rm_id', 'left');
         if($filter_check == "true"){
             $this->db->join("(SELECT item_rm_id FROM supplier_items GROUP BY item_rm_id HAVING COUNT(*) > 1) h", 'a.item_rm_id = h.item_rm_id');
         }
@@ -462,6 +515,9 @@ class Supplier_items extends CI_Controller
         }
         if($filter_check == "false"){
             $this->db->order_by('b.name', 'ASC');
+        }
+        if($filter_type != ""){
+            $this->db->like('b.type', $filter_type);
         }
         $this->db->order_by('c.number', 'ASC');
         $records = $this->db->get()->result_array();
@@ -492,6 +548,10 @@ class Supplier_items extends CI_Controller
         <table id="supplier_items" border="1">
             <tr>
                 <th width="20">No</th>
+                <th>Approved</th>
+                <th>Approved By</th>
+                <th>Approved Date</th>
+                <th>Supplier ID</th>
                 <th>Supplier Name</th>
                 <th>Part No EBWS</th>
                 <th>Part No Supplier</th>
@@ -517,11 +577,25 @@ class Supplier_items extends CI_Controller
                 <th>Safety<br>Stock (%)</th>
                 <th>Calculate MPQ</th>
                 <th>Remarks</th>
+                <th>Created By</th>
+                <th>Created Date</th>
+                <th>Updated By</th>
+                <th>Updated Date</th>
             </tr>';
         $no = 1;
         foreach ($records as $data) {
+            if($data['approved_to'] == ""){
+                $approved = "APPROVED";
+            }else{
+                $approved = "CHECKING";
+            }
+
             $html .= '<tr>
                     <td>' . $no . '</td>
+                    <td>' . $approved . '</td>
+                    <td>' . $data['approved_by'] . '</td>
+                    <td>' . $data['approved_date'] . '</td>
+                    <td style="mso-number-format:\@;">' . $data['supplier_id'] . '</td>
                     <td>' . $data['supplier_name'] . '</td>
                     <td>' . $data['item_rm_id'] . '</td>
                     <td style="mso-number-format:\@;">' . $data['item_rm_number'] . '</td>
@@ -546,7 +620,11 @@ class Supplier_items extends CI_Controller
                     <td>' . $data['share_order'] . '</td>
                     <td>' . $data['safety_stock'] . '</td>
                     <td>' . $data['calculate'] . '</td>
-                    <td>' . $data['remarks'] . '</td>';
+                    <td>' . $data['remarks'] . '</td>
+                    <td>' . $data['created_by'] . '</td>
+                    <td>' . $data['created_date'] . '</td>
+                    <td>' . $data['updated_by'] . '</td>
+                    <td>' . $data['updated_date'] . '</td>';
             $no++;
         }
         $html .= '</table></body></html>';

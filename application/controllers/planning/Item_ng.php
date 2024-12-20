@@ -78,13 +78,40 @@ class Item_ng extends CI_Controller
         }
     }
 
+    public function readItemNg()
+    {
+        $post = isset($_POST['q']) ? $_POST['q'] : "";
+        $send = $this->crud->query("SELECT DISTINCT a.document, a.workorder
+        FROM item_ng a
+        WHERE a.status = '0' and (a.workorder like '%$post%')
+        order by a.workorder desc");
+        echo json_encode($send);
+    }
+
     public function readWorkorders()
     {
         $post = isset($_POST['q']) ? $_POST['q'] : "";
-        $send = $this->crud->query("SELECT DISTINCT workorder, wp FROM production_schedules 
-        WHERE `status` = '1' and workorder like '%$post%'
-        order by workorder desc");
-        echo json_encode($send);
+        
+        // $send = $this->crud->query("SELECT DISTINCT a.workorder, b.number_customer 
+        // FROM production_schedules a
+        // JOIN item_fg b ON a.item_fg_id = b.id
+        // WHERE a.precut_status = 'YES' and a.status = '0' and a.status_wip = '0' and (a.workorder like '%$post%' or b.number_customer like '%$post%')
+        // order by a.workorder desc");
+
+        $this->db->select("a.workorder, c.number_customer,
+            (CASE WHEN f.id != '' THEN 2 ELSE a.status END) as status_wo");
+        $this->db->from('production_schedules a');
+        $this->db->join('item_fg c', 'a.item_fg_id = c.id');
+        $this->db->join('scan_item_receipts_fg f', 'a.workorder = f.workorder', 'left');
+        $this->db->where("f.id", null);
+        $this->db->like('a.workorder', $post);
+        $this->db->like('c.number_customer', $post);
+        $this->db->group_by('a.workorder');
+        $this->db->group_by('c.number_customer');
+        $this->db->order_by('a.workorder', 'asc');
+        $records = $this->db->get()->result_array();
+
+        echo json_encode($records);
     }
 
     public function readItems($workorder)
@@ -118,7 +145,7 @@ class Item_ng extends CI_Controller
             $offset = ($page - 1) * $rows;
             $result = array();
             //Select Query
-            $this->db->select('a.*, b.number as item_number, b.name as item_name');
+            $this->db->select('a.*, b.number as item_rm_number, b.name as item_rm_name');
             $this->db->from('item_ng a');
             $this->db->join('item_rm b', 'a.item_rm_id = b.id');
             $this->db->where('a.deleted', 0);
@@ -248,9 +275,10 @@ class Item_ng extends CI_Controller
                     <th>Process</th>
                     <th>NG Type</th>
                     <th>Work Order</th>
-                    <th>Product No</th>
-                    <th>Product Name</th>
-                    <th>Qty</th>
+                    <th>Part No EBWS</th>
+                    <th>Part No Supplier</th>
+                    <th>Description</th>
+                    <th>Rejection</th>
                     <th>Uom</th>
                     <th>Remarks</th>
                 </tr>';
@@ -264,6 +292,7 @@ class Item_ng extends CI_Controller
                             <td>' . $data['process'] . '</td>
                             <td>' . $data['type'] . '</td>
                             <td>' . $data['workorder'] . '</td>
+                            <td>' . $data['item_rm_id'] . '</td>
                             <td>' . $data['item_number'] . '</td>
                             <td>' . $data['item_name'] . '</td>
                             <td>' . number_format($data['qty']) . '</td>

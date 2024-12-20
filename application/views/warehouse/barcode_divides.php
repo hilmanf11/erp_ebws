@@ -92,7 +92,7 @@
                             $("#balance").numberbox('setValue', 0);
                             toastr.success("Serial Found");
                         } else {
-                            toastr.warning("Purchase Order Receipt not found!");
+                            toastr.warning("Label not found or Label has been Divided!");
                             $("#label_no").val('');
                         }
                     }

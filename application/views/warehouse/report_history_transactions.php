@@ -14,15 +14,15 @@
                 <input style="width:60%;" id="filter_item_family" class="easyui-combobox">
             </div>
             <div class="fitem">
-                <span style="width:35%; display:inline-block;">Part No</span>
-                <input style="width:60%;" id="filter_items" class="easyui-combogrid">
-            </div>
-            <div class="fitem">
                 <span style="width:35%; display:inline-block;"></span>
                 <a href="javascript:;" class="easyui-linkbutton" onclick="filter()"><i class="fa fa-search"></i> Filter Data</a>
             </div>
         </div>
         <div style="width: 49%; float:left;">
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Part No</span>
+                <input style="width:60%;" id="filter_items" class="easyui-combogrid">
+            </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Report Display</span>
                 <select style="width:60%;" id="filter_display" class="easyui-combobox" panelHeight="auto">
@@ -30,7 +30,7 @@
                     <option value="DETAIL">DETAIL</option>
                 </select>
             </div>
-            <div class="fitem">
+            <div class="fitem" hidden>
                 <span style="width:35%; display:inline-block;">Trans Type</span>
                 <input style="width:60%;" id="filter_transtype" class="easyui-combobox">
             </div>
@@ -57,9 +57,15 @@
         var filter_items = $("#filter_items").combogrid('getValue');
         var filter_display = $("#filter_display").combobox('getValue');
         var filter_transtype = $("#filter_transtype").combobox('getValue');
+        
         url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_item_family=" + filter_item_family + "&filter_items=" + filter_items + "&filter_display=" + filter_display + "&filter_transtype=" + filter_transtype;
-        $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
-        $("#printout").attr('src', '<?= base_url('warehouse/report_history_transactions/print') ?>' + url);
+        
+        // if(filter_item_family != ""){
+            $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
+            $("#printout").attr('src', '<?= base_url('warehouse/report_history_transactions/print') ?>' + url);
+        // }else{
+        //     toastr.error("Please Choose Product Family First");
+        // }
     }
 
     function excel() {
@@ -69,8 +75,14 @@
         var filter_items = $("#filter_items").combogrid('getValue');
         var filter_display = $("#filter_display").combobox('getValue');
         var filter_transtype = $("#filter_transtype").combobox('getValue');
+        
         url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_item_family=" + filter_item_family + "&filter_items=" + filter_items + "&filter_display=" + filter_display + "&filter_transtype=" + filter_transtype;
-        window.location.assign('<?= base_url('warehouse/report_history_transactions/print/excel') ?>' + url);
+        
+        // if(filter_item_family != ""){
+            window.location.assign('<?= base_url('warehouse/report_history_transactions/print/excel') ?>' + url);
+        // }else{
+        //     toastr.error("Please Choose Product Family First");
+        // }
     }
 
     $(function() {
@@ -88,7 +100,7 @@
         });
 
         $("#filter_item_family").combobox({
-            url: '<?= base_url('warehouse/report_history_transactions/readItemFamily/001') ?>',
+            url: '<?= base_url('warehouse/report_history_transactions/readItemFamily') ?>',
             valueField: 'number',
             textField: 'name',
             prompt: "Select Product Family",

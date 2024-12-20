@@ -45,7 +45,7 @@ class Customer_items extends CI_Controller
         $send = $this->crud->query("SELECT b.id, b.number, b.name, b.number_customer, a.price 
             FROM customer_items a 
             JOIN item_fg b ON a.item_fg_id = b.id 
-            WHERE a.customer_id = '$customer_id' $where_plant and (b.number LIKE '%$post%' or b.name LIKE '%$post%')
+            WHERE a.customer_id = '$customer_id' $where_plant and (b.number_customer LIKE '%$post%' or b.number LIKE '%$post%')
             GROUP BY b.id");
         echo json_encode($send);
     }
@@ -57,6 +57,7 @@ class Customer_items extends CI_Controller
             $get = $this->input->get();
             $filter_customer_id = @base64_decode($get['filter_customer_id']);
             $filter_item_fg_id = @base64_decode($get['filter_item_fg_id']);
+            $filter_plant = @base64_decode($get['filter_plant']);
 
             $page = $this->input->post('page');
             $rows = $this->input->post('rows');
@@ -70,6 +71,7 @@ class Customer_items extends CI_Controller
             $this->db->from('customer_items a');
             $this->db->join('customers b', 'a.customer_id = b.id');
             $this->db->like('a.customer_id', $filter_customer_id);
+            $this->db->like('a.plant', $filter_plant);
             $this->db->like('a.item_fg_id', $filter_item_fg_id);
             $this->db->group_by('a.customer_id');
             $this->db->group_by('a.plant');
@@ -281,6 +283,7 @@ class Customer_items extends CI_Controller
         $get = $this->input->get();
         $filter_customer_id = @base64_decode($get['filter_customer_id']);
         $filter_item_fg_id = @base64_decode($get['filter_item_fg_id']);
+        $filter_plant = @base64_decode($get['filter_plant']);
 
         //Config
         $this->db->select('*');
@@ -292,6 +295,7 @@ class Customer_items extends CI_Controller
         $this->db->join('customers b', 'a.customer_id = b.id');
         $this->db->join('item_fg c', 'a.item_fg_id = c.id');
         $this->db->like('a.customer_id', $filter_customer_id);
+        $this->db->like('a.plant', $filter_plant);
         $this->db->like('a.item_fg_id', $filter_item_fg_id);
         $this->db->order_by('a.id', 'ASC');
         $records = $this->db->get()->result_array();

@@ -10,7 +10,12 @@
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Serial No</span>
-                    <input style="width:60%;" id="filter_serial_no" class="easyui-textbox" data-options="prompt:'Input Serial No'">
+                    <input style="width:40%;" id="filter_serial_no" class="easyui-textbox" data-options="prompt:'Input Serial No'">
+                    <select style="width:20%;" id="filter_type" class="easyui-combobox" panelHeight="auto">
+                        <option value="STO">STO</option>
+                        <option value="POR">GATE ENTRY</option>
+                        <option value="DIV">BARCODE DIVIDED</option>
+                    </select>
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Supplier</span>
@@ -27,7 +32,7 @@
                     <input style="width:60%;" id="filter_receipt" class="easyui-combobox">
                 </div>
                 <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Component No</span>
+                    <span style="width:35%; display:inline-block;">Part No</span>
                     <input style="width:60%;" id="filter_product_no" class="easyui-combogrid">
                 </div>
                 <div class="fitem">
@@ -57,20 +62,41 @@
         var filter_receipt = $("#filter_receipt").combobox("getValue");
         var filter_product_no = $("#filter_product_no").combogrid("getValue");
         var filter_status = $("#filter_status").combobox("getValue");
+        var filter_type = $("#filter_type").combobox("getValue");
+
         var url = "?filter_from=" + window.btoa(filter_from) +
             "&filter_to=" + window.btoa(filter_to) +
             "&filter_serial_no=" + window.btoa(filter_serial_no) +
             "&filter_supplier=" + filter_supplier +
             "&filter_receipt=" + window.btoa(filter_receipt) +
             "&filter_product_no=" + filter_product_no +
+            "&filter_type=" + filter_type +
             "&filter_status=" + filter_status;
-        if (filter_from == "" || filter_to == "" || (filter_supplier == "" && filter_serial_no == "")) {
-            toastr.warning("Please select Trans Date & Supplier!");
-        } else {
-            $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
-            $("#printout").attr('src', '<?= base_url('warehouse/report_check_serialno/print') ?>' + url);
+
+        if(filter_type == "STO"){
+            if (filter_from == "" || filter_to == "" || (filter_product_no == "" && filter_serial_no == "")) {
+                toastr.warning("Please select Trans Date & Part No!");
+            } else {
+                $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
+                $("#printout").attr('src', '<?= base_url('warehouse/report_check_serialno/print') ?>' + url);
+            }
+        }else if(filter_type == "POR"){
+            if (filter_from == "" || filter_to == "" || (filter_supplier == "" && filter_serial_no == "" && filter_product_no == "")) {
+                toastr.warning("Please select Trans Date, Supplier or Product No!");
+            } else {
+                $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
+                $("#printout").attr('src', '<?= base_url('warehouse/report_check_serialno/print') ?>' + url);
+            }
+        }else{
+            if (filter_from == "" || filter_to == "") {
+                toastr.warning("Please select Trans Date!");
+            } else {
+                $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
+                $("#printout").attr('src', '<?= base_url('warehouse/report_check_serialno/print') ?>' + url);
+            }
         }
     }
+
     function excel() {
         var filter_from = $("#filter_from").datebox("getValue");
         var filter_to = $("#filter_to").datebox("getValue");
@@ -79,19 +105,24 @@
         var filter_receipt = $("#filter_receipt").combobox("getValue");
         var filter_product_no = $("#filter_product_no").combogrid("getValue");
         var filter_status = $("#filter_status").combobox("getValue");
+        var filter_type = $("#filter_type").combobox("getValue");
+
         var url = "?filter_from=" + window.btoa(filter_from) +
             "&filter_to=" + window.btoa(filter_to) +
             "&filter_serial_no=" + window.btoa(filter_serial_no) +
             "&filter_supplier=" + filter_supplier +
             "&filter_receipt=" + window.btoa(filter_receipt) +
             "&filter_product_no=" + filter_product_no +
+            "&filter_type=" + filter_type +
             "&filter_status=" + filter_status;
+
         if (filter_from == "" || filter_to == "" || (filter_supplier == "" && filter_serial_no == "")) {
             toastr.warning("Please select Trans Date & Supplier!");
         } else {
-            window.location.assign('<?= base_url('warehouse/report_check_serialno/print') ?>' + url);
+            window.location.assign('<?= base_url('warehouse/report_check_serialno/print/excel') ?>' + url);
         }
     }
+    
     function pdf() {
         $("#printout").get(0).contentWindow.print();
     }
@@ -122,36 +153,39 @@
                             $(e.data.target).combobox('clear').combobox('textbox').focus();
                         }
                     }],
-                    onSelect: function(rowReceipt) {
-                        $("#filter_product_no").combogrid({
-                            url: '<?= base_url('warehouse/report_check_serialno/readItems?supplier=') ?>' + rowSupplier.id + "&receipt_no=" + window.btoa(rowReceipt.receipt_no),
-                            panelWidth: 420,
-                            idField: 'item_id',
-                            textField: 'item_number',
-                            mode: 'remote',
-                            fitColumns: true,
-                            prompt: "Select Component No",
-                            icons: [{
-                                iconCls: 'icon-clear',
-                                handler: function(e) {
-                                    $(e.data.target).combogrid('clear').combogrid('textbox').focus();
-                                }
-                            }],
-                            columns: [
-                                [{
-                                    field: 'item_number',
-                                    title: 'Component No',
-                                    width: 120
-                                }, {
-                                    field: 'item_name',
-                                    title: 'Component Name',
-                                    width: 250
-                                }, ]
-                            ]
-                        });
-                    }
                 });
             }
+        });
+
+        $("#filter_product_no").combogrid({
+            url: '<?= base_url('master/item_rm/reads') ?>',
+            panelWidth: 520,
+            idField: 'id',
+            textField: 'number',
+            mode: 'remote',
+            fitColumns: true,
+            prompt: "Select Part No",
+            icons: [{
+                iconCls: 'icon-clear',
+                handler: function(e) {
+                    $(e.data.target).combogrid('clear').combogrid('textbox').focus();
+                }
+            }],
+            columns: [
+                [{
+                    field: 'id',
+                    title: 'Part No EBWS',
+                    width: 100
+                },{
+                    field: 'number',
+                    title: 'Part No Supplier',
+                    width: 200
+                }, {
+                    field: 'name',
+                    title: 'Description',
+                    width: 250
+                }, ]
+            ]
         });
     });
     //Format Datepicker

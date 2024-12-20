@@ -15,6 +15,7 @@ class Account_coa extends CI_Controller
         //VALIDASI FORM
         $this->form_validation->set_rules('account_number', 'code', 'required|min_length[1]|max_length[20]|is_unique[account_coa.account_number]');
     }
+
     //HALAMAN UTAMA
     public function index()
     {
@@ -28,11 +29,28 @@ class Account_coa extends CI_Controller
             redirect('error_access');
         }
     }
+
     //GET DATA
     public function reads($account_group_detail_id = "")
     {
+        //master/item_familys
+        //master/item_fg
         $post = isset($_POST['q']) ? $_POST['q'] : "";
         $send = $this->crud->query("SELECT * FROM account_coa WHERE (account_name LIKE '%$post%' or account_number LIKE '%$post%') and account_group_detail_id LIKE '%$account_group_detail_id%'");
+        echo json_encode($send);
+    }
+
+    public function readOthers($other = "")
+    {
+        $post = isset($_POST['q']) ? $_POST['q'] : "";
+        $send = $this->crud->query("SELECT * FROM account_coa WHERE (account_name LIKE '%$post%' or account_number LIKE '%$post%') and (other LIKE '%$other%' or other like '%BOTH%')");
+        echo json_encode($send);
+    }
+
+    public function readBanks()
+    {
+        $post = isset($_POST['q']) ? $_POST['q'] : "";
+        $send = $this->crud->query("SELECT a.* FROM account_coa a JOIN account_group_details b ON a.account_group_detail_id = b.id WHERE (account_name LIKE '%$post%' or account_number LIKE '%$post%') and b.number IN ('28000000')");
         echo json_encode($send);
     }
 
@@ -155,7 +173,20 @@ class Account_coa extends CI_Controller
             if (empty($account_group_detail->id)) {
                 echo json_encode(array("title" => "Not Found", "message" => "Account Group Details with ID " . $data['account_group_detail_number'] . " Not Found", "theme" => "error"));
             } else if(!empty($account_coa->id)){
-                echo json_encode(array("title" => "Duplicate", "message" => "Account No " . $data['account_number'] . " Duplicate", "theme" => "error"));
+                // echo json_encode(array("title" => "Duplicate", "message" => "Account No " . $data['account_number'] . " Duplicate", "theme" => "error"));
+                $dataFinal = array(
+                    "account_group_detail_id" => @$account_group_detail->id,
+                    "account_number" => $data['account_number'],
+                    "account_name" => $data['account_name'],
+                    "original_currency" => $data['original_currency'],
+                    "original_debit" => $data['original_debit'],
+                    "original_kredit" => $data['original_kredit'],
+                    "local_currency" => $data['local_currency'],
+                    "local_debit" => $data['local_debit'],
+                    "local_kredit" => $data['local_kredit'],
+                );
+                $send = $this->crud->update('account_coa', ["account_number" => $data['account_number']], $dataFinal);
+                echo $send;
             } else {
                 $dataFinal = array(
                     "account_group_detail_id" => @$account_group_detail->id,

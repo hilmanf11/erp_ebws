@@ -5,24 +5,33 @@
     clientPaging: false,
     rownumbers: true,
     fit: true">
-    <thead>
+    <thead frozen="true">
         <tr>
             <th field="ck" checkbox="true"></th>
-            <th data-options="field:'supplier_number',width:100,halign:'center'">Supplier Code</th>
-            <th data-options="field:'supplier_name',width:250,halign:'center'">Supplier Name</th>
             <th data-options="field:'item_rm_number',width:150,halign:'center'">Part No</th>
             <th data-options="field:'item_rm_name',width:150,halign:'center'">Part Name</th>
+        </tr>
+    </thead>
+    <thead>
+        <tr>
             <th data-options="field:'item_family_name',width:150,halign:'center'">Product Family</th>
+            <th data-options="field:'supplier_number',width:100,halign:'center'">Supplier Code</th>
+            <th data-options="field:'supplier_name',width:250,halign:'center'">Supplier Name</th>
             <th data-options="field:'maker',width:150,halign:'center'">Maker</th>
             <th data-options="field:'mpq',width:80,halign:'center'">MPQ</th>
             <th data-options="field:'moq',width:80,halign:'center'">MOQ</th>
             <th data-options="field:'share_order',width:80,halign:'center'">Share Order</th>
             <th data-options="field:'leadtime',width:80,halign:'center'">Leadtime</th>
+            <th data-options="field:'uom',width:80,align:'center'">Uom</th>
             <th data-options="field:'supplier_currency',width:80,align:'center'">Currency</th>
             <th data-options="field:'price_before',width:80,halign:'center',align:'right',formatter: numberformatPrice">Price Before</th>
             <th data-options="field:'price',width:80,halign:'center',align:'right',formatter: numberformatPrice">Price Now</th>
             <th data-options="field:'valid_date',width:100,halign:'center'">Valid Date</th>
-            <th data-options="field:'remarks',width:100,halign:'center'">Remarks</th>
+            <th data-options="field:'attachment',width:100,halign:'center',formatter:BtnAttachment">Attachment</th>
+            <th data-options="field:'remarks',width:200,halign:'center'">Remarks</th>
+            <th data-options="field:'remarks1',width:200,halign:'center'">Remarks Approval 1</th>
+            <th data-options="field:'remarks2',width:200,halign:'center'">Remarks Approval 2</th>
+            <th data-options="field:'remarks3',width:200,halign:'center'">Remarks Approval 3</th>
             <th data-options="field:'created_by',width:120,halign:'center'">Create By</th>
             <th data-options="field:'created_date',width:150,halign:'center'">Create Date</th>
         </tr>
@@ -54,16 +63,8 @@
 	function approve() {
 		var rows = $('#dg').datagrid('getSelections');
         if (rows.length > 0) {
-            Swal.fire({
-                title: 'Approve Data',
-                text: "Are you sure? You want to approve this data!",
-                icon: 'warning',
-                showCancelButton: true,
-                allowOutsideClick: false,
-                allowEscapeKey: false,
-                confirmButtonText: 'Yes, Approve it!'
-            }).then((result) => {
-                if (result.isConfirmed) {
+            $.messager.prompt('Remarks', 'Please input your Remarks!!', function(message){
+                if (message){
                     Swal.fire({
                         title: 'Please Wait...',
                         showConfirmButton: false,
@@ -85,7 +86,8 @@
                                 url: '<?= base_url('approvals/approve') ?>',
                                 data: {
                                     id: row.id,
-									tablename: "<?= $table ?>"
+                                    tablename: "<?= $table ?>",
+                                    message: message
                                 },
                                 success: function(result) {
                                     var result = eval('(' + result + ')');
@@ -189,16 +191,24 @@
 	}
 
     function numberformat(value, row) {
-		const formatter = new Intl.NumberFormat('id-ID');
+		const formatter = new Intl.NumberFormat('ja-JP');
 
 		return "<b>" + formatter.format(value) + "</b>";
 	}
 
 	function numberformatPrice(value, row){
-        const formatter = new Intl.NumberFormat('id-ID', {
-            minimumFractionDigits: 2
+        const formatter = new Intl.NumberFormat('ja-JP', {
+            minimumFractionDigits: 4
         });
 
         return "<b>" + formatter.format(value) + "</b>";
+    }
+
+    function BtnAttachment(val, row) {
+        if(val == "" || val == null){
+            return '-';
+        }else{
+            return '<a class="btn btn-primary w-100" style="pointer-events: visible; opacity:1;" target="_blank" href="' + val + '"><i class="fa fa-print"></i> Print</a>';
+        }
     }
 </script>

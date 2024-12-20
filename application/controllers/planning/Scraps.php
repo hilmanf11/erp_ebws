@@ -22,6 +22,8 @@ class Scraps extends CI_Controller
             redirect('error_session');
         } elseif ($this->checkuserAccess($this->id_menu()) > 0) {
             $data['button'] = $this->getbutton($this->id_menu());
+            $data['id_menu'] = $this->id_menu();
+
             $this->load->view('template/header', $data);
             $this->load->view('planning/scraps');
         } else {
@@ -38,7 +40,13 @@ class Scraps extends CI_Controller
 
     public function readDocument()
     {
-        $send = $this->crud->query("SELECT DISTINCT document FROM scraps order by document desc");
+        $post = isset($_POST['q']) ? $_POST['q'] : "";
+        $send = $this->crud->query("SELECT b.workorder, a.document as scrap_no, b.document as rejection_no, c.period, c.wp, c.item_fg_id, d.number_customer
+            FROM scraps a
+            JOIN item_ng b ON a.workorder = b.document AND a.item_rm_id = b.item_rm_id
+            JOIN production_schedules c ON b.workorder = c.workorder
+            JOIN item_fg d ON c.item_fg_id = d.id
+            WHERE (b.workorder like '%$post%' or d.number_customer like '%$post%') and a.status = 0 and (a.approved_to = '' or a.approved_to is null)");
         echo json_encode($send);
     }
 
@@ -53,23 +61,37 @@ class Scraps extends CI_Controller
         echo json_encode($send);
     }
 
-    public function scraps_no($trans_date)
+    public function scraps_no($id_menu)
     {
-        $trans_date = base64_decode($trans_date);
-        $year       = date("Y", strtotime($trans_date));
-        $datenow    = date("ymd", strtotime($trans_date));
-        $sqlGetID   = $this->db->query("SELECT max(document) as kode FROM scraps WHERE trans_date like '%$year%'");
-        $rowID      = $sqlGetID->row();
-        $kode       = $rowID->kode;
-        if ($kode == NULL) {
-            $autoID = sprintf("%04s", $kode + 1);
-        } else {
-            $urutan = (int) substr($kode, -4);
-            $urutan++;
-            $autoID = sprintf("%04s", $urutan);
-        }
+        $datenow = date("Y-m-d");
+        $sql_menu = $this->db->query("SELECT * FROM menus_no WHERE menus_id = '$id_menu' and `status` = '0' and `start_date` <= '$datenow' and end_date >= '$datenow'");
+        $row_menu = $sql_menu->row();
 
-        echo "SCP-" . $datenow . "-" . $autoID;
+        if(@$row_menu->number == ""){
+            //
+        }else{
+            $number = @$row_menu->number;
+            $yearnow = date("y", strtotime($row_menu->start_date));
+            $yearend = date("y", strtotime($row_menu->end_date));
+
+            $whereDate = $number.$yearnow.$yearend."1";
+
+            $sqlGetID	= $this->db->query("SELECT max(document) as kode FROM item_ng WHERE document like '%$whereDate%'");
+            $rowID = $sqlGetID->row();
+            $kode = $rowID->kode;
+            
+            if ($kode == NULL) {
+                $autoID = sprintf("%0".$row_menu->sequence."s", $kode + 1);
+                $autoNo = $whereDate.$autoID;
+            } else {
+                $urutan = (int) substr($kode, -6);
+                $urutan++;
+                $autoID	= sprintf("%0".$row_menu->sequence."s", $urutan);
+                $autoNo = $whereDate.$autoID;
+            }
+
+            echo $autoNo;
+        }
     }
 
     public function datatables()
@@ -89,7 +111,7 @@ class Scraps extends CI_Controller
             $offset = ($page - 1) * $rows;
             $result = array();
             //Select Query
-            $this->db->select('a.*, b.number as item_number, b.name as item_name');
+            $this->db->select('a.*, b.number as item_rm_number, b.name as item_rm_name');
             $this->db->from('scraps a');
             $this->db->join('item_rm b', 'a.item_rm_id = b.id');
             $this->db->where('a.deleted', 0);
@@ -114,17 +136,36 @@ class Scraps extends CI_Controller
         }
     }
 
+    function datatablesTemp(){
+        $workorder = $this->input->get('workorder');
+
+        //Select Query
+        $this->db->select("a.*, a.qty as qty_reject, b.number as item_rm_number, 'User' as source, b.name as item_rm_name");
+        $this->db->from('item_ng a');
+        $this->db->join('item_rm b', 'a.item_rm_id = b.id');
+        $this->db->where('a.deleted', 0);
+        $this->db->where('a.document', $workorder);
+        $totalRows = $this->db->count_all_results('', false);
+        $records = $this->db->get()->result_object();
+
+        $arr['total'] = $totalRows;
+        $arr = $records;
+
+        echo json_encode($arr);
+    }
+
     public function create()
     {
         if ($this->input->post()) {
             if ($this->form_validation->run() == TRUE) {
                 $post = $this->input->post();
 
-                $scraps = $this->crud->reads("scraps", [], ["item_rm_id" => $post['item_rm_id'], "document" => $post['document']]);
+                $scraps = $this->crud->reads("scraps", [], ["item_rm_id" => $post['item_rm_id'], "workorder" => $post['workorder']]);
                 if (count($scraps) > 0) {
                     show_error("Duplicate");
                 } else {
                     $send = $this->crud->create('scraps', $post);
+                    $this->db->update('item_ng', ["status" => 1], ["document" => $post['workorder'], "item_rm_id" => $post['item_rm_id']]);
                     echo $send;
                 }
             } else {
@@ -152,6 +193,8 @@ class Scraps extends CI_Controller
     {
         $data = $this->input->post();
         $send = $this->crud->delete('scraps', ["id" => $data['id']]);
+        $this->db->update('item_ng', ["status" => 0], ["document" => $data['workorder'], "item_rm_id" => $data['item_rm_id']]);
+        // die(json_encode(["document" => $data['workorder'], "item_rm_id" => $data['item_rm_id']]));
         echo $send;
     }
 

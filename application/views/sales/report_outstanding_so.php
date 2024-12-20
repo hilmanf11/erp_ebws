@@ -17,22 +17,18 @@
                     <input style="width:60%;" id="filter_customer_order_no" class="easyui-combobox">
                 </div>
                 <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Sales Order No</span>
-                    <input style="width:60%;" id="filter_sales_order_no" class="easyui-combobox">
-                </div>
-                <div class="fitem">
                     <span style="width:35%; display:inline-block;"></span>
                     <a href="javascript:;" class="easyui-linkbutton" onclick="filter()"><i class="fa fa-search"></i> Filter Data</a>
                 </div>
             </div>
             <div style="width: 50%; float: left;">
                 <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Product No</span>
-                    <input style="width:60%;" id="filter_item_fg" class="easyui-combogrid">
+                    <span style="width:35%; display:inline-block;">Sales Order No</span>
+                    <input style="width:60%;" id="filter_sales_order_no" class="easyui-combobox">
                 </div>
                 <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Division</span>
-                    <input style="width:60%;" id="filter_division" class="easyui-combobox">
+                    <span style="width:35%; display:inline-block;">Product No</span>
+                    <input style="width:60%;" id="filter_item_fg" class="easyui-combogrid">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Report Display</span>
@@ -61,7 +57,6 @@
         var filter_customer_order_no = $("#filter_customer_order_no").combobox("getValue");
         var filter_sales_order_no = $("#filter_sales_order_no").combobox("getValue");
         var filter_item_fg = $("#filter_item_fg").combobox("getValue");
-        var filter_division = $("#filter_division").combobox("getValue");
         var filter_display = $("#filter_display").combobox("getValue");
 
         var url = "?filter_so_date_from=" + window.btoa(filter_so_date_from) +
@@ -70,7 +65,6 @@
             "&filter_customer_order_no=" + window.btoa(filter_customer_order_no) +
             "&filter_sales_order_no=" + window.btoa(filter_sales_order_no) +
             "&filter_item_fg=" + window.btoa(filter_item_fg) +
-            "&filter_division=" + window.btoa(filter_division) +
             "&filter_display=" + window.btoa(filter_display);
 
         if (filter_so_date_from == "" && filter_so_date_to == "") {
@@ -88,7 +82,6 @@
         var filter_customer_order_no = $("#filter_customer_order_no").combobox("getValue");
         var filter_sales_order_no = $("#filter_sales_order_no").combobox("getValue");
         var filter_item_fg = $("#filter_item_fg").combobox("getValue");
-        var filter_division = $("#filter_division").combobox("getValue");
         var filter_display = $("#filter_display").combobox("getValue");
 
         var url = "?filter_so_date_from=" + window.btoa(filter_so_date_from) +
@@ -97,7 +90,6 @@
             "&filter_customer_order_no=" + window.btoa(filter_customer_order_no) +
             "&filter_sales_order_no=" + window.btoa(filter_sales_order_no) +
             "&filter_item_fg=" + window.btoa(filter_item_fg) +
-            "&filter_division=" + window.btoa(filter_division) +
             "&filter_display=" + window.btoa(filter_display);
 
         if (filter_so_date_from == "" && filter_so_date_to == "") {
@@ -192,7 +184,7 @@
 
         $('#filter_item_fg').combogrid({
             url: '<?= base_url("master/item_fg/reads") ?>',
-            panelWidth: 400,
+            panelWidth: 550,
             idField: 'id',
             textField: 'number',
             mode: 'remote',
@@ -207,21 +199,18 @@
             columns: [
                 [{
                     field: 'number',
-                    title: 'Product No',
+                    title: 'Product No EBWS',
+                    width: 150
+                }, {
+                    field: 'number_customer',
+                    title: 'Product No Customer',
                     width: 200
                 }, {
                     field: 'name',
-                    title: 'Product Name',
+                    title: 'Description',
                     width: 200
                 }]
             ],
-        });
-
-        $('#filter_division').combobox({
-            url: '<?= base_url('master/divisions/reads'); ?>',
-            valueField: 'name',
-            textField: 'name',
-            prompt: 'Choose Division',
         });
     });
 

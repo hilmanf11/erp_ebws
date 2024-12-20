@@ -1,31 +1,46 @@
 <div id="f" class="easyui-panel" style="width:99.5%; background: #F4F4F4;">
     <div style="width: 100%; display: grid; grid-template-columns: auto auto auto; grid-gap: 5px; display: flex;">
-        <fieldset style="width: 40%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; margin-left: 10px; border-radius:4px;">
+        <fieldset style="width: 80%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; margin-left: 10px; border-radius:4px;">
             <legend><b>Form Filter Data</b></legend>
-            <div class="fitem">
-                <span style="width:35%; display:inline-block;">Trans Date</span>
-                <input style="width:30%;" id="filter_from" value="<?= date("Y-m-01") ?>" class="easyui-datebox" data-options="prompt:'Start Date',formatter:myformatter,parser:myparser, editable:false">
-                <input style="width:30%;" id="filter_to" value="<?= date("Y-m-t") ?>" class="easyui-datebox" data-options="prompt:'Finish Date',formatter:myformatter,parser:myparser, editable:false">
+            <div style="width: 50%; float: left;">
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Trans Date</span>
+                    <input style="width:30%;" id="filter_from" value="<?= date("Y-m-01") ?>" class="easyui-datebox" data-options="prompt:'Start Date',formatter:myformatter,parser:myparser, editable:false">
+                    <input style="width:30%;" id="filter_to" value="<?= date("Y-m-t") ?>" class="easyui-datebox" data-options="prompt:'Finish Date',formatter:myformatter,parser:myparser, editable:false">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Supplier</span>
+                    <input style="width:60%;" id="filter_supplier" class="easyui-combobox">
+                </div>
+                <div class="fitem" hidden>
+                    <span style="width:35%; display:inline-block;">Purchase Invoice</span>
+                    <input style="width:60%;" id="filter_purchase_invoice" class="easyui-combobox">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;"></span>
+                    <a href="javascript:;" class="easyui-linkbutton" onclick="filter()"><i class="fa fa-search"></i> Filter Data</a>
+                </div>
             </div>
-            <div class="fitem">
-                <span style="width:35%; display:inline-block;">Supplier</span>
-                <input style="width:60%;" id="filter_supplier" class="easyui-combobox">
-            </div>
-            <div class="fitem">
-                <span style="width:35%; display:inline-block;">Currency</span>
-                <input style="width:60%;" id="filter_currency" class="easyui-combobox">
-            </div>
-            <div class="fitem">
-                <span style="width:35%; display:inline-block;">Payment</span>
-                <select style="width:60%;" id="filter_payment" class="easyui-combobox" panelHeight="auto">
-                    <option value="">Choose All</option>
-                    <option value="0">OPEN</option>
-                    <option value="1">CLOSE</option>
-                </select>
-            </div>
-            <div class="fitem">
-                <span style="width:35%; display:inline-block;"></span>
-                <a href="javascript:;" class="easyui-linkbutton" onclick="filter()"><i class="fa fa-search"></i> Filter Data</a>
+            <div style="width: 50%; float: left;">
+                <div class="fitem" hidden>
+                    <span style="width:35%; display:inline-block;">Currency</span>
+                    <input style="width:60%;" id="filter_currency" class="easyui-combobox">
+                </div>
+                <div class="fitem" hidden>
+                    <span style="width:35%; display:inline-block;">Payment</span>
+                    <select style="width:60%;" id="filter_payment" class="easyui-combobox" panelHeight="auto">
+                        <option value="">Choose All</option>
+                        <option value="0">OPEN</option>
+                        <option value="1">CLOSE</option>
+                    </select>
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Display</span>
+                    <select style="width:60%;" id="filter_display" class="easyui-combobox" panelHeight="auto">
+                        <option value="Summary">Summary</option>
+                        <option value="Detail">Detail</option>
+                    </select>
+                </div>
             </div>
         </fieldset>
     </div>
@@ -43,11 +58,15 @@
         var filter_supplier = $("#filter_supplier").combobox("getValue");
         var filter_currency = $("#filter_currency").combobox("getValue");
         var filter_payment = $("#filter_payment").combobox("getValue");
+        var filter_display = $("#filter_display").combobox("getValue");
+        var filter_purchase_invoice = $("#filter_purchase_invoice").combobox("getValue");
 
         var url = "?filter_from=" + window.btoa(filter_from) +
             "&filter_to=" + window.btoa(filter_to) +
             "&filter_supplier=" + filter_supplier +
             "&filter_currency=" + filter_currency +
+            "&filter_display=" + filter_display +
+            "&filter_purchase_invoice=" + btoa(filter_purchase_invoice) +
             "&filter_payment=" + filter_payment;
 
         if (filter_from == "" || filter_to == "") {
@@ -64,17 +83,21 @@
         var filter_supplier = $("#filter_supplier").combobox("getValue");
         var filter_currency = $("#filter_currency").combobox("getValue");
         var filter_payment = $("#filter_payment").combobox("getValue");
+        var filter_display = $("#filter_display").combobox("getValue");
+        var filter_purchase_invoice = $("#filter_purchase_invoice").combobox("getValue");
 
         var url = "?filter_from=" + window.btoa(filter_from) +
             "&filter_to=" + window.btoa(filter_to) +
             "&filter_supplier=" + filter_supplier +
             "&filter_currency=" + filter_currency +
+            "&filter_display=" + filter_display +
+            "&filter_purchase_invoice=" + btoa(filter_purchase_invoice) +
             "&filter_payment=" + filter_payment;
 
         if (filter_from == "" || filter_to == "") {
             toastr.warning("Please select Trans Date!");
         } else {
-            window.location.assign('<?= base_url('finance/report_ap/print') ?>' + url);
+            window.location.assign('<?= base_url('finance/report_ap/print/excel') ?>' + url);
         }
     }
 
@@ -97,6 +120,20 @@
                     $(e.data.target).combobox('clear').combobox('textbox').focus();
                 }
             }],
+            onSelect: function(row){
+                $("#filter_purchase_invoice").combobox({
+                    url: '<?php echo base_url('finance/report_ap/readPi/'); ?>' + row.id,
+                    valueField: 'number',
+                    textField: 'number',
+                    prompt: 'Choose Purchase Invoice',
+                    icons: [{
+                        iconCls: 'icon-clear',
+                        handler: function(e) {
+                            $(e.data.target).combobox('clear').combobox('textbox').focus();
+                        }
+                    }],
+                });
+            }
         });
 
         $('#filter_currency').combobox({

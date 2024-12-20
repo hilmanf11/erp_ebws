@@ -3,7 +3,7 @@
         <tr>
             <th rowspan="2" field="ck" checkbox="true"></th>
             <th rowspan="2" data-options="field:'status_wo',width:80,align:'center',formatter:statusformat,styler:statusStyle">Status WO</th>
-            <th rowspan="2" data-options="field:'status_wip',width:80,align:'center',formatter:statusformat2,styler:statusStyle2">Status RFG</th>
+            <th rowspan="2" data-options="field:'status_wip2',width:80,align:'center',formatter:statusformat2,styler:statusStyle2">Status RFG</th>
             <th rowspan="2" data-options="field:'precut_status',width:80,align:'center',formatter:statusprecut,styler:styleprecut">Production<br>Order</th>
             <th rowspan="2" data-options="field:'period',width:80,align:'center'">Period</th>
             <th rowspan="2" data-options="field:'wp',width:80,align:'center'">WP</th>
@@ -17,8 +17,8 @@
             <th rowspan="2" data-options="field:'qty',width:80,halign:'center',align:'right',formatter:numberformat">Qty</th>
             <!-- <th rowspan="2" data-options="field:'rework',width:80,halign:'center',align:'right',formatter:numberformat">Rework</th> -->
             <th rowspan="2" data-options="field:'total_rfg',width:80,halign:'center',align:'right',formatter:numberformat">RFG Qty</th>
-            <th rowspan="2" data-options="field:'so_number',width:150,align:'center'">SO No</th>
-            <th rowspan="2" data-options="field:'so_date',width:80,align:'center'">SO Date</th>
+            <!-- <th rowspan="2" data-options="field:'so_number',width:150,align:'center'">SO No</th> -->
+            <!-- <th rowspan="2" data-options="field:'so_date',width:80,align:'center'">SO Date</th> -->
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Precut</th>
@@ -36,19 +36,24 @@
         </tr>
     </thead>
 </table>
-<div id="toolbar" style="height: 200px; padding:10px;">
+<div id="toolbar" style="height: 230px; padding:10px;">
     <!-- <div style="width: 100%; display: grid; grid-template-columns: auto auto auto; grid-gap: 5px; display: flex;"> -->
     <fieldset style="width: 100%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
         <legend><b>Form Filter Data</b></legend>
         <div style="width: 30%; float: left;">
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Period</span>
-                <input style="width:30%;" id="filter_month" value="<?= date("m") ?>" class="easyui-combobox" data-options="prompt:'Select Month'">
+                <input style="width:30%;" id="filter_month" class="easyui-combobox" data-options="prompt:'Select Month'">
                 <input style="width:30%;" id="filter_year" value="<?= date("Y") ?>" class="easyui-combobox" data-options="prompt:'Select Year'" panelHeight="auto">
             </div>
             <div class="fitem">
-                <span style="width:35%; display:inline-block;">Customer</span>
-                <input style="width:60%;" id="filter_customers" class="easyui-combogrid">
+                <span style="width:35%; display:inline-block;">RFG date</span>
+                <input style="width:30%;" name="filter_date_from" id="filter_date_from" value="<?= date("Y-m-01") ?>" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
+                <input style="width:30%;" name="filter_date_to" id="filter_date_to" value="<?= date("Y-m-t") ?>" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">WP</span>
+                <input style="width:60%;" id="filter_wp" class="easyui-combobox">
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;"></span>
@@ -57,8 +62,18 @@
         </div>
         <div style="width: 30%; float: left;">
             <div class="fitem">
+                <span style="width:35%; display:inline-block;">Customer</span>
+                <input style="width:60%;" id="filter_customers" class="easyui-combogrid">
+            </div>
+            <div class="fitem">
                 <span style="width:35%; display:inline-block;">Product No</span>
                 <input style="width:60%;" id="filter_item_fg_id" class="easyui-combogrid">
+            </div>
+        </div>
+        <div style="width: 30%; float: left;">
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Workorder</span>
+                <input style="width:60%;" id="filter_workorder" class="easyui-combobox">
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Status WO</span>
@@ -81,6 +96,9 @@
     <form id="frm_insert" method="post" novalidate>
         <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
             <legend><b>Form Data</b></legend>
+
+            <div class="alert alert-warning">New Data for Outstanding Supply</div>
+
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Period</span>
                 <input style="width:30%;" id="month" name="month" required class="easyui-combobox">
@@ -96,22 +114,22 @@
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">WP</span>
-                <input style="width:60%;" name="wp" id="wp" required="" class="easyui-combobox">
+                <input style="width:60%;" name="wp" id="wp" required="" class="easyui-numberbox">
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">WP date</span>
-                <input style="width:60%;" name="trans_date" id="trans_date" readonly class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
+                <input style="width:60%;" name="trans_date" id="trans_date" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Quantity</span>
-                <input style="width:30%;" name="qty" id="qty" readonly class="easyui-numberbox" data-options="precision:2">
+                <input style="width:30%;" name="qty" id="qty" class="easyui-numberbox" data-options="precision:2">
             </div>
         </fieldset>
     </form>
 </div>
 
 <!-- PDF -->
-<iframe id="printout" src="<?= base_url('planning/production_schedules/print') ?>" style="width: 100%;" hidden></iframe>
+<!-- <iframe id="printout" src="<?= base_url('planning/production_schedules/print') ?>" style="width: 100%;" hidden></iframe> -->
 <script>
     function formula(){
         Swal.fire({
@@ -138,29 +156,31 @@
 
     //Add Data
     function add() {
-        $('#dlg_insert').dialog('open');
-        url_save = '<?= base_url('planning/production_schedules/create') ?>';
-        $('#frm_insert').form('clear');
-        $("#wp").combobox('enable');
-        $("#customer_id").combogrid('enable');
-        $("#item_fg_id").combogrid('enable');
-        $("#month").combobox('setValue', "<?= date("m") ?>");
-        $("#year").combobox('setValue', "<?= date("Y") ?>");
+        toastr.info("Create Data Production Schedule from MPP");
+        // $('#dlg_insert').dialog('open');
+        // url_save = '<?= base_url('planning/production_schedules/create') ?>';
+        // $('#frm_insert').form('clear');
+        // $("#wp").numberbox('enable');
+        // $("#customer_id").combogrid('enable');
+        // $("#item_fg_id").combogrid('enable');
+        // $("#month").combobox('setValue', "<?= date("m") ?>");
+        // $("#year").combobox('setValue', "<?= date("Y") ?>");
     }
 
     //Edit Data
     function update() {
-        var row = $('#dg').datagrid('getSelected');
-        if (row) {
-            $('#dlg_insert').dialog('open');
-            $('#frm_insert').form('load', row);
-            $("#wp").combobox('disable');
-            $("#customer_id").combogrid('disable');
-            $("#item_fg_id").combogrid('disable');
-            url_save = '<?= base_url('planning/production_schedules/update') ?>?id=' + btoa(row.id);
-        } else {
-            toastr.warning("Please select one of the data in the table first!", "Information");
-        }
+        toastr.info("This Not Ready to this Function");
+        // var row = $('#dg').datagrid('getSelected');
+        // if (row) {
+        //     $('#dlg_insert').dialog('open');
+        //     $('#frm_insert').form('load', row);
+        //     $("#wp").numberbox('disable');
+        //     $("#customer_id").combogrid('disable');
+        //     $("#item_fg_id").combogrid('disable');
+        //     url_save = '<?= base_url('planning/production_schedules/update') ?>?id=' + btoa(row.id);
+        // } else {
+        //     toastr.warning("Please select one of the data in the table first!", "Information");
+        // }
     }
 
     //Edit Status Precut
@@ -233,6 +253,7 @@
     }
     //Delete Data
     function deleted() {
+        // toastr.info("This Not Ready to this Function");
         var rows = $('#dg').datagrid('getSelections');
         if (rows.length > 0) {
             Swal.fire({
@@ -296,13 +317,19 @@
     }
 
     function filter() {
+        var filter_date_from = $("#filter_date_from").datebox('getValue');
+        var filter_date_to = $("#filter_date_to").datebox('getValue');
         var filter_month = $("#filter_month").combobox('getValue');
         var filter_year = $("#filter_year").combobox('getValue');
+        var filter_wp = $("#filter_wp").combobox('getValue');
+        var filter_workorder = $("#filter_workorder").combobox('getValue');
         var filter_customers = $("#filter_customers").combogrid('getValue');
         var filter_item_fg_id = $("#filter_item_fg_id").combogrid('getValue');
         var filter_status = $("#filter_status").combobox('getValue');
 
-        url = "?filter_month=" + filter_month + "&filter_year=" + filter_year + "&filter_customers=" + filter_customers + "&filter_item_fg_id=" + filter_item_fg_id + "&filter_status=" + filter_status;
+        url = "?filter_month=" + filter_month + "&filter_year=" + filter_year + "&filter_wp=" + filter_wp + "&filter_workorder=" + filter_workorder +
+            "&filter_date_from=" + filter_date_from + "&filter_date_to=" + filter_date_to + 
+            "&filter_customers=" + filter_customers + "&filter_item_fg_id=" + filter_item_fg_id + "&filter_status=" + filter_status;
 
         $('#dg').datagrid({
             url: '<?= base_url('planning/production_schedules/datatables') ?>' + url,
@@ -312,23 +339,32 @@
             pageList: [10, 50, 100, 500, 1000],
             pageSize: 10,
         });
-        $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
-        $("#printout").attr('src', '<?= base_url('planning/production_schedules/print') ?>' + url);
+
+        // $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
+        // $("#printout").attr('src', '<?= base_url('planning/production_schedules/print') ?>' + url);
     }
 
     function pdf() {
-        $("#printout").get(0).contentWindow.print();
+        toastr.info("Print Not Allowed, Please Export Excel");
+        // $("#printout").get(0).contentWindow.print();
     }
 
     function excel() {
+        var filter_date_from = $("#filter_date_from").datebox('getValue');
+        var filter_date_to = $("#filter_date_to").datebox('getValue');
         var filter_month = $("#filter_month").combobox('getValue');
         var filter_year = $("#filter_year").combobox('getValue');
+        var filter_wp = $("#filter_wp").combobox('getValue');
+        var filter_workorder = $("#filter_workorder").combobox('getValue');
         var filter_customers = $("#filter_customers").combogrid('getValue');
         var filter_item_fg_id = $("#filter_item_fg_id").combogrid('getValue');
         var filter_status = $("#filter_status").combobox('getValue');
 
-        url = "?filter_month=" + filter_month + "&filter_year=" + filter_year + "&filter_customers=" + filter_customers + "&filter_item_fg_id=" + filter_item_fg_id + "&filter_status=" + filter_status;
+        url = "?filter_month=" + filter_month + "&filter_year=" + filter_year + "&filter_wp=" + filter_wp + "&filter_workorder=" + filter_workorder +
+            "&filter_date_from=" + filter_date_from + "&filter_date_to=" + filter_date_to + 
+            "&filter_customers=" + filter_customers + "&filter_item_fg_id=" + filter_item_fg_id + "&filter_status=" + filter_status;
 
+        $.messager.alert('Export to Excel','Please Wait...');
         window.location.assign('<?= base_url('planning/production_schedules/print/excel') ?>' + url);
     }
 
@@ -383,7 +419,25 @@
                     $(e.data.target).combobox('clear').combobox('textbox').focus();
                 }
             }],
+            onSelect: function(month){
+                var year = $("#filter_year").combobox('getValue');
+
+                $("#filter_wp").combobox({
+                    url: '<?= base_url('planning/production_schedules/filterWp/') ?>' + month.number + "/" + year,
+                    valueField: 'wp',
+                    textField: 'wp',
+                    prompt: "Choose WP"
+                });
+
+                $("#filter_workorder").combobox({
+                    url: '<?= base_url('planning/production_schedules/filterWo/') ?>' + month.number + "/" + year,
+                    valueField: 'workorder',
+                    textField: 'workorder',
+                    prompt: "Choose Workorder"
+                });
+            }
         });
+
         $("#filter_year").combobox({
             url: '<?= base_url('planning/production_schedules/readYear') ?>',
             valueField: 'number',
@@ -394,7 +448,26 @@
                     $(e.data.target).combobox('clear').combobox('textbox').focus();
                 }
             }],
+            onSelect: function(month){
+                var month = $("#filter_month").combobox('getValue');
+
+                $("#filter_wp").combobox({
+                    url: '<?= base_url('planning/production_schedules/filterWp/') ?>' + month + "/" + year.number,
+                    valueField: 'wp',
+                    textField: 'wp',
+                    prompt: "Choose WP"
+                });
+
+                $("#filter_workorder").combobox({
+                    url: '<?= base_url('planning/production_schedules/filterWo/') ?>' + month + "/" + year.number,
+                    valueField: 'workorder',
+                    textField: 'workorder',
+                    prompt: "Choose Workorder"
+                });
+            }
         });
+
+        $("#filter_month").combobox("setValue", "<?= date("m") ?>");
 
         $('#filter_customers').combogrid({
             url: '<?= base_url('master/customers/reads') ?>',
@@ -475,13 +548,6 @@
                 $("#item_fg_id").combogrid('clear');
             }
         });
-        
-        $("#line_id").combobox({
-            url: '<?= base_url('master/line_productions/reads') ?>',
-            valueField: 'id',
-            textField: 'name',
-            prompt: "Choose Line Production"
-        });
 
         //Get Product
         $('#customer_id').combogrid({
@@ -531,16 +597,16 @@
                         var month = $("#month").combobox('getValue');
                         var year = $("#year").combobox('getValue');
 
-                        $("#wp").combobox({
-                            url: '<?= base_url('planning/production_schedules/getDataWp?p_month=') ?>' + month + "&p_year=" + year + "&customer_id=" + btoa(rowCust.id) + "&item_fg_id=" + btoa(itemRow.id),
-                            valueField: 'wp',
-                            textField: 'wp',
-                            prompt: "Choose WP",
-                            onSelect: function(wp){
-                                $("#trans_date").datebox('setValue', wp.trans_date);
-                                $("#qty").numberbox('setValue', wp.qty);
-                            }
-                         });
+                        // $("#wp").combobox({
+                        //     url: '<?= base_url('planning/production_schedules/getDataWp?p_month=') ?>' + month + "&p_year=" + year + "&customer_id=" + btoa(rowCust.id) + "&item_fg_id=" + btoa(itemRow.id),
+                        //     valueField: 'wp',
+                        //     textField: 'wp',
+                        //     prompt: "Choose WP",
+                        //     onSelect: function(wp){
+                        //         $("#trans_date").datebox('setValue', wp.trans_date);
+                        //         $("#qty").numberbox('setValue', wp.qty);
+                        //     }
+                        //  });
                     }
                 });
             }
@@ -621,8 +687,8 @@
     }
     //Number Format Currency
     function numberformat(value, row) {
-        const formatter = new Intl.NumberFormat('id-ID', {
-            minimumFractionDigits: 2
+        const formatter = new Intl.NumberFormat('ja-JP', {
+            minimumFractionDigits: 0
         });
         return "<b>" + formatter.format(value) + "</b>";
     }

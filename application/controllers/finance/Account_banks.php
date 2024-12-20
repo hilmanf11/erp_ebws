@@ -11,8 +11,8 @@ class Account_banks extends CI_Controller
         $this->load->library('session');
         $this->load->model('crud');
         //VALIDASI FORM
-        $this->form_validation->set_rules('bank_account', 'Account', 'required|min_length[1]|max_length[30]|is_unique[account_banks.bank_account]');
-        $this->form_validation->set_rules('bank_name', 'Name', 'required|min_length[1]|max_length[100]|is_unique[account_banks.bank_name]');
+        $this->form_validation->set_rules('bank_account', 'Account', 'required|min_length[1]|max_length[30]');
+        $this->form_validation->set_rules('bank_name', 'Name', 'required|min_length[1]|max_length[100]');
     }
     //HALAMAN UTAMA
     public function index()
@@ -28,12 +28,23 @@ class Account_banks extends CI_Controller
         }
     }
     //GET DATA
-    public function reads()
+    public function reads($type = "")
     {
         $post = isset($_POST['q']) ? $_POST['q'] : "";
-        $send = $this->crud->reads('account_banks', ["bank_name" => $post, "bank_account" => $post]);
+
+        if($type == "supplier"){
+            $send = $this->crud->reads('account_banks', ["bank_name" => $post, "bank_account" => $post], ["p_supplier" => 1]);
+        }elseif($type == "customer"){
+            $send = $this->crud->reads('account_banks', ["bank_name" => $post, "bank_account" => $post], ["p_customer" => 1]);
+        }elseif($type == "journal"){
+            $send = $this->crud->reads('account_banks', ["bank_name" => $post, "bank_account" => $post], ["p_journal" => 1]);
+        }else{
+            $send = $this->crud->reads('account_banks', ["bank_name" => $post, "bank_account" => $post], []);
+        }
+
         echo json_encode($send);
     }
+    
     //GET DATATABLES
     public function datatables()
     {

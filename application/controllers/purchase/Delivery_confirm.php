@@ -34,14 +34,21 @@ class Delivery_confirm extends CI_Controller
 
     public function readSupplier(){
         $post = isset($_POST['q']) ? $_POST['q'] : "";
-        $data = $this->crud->query("SELECT DISTINCT b.id, b.number, b.name FROM purchase_confirm a JOIN suppliers b ON a.supplier_id = b.id WHERE a.status = 0 ORDER BY b.name asc");
+        $data = $this->crud->query("SELECT DISTINCT b.id, b.number, b.name FROM purchase_confirm a JOIN suppliers b ON a.supplier_id = b.id WHERE a.status = 0 and b.name like '%$post%' ORDER BY b.name asc");
         echo json_encode($data);
+    }
+
+    function readInvoice(){
+        $post = isset($_POST['q']) ? $_POST['q'] : "";
+        $supplier_id = base64_decode($this->input->get('supplier_id'));
+        $datas = $this->crud->query("SELECT invoice_no, invoice_date, awb_no, awb_date FROM purchase_confirm a WHERE a.status = 0 and a.supplier_id = '$supplier_id' and (po_date like '%$post%' or po_no like '%$post%') GROUP BY a.invoice_no");
+        echo json_encode($datas);
     }
 
     function readPono(){
         $post = isset($_POST['q']) ? $_POST['q'] : "";
-        $supplier_id = base64_decode($this->input->get('supplier_id'));
-        $datas = $this->crud->query("SELECT a.po_no, a.po_date, invoice_no, invoice_date, awb_no, awb_date FROM purchase_confirm a WHERE a.supplier_id = '$supplier_id' and (po_date like '%$post%' or po_no like '%$post%') GROUP BY a.po_date, a.po_no ASC");
+        $invoice_no = base64_decode($this->input->get('invoice_no'));
+        $datas = $this->crud->query("SELECT a.po_no, a.po_date FROM purchase_confirm a WHERE a.status = 0 and a.invoice_no = '$invoice_no' GROUP BY a.po_no");
         echo json_encode($datas);
     }
 
@@ -49,18 +56,19 @@ class Delivery_confirm extends CI_Controller
         $post = isset($_POST['q']) ? $_POST['q'] : "";
         $po_no = base64_decode($po_no);
 
-        $data = $this->crud->query("SELECT b.id, b.number, b.name, a.qty, b.uom, a.delivery_date, DATE_FORMAT(now(), '%Y-%m-%d') as today, COALESCE(c.delivery, 0) as delivery 
+        $data = $this->crud->query("SELECT b.id, b.number, b.name, a.qty as qty_po, (a.qty - COALESCE(SUM(c.delivery), 0)) as qty, b.uom, a.delivery_date, DATE_FORMAT(now(), '%Y-%m-%d') as today, (a.qty - COALESCE(SUM(c.delivery), 0)) as delivery, COALESCE(SUM(c.delivery), 0) as actual
             FROM purchase_orders a 
             JOIN item_rm b ON a.item_rm_id = b.id
             LEFT JOIN purchase_confirm c ON a.po_no = c.po_no and a.item_rm_id = c.item_rm_id and a.supplier_id = c.supplier_id
             WHERE a.po_no = '$po_no' and a.status = 0 and (b.number LIKE '%$post%' and b.id like '%$post%')
-            GROUP BY a.item_rm_id ORDER BY b.number asc");
+            GROUP BY a.item_rm_id
+            ORDER BY b.number asc");
         echo json_encode($data);
     }
 
     public function filterSupplier(){
         $post = isset($_POST['q']) ? $_POST['q'] : "";
-        $data = $this->crud->query("SELECT DISTINCT b.id, b.number, b.name FROM purchase_confirm a JOIN suppliers b ON a.supplier_id = b.id ORDER BY b.name asc");
+        $data = $this->crud->query("SELECT DISTINCT b.id, b.number, b.name FROM purchase_confirm a JOIN suppliers b ON a.supplier_id = b.id WHERE b.name like '%$post%' ORDER BY b.name asc");
         echo json_encode($data);
     }
 
@@ -68,6 +76,13 @@ class Delivery_confirm extends CI_Controller
         $post = isset($_POST['q']) ? $_POST['q'] : "";
         $supplier_id = base64_decode($supplier_id);
         $data = $this->crud->query("SELECT DISTINCT c.id, c.number, c.name FROM purchase_confirm a JOIN item_rm b ON a.item_rm_id = b.id JOIN item_familys c ON b.item_family_id = c.id WHERE a.supplier_id = '$supplier_id' ORDER BY c.number asc");
+        echo json_encode($data);
+    }
+
+    public function filterInvoiceNo($supplier_id){
+        $post = isset($_POST['q']) ? $_POST['q'] : "";
+        $supplier_id = base64_decode($supplier_id);
+        $data = $this->crud->query("SELECT DISTINCT invoice_no FROM purchase_confirm WHERE supplier_id = '$supplier_id' ORDER BY invoice_no asc");
         echo json_encode($data);
     }
 
@@ -86,6 +101,8 @@ class Delivery_confirm extends CI_Controller
             $filter_po_no = base64_decode($this->input->get('filter_po_no'));
             $filter_product_family = base64_decode($this->input->get('filter_product_family'));
             $filter_item_rm_id = base64_decode($this->input->get('filter_item_rm_id'));
+            $filter_po_date = base64_decode($this->input->get('filter_po_date'));
+            $filter_invoice_no = base64_decode($this->input->get('filter_invoice_no'));
 
             $page = $this->input->post('page');
             $rows = $this->input->post('rows');
@@ -95,11 +112,19 @@ class Delivery_confirm extends CI_Controller
             $offset = ($page - 1) * $rows;
             $result = array();
             //Select Query
+            // $this->db->select("a.*, b.name as supplier_name, c.number as item_rm_number, c.name as item_rm_name, d.name as item_family_name, e.receipt");
             $this->db->select("a.*, b.name as supplier_name, c.number as item_rm_number, c.name as item_rm_name, d.name as item_family_name, '0' as receipt");
             $this->db->from('purchase_confirm a');
             $this->db->join('suppliers b', 'a.supplier_id = b.id');
             $this->db->join('item_rm c', 'a.item_rm_id = c.id');
             $this->db->join('item_familys d', 'c.item_family_id = d.id');
+            // $this->db->join("(SELECT po_no, bc_document, item_rm_id, supplier_id, SUM(qty_receipt) as receipt FROM purchase_order_receipts GROUP BY po_no, bc_document, item_rm_id, supplier_id) e", 'a.po_no = e.po_no and a.invoice_no = e.bc_document and a.item_rm_id = e.item_id and a.supplier_id = e.supplier_id', 'left');            
+            if($filter_po_date != ""){
+                $this->db->where('a.po_date', $filter_po_date);
+            }
+            if($filter_invoice_no != ""){
+                $this->db->where('a.invoice_no', $filter_invoice_no);
+            }
             $this->db->like('a.supplier_id', $filter_supplier);
             $this->db->like('a.po_no', $filter_po_no);
             $this->db->like('c.item_family_id', $filter_product_family);
@@ -192,7 +217,7 @@ class Delivery_confirm extends CI_Controller
                     $status = 1;
                 }
 
-                $send = $this->crud->update('purchase_confirm', ["id" => $id], ["delivery" => $post['delivery'], "awb_no" => $post['awb_no'], "awb_date" => $post['awb_date']]);
+                $send = $this->crud->update('purchase_confirm', ["id" => $id], ["delivery" => $post['delivery'], "invoice_date" => $post['invoice_date'], "awb_no" => $post['awb_no'], "awb_date" => $post['awb_date']]);
                 $this->db->update('purchase_orders', ["status" => $status], ["po_no" => $post['po_no'], "item_rm_id" => $post['item_rm_id']]);
                 echo $send;
             }else{
@@ -231,6 +256,116 @@ class Delivery_confirm extends CI_Controller
         echo $send;
     }
 
+    public function upload()
+    {
+        error_reporting(0);
+        require_once 'assets/vendors/excel_reader2.php';
+        $target = basename($_FILES['file_upload']['name']);
+        move_uploaded_file($_FILES['file_upload']['tmp_name'], $target);
+        chmod($_FILES['file_upload']['name'], 0777);
+        $file = $_FILES['file_upload']['name'];
+        $data = new Spreadsheet_Excel_Reader($file, false);
+        $total_row = $data->rowcount($sheet_index = 0);
+
+        for ($i = 3; $i <= $total_row; $i++) {
+            $datas[] = array(
+                'delivery_no' => $data->val($i, 2),
+                'invoice_no' => $data->val($i, 3),
+                'invoice_date' => $data->val($i, 4),
+                'awb_no' => $data->val($i, 5),
+                'awb_date' => $data->val($i, 6),
+                'po_no' => $data->val($i, 7),
+                'supplier_id' => $data->val($i, 8),
+                'item_rm_id' => $data->val($i, 9),
+                'etd' => $data->val($i, 10),
+                'delivery' => $data->val($i, 11)
+            );
+        }
+
+        $datas['total'] = count($datas);
+        echo json_encode($datas);
+
+        unlink($_FILES['file_upload']['name']);
+    }
+
+    public function uploadclearFailed()
+    {
+        @unlink('failed/delivery_confirm.txt');
+    }
+    public function uploadcreateFailed()
+    {
+        if ($this->input->post()) {
+            $message = $this->input->post('message');
+            $textFailed = fopen('failed/delivery_confirm.txt', 'a');
+            fwrite($textFailed, $message . "\n");
+            fclose($textFailed);
+        }
+    }
+    //UPLOAD DOWNLOAD FAILED
+    public function uploadDownloadFailed()
+    {
+        $file = "failed/delivery_confirm.txt";
+        header('Content-Description: File Failed');
+        header('Content-Disposition: attachment; filename=' . basename($file));
+        header('Expires: 0');
+        header('Cache-Control: must-revalidate');
+        header('Pragma: public');
+        header('Content-Length: ' . @filesize($file));
+        header("Content-Type: text/plain");
+        @readfile($file);
+    }
+
+    public function uploadcreate()
+    {
+        if ($this->input->post()) {
+            $post = $this->input->post('data');
+
+            $item_rm = $this->crud->read("item_rm", [], ["id" => $post['item_rm_id']]);
+            $supplier = $this->crud->read("suppliers", [], ["id" => $post['supplier_id']]);
+            $purchase_order = $this->crud->read("purchase_orders", [], ["item_rm_id" => $post['item_rm_id'], "po_no" => $post['po_no'], "supplier_id" => $post['supplier_id']]);
+            $purchase_confirm = $this->crud->read("purchase_confirm", [], ["item_rm_id" => $post['item_rm_id'], "po_no" => $post['po_no'], "supplier_id" => $post['supplier_id'], "invoice_no" => $post['invoice_no']]);
+
+            if(empty($item_rm)){
+                echo json_encode(array("title" => "Not Found", "message" => "Part No ".$post['item_rm_id']." Not Found in Master Items", "theme" => "error"));
+            }elseif(empty($supplier)){
+                echo json_encode(array("title" => "Not Found", "message" => "Supplier ID ".$post['supplier_id']." Not Found in Master Suppliers", "theme" => "error"));
+            }elseif(empty($purchase_order)){
+                echo json_encode(array("title" => "Not Found", "message" => "PO No ".$post['po_no']." Not Match", "theme" => "error"));
+            }elseif(!empty($purchase_confirm)){
+                echo json_encode(array("title" => "Duplicate", "message" => "Part No ".$post['item_rm_id']." and ".$post['po_no']." is already Exists", "theme" => "error"));
+            }else{
+                if(@$purchase_order->qty > $post['delivery']){
+                    $status = "0";
+                }elseif(@$purchase_order->qty == $post['delivery']){
+                    $status = "1";
+                }else{
+                    die(json_encode(array("title" => "More Qty", "message" => "Part No ".$post['item_rm_id']." in the PO ".$post['po_no']." qty is less than qty your input", "theme" => "error")));
+                }
+
+                $postFinal = array(
+                    "supplier_id" => $post['supplier_id'],
+                    "delivery_no" => $post['delivery_no'],
+                    "invoice_no" => $post['invoice_no'],
+                    "invoice_date" => $post['invoice_date'],
+                    "awb_no" => $post['awb_no'],
+                    "awb_date" => $post['awb_date'],
+                    "po_no" => $post['po_no'],
+                    "po_date" => $purchase_order->po_date,
+                    "item_rm_id" => $post['item_rm_id'],
+                    "uom" => $item_rm->uom,
+                    "eta" => $purchase_order->delivery_date,
+                    "etd" => $post['etd'],
+                    "qty" => $purchase_order->qty,
+                    "delivery" => $post['delivery'],
+                );
+                
+                $this->db->update('purchase_orders', ["status" => $status], ["po_no" => $post['po_no'], "item_rm_id" => $post['item_rm_id']]);
+                $send = $this->crud->create('purchase_confirm', $postFinal);
+                echo $send;
+            }
+        }
+    }
+
     public function print($option = "")
     {
         if ($option == "excel") {
@@ -249,12 +384,20 @@ class Delivery_confirm extends CI_Controller
         $filter_po_no = base64_decode($this->input->get('filter_po_no'));
         $filter_product_family = base64_decode($this->input->get('filter_product_family'));
         $filter_item_rm_id = base64_decode($this->input->get('filter_item_rm_id'));
+        $filter_po_date = base64_decode($this->input->get('filter_po_date'));
+        $filter_invoice_no = base64_decode($this->input->get('filter_invoice_no'));
 
         $this->db->select('a.*, b.name as supplier_name, c.number as item_rm_number, c.name as item_rm_name, d.name as item_family_name');
         $this->db->from('purchase_confirm a');
         $this->db->join('suppliers b', 'a.supplier_id = b.id');
         $this->db->join('item_rm c', 'a.item_rm_id = c.id');
         $this->db->join('item_familys d', 'c.item_family_id = d.id');
+        if($filter_po_date != ""){
+            $this->db->where('a.po_date', $filter_po_date);
+        }
+        if($filter_invoice_no != ""){
+            $this->db->where('a.invoice_no', $filter_invoice_no);
+        }
         $this->db->like('a.supplier_id', $filter_supplier);
         $this->db->like('a.po_no', $filter_po_no);
         $this->db->like('c.item_family_id', $filter_product_family);

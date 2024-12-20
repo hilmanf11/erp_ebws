@@ -33,6 +33,7 @@ class Balance_customers extends CI_Controller
         $send = $this->crud->reads('account_balance_customers', ["name" => $post]);
         echo json_encode($send);
     }
+
     //GET DATATABLES
     public function datatables()
     {
@@ -46,9 +47,10 @@ class Balance_customers extends CI_Controller
             $offset = ($page - 1) * $rows;
             $result = array();
             //Select Query
-            $this->db->select('a.id as customer_ids, a.number as customer_number, a.name as customer_name, a.currency, b.*, c.account_name');
+            $this->db->select('a.id as customer_ids, a.number as customer_number, a.name as customer_name, b.*, c.account_name, d.plant, a.currency');
             $this->db->from('customers a');
-            $this->db->join('account_balance_customers b', 'a.id = b.customer_id', 'left');
+            $this->db->join('customer_address d', 'a.id = d.customer_id', 'left');
+            $this->db->join('account_balance_customers b', 'a.id = b.customer_id and b.plant = d.plant', 'left');
             $this->db->join('account_coa c', 'b.account_number = c.account_number', 'left');
             $this->db->where('a.deleted', 0);
             if (@count($filters) > 0) {
@@ -59,11 +61,15 @@ class Balance_customers extends CI_Controller
                         $this->db->like("a.name", $filter->value);
                     }elseif($filter->field == "currency"){
                         $this->db->like("a.currency", $filter->value);
+                    }elseif($filter->field == "plant"){
+                        $this->db->like("d.plant", $filter->value);
                     }else{
                         $this->db->like("b.".$filter->field, $filter->value);
                     }
                 }
             }
+            // $this->db->group_by('a.id');
+            // $this->db->group_by('d.plant');
             $this->db->order_by('a.name', 'asc');
             //Total Data
             $totalRows = $this->db->count_all_results('', false);
@@ -89,10 +95,11 @@ class Balance_customers extends CI_Controller
                 $status = "0";
             }
 
-            $account_balance_customers = $this->crud->reads("account_balance_customers", [], ["customer_id" => $post['customer_ids']]);
+            $account_balance_customers = $this->crud->reads("account_balance_customers", [], ["customer_id" => $post['customer_ids'], "plant" => $post['plant']]);
             if($account_balance_customers){
-                $send = $this->crud->update('account_balance_customers', ["customer_id" => $post['customer_ids']], [
-                    "customer_id" => $post['customer_ids'],
+                $send = $this->crud->update('account_balance_customers', ["customer_id" => $post['customer_ids'], "plant" => $post['plant']], [
+                    // "plant" => $post['plant'],
+                    // "customer_id" => $post['customer_ids'],
                     "account_number" => $post['account_number'],
                     "currency" => $post['currency'],
                     "currency_local" => $post['currency_local'],
@@ -105,6 +112,7 @@ class Balance_customers extends CI_Controller
             }else{
                 $send = $this->crud->create('account_balance_customers', [
                     "customer_id" => $post['customer_ids'],
+                    "plant" => $post['plant'],
                     "account_number" => $post['account_number'],
                     "currency" => $post['currency'],
                     "currency_local" => $post['currency_local'],
@@ -135,14 +143,15 @@ class Balance_customers extends CI_Controller
         $total_row = $data->rowcount($sheet_index = 0);
         for ($i = 4; $i <= $total_row; $i++) {
             $datas[] = array(
-                'customer_number' => $data->val($i, 2),
-                'account_number' => $data->val($i, 3),
-                'currency' => $data->val($i, 4),
-                'balance' => $data->val($i, 5),
-                'currency_local' => $data->val($i, 6),
-                'balance_local' => $data->val($i, 7),
-                'credit_limit' => $data->val($i, 8),
-                'start_date' => $data->val($i, 9)
+                'customer_id' => $data->val($i, 2),
+                'plant' => $data->val($i, 3),
+                'account_number' => $data->val($i, 4),
+                'currency' => $data->val($i, 5),
+                'balance' => $data->val($i, 6),
+                'currency_local' => $data->val($i, 7),
+                'balance_local' => $data->val($i, 8),
+                'credit_limit' => $data->val($i, 9),
+                'start_date' => $data->val($i, 10)
             );
         }
         $datas['total'] = count($datas);
@@ -187,12 +196,15 @@ class Balance_customers extends CI_Controller
         if ($this->input->post()) {
             $data = $this->input->post('data');
             //Cek Process Number
-            $customers = $this->crud->read('customers', [], ["number" => $data['customer_number']]);
-            $account_balance_customers = $this->crud->reads("account_balance_customers", [], ["customer_id" => @$customers->id]);
+            $customers = $this->crud->read('customers', [], ["id" => $data['customer_id']]);
+            $customer_address = $this->crud->read('customer_address', [], ["customer_id" => $data['customer_id'], "plant" => $data['plant']]);
+            $account_balance_customers = $this->crud->reads("account_balance_customers", [], ["customer_id" => $data['customer_id'], "plant" => $data['plant']]);
             $account_coa = $this->crud->reads("account_coa", [], ["account_number" => @$data['account_number']]);
 
             if (empty($customers->id)) {
                 echo json_encode(array("title" => "Not Found", "message" => "Customer Code " . $data['customer_number'] . " Not Found", "theme" => "error"));
+            } else if(empty($customer_address->plant)){
+                echo json_encode(array("title" => "Not Found", "message" => "Plant " . $data['plant'] . " Not Found", "theme" => "error"));
             } else {
                 if($data['credit_limit'] > 0){
                     $status = "1";
@@ -204,6 +216,7 @@ class Balance_customers extends CI_Controller
                     if($account_balance_customers){
                         $send = $this->crud->update('account_balance_customers', ["customer_id" => @$customers->id], [
                             "customer_id" => $data['customer_ids'],
+                            "plant" => $data['plant'],
                             "account_number" => $data['account_number'],
                             "currency" => $data['currency'],
                             "currency_local" => $data['currency_local'],
@@ -216,6 +229,7 @@ class Balance_customers extends CI_Controller
                     }else{
                         $send = $this->crud->create('account_balance_customers', [
                             "customer_id" => $data['customer_ids'],
+                            "plant" => $data['plant'],
                             "account_number" => $data['account_number'],
                             "currency" => $data['currency'],
                             "currency_local" => $data['currency_local'],

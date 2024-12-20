@@ -23,6 +23,8 @@ class Forecasts extends CI_Controller
             redirect('error_session');
         } elseif ($this->checkuserAccess($this->id_menu()) > 0) {
             $data['button'] = $this->getbutton($this->id_menu());
+            $data['id_menu'] = $this->id_menu();
+            
             $this->load->view('template/header', $data);
             $this->load->view('planning/forecasts');
         } else {
@@ -116,6 +118,7 @@ class Forecasts extends CI_Controller
             $filter_period_month = @base64_decode($get['filter_period_month']);
             $filter_period_year = @base64_decode($get['filter_period_year']);
             $filter_customer_id = @base64_decode($get['filter_customer_id']);
+            $filter_item_fg = @base64_decode($get['filter_item_fg']);
             $filter_revision = @base64_decode($get['filter_revision']);
 
             $page = $this->input->post('page');
@@ -136,6 +139,7 @@ class Forecasts extends CI_Controller
             // $this->db->like('a.p_month', $filter_period_month);
             // $this->db->like('a.p_year', $filter_period_year);
             $this->db->like('a.customer_id', $filter_customer_id);
+            $this->db->like('a.item_fg_id', $filter_item_fg);
             $this->db->like('a.revision', $filter_revision);
             $this->db->group_by('a.customer_id');
             $this->db->group_by('a.plant');
@@ -162,6 +166,7 @@ class Forecasts extends CI_Controller
     {
         if ($this->input->get()) {
             $customer_id = base64_decode($this->input->get('customer_id'));
+            $item_fg_id = base64_decode($this->input->get('item_fg_id'));
             $plant = base64_decode($this->input->get('plant'));
             $p_month = base64_decode($this->input->get('p_month'));
             $p_year = base64_decode($this->input->get('p_year'));
@@ -176,6 +181,9 @@ class Forecasts extends CI_Controller
             $this->db->where('a.p_month', $p_month);
             $this->db->where('a.p_year', $p_year);
             $this->db->where('a.revision', $revision);
+            if($item_fg_id != ""){
+                $this->db->where('a.item_fg_id', $item_fg_id);
+            }
             $this->db->group_by('a.id');
             $this->db->order_by('a.id', 'ASC');
             $records = $this->db->get()->result_array();
@@ -188,20 +196,16 @@ class Forecasts extends CI_Controller
     public function datatableUpdates()
     {
         if ($this->input->get()) {
-            $customer_id = base64_decode($this->input->get('customer_id'));
-            $plant = base64_decode($this->input->get('plant'));
-            $p_month = base64_decode($this->input->get('p_month'));
-            $p_year = base64_decode($this->input->get('p_year'));
-            $revision = base64_decode($this->input->get('revision'));
+            $document_no = base64_decode($this->input->get('document_no'));
 
             $this->db->select('a.*, b.number as item_fg_number, b.name as item_fg_name, b.number_customer as item_fg_customer');
             $this->db->from('forecasts a');
             $this->db->join('item_fg b', 'a.item_fg_id = b.id');
-            $this->db->where('a.customer_id', $customer_id);
-            $this->db->where('a.plant', $plant);
-            $this->db->where('a.p_month', $p_month);
-            $this->db->where('a.p_year', $p_year);
-            $this->db->where('a.revision', $revision);
+            $this->db->where('a.document_no', $document_no);
+            // $this->db->where('a.plant', $plant);
+            // $this->db->where('a.p_month', $p_month);
+            // $this->db->where('a.p_year', $p_year);
+            // $this->db->where('a.revision', $revision);
             $this->db->order_by('a.id', 'ASC');
             $records = $this->db->get()->result_array();
 
@@ -269,20 +273,54 @@ class Forecasts extends CI_Controller
     }
 
     //AUTO ID
-    public function autoid(){
-        $post = $this->input->post();
-        $issued_date = $post["issued_date"];
-        $month = date('ym',strtotime($issued_date));
-        $format = "FC".$month;
-        $sql = $this->db->query("SELECT max(document_no) as kode FROM forecasts WHERE document_no LIKE '%$format%'");
-        $row = $sql->row();
-        if ($row->kode == ""){
-            $kode = 0;
-        } else {
-            $kode = substr($row->kode,-3);
+    public function autoid($id_menu, $type = ""){
+        // $post = $this->input->post();
+        // $issued_date = $post["issued_date"];
+        // $month = date('ym',strtotime($issued_date));
+        // $format = "FC".$month;
+        // $sql = $this->db->query("SELECT max(document_no) as kode FROM forecasts WHERE document_no LIKE '%$format%'");
+        // $row = $sql->row();
+        // if ($row->kode == ""){
+        //     $kode = 0;
+        // } else {
+        //     $kode = substr($row->kode,-3);
+        // }
+        // $autoid =$format. sprintf("%03s", $kode + 1);
+        // echo $autoid;
+
+        $datenow = date("Y-m-d");
+        $sql_menu = $this->db->query("SELECT * FROM menus_no WHERE menus_id = '$id_menu' and `status` = '0' and `start_date` <= '$datenow' and end_date >= '$datenow'");
+        $row_menu = $sql_menu->row();
+
+        if(@$row_menu->number == ""){
+            //
+        }else{
+            $number = @$row_menu->number;
+            $yearnow = date("y", strtotime($row_menu->start_date));
+            $yearend = date("y", strtotime($row_menu->end_date));
+
+            $whereDate = $number.$yearnow.$yearend."1";
+
+            $sqlGetID	= $this->db->query("SELECT max(document_no) as kode FROM forecasts WHERE document_no like '%$whereDate%'");
+            $rowID = $sqlGetID->row();
+            $kode = $rowID->kode;
+            
+            if ($kode == NULL) {
+                $autoID = sprintf("%0".$row_menu->sequence."s", $kode + 1);
+                $autoNo = $whereDate.$autoID;
+            } else {
+                $urutan = (int) substr($kode, -6);
+                $urutan++;
+                $autoID	= sprintf("%0".$row_menu->sequence."s", $urutan);
+                $autoNo = $whereDate.$autoID;
+            }
+
+            if($type == ""){
+                echo $autoNo;
+            }else{
+                return $autoNo;
+            }
         }
-        $autoid =$format. sprintf("%03s", $kode + 1);
-        echo $autoid;
     }
 
     //CREATE DATA
@@ -325,7 +363,7 @@ class Forecasts extends CI_Controller
             $item_fg = $this->crud->read("item_fg", [], ["id" => $post['item_fg_id']]);
             $customer = $this->crud->read("customers", [], ["id" => $post['customer_id']]);
             $customer_item = $this->crud->read("customer_items", [], ["customer_id" => $post['customer_id'], "item_fg_id" => $post['item_fg_id']]);
-            $customer_address = $this->crud->read("customer_address", [], ["customer_id" => $post['customer_id']]);
+            $customer_address = $this->crud->read("customer_address", [], ["plant" => $post['plant']]);
             $sales_order_no = $this->input->get('sales_order_no');
 
             $sales_orders = $this->crud->read("sales_orders", [], ["customer_id" => $post['customer_id'], "item_fg_id" => $post['item_fg_id'], "forecast_no" => $post['document_no']]);
@@ -337,15 +375,15 @@ class Forecasts extends CI_Controller
                     "customer_order_no" => "-",
                     "forecast_no" => $post['document_no'],
                     "revision" => $post['revision'],
-                    "sales_order_date" => date("Y-m-d"),
-                    "delivery_date" => date("Y-m-d", strtotime($item_fg->leadtime." days")),
+                    "sales_order_date" => $post['issued_date'],
+                    "delivery_date" => date("Y-m-d", strtotime($item_fg->leadtime." days", strtotime($post['issued_date']))),
                     "uom" => $item_fg->uom,
                     "qty" => $post['month_1'],
                     "outstanding" => $post['month_1'],
                     "currency" => $customer->currency,
                     "price" => $customer_item->price,
                     "total" => ($post['month_1'] * $customer_item->price),
-                    "plant" => @$customer_address->plant,
+                    "plant" => @$post['plant'],
                     "department" => @$customer_address->department,
                 );
 
@@ -359,8 +397,8 @@ class Forecasts extends CI_Controller
                     "forecast_no" => $post['document_no'],
                     "revision" => $post['revision'],
                     "sales_order_no" => $sales_order_no,
-                    "sales_order_date" => date("Y-m-d"),
-                    "delivery_date" => date("Y-m-d", strtotime($item_fg->leadtime." days")),
+                    "sales_order_date" => $post['issued_date'],
+                    "delivery_date" => date("Y-m-d", strtotime($item_fg->leadtime." days", strtotime($post['issued_date']))),
                     "uom" => $item_fg->uom,
                     "qty" => $post['month_1'],
                     "outstanding" => $post['month_1'],
@@ -473,19 +511,7 @@ class Forecasts extends CI_Controller
 
             //Cek Process Number          //table       //field        //field excel
             $forecasts = $this->crud->read('forecasts', [], ["customer_id" => $data['customer_id'], "item_fg_id" => $data['item_fg_id']]);
-
-            $post = $this->input->post();
-            $issued_date = $data["issued_date"];
-            $month = date('ym',strtotime($issued_date));
-            $format = "FC".$month;
-            $sql = $this->db->query("SELECT max(document_no) as kode FROM forecasts WHERE document_no LIKE '%$format%'");
-            $row = $sql->row();
-            if ($row->kode == ""){
-                $kode = 0;
-            } else {
-                $kode = substr($row->kode,-3);
-            }
-            $autoid =$format. sprintf("%03s", $kode + 1);
+            $autoid = $this->autoid("20230811000012", "OK");
 
             if (!empty($forecasts->customer_id)) {
                 echo json_encode(array("title" => "Duplicated", "message" => " Customer " . $data['customer_id'] . " is Duplicate Data", "theme" => "error"));
@@ -537,6 +563,7 @@ class Forecasts extends CI_Controller
         // $filter_period_month = @base64_decode($get['filter_period_month']);
         // $filter_period_year = @base64_decode($get['filter_period_year']);
         $filter_customer_id = @base64_decode($get['filter_customer_id']);
+        $filter_item_fg = @base64_decode($get['filter_item_fg']);
         $filter_revision = @base64_decode($get['filter_revision']);
 
         $p_date_start = $filter_issued_date_from;
@@ -565,216 +592,112 @@ class Forecasts extends CI_Controller
         // $this->db->like('a.p_month', $filter_period_month);
         // $this->db->like('a.p_year', $filter_period_year);
         $this->db->like('a.customer_id', $filter_customer_id);
+        $this->db->like('a.item_fg_id', $filter_item_fg);
         $this->db->like('a.revision', $filter_revision);
-        $this->db->group_by('a.customer_id');
-        $this->db->group_by('a.plant');
-        $this->db->group_by('a.p_month');
-        $this->db->group_by('a.p_year');
-        $this->db->group_by('a.revision');
         $this->db->order_by('a.created_date', 'DESC');
         $records = $this->db->get()->result_array();
 
-        if ($filter_customer_id == ""){
-            $i_d_from = date_create($filter_issued_date_from);
-            $i_d_to = date_create($filter_issued_date_to);
-            $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#forecasts {border-collapse: collapse;width: 100%;font-size: 12px;}#forecasts td, #forecasts th {border: 1px solid #ddd;padding: 2px;}#forecasts tr:nth-child(even){background-color: #f2f2f2;}#forecasts tr:hover {background-color: #ddd;}#forecasts th {padding-top: 2px;padding-bottom: 2px;text-align: left;color: black;}</style><body>
-            <center>
-                <div style="float: left; font-size: 12px; text-align: left;">
+        $customer = $this->crud->read("customers", [], ["id" => $filter_customer_id]);
+
+        $i_d_from = date_create($filter_issued_date_from);
+        $i_d_to = date_create($filter_issued_date_to);
+        $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#forecasts {border-collapse: collapse;width: 100%;font-size: 12px;}#forecasts td, #forecasts th {border: 1px solid #ddd;padding: 2px;}#forecasts tr:nth-child(even){background-color: #f2f2f2;}#forecasts tr:hover {background-color: #ddd;}#forecasts th {padding-top: 2px;padding-bottom: 2px;text-align: left;color: black;}</style><body>
+        <center>
+            <div style="float: left; font-size: 12px; text-align: left;">
+                <table style="width: 100%;">
+                    <tr>
+                        <td width="50" style="font-size: 12px; vertical-align: top; text-align: center; vertical-align:jus margin-right:10px;">
+                            <img src="' . $config->favicon . '" width="30">
+                        </td>
+                        <td style="font-size: 14px; text-align: left; margin:2px;">
+                            <b>' . $config->name . '</b>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <div style="float: right; font-size: 12px; text-align: right;">
+                Print Date ' . date("d M Y H:m:s") . ' <br>
+                Print By ' . $this->session->username . '  
+            </div>
+            <br><br>
+            <div style="float: centet; font-size: 16px; text-align: center;">
+                <h3>FORECAST CUSTOMER</h3>
+            </div>
+            <div style="float: left; font-size: 12px; text-align: left;">
                     <table style="width: 100%;">
                         <tr>
-                            <td width="50" style="font-size: 12px; vertical-align: top; text-align: center; vertical-align:jus margin-right:10px;">
-                                <img src="' . $config->favicon . '" width="30">
+                            <td style="font-size: 14px; text-align: left; margin:2px;">
+                                <small>ISSUED DATE</small><br>
+                                <small>CUSTOMER NAME</small>
                             </td>
                             <td style="font-size: 14px; text-align: left; margin:2px;">
-                                <b>' . $config->name . '</b>
+                                <small>: </small><br>
+                                <small>: </small>
+                            </td>
+                            <td style="font-size: 14px; text-align: left; margin:2px;">
+                                <small><b>' . date_format($i_d_from,"d F Y") . '</b> to <b>' . date_format($i_d_to,"d F Y") . '</b></small><br>
+                                <small><b>'.@$customer->name.'</b></small>
                             </td>
                         </tr>
                     </table>
                 </div>
-                <div style="float: right; font-size: 12px; text-align: right;">
-                    Print Date ' . date("d M Y H:m:s") . ' <br>
-                    Print By ' . $this->session->username . '  
-                </div>
-                <br><br>
-                <div style="float: centet; font-size: 16px; text-align: center;">
-                    <h3>FORECAST CUSTOMER</h3>
-                </div>
-                <div style="float: left; font-size: 12px; text-align: left;">
-                        <table style="width: 100%;">
-                            <tr>
-                                <td style="font-size: 14px; text-align: left; margin:2px;">
-                                    <small>ISSUED DATE</small><br>
-                                    <small>CUSTOMER NAME</small>
-                                </td>
-                                <td style="font-size: 14px; text-align: left; margin:2px;">
-                                    <small>: </small><br>
-                                    <small>: </small>
-                                </td>
-                                <td style="font-size: 14px; text-align: left; margin:2px;">
-                                    <small><b>' . date_format($i_d_from,"d F Y") . '</b> to <b>' . date_format($i_d_to,"d F Y") . '</b></small><br>
-                                    <small><b>ALL</b></small>
-                                </td>
-                            </tr>
-                        </table>
-                    </div>
-            </center>
-            
-            <table id="forecasts" border="1">
-                <tr>
-                    <th width="20">No</th>
-                    <th>Customer Name</th>
-                    <th>Plant</th>
-                    <th>Document No</th>
-                    <th>Issued Date</th>
-                    <th>Period</th>
-                    <th>Revision</th>
-                    <th>Remark</th>
-                    <th>Product No</th>
-                    <th>Product Customer</th>
-                    <th>Product Name</th>
-                    <th>' . $dates[0]['name'] . '</th>
-                    <th>' . $dates[1]['name'] . '</th>
-                    <th>' . $dates[2]['name'] . '</th>
-                    <th>' . $dates[3]['name'] . '</th>
-                    <th>' . $dates[4]['name'] . '</th>
-                    <th>' . $dates[5]['name'] . '</th>
-                    <th>' . $dates[6]['name'] . '</th>
-                    <th>' . $dates[7]['name'] . '</th>
-                    <th>' . $dates[8]['name'] . '</th>
-                    <th>' . $dates[9]['name'] . '</th>
-                    <th>' . $dates[10]['name'] . '</th>
-                    <th>' . $dates[11]['name'] . '</th>
-                </tr>';
-            $no = 1;
-            foreach ($records as $data) {
-                $html .= '<tr>
-                        <td>' . $no . '</td>
-                        <td>' . $data['customer_name'] . '</td>
-                        <td>' . $data['plant'] . '</td>
-                        <td>' . $data['document_no'] . '</td>
-                        <td>' . $data['issued_date'] . '</td>
-                        <td>' . $data['p_month'] . '/' . $data['p_year'] . '</td>
-                        <td>' . $data['revision'] . '</td>
-                        <td>' . $data['remark'] . '</td>
-                        <td>' . $data['item_fg_number'] . '</td>
-                        <td>' . $data['number_customer'] . '</td>
-                        <td>' . $data['item_fg_name'] . '</td>
-                        <td>' . number_format($data['month_1']) . '</td>
-                        <td>' . number_format($data['month_2']) . '</td>
-                        <td>' . number_format($data['month_3']) . '</td>
-                        <td>' . number_format($data['month_4']) . '</td>
-                        <td>' . number_format($data['month_5']) . '</td>
-                        <td>' . number_format($data['month_6']) . '</td>
-                        <td>' . number_format($data['month_7']) . '</td>
-                        <td>' . number_format($data['month_8']) . '</td>
-                        <td>' . number_format($data['month_9']) . '</td>
-                        <td>' . number_format($data['month_10']) . '</td>
-                        <td>' . number_format($data['month_11']) . '</td>
-                        <td>' . number_format($data['month_12']) . '</td>';
-                $no++;
-            }
-            $html .= '</table></body></html>';
-            echo $html;
-        } elseif ($filter_customer_id != "") {
-            $i_d_from = date_create($filter_issued_date_from);
-            $i_d_to = date_create($filter_issued_date_to);
-            foreach ($records as $data) {
-                $filter_customer_id = $data['customer_name'];
-            }
-            $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#forecasts {border-collapse: collapse;width: 100%;font-size: 12px;}#forecasts td, #forecasts th {border: 1px solid #ddd;padding: 2px;}#forecasts tr:nth-child(even){background-color: #f2f2f2;}#forecasts tr:hover {background-color: #ddd;}#forecasts th {padding-top: 2px;padding-bottom: 2px;text-align: left;color: black;}</style><body>
-            <center>
-                <div style="float: left; font-size: 12px; text-align: left;">
-                    <table style="width: 100%;">
-                        <tr>
-                            <td width="50" style="font-size: 12px; vertical-align: top; text-align: center; vertical-align:jus margin-right:10px;">
-                                <img src="' . $config->favicon . '" width="30">
-                            </td>
-                            <td style="font-size: 14px; text-align: left; margin:2px;">
-                                <b>' . $config->name . '</b>
-                            </td>
-                        </tr>
-                    </table>
-                </div>
-                <div style="float: right; font-size: 12px; text-align: right;">
-                    Print Date ' . date("d M Y H:m:s") . ' <br>
-                    Print By ' . $this->session->username . '  
-                </div>
-                <br><br>
-                <div style="float: centet; font-size: 16px; text-align: center;">
-                    <h3>FORECAST CUSTOMER</h3>
-                </div>
-                <div style="float: left; font-size: 12px; text-align: left;">
-                        <table style="width: 100%;">
-                            <tr>
-                                <td style="font-size: 14px; text-align: left; margin:2px;">
-                                    <small>ISSUED DATE</small><br>
-                                    <small>CUSTOMER NAME</small>
-                                </td>
-                                <td style="font-size: 14px; text-align: left; margin:2px;">
-                                    <small>: </small><br>
-                                    <small>: </small>
-                                </td>
-                                <td style="font-size: 14px; text-align: left; margin:2px;">
-                                    <small><b>' . date_format($i_d_from,"d F Y") . '</b> to <b>' . date_format($i_d_to,"d F Y") . '</b></small><br>
-                                    <small><b>' . $filter_customer_id . '</b></small>
-                                </td>
-                            </tr>
-                        </table>
-                    </div>
-            </center>
-            
-            <table id="forecasts" border="1">
-                <tr>
-                    <th width="20">No</th>
-                    <th>Customer Name</th>
-                    <th>Document No</th>
-                    <th>Issued Date</th>
-                    <th>Period</th>
-                    <th>Revision</th>
-                    <th>Remark</th>
-                    <th>Product No</th>
-                    <th>Product Name</th>
-                    <th>' . $dates[0]['name'] . '</th>
-                    <th>' . $dates[1]['name'] . '</th>
-                    <th>' . $dates[2]['name'] . '</th>
-                    <th>' . $dates[3]['name'] . '</th>
-                    <th>' . $dates[4]['name'] . '</th>
-                    <th>' . $dates[5]['name'] . '</th>
-                    <th>' . $dates[6]['name'] . '</th>
-                    <th>' . $dates[7]['name'] . '</th>
-                    <th>' . $dates[8]['name'] . '</th>
-                    <th>' . $dates[9]['name'] . '</th>
-                    <th>' . $dates[10]['name'] . '</th>
-                    <th>' . $dates[11]['name'] . '</th>
-                </tr>';
-            $no = 1;
-            foreach ($records as $data) {
-                $html .= '<tr>
-                        <td>' . $no . '</td>
-                        <td>' . $data['customer_name'] . '</td>
-                        <td>' . $data['document_no'] . '</td>
-                        <td>' . $data['issued_date'] . '</td>
-                        <td>' . $data['p_month'] . '/' . $data['p_year'] . '</td>
-                        <td>' . $data['revision'] . '</td>
-                        <td>' . $data['remark'] . '</td>
-                        <td>' . $data['item_fg_number'] . '</td>
-                        <td>' . $data['item_fg_name'] . '</td>
-                        <td>' . number_format($data['month_1']) . '</td>
-                        <td>' . number_format($data['month_2']) . '</td>
-                        <td>' . number_format($data['month_3']) . '</td>
-                        <td>' . number_format($data['month_4']) . '</td>
-                        <td>' . number_format($data['month_5']) . '</td>
-                        <td>' . number_format($data['month_6']) . '</td>
-                        <td>' . number_format($data['month_7']) . '</td>
-                        <td>' . number_format($data['month_8']) . '</td>
-                        <td>' . number_format($data['month_9']) . '</td>
-                        <td>' . number_format($data['month_10']) . '</td>
-                        <td>' . number_format($data['month_11']) . '</td>
-                        <td>' . number_format($data['month_12']) . '</td>';
-                $no++;
-            }
-            $html .= '</table></body></html>';
-            echo $html;
+        </center>
+        
+        <table id="forecasts" border="1">
+            <tr>
+                <th width="20">No</th>
+                <th>Customer Name</th>
+                <th>Plant</th>
+                <th>Document No</th>
+                <th>Issued Date</th>
+                <th>Period</th>
+                <th>Revision</th>
+                <th>Remark</th>
+                <th>Product No</th>
+                <th>Product Customer</th>
+                <th>Product Name</th>
+                <th>' . $dates[0]['name'] . '</th>
+                <th>' . $dates[1]['name'] . '</th>
+                <th>' . $dates[2]['name'] . '</th>
+                <th>' . $dates[3]['name'] . '</th>
+                <th>' . $dates[4]['name'] . '</th>
+                <th>' . $dates[5]['name'] . '</th>
+                <th>' . $dates[6]['name'] . '</th>
+                <th>' . $dates[7]['name'] . '</th>
+                <th>' . $dates[8]['name'] . '</th>
+                <th>' . $dates[9]['name'] . '</th>
+                <th>' . $dates[10]['name'] . '</th>
+                <th>' . $dates[11]['name'] . '</th>
+            </tr>';
+        $no = 1;
+        foreach ($records as $data) {
+            $html .= '<tr>
+                    <td>' . $no . '</td>
+                    <td>' . $data['customer_name'] . '</td>
+                    <td>' . $data['plant'] . '</td>
+                    <td>' . $data['document_no'] . '</td>
+                    <td>' . $data['issued_date'] . '</td>
+                    <td>' . $data['p_month'] . '/' . $data['p_year'] . '</td>
+                    <td>' . $data['revision'] . '</td>
+                    <td>' . $data['remark'] . '</td>
+                    <td>' . $data['item_fg_number'] . '</td>
+                    <td>' . $data['number_customer'] . '</td>
+                    <td>' . $data['item_fg_name'] . '</td>
+                    <td>' . number_format($data['month_1']) . '</td>
+                    <td>' . number_format($data['month_2']) . '</td>
+                    <td>' . number_format($data['month_3']) . '</td>
+                    <td>' . number_format($data['month_4']) . '</td>
+                    <td>' . number_format($data['month_5']) . '</td>
+                    <td>' . number_format($data['month_6']) . '</td>
+                    <td>' . number_format($data['month_7']) . '</td>
+                    <td>' . number_format($data['month_8']) . '</td>
+                    <td>' . number_format($data['month_9']) . '</td>
+                    <td>' . number_format($data['month_10']) . '</td>
+                    <td>' . number_format($data['month_11']) . '</td>
+                    <td>' . number_format($data['month_12']) . '</td>';
+            $no++;
         }
+        $html .= '</table></body></html>';
+        echo $html;
     }
 }

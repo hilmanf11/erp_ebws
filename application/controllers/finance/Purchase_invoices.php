@@ -40,7 +40,7 @@ class Purchase_invoices extends CI_Controller
         $this->db->join('suppliers b', 'a.supplier_id = b.id');
         $this->db->join('item_familys d', 'a.item_family_id = d.id');
         $this->db->join('account_coa c', 'a.account_number = c.account_number', 'left');
-        $this->db->join('exchange_rates e', "e.start_date = DATE_FORMAT((a.trans_date - INTERVAL '1' MONTH), '%Y-%m-01') and e.currency_from = a.currency", 'left');
+        $this->db->join('exchange_rates e', "e.start_date = DATE_FORMAT(a.trans_date, '%Y-%m-01') and e.currency_from = a.currency", 'left');
         $this->db->join('item_rm f', 'a.item_rm_id = f.id');
         $this->db->join('tds k', "b.tds = k.section", 'left');
         $this->db->where('a.deleted', 0);
@@ -66,7 +66,7 @@ class Purchase_invoices extends CI_Controller
         $datas['total_sgst'] = $total_sgst;
         $datas['total_cgst'] = $total_cgst;
         $datas['total_grand'] = ($total_sub + $total_igst + $total_sgst + $total_cgst);
-        $datas['total_tds'] = round((($total_sub * @$records[0]['individual']) / 100), 2);
+        $datas['total_tds'] = @$records[0]['total_tds'];
         $datas['tds'] = @$records[0]['tds'];
         $datas['individual'] = @$records[0]['individual'];
 
@@ -197,20 +197,33 @@ class Purchase_invoices extends CI_Controller
     {
         $supplier_id = $this->input->get('supplier_id');
 
-        if ($type == "purchase") {
+        if ($type == "purchase" || $type == "other") {
             $dp = "and d.total_dp = 0";
-        } else {
+        } else if ($type == "dp") {
             $dp = "and d.total_dp > 0";
         }
 
-        $records = $this->crud->query("SELECT a.receipt_no, d.taxes, d.total_dp, a.bc_document
-            FROM purchase_order_receipts a
-            JOIN item_rm b ON a.item_rm_id = b.id
-            JOIN item_familys c ON b.item_family_id = c.id
-            JOIN purchase_orders d ON a.po_no = d.po_no
-            WHERE a.supplier_id = '$supplier_id' and a.status = '0' $dp
-            GROUP BY a.receipt_no 
-            ORDER BY a.created_date desc");
+        if($type == "purchase"){
+            $records = $this->crud->query("SELECT a.receipt_no, d.taxes, d.total_dp, a.bc_document, a.awb_no
+                FROM purchase_order_receipts a
+                JOIN item_rm b ON a.item_rm_id = b.id
+                JOIN item_familys c ON b.item_family_id = c.id
+                JOIN purchase_orders d ON a.po_no = d.po_no
+                JOIN (SELECT receipt_id, SUM(status) as total_label FROM purchase_order_labels GROUP BY receipt_id) e ON a.receipt_id = e.receipt_id
+                WHERE a.supplier_id = '$supplier_id' and a.status = '0' and e.total_label = a.qty_label $dp
+                GROUP BY a.receipt_no 
+                ORDER BY a.created_date desc");
+        }else{
+            $records = $this->crud->query("SELECT a.receipt_no, d.taxes, d.total_dp, a.bc_document, a.awb_no
+                FROM purchase_order_receipt_others a
+                JOIN item_rm b ON a.item_rm_id = b.id
+                JOIN item_familys c ON b.item_family_id = c.id
+                JOIN purchase_order_others d ON a.po_no = d.po_no
+                WHERE a.supplier_id = '$supplier_id' and a.status = '0' $dp
+                GROUP BY a.receipt_no 
+                ORDER BY a.created_date desc");
+        }
+        
         echo json_encode($records);
     }
 
@@ -300,6 +313,7 @@ class Purchase_invoices extends CI_Controller
 
     public function datatablesTemp()
     {
+        $type = $this->input->get('type');
         $por_no = base64_decode($this->input->get('por_no'));
         $por_no_ex = explode(",", $por_no);
 
@@ -308,40 +322,76 @@ class Purchase_invoices extends CI_Controller
         $this->db->from('config');
         $config = $this->db->get()->row();
 
-        $this->db->select("a.receipt_no as por_no, a.po_no, c.id as item_rm_id, c.number as item_rm_number, c.name as item_rm_name, c.uom, c.hsn_code, b.currency, 
-            a.qty_receipt as qty, f.price, f.discount, 'INR' as currency_local, h.account_number, i.account_name, h.id  as item_family_id, h.name as item_family_name,
-            b.tds, b.state, k.individual,
-            ((a.qty_receipt * f.price) * COALESCE(j.igst, 0) / 100) as igst,
-            ((a.qty_receipt * f.price) * COALESCE(j.sgst, 0) / 100) as sgst,
-            ((a.qty_receipt * f.price) * COALESCE(j.cgst, 0) / 100) as cgst,
-            (a.qty_receipt * f.price) as total,
-            (CASE WHEN g.middle is null THEN 1 ELSE g.middle END) as rate");
-        $this->db->from('purchase_order_receipts a');
-        $this->db->join('suppliers b', 'a.supplier_id = b.id');
-        $this->db->join('item_rm c', 'a.item_rm_id = c.id');
-        $this->db->join('supplier_items e', 'b.id = e.supplier_id and c.id = e.item_rm_id');
-        $this->db->join('purchase_orders f', 'a.po_no = f.po_no and b.id = f.supplier_id and c.id = f.item_rm_id');
-        $this->db->join('exchange_rates g', "g.start_date = DATE_FORMAT((a.receipt_date - INTERVAL '1' MONTH), '%Y-%m-01') and g.currency_from = b.currency", 'left');
-        $this->db->join('item_familys h', "c.item_family_id = h.id", 'left');
-        $this->db->join('account_coa i', "h.account_number = i.account_number", 'left');
-        $this->db->join('hsn j', "c.hsn_code = j.number", 'left');
-        $this->db->join('tds k', "b.tds = k.section", 'left');
-        $this->db->where('a.deleted', 0);
-        // $this->db->where('a.status', 0);
-        $this->db->where_in('a.receipt_no', $por_no_ex);
-        $this->db->group_by('a.po_no');
-        $this->db->group_by('a.item_rm_id');
-        $this->db->group_by('a.receipt_no');
-        $this->db->order_by('a.receipt_no', 'asc');
-        $records = $this->db->get()->result_array();
+        if($type == "purchase"){
+            $this->db->select("a.receipt_no as por_no, a.po_no, c.id as item_rm_id, c.number as item_rm_number, c.name as item_rm_name, c.uom, c.hsn_code, b.currency, 
+                a.qty_receipt as qty, f.price, f.discount, 'INR' as currency_local, h.account_number, i.account_name, h.id  as item_family_id, h.name as item_family_name,
+                b.tds, b.state, k.individual, b.type as supplier_type,
+                ((a.qty_receipt * f.price) * COALESCE(j.igst, 0) / 100) as igst,
+                ((a.qty_receipt * f.price) * COALESCE(j.sgst, 0) / 100) as sgst,
+                ((a.qty_receipt * f.price) * COALESCE(j.cgst, 0) / 100) as cgst,
+                (a.qty_receipt * f.price) as total,
+                (CASE WHEN g.middle is null THEN 1 ELSE g.middle END) as rate");
+            $this->db->from('purchase_order_receipts a');
+            $this->db->join('suppliers b', 'a.supplier_id = b.id');
+            $this->db->join('item_rm c', 'a.item_rm_id = c.id');
+            $this->db->join('supplier_items e', 'b.id = e.supplier_id and c.id = e.item_rm_id');
+            $this->db->join('purchase_orders f', 'a.po_no = f.po_no and b.id = f.supplier_id and c.id = f.item_rm_id');
+            $this->db->join('exchange_rates g', "g.start_date = DATE_FORMAT(a.receipt_date, '%Y-%m-01') and g.currency_from = b.currency", 'left');
+            $this->db->join('item_familys h', "c.item_family_id = h.id", 'left');
+            $this->db->join('account_coa i', "h.account_number = i.account_number", 'left');
+            $this->db->join('hsn j', "c.hsn_code = j.number", 'left');
+            $this->db->join('tds k', "b.tds = k.section", 'left');
+            $this->db->where('a.deleted', 0);
+            // $this->db->where('a.status', 0);
+            $this->db->where_in('a.receipt_no', $por_no_ex);
+            $this->db->group_by('a.po_no');
+            $this->db->group_by('a.item_rm_id');
+            $this->db->group_by('a.receipt_no');
+            $this->db->order_by('a.receipt_no', 'asc');
+            $records = $this->db->get()->result_array();
+        }else{
+            $this->db->select("a.receipt_no as por_no, a.po_no, c.id as item_rm_id, c.number as item_rm_number, c.name as item_rm_name, c.uom, c.hsn_code, b.currency, 
+                a.qty_receipt as qty, f.price, f.discount, 'INR' as currency_local, h.account_number, i.account_name, h.id  as item_family_id, h.name as item_family_name,
+                b.tds, b.state, k.individual, b.type as supplier_type,
+                ((a.qty_receipt * f.price) * COALESCE(j.igst, 0) / 100) as igst,
+                ((a.qty_receipt * f.price) * COALESCE(j.sgst, 0) / 100) as sgst,
+                ((a.qty_receipt * f.price) * COALESCE(j.cgst, 0) / 100) as cgst,
+                (a.qty_receipt * f.price) as total,
+                (CASE WHEN g.middle is null THEN 1 ELSE g.middle END) as rate");
+            $this->db->from('purchase_order_receipt_others a');
+            $this->db->join('suppliers b', 'a.supplier_id = b.id');
+            $this->db->join('item_rm c', 'a.item_rm_id = c.id');
+            $this->db->join('supplier_items e', 'b.id = e.supplier_id and c.id = e.item_rm_id');
+            $this->db->join('purchase_order_others f', 'a.po_no = f.po_no and b.id = f.supplier_id and c.id = f.item_rm_id');
+            $this->db->join('exchange_rates g', "g.start_date = DATE_FORMAT(a.receipt_date, '%Y-%m-01') and g.currency_from = b.currency", 'left');
+            $this->db->join('item_familys h', "c.item_family_id = h.id", 'left');
+            $this->db->join('account_coa i', "h.account_number = i.account_number", 'left');
+            $this->db->join('hsn j', "c.hsn_code = j.number", 'left');
+            $this->db->join('tds k', "b.tds = k.section", 'left');
+            $this->db->where('a.deleted', 0);
+            // $this->db->where('a.status', 0);
+            $this->db->where_in('a.receipt_no', $por_no_ex);
+            $this->db->group_by('a.po_no');
+            $this->db->group_by('a.item_rm_id');
+            $this->db->group_by('a.receipt_no');
+            $this->db->order_by('a.receipt_no', 'asc');
+            $records = $this->db->get()->result_array();
+        }
 
+        $rate = 0;
+        $total_price = 0;
         $total_sub = 0;
+        $total_sub2 = 0;
+        $total_sub3 = 0;
+        $total_qty = 0;
         $total_igst = 0;
         $total_cgst = 0;
         $total_sgst = 0;
         $id = 1;
+        $obj = array();
         foreach ($records as $record) {
             $total_sub += $record['total'];
+            $total_qty += $record['qty'];
             
             if($record['state'] == $config->state){
                 $igst = 0;
@@ -352,13 +402,22 @@ class Purchase_invoices extends CI_Controller
                 $total_igst += 0;
                 $total_cgst += $record['cgst'];
                 $total_sgst += $record['sgst'];
-            }else{
+            }else if($record['supplier_type'] == "LOCAL"){
                 $igst = $record['igst'];
                 $cgst = 0;
                 $sgst = 0;
                 $total2 = ($record['total'] + $record['igst']);
                 $total2_local = ($total2 * $record['rate']);
                 $total_igst += $record['igst'];
+                $total_cgst += 0;
+                $total_sgst += 0;
+            }else {
+                $igst = 0;
+                $cgst = 0;
+                $sgst = 0;
+                $total2 = ($record['total']);
+                $total2_local = ($total2 * $record['rate']);
+                $total_igst += 0;
                 $total_cgst += 0;
                 $total_sgst += 0;
             }
@@ -391,8 +450,26 @@ class Purchase_invoices extends CI_Controller
                 "account_type" => "DEBIT"
             );
 
+            $rate = $record['rate'];
+            $total_sub2 += $total2;
+            $total_sub3 += $total2_local;
+            $total_price += $record['price'];
             $id++;
         }
+
+        $arr['footer'] = array([
+            "action" => "0",
+            "por_no" => "GRAND TOTAL",
+            "qty" => $total_qty,
+            "total" => $total_sub,
+            "igst" => $total_igst,
+            "cgst" => $total_cgst,
+            "sgst" => $total_sgst,
+            "price" => $total_price,
+            "rate" => $rate,
+            "total2" => $total_sub2,
+            "total_local" => $total_sub3,
+        ]); 
 
         $arr['rows'] = $obj;
         $arr['total_sub'] = round($total_sub, 2);
@@ -402,56 +479,6 @@ class Purchase_invoices extends CI_Controller
         $arr['total_tds'] = round((($total_sub * @$records[0]['individual']) / 100), 2);
         $arr['tds'] = @$records[0]['tds'];
         $arr['individual'] = @$records[0]['individual'];
-        die(json_encode($arr));
-    }
-
-    public function datatablesTemp2()
-    {
-        $po_no = base64_decode($this->input->get('po_no'));
-
-        $this->db->select("a.po_no, a.po_date, a.po_name, a.item_rm_id, b.number as item_rm_number, b.name as item_rm_name, a.qty, c.name as uom, 
-        e.currency, 'INR' as currency_local, a.price, f.account_number, i.account_name,
-        (a.qty * a.price) as total,
-        (CASE WHEN g.selling is null THEN (a.qty * a.price) ELSE
-        (a.qty * (a.price * g.selling)) END) as total_local");
-        $this->db->from('purchase_order_others a');
-        $this->db->join('items b', 'a.item_rm_id = b.id');
-        $this->db->join('uom c', 'b.uom_id = c.id');
-        $this->db->join('supplier_items d', 'a.supplier_id = d.supplier_id and a.item_rm_id = d.item_rm_id');
-        $this->db->join('suppliers e', 'a.supplier_id = e.id');
-        $this->db->join('item_familys f', "b.item_family_id = f.id", 'left');
-        $this->db->join('exchange_rates g', "e.currency = g.currency_from and g.currency_to = 'INR'", 'left');
-        $this->db->join('account_coa i', "f.account_number = i.account_number", 'left');
-        $this->db->where('a.status', 0);
-        $this->db->like('a.po_no', $po_no);
-        $this->db->group_by('a.item_rm_id');
-        $this->db->order_by('b.number', 'ASC');
-        $records = $this->db->get()->result_array();
-
-        $total_sub = 0;
-        foreach ($records as $record) {
-            $total_sub += $record['total'];
-            $obj[] = array(
-                "por_no" => "-",
-                "po_no" => $record['po_no'],
-                "item_rm_id" => $record['item_rm_id'],
-                "item_rm_number" => $record['item_rm_number'],
-                "item_rm_name" => $record['item_rm_name'],
-                "uom" => $record['uom'],
-                "currency" => $record['currency'],
-                "currency_local" => $record['currency_local'],
-                "qty" => $record['qty'],
-                "price" => $record['price'],
-                "total" => $record['total'],
-                "total_local" => $record['total_local'],
-                "account_number" => $record['account_number'],
-                "account_name" => $record['account_name'],
-                "account_type" => "DEBIT",
-            );
-        }
-
-        $arr['rows'] = $obj;
-        $arr['total_sub'] = round($total_sub, 4);
         die(json_encode($arr));
     }
 
@@ -485,9 +512,9 @@ class Purchase_invoices extends CI_Controller
             //Select Query
             $this->db->select("a.*, e.number as gl_no, b.name as supplier_name, d.name as journal_type_name, 
                 a.invoice_no as status_invoice,
-                SUM(CASE WHEN a.account_type = 'DEBIT' THEN a.total ELSE -a.total END) as total_sub,
-                ((SUM(CASE WHEN a.account_type = 'DEBIT' THEN a.total ELSE -a.total END) + a.total_vat) - a.total_pph) as total_grand");
-            $this->db->from('purchase_invoices a');
+                a.total_sub2 as total_sub,
+                a.total_grand2 as total_grand");
+            $this->db->from("(SELECT *, SUM(total) as total_sub2, SUM(total2) as total_grand2 FROM purchase_invoices GROUP BY number) a");
             $this->db->join('suppliers b', 'a.supplier_id = b.id');
             $this->db->join('journal_types d', 'a.journal_type_id = d.id', 'left');
             $this->db->join("journal_postings e", 'a.number = e.document_no', 'left');
@@ -505,9 +532,9 @@ class Purchase_invoices extends CI_Controller
             $this->db->like('a.invoice_no', $filter_status_supplier);
             $this->db->like('a.invoice_no', $filter_invoice_no);
             $this->db->like('a.status', $filter_status);
-            $this->db->order_by('a.status', 'ASC');
-            $this->db->order_by('a.trans_date', 'DESC');
             $this->db->group_by('a.number');
+            $this->db->order_by('a.number', 'DESC');
+            // $this->db->order_by('a.trans_date', 'DESC');
 
             //Total Data
             $totalRows = $this->db->count_all_results('', false);
@@ -551,7 +578,81 @@ class Purchase_invoices extends CI_Controller
                 if ($send) {
                     if ($post['por_no'] != "-") {
                         if ($post['type'] != "dp") {
-                            $update = $this->crud->update('purchase_order_receipts', ["receipt_no" => $post['por_no'], "po_no" => $post['po_no'], "item_rm_id" => $post['item_rm_id'], "supplier_id" => $post['supplier_id']], ["status" => 1]);
+                            if($post['type'] == "purchase"){
+                                $update = $this->crud->update('purchase_order_receipts', ["receipt_no" => $post['por_no'], "po_no" => $post['po_no'], "item_rm_id" => $post['item_rm_id'], "supplier_id" => $post['supplier_id']], ["status" => 1]);
+                            }else{
+                                $supplier = $this->crud->read("suppliers", [], ["id" => $post['supplier_id']]);
+                                $item_rm = $this->crud->read("item_rm", [], ["id" => $post['item_rm_id']]);
+                                $item_family = $this->crud->read("item_familys", [], ["id" => $post['item_family_id']]);
+
+                                $estimate_year = $item_family->usefull;
+                                $shift = $item_family->shift;
+                                $estimate_month = ($estimate_year * 12);
+                                $depreciation = ($estimate_year / $estimate_month);
+                                $expired_date = date("Y-m-d", strtotime("+" . $estimate_year . " year", strtotime($post['trans_date'])));
+                                $date_from  = date_create($post['trans_date']);
+                                $date_to  = date_create($expired_date);
+                                $diff  = date_diff($date_from, $date_to); 
+                                $estimate_day = $diff->d;
+
+                                if($shift == "1"){
+                                    $factor = 1;
+                                }else{
+                                    $factor = 2;
+                                }
+
+                                //Fixed Asset
+                                if($item_rm->item_category_id = 'C06'){
+                                    for ($i = 0; $i < $post['qty']; $i++) {
+
+                                        $asset_no = $post['item_rm_id'];
+                                        $sqlGetID = $this->db->query("SELECT max(`number`) as kode FROM asset_fixeds WHERE `number` like '%$asset_no%'");
+                                        $rowID = $sqlGetID->row();
+                                        $kode = $rowID->kode;
+                    
+                                        if ($kode == NULL) {
+                                            $number = $post['number'] . "-" . sprintf("%02d", ($i + 1));
+                                        } else {
+                                            $urutan = (int) substr($kode, -2);
+                                            $urutan++;
+                                            $number = $post['number'] . sprintf("%02s", $urutan);
+                                        }
+                                        
+                                        $dataAsset = array(
+                                            "item_family_id" => $post['item_family_id'],
+                                            "purchase_invoice_no" => $post['number'],
+                                            "supplier_id" => $post['supplier_id'],
+                                            "supplier_name" => @$supplier->name,
+                                            "item_rm_id" => $post['item_rm_id'],
+                                            "number" => @$number,
+                                            "name" => @$item_rm->number,
+                                            "shift" => $shift,
+                                            "trans_date" => $post['trans_date'],
+                                            "qty" => 1,
+                                            "currency" => $post['currency'],
+                                            "cost" => $post['price'],
+                                            "estimate_month" => $estimate_month,
+                                            "estimate_year" => $estimate_year,
+                                            "residual" => (($post['total2'] * 5) / 100),
+                                            "expired_date" => $expired_date,
+                                            "depreciation" => $depreciation,
+                                            "remarks" => $post['remarks'],
+                                            "method" => "PURCHASE INVOICING",
+                                            "departement" => @$item_rm->departement,
+                                            "total" => $post['total2'],
+                                            //Field Baru
+                                            "total_period" => 0,
+                                            "uom" => @$item_rm->uom,
+                                            "addition" => ($post['total2'] - (($post['total2'] * 5) / 100) / $estimate_year / 365 * $estimate_day * $factor),
+                                            "estimate_day" => $estimate_day,
+                                        );
+
+                                        $send = $this->crud->create('asset_fixeds', $dataAsset);
+                                    }
+                                }
+
+                                $update = $this->crud->update('purchase_order_receipt_others', ["receipt_no" => $post['por_no'], "po_no" => $post['po_no'], "item_rm_id" => $post['item_rm_id'], "supplier_id" => $post['supplier_id']], ["status" => 1]);
+                            }
                         }
                     } else {
                         $update = $this->crud->update('purchase_order_others', ["po_no" => $post['po_no'], "item_rm_id" => $post['item_rm_id'], "supplier_id" => $post['supplier_id']], ["status" => 1]);
@@ -630,9 +731,12 @@ class Purchase_invoices extends CI_Controller
                     "item_rm_id" => $purchase_invoice->item_rm_id,
                     "supplier_id" => $purchase_invoice->supplier_id
                 ], ["status" => 0]);
-            } else {
-                $this->crud->update("purchase_order_others", [
+
+                $this->crud->update("purchase_order_receipt_others", [
+                    "receipt_no" => $purchase_invoice->por_no,
                     "po_no" => $purchase_invoice->po_no,
+                    "item_rm_id" => $purchase_invoice->item_rm_id,
+                    "supplier_id" => $purchase_invoice->supplier_id
                 ], ["status" => 0]);
             }
         }
@@ -713,7 +817,6 @@ class Purchase_invoices extends CI_Controller
             $this->db->from('purchase_invoices a');
             $this->db->join('suppliers b', 'a.supplier_id = b.id');
             $this->db->join('tds c', 'b.tds = c.section', 'left');
-            
             $this->db->like('a.number', $invoice_no);
             $this->db->order_by('a.trans_date', 'DESC');
             $this->db->limit(10, ($i * 10));
@@ -827,21 +930,6 @@ class Purchase_invoices extends CI_Controller
             $total_sgst = 0;
             $total_cgst = 0;
             foreach ($records as $record) {
-                $currency = $record['currency'];
-
-                $monthBf = date('Y-m-01', strtotime('-1 month', strtotime($record['trans_date'])));
-                $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $monthBf, "currency_from" => $currency, "currency_to" => "INR"]);
-
-                if ($currency != "INR") {
-                    if ($exchange) {
-                        $price = $exchange->middle;
-                    } else {
-                        $price = 0;
-                    }
-                } else {
-                    $price = 1;
-                }
-                
                 $amount = ($record['total_idr']);
                 if($record['account_type'] == "DEBIT"){
                     $grand_total += $record['total2'];
@@ -887,8 +975,7 @@ class Purchase_invoices extends CI_Controller
                             <th style="text-align:right">'.number_format($grand_total_local, 2).'</th>
                         </tr>
                     </table>
-                </div>
-            </div>';
+                </div>';
 
             if (($i + 1) != $page) {
                 $html .= '<div style="page-break-after:always;"></div>';
@@ -902,9 +989,9 @@ class Purchase_invoices extends CI_Controller
             JOIN account_coa b ON a.account_number = b.account_number
             WHERE a.number = '$invoice_no' ORDER BY a.flag ASC");
 
-        $html .= '<br><br>
+        $html .= '
                 <div style="width:100%;">
-                    <div style="width:50%; float:left;">
+                    <div style="width:50%; float:left; padding: 10px;">
                         <table id="customers" style="width:100%; font-size:12px;">
                             <tr>
                                 <td style="font-weight:bold;">Account No</td>
@@ -936,7 +1023,7 @@ class Purchase_invoices extends CI_Controller
                     <div style="width:30%; float:left;">
                         &nbsp;
                     </div>
-                    <div style="width:20%; float:left;">
+                    <div style="width:20%; float:right; padding: 10px;">
                         <table id="customers" style="width:100%; font-size:12px;">
                             <tr>
                                 <td style="font-weight:bold;">TAXABLE VALUE</td>
@@ -956,15 +1043,16 @@ class Purchase_invoices extends CI_Controller
                             </tr>
                             <tr>
                                 <td style="font-weight:bold;">TDS ('.@$records[0]['tds'].')</td>
-                                <td style="font-weight:bold; text-align:right;">' . @number_format((($grand_total_all * @$records[0]['individual']) / 100), 2) . '</td>
+                                <td style="font-weight:bold; text-align:right;">' . @number_format(@$records[0]['total_tds'], 2) . '</td>
                             </tr>
                             <tr>
                                 <td style="font-weight:bold;">INVOICE VALUE</td>
-                                <td style="font-weight:bold; text-align:right;">' . @number_format((@$grand_total_all + $total_igst + $total_sgst + $total_cgst + (($grand_total_all * @$record[0]['tds']) / 100)), 2) . '</td>
+                                <td style="font-weight:bold; text-align:right;">' . @number_format((@$grand_total_all + $total_igst + $total_sgst + $total_cgst - @$records[0]['total_tds']), 2) . '</td>
                             </tr>
                         </table>
                     </div>
                 </div>
+                <br><br>
                 <table style="width:100%; margin-top: 150px; font-size:12px;">
                     <tr>
                         <td style="text-align:center; font-weight:bold;">Prepared By</td>
@@ -984,7 +1072,7 @@ class Purchase_invoices extends CI_Controller
                         <th style="height:20px; text-align:center;"><br><hr style="width:60%;margin-left:20%;">Accounting Manager</th>
                         <th style="height:20px; text-align:center;"><br><hr style="width:60%;margin-left:20%;">Director</th>
                     </tr>
-                </table>';
+                </table><br>';
         $html .= "</div></div><script>window.print()</script></body>";
         die($html);
     }
@@ -1064,6 +1152,8 @@ class Purchase_invoices extends CI_Controller
                     <th width="20">No</th>
                     <th>Purchase Invoice No</th>
                     <th>Invoice No</th>
+                    <th>BOE No</th>
+                    <th>BOE Date</th>
                     <th>Supplier Name</th>
                     <th>Trans Date</th>
                     <th>Due Date</th>
@@ -1091,6 +1181,8 @@ class Purchase_invoices extends CI_Controller
                             <td style="text-align:center">' . $no . '</td>
                             <td>' . $data['number'] . '</td>
                             <td>' . $data['invoice_no'] . '</td>
+                            <td>' . $data['boe_no'] . '</td>
+                            <td>' . $data['boe_date'] . '</td>
                             <td>' . $data['supplier_name'] . '</td>
                             <td>' . $data['trans_date'] . '</td>
                             <td>' . $data['due_date'] . '</td>
@@ -1101,7 +1193,7 @@ class Purchase_invoices extends CI_Controller
                             <td style="text-align:right;">' . number_format($data['total_grand'], 4) . '</td>
                         </tr>';
             $html .= '  <tr>
-                            <td colspan="11" style="background:#D1FFC6;"><b>DETAIL OF ' . $data['po_no'] . '</b></td>
+                            <td colspan="13" style="background:#D1FFC6;"><b>DETAIL OF ' . $data['po_no'] . '</b></td>
                         </tr>
                         <tr>
                             <th width="20"></th>
@@ -1178,10 +1270,8 @@ class Purchase_invoices extends CI_Controller
 
         if ($filter_type == "PID") {
             $periode =  $filter_trans_date_from . ' to ' . $filter_trans_date_to;
-            $period_due =  "-";
         } elseif ($filter_type == "PAY") {
-            $period_due =  $filter_due_date_from . ' to ' . $filter_due_date_to;
-            $periode =  "-";
+            $periode =  $filter_due_date_from . ' to ' . $filter_due_date_to;
         }
 
         //Config
@@ -1189,18 +1279,21 @@ class Purchase_invoices extends CI_Controller
         $this->db->from('config');
         $config = $this->db->get()->row();
 
-        $this->db->select('a.*, b.name as supplier_name, c.name as journal_type_name, d.total_sub, e.account_name');
+        $this->db->select('a.*, b.name as supplier_name, b.state, b.gst, b.tds, b.pen, c.name as journal_type_name, d.receipt_date, e.account_name, 
+            f.number as item_rm_number, f.hsn_code, g.igst as igst_rate, g.sgst as sgst_rate, g.cgst as cgst_rate');
         $this->db->from('purchase_invoices a');
         $this->db->join('suppliers b', 'a.supplier_id = b.id');
         $this->db->join('journal_types c', 'a.journal_type_id = c.id', 'left');
-        $this->db->join("(SELECT number, SUM(total) as total_sub FROM purchase_invoices GROUP BY number) d", 'a.number = d.number');
+        $this->db->join('purchase_order_receipts d', 'a.por_no = d.receipt_no', 'left');
         $this->db->join('account_coa e', 'a.account_number = e.account_number', 'left');
+        $this->db->join('item_rm f', 'a.item_rm_id = f.id');
+        $this->db->join('hsn g', 'f.hsn_code = g.number', 'left');
         if ($filter_type == "PID") {
             $this->db->where("a.trans_date between '$filter_trans_date_from' and '$filter_trans_date_to'");
         } elseif ($filter_type == "PAY") {
             $this->db->where("a.due_date between '$filter_due_date_from' and '$filter_due_date_to'");
         }
-        $this->db->like('a.family_id', $filter_family_id);
+        $this->db->like('a.item_family_id', $filter_family_id);
         $this->db->like('a.number', $filter_purchase_invoice);
         $this->db->like('a.por_no', $filter_purchase_receipt);
         $this->db->like('a.po_no', $filter_purchase_order);
@@ -1233,78 +1326,96 @@ class Purchase_invoices extends CI_Controller
             </center>
             <br><br>
             <center>
-                <h2>REPORT PURCHASE INVOICING DETAIL</h2>
+                <h2>PURCHASE REGISTER REPORT</h2>
+                <small>PERIOD : '.$periode.'</small>
             </center>
-            <br><br>
-            <table style="width:50%;">
-                <tr>
-                    <td width="100">Trans Date</td>
-                    <td width="20">:</td>
-                    <td>' . $periode . '</td>
-                </tr>
-                <tr>
-                    <td width="100">Payment Due</td>
-                    <td width="20">:</td>
-                    <td>' . $period_due . '</td>
-                </tr>
-            </table>
             <br><br>
             <table id="customers" border="1">
                 <tr>
                     <th width="20">No</th>
-                    <th>Journal Type</th>
-                    <th>Purchase Invoice No</th>
+                    <th>Company GST No</th>
+                    <th>Name of Supplier</th>
+                    <th>Supplier GST No</th>
+                    <th>State Code</th>
                     <th>Invoice No</th>
-                    <th>Supplier Name</th>
-                    <th>Trans Date</th>
-                    <th>Payment Due</th>
-                    <th>Payment Term</th>
-                    <th>Sub Total</th>
-                    <th>VAT</th>
-                    <th>PPH 23</th>
-                    <th>Grand Total</th>
-                    <th>POR No</th>
-                    <th>PO No</th>
-                    <th>Product No</th>
-                    <th>Product Name</th>
-                    <th>Qty</th>
-                    <th>Uom</th>
+                    <th>Invoice Date</th>
+                    <th>Posting Date</th>
+                    <th>Part No EBWS</th>
+                    <th>Asset Code</th>
+                    <th>Part Description</th>
+                    <th>Material Type</th>
+                    <th>HSN / SAC</th>
+                    <th>Quantity of Good</th>
                     <th>Currency</th>
-                    <th>Unit Price</th>
-                    <th>Amount</th>
-                    <th>Account No</th>
-                    <th>Account Name</th>
-                    <th>Debit/Credit</th>
-                    <th>Created By</th>
+                    <th>Rate</th>
+                    <th>Taxable Value</th>
+                    <th>IGST Rate</th>
+                    <th>IGST Amount</th>
+                    <th>CGST Rate</th>
+                    <th>CGST Amount</th>
+                    <th>SGST Rate</th>
+                    <th>SGST Amount</th>
+                    <th>TCS Amount</th>
+                    <th>TDS Amount</th>
+                    <th>TDS Section</th>
+                    <th>Total Invoice</th>
+                    <th>GRN No</th>
+                    <th>GRN Date</th>
+                    <th>COA No</th>
+                    <th>COA Name</th>
                 </tr>';
         $no = 1;
         foreach ($records as $data) {
+            if($data['igst'] > 0){
+                $igst_rate = $data['igst_rate'];
+            }else{
+                $igst_rate = 0;
+            }
+
+            if($data['sgst'] > 0){
+                $sgst_rate = $data['sgst_rate'];
+            }else{
+                $sgst_rate = 0;
+            }
+
+            if($data['cgst'] > 0){
+                $cgst_rate = $data['cgst_rate'];
+            }else{
+                $cgst_rate = 0;
+            }
+
             $html .= '  <tr>
                             <td style="text-align:center">' . $no . '</td>
-                            <td>' . $data['journal_type_name'] . '</td>
-                            <td>' . $data['number'] . '</td>
-                            <td>' . $data['invoice_no'] . '</td>
+                            <td>' . $config->gst_no . '</td>
                             <td>' . $data['supplier_name'] . '</td>
+                            <td>' . $data['gst'] . '</td>
+                            <td>' . $data['state'] . '</td>
+                            <td>' . $data['invoice_no'] . '</td>
+                            <td>' . $data['invoice_date'] . '</td>
                             <td>' . $data['trans_date'] . '</td>
-                            <td>' . $data['due_date'] . '</td>
-                            <td>' . $data['payment_term'] . '</td>
-                            <td style="text-align:right;">' . $data['total_sub'] . '</td>
-                            <td style="text-align:right;">' . $data['total_vat'] . '</td>
-                            <td style="text-align:right;">' . $data['total_pph'] . '</td>
-                            <td style="text-align:right;">' . ($data['total_sub'] + $data['total_vat'] - $data['total_pph']) . '</td>
+                            <td style="mso-number-format:\@;">' . $data['item_rm_id'] . '</td>
+                            <td style="mso-number-format:\@;"></td>
+                            <td style="mso-number-format:\@;">' . $data['item_rm_number'] . '</td>
+                            <td></td>
+                            <td>' . $data['hsn_code'] . '</td>
+                            <td style="text-align:right;">' . $data['qty'] . '</td>
+                            <td style="text-align:center;">' . $data['currency'] . '</td>
+                            <td style="text-align:right;">' . $data['rate'] . '</td>
+                            <td style="text-align:right;">' . $data['total'] . '</td>
+                            <td style="text-align:right;">' . $igst_rate . '</td>
+                            <td style="text-align:right;">' . $data['igst'] . '</td>
+                            <td style="text-align:right;">' . $cgst_rate . '</td>
+                            <td style="text-align:right;">' . $data['cgst'] . '</td>
+                            <td style="text-align:right;">' . $sgst_rate . '</td>
+                            <td style="text-align:right;">' . $data['sgst'] . '</td>
+                            <td style="text-align:right;">' . $data['total2'] . '</td>
+                            <td style="text-align:right;">' . $data['total_tds'] . '</td>
+                            <td>' . $data['tds'] . '</td>
+                            <td style="text-align:right;">' . ($data['total2'] + $data['total_tds']) . '</td>
                             <td>' . $data['por_no'] . '</td>
-                            <td>' . $data['po_no'] . '</td>
-                            <td>' . $data['item_no'] . '</td>
-                            <td>' . $data['item_rm_name'] . '</td>
-                            <td>' . $data['qty'] . '</td>
-                            <td>' . $data['uom'] . '</td>
-                            <td>' . $data['currency'] . '</td>
-                            <td>' . $data['price'] . '</td>
-                            <td>' . $data['total'] . '</td>
+                            <td>' . $data['receipt_date'] . '</td>
                             <td style="mso-number-format:\@;">' . $data['account_number'] . '</td>
                             <td>' . $data['account_name'] . '</td>
-                            <td>' . $data['account_type'] . '</td>
-                            <td>' . $data['created_by'] . '</td>
                         </tr>';
             $no++;
         }

@@ -1,19 +1,12 @@
 <div id="f" class="easyui-panel" style="width:99.5%; background: #F4F4F4;">
     <div style="width: 100%; display: grid; grid-template-columns: auto auto auto; grid-gap: 5px; display: flex;">
-        <fieldset style="width: 70%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; margin-left: 10px; border-radius:4px;">
+        <fieldset style="width: 100%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; margin-left: 10px; border-radius:4px;">
             <legend><b>Form Filter Data</b></legend>
-            <div style="width: 50%; float: left;">
+            <div style="width: 35%; float: left;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Trans Date</span>
                     <input style="width:30%;" id="filter_from" value="<?= date("Y-m-01") ?>" class="easyui-datebox" data-options="prompt:'Start Date',formatter:myformatter,parser:myparser, editable:false">
                     <input style="width:30%;" id="filter_to" value="<?= date("Y-m-t") ?>" class="easyui-datebox" data-options="prompt:'Finish Date',formatter:myformatter,parser:myparser, editable:false">
-                </div>
-                <div class="fitem" hidden>
-                    <span style="width:35%; display:inline-block;">Report Display</span>
-                    <select style="width:60%;" id="filter_display" class="easyui-combobox" panelHeight="auto">
-                        <option value="RECAP">RECAP</option>
-                        <option value="DETAIL">DETAIL</option>
-                    </select>
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Period</span>
@@ -26,7 +19,7 @@
                     <a href="javascript:;" class="easyui-linkbutton" onclick="filter()"><i class="fa fa-search"></i> Filter Data</a>
                 </div>
             </div>
-            <div style="width: 50%; float: left;">
+            <div style="width: 35%; float: left;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Customer</span>
                     <input style="width:60%;" id="filter_customer" class="easyui-combogrid">
@@ -34,6 +27,15 @@
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Product No</span>
                     <input style="width:60%;" id="filter_product_no" class="easyui-combogrid">
+                </div>
+            </div>
+            <div style="width: 30%; float: left;">
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Report Display</span>
+                    <select style="width:60%;" id="filter_display" class="easyui-combobox" panelHeight="auto">
+                        <option value="RECAP">RECAP</option>
+                        <option value="DETAIL">DETAIL</option>
+                    </select>
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Status</span>
@@ -124,53 +126,54 @@
                     prompt: "Select WP",
                     onSelect: function(rowWP) {
                         $("#filter_workorder").textbox('setValue', rowWP.workorder);
-                        $("#filter_customer").combogrid({
-                            url: '<?= base_url('planning/report_outstanding_wo/readCustomer?wp=') ?>' + window.btoa(rowWP.wp) + "&period=" + window.btoa(rowPeriod.period),
-                            panelWidth: 420,
-                            idField: 'customer_id',
-                            textField: 'customer_name',
-                            mode: 'remote',
-                            fitColumns: true,
-                            prompt: "Select Customer No",
-                            columns: [
-                                [{
-                                    field: 'customer_number',
-                                    title: 'Customer No',
-                                    width: 120
-                                }, {
-                                    field: 'customer_name',
-                                    title: 'Customer Name',
-                                    width: 250
-                                }, ]
-                            ],
-                            onSelect: function(val, rowCust) {
-                                $("#filter_product_no").combogrid({
-                                    url: '<?= base_url('planning/report_outstanding_wo/readItems?wp=') ?>' + window.btoa(rowWP.wp) + "&period=" + window.btoa(rowPeriod.period) + "&customer_id=" + rowCust.customer_id,
-                                    panelWidth: 420,
-                                    idField: 'item_id',
-                                    textField: 'item_name',
-                                    mode: 'remote',
-                                    fitColumns: true,
-                                    prompt: "Select Product No",
-                                    columns: [
-                                        [{
-                                            field: 'item_number',
-                                            title: 'Product No',
-                                            width: 120
-                                        }, {
-                                            field: 'item_name',
-                                            title: 'Product Name',
-                                            width: 250
-                                        }, ]
-                                    ]
-                                });
-                            }
-                        });
                     }
                 });
             }
         });
     });
+
+    $("#filter_customer").combogrid({
+        url: '<?= base_url('master/customers/reads') ?>',
+        panelWidth: 420,
+        idField: 'id',
+        textField: 'name',
+        mode: 'remote',
+        fitColumns: true,
+        prompt: "Select Customer No",
+        columns: [
+            [{
+                field: 'id',
+                title: 'Customer No',
+                width: 120
+            }, {
+                field: 'name',
+                title: 'Customer Name',
+                width: 250
+            }, ]
+        ],
+    });
+
+    $("#filter_product_no").combogrid({
+        url: '<?= base_url('master/item_fg/reads') ?>',
+        panelWidth: 420,
+        idField: 'id',
+        textField: 'number_customer',
+        mode: 'remote',
+        fitColumns: true,
+        prompt: "Select Product No",
+        columns: [
+            [{
+                field: 'number_customer',
+                title: 'Product No',
+                width: 200
+            }, {
+                field: 'name',
+                title: 'Product Name',
+                width: 150
+            }, ]
+        ]
+    });
+
     //Format Datepicker
     function myformatter(date) {
         var y = date.getFullYear();

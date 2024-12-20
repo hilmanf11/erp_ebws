@@ -10,10 +10,12 @@
             <th field="ck" checkbox="true"></th>
             <th data-options="field:'customer_number',width:100,halign:'center'">Customer Code</th>
             <th data-options="field:'customer_name',width:250,halign:'center'">Customer Name</th>
+            <th data-options="field:'plant',width:100,halign:'center'">Plant</th>
             <th data-options="field:'item_fg_number',width:150,halign:'center'">Product No</th>
             <th data-options="field:'item_fg_name',width:150,halign:'center'">Product Name</th>
             <th data-options="field:'item_fg_customer',width:150,halign:'center'">Customer Part</th>
             <th data-options="field:'currency',width:80,halign:'center'">Currency</th>
+            <th data-options="field:'price_old',width:80,halign:'center',align:'right',formatter: numberformat">Old Price</th>
             <th data-options="field:'price',width:80,halign:'center',align:'right',formatter: numberformat">Price</th>
             <th data-options="field:'valid_date',width:100,halign:'center'">Valid Date</th>
             <th data-options="field:'remark',width:100,halign:'center'">Remarks</th>
@@ -183,14 +185,14 @@
 	}
 
     function numberformat(value, row) {
-		const formatter = new Intl.NumberFormat('id-ID');
+		const formatter = new Intl.NumberFormat('ja-JP');
 
 		return "<b>" + formatter.format(value) + "</b>";
 	}
 
 	function numberformatPrice(value, row){
-        const formatter = new Intl.NumberFormat('id-ID', {
-            minimumFractionDigits: 2
+        const formatter = new Intl.NumberFormat('ja-JP', {
+            minimumFractionDigits: 4
         });
 
         return "<b>" + formatter.format(value) + "</b>";

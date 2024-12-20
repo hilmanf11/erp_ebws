@@ -4,6 +4,7 @@
         <tr>
             <th rowspan="2" field="ck" checkbox="true"></th>
             <th hidden rowspan="2" data-options="field:'id',width:80,align:'center'">ID</th>
+            <th rowspan="2" data-options="field:'number',width:100,halign:'center'">Code</th>
             <th rowspan="2" data-options="field:'name',width:100,halign:'center'">Name</th>
             <th rowspan="2" data-options="field:'description',width:200,halign:'center'">Description</th>
             <th rowspan="2" data-options="field:'symbol',width:80,align:'center'">Symbol</th>
@@ -30,6 +31,10 @@
             <div class="fitem" hidden>
                 <span style="width:35%; display:inline-block;">ID</span>
                 <input style="width:30%;" name="id" id="id" required="" class="easyui-textbox" readonly>
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Code</span>
+                <input style="width:60%;" name="number" id="number" required="" class="easyui-textbox">
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Name</span>

@@ -30,19 +30,23 @@ class Delivery_orders extends CI_Controller
         }
     }
 
-    public function readSo($trans_date, $customer_id, $item_fg_id)
+    public function readSo($trans_date, $customer_id, $item_fg_id, $plant)
     {
         $trans_date = base64_decode($trans_date);
         $customer_id = base64_decode($customer_id);
         $item_fg_id = base64_decode($item_fg_id);
+        $plant = base64_decode($plant);
 
-        $this->db->select('b.sales_order_no, b.customer_order_no, b.qty, (b.qty - COALESCE(d.qty_do, 0)) as qty_remain');
+        $this->db->select('b.sales_order_no, b.customer_order_no, b.qty, (b.qty - COALESCE(d.qty_do, 0)) as qty_remain, a.plant');
         $this->db->from('sales_order_deliveries a');
-        $this->db->join('sales_orders b', 'a.item_fg_id = b.item_fg_id and a.customer_id = b.customer_id');
-        $this->db->join("(SELECT customer_id, item_fg_id, sales_order_no, SUM(qty_del) as qty_do FROM delivery_orders GROUP BY customer_id, item_fg_id, sales_order_no) d", 'b.sales_order_no = d.sales_order_no and a.customer_id = d.customer_id and a.item_fg_id = d.item_fg_id', "LEFT");
+        $this->db->join('sales_orders b', 'a.item_fg_id = b.item_fg_id and a.customer_id = b.customer_id and a.plant = b.plant');
+        $this->db->join("(SELECT customer_id, item_fg_id, sales_order_no, plant, SUM(qty_do) as qty_do FROM delivery_orders GROUP BY customer_id, item_fg_id, sales_order_no, plant) d", 'b.sales_order_no = d.sales_order_no and a.customer_id = d.customer_id and a.item_fg_id = d.item_fg_id and a.plant = d.plant', "LEFT");
+        // $this->db->join('customer_address d', 'b.customer_address_id = d.id', 'left');
         $this->db->where('a.trans_date', $trans_date);
         $this->db->where('a.customer_id', $customer_id);
         $this->db->where('a.item_fg_id', $item_fg_id);
+        $this->db->where('a.plant', $plant);
+        $this->db->where("(b.qty - COALESCE(d.qty_do, 0)) > 0");
         $this->db->group_by('b.sales_order_no');
         $this->db->order_by('b.sales_order_no', 'asc');
         
@@ -100,10 +104,11 @@ class Delivery_orders extends CI_Controller
     //     echo $datenow . $autoID;
     // }
 
-    public function datatablesTemp($delivery_date, $customer_id)
+    public function datatablesTemp($delivery_date, $customer_id, $plant)
     {
         $delivery_date = base64_decode($delivery_date);
         $customer_id = base64_decode($customer_id);
+        $plant = base64_decode($plant);
 
         $delivery = $this->crud->reads("delivery_orders", [], ["delivery_date" => $delivery_date]);
         $whereArr = array();
@@ -117,24 +122,35 @@ class Delivery_orders extends CI_Controller
             c.number_customer, 
             c.name as item_fg_name, 
             c.uom, 
-            a.qty as qty_del,
+            b.plant,
+            (a.qty - COALESCE(d.qty_do, 0)) as qty_del,
             b.qty as qty_so,
-            (b.qty - COALESCE(d.qty_do, 0)) as qty_remain,
-            COALESCE(a.qty, 0) as qty_do,
-            (COALESCE(e.stock_fg, 0) - COALESCE(d.qty_do, 0)) as stock_fg,
-            COALESCE(b.qty - COALESCE(d.qty_do, 0) - a.qty, 0) as balance');
+            (b.qty - COALESCE(f.qty_do2, 0)) as qty_remain,
+            (a.qty - COALESCE(d.qty_do, 0)) as qty_do,
+            (COALESCE(e.stock_fg, 0)) as stock_fg,
+            COALESCE(b.qty - COALESCE(f.qty_do2, 0) - (a.qty - COALESCE(d.qty_do, 0)), 0) as balance');
         $this->db->from('sales_order_deliveries a');
-        $this->db->join('sales_orders b', 'a.item_fg_id = b.item_fg_id and a.customer_id = b.customer_id');
+        $this->db->join('sales_orders b', 'a.item_fg_id = b.item_fg_id and a.customer_id = b.customer_id and a.plant = b.plant');
         $this->db->join('item_fg c', 'a.item_fg_id = c.id');
-        $this->db->join("(SELECT customer_id, item_fg_id, sales_order_no, SUM(qty_do) as qty_do FROM delivery_orders GROUP BY customer_id, item_fg_id, sales_order_no) d", 'b.sales_order_no = d.sales_order_no and a.customer_id = d.customer_id and a.item_fg_id = d.item_fg_id', "LEFT");
-        $this->db->join("(SELECT a.item_fg_id, a.customer_id, COALESCE(SUM(c.qty), 0) as stock_fg FROM production_schedules a
-        LEFT JOIN scan_item_receipts_fg c ON a.workorder = c.workorder
-        GROUP BY a.item_fg_id, a.customer_id) e", 'a.customer_id = e.customer_id and a.item_fg_id = e.item_fg_id', "LEFT");
+        $this->db->join("(SELECT customer_id, item_fg_id, plant, sales_order_no, SUM(qty_do) as qty_do FROM delivery_orders WHERE delivery_date = '$delivery_date' GROUP BY customer_id, item_fg_id, sales_order_no, plant) d", 'b.sales_order_no = d.sales_order_no and a.customer_id = d.customer_id and a.item_fg_id = d.item_fg_id and a.plant = d.plant', "LEFT");
+        $this->db->join("(SELECT customer_id, item_fg_id, plant, sales_order_no, SUM(qty_do) as qty_do2 FROM delivery_orders GROUP BY customer_id, item_fg_id, sales_order_no, plant) f", 'b.sales_order_no = f.sales_order_no and a.customer_id = f.customer_id and a.item_fg_id = f.item_fg_id and a.plant = f.plant', "LEFT");
+        $this->db->join("(SELECT
+                a.id,
+                round(COALESCE(b.qty_sto, 0) + COALESCE(d.sto_qty_in, 0) + COALESCE(c.qty_wip, 0) - COALESCE(g.qty, 0) - COALESCE(d.sto_qty_out, 0)) as stock_fg
+            FROM item_fg a 
+            LEFT JOIN (select a.item_fg_id, COALESCE(SUM(b.qty), 0) as qty_sto FROM os_fg a JOIN scan_item_receipts_fg b ON a.id = b.workorder GROUP BY a.item_fg_id) b ON a.id = b.item_fg_id
+            LEFT JOIN (select a.item_fg_id, COALESCE(SUM(b.qty), 0) as qty_wip FROM wip_receipts a JOIN scan_item_receipts_fg b ON a.workorder = b.workorder and a.checksheet_number = b.checksheet_number GROUP BY a.item_fg_id) c ON a.id = c.item_fg_id
+            LEFT JOIN (SELECT a.item_fg_id, (CASE WHEN a.type = 'IN' THEN COALESCE(SUM(a.qty), 0) ELSE 0 END) as sto_qty_in, (CASE WHEN a.type = 'OUT' THEN COALESCE(SUM(a.qty), 0) ELSE 0 END) as sto_qty_out FROM sto_fg a WHERE (a.approved_to = '' or a.approved_to is null) GROUP BY item_fg_id) d ON a.id = d.item_fg_id
+            LEFT JOIN (SELECT item_fg_id, delivery_note_date, COALESCE(SUM(qty), 0) as qty FROM delivery_notes GROUP BY item_fg_id) g ON a.id = g.item_fg_id
+            GROUP BY a.id
+            ORDER BY a.number) e", 'a.item_fg_id = e.id', "LEFT");
         $this->db->where('a.trans_date', $delivery_date);
         $this->db->where('a.customer_id', $customer_id);
-        if(!empty($whereArr)){
-            $this->db->where_not_in('a.item_fg_id', $whereArr);
-        }
+        $this->db->where('a.plant', $plant);
+        $this->db->where("(b.qty - COALESCE(f.qty_do2, 0)) > 0");
+        // if(!empty($whereArr)){
+        //     $this->db->where_not_in('a.item_fg_id', $whereArr);
+        // }
         $this->db->group_by('c.id');
         $this->db->group_by('a.customer_id');
         $this->db->order_by('c.number_customer', 'asc');
@@ -154,6 +170,7 @@ class Delivery_orders extends CI_Controller
             $filter_delivery_order_no = @base64_decode($get['filter_delivery_order_no']);
             $filter_sales_order_no = @base64_decode($get['filter_sales_order_no']);
             $filter_item_fg = @base64_decode($get['filter_item_fg']);
+            $filter_plant = @base64_decode($get['filter_plant']);
             $filter_status = @base64_decode($get['filter_status']);
 
             $page = $this->input->post('page');
@@ -176,8 +193,10 @@ class Delivery_orders extends CI_Controller
             $this->db->like('a.delivery_order_no', $filter_delivery_order_no);
             $this->db->like('a.sales_order_no', $filter_sales_order_no);
             $this->db->like('a.item_fg_id', $filter_item_fg);
+            $this->db->like('a.plant', $filter_plant);
             $this->db->like('a.status', $filter_status);
             $this->db->group_by('a.delivery_order_no');
+            $this->db->order_by('a.delivery_order_no', 'DESC');
             $this->db->order_by('a.status', 'ASC');
             //Total Data
             $totalRows = $this->db->count_all_results('', false);
@@ -249,14 +268,20 @@ class Delivery_orders extends CI_Controller
                 if($post['stock'] >= $post['qty_do']){
                     if($post['qty_remain'] >= $post['qty_do']){
                         if($post['stock_bal'] >= 0){
-                            $send = $this->crud->create('delivery_orders', $post);
-                            $this->db->update("sales_order_deliveries", ["status" => 1], [
-                                "item_fg_id" => $post['item_fg_id'], 
-                                "customer_id" => $post['customer_id'], 
-                                "trans_date" => $post['delivery_date']
-                            ]);
+                            if($post['qty_del'] > $post['qty_do']){
+                                $send = $this->crud->create('delivery_orders', $post);
 
-                            echo $send;
+                                echo $send;
+                            }else{
+                                $send = $this->crud->create('delivery_orders', $post);
+                                $this->db->update("sales_order_deliveries", ["status" => 1], [
+                                    "item_fg_id" => $post['item_fg_id'], 
+                                    "customer_id" => $post['customer_id'], 
+                                    "trans_date" => $post['delivery_date'],
+                                    "plant" => $post['plant'],
+                                ]);
+                                echo $send;
+                            }
                         }else{
                             echo json_encode(array("title" => "Balance Minus", "message" => "Sales Order ". $post['sales_order_no'] . " on Product ID " . $post['item_fg_id'] . " Balance is Minus", "theme" => "error"));
                         }

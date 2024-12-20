@@ -14,9 +14,10 @@
         <tr>
             <th rowspan="2" field="ck" checkbox="true"></th>
             <th rowspan="2" data-options="field:'number',width:80,halign:'center'">Code</th>
-            <th rowspan="2" data-options="field:'name',width:150,halign:'center'">Journal Name</th>
-            <th rowspan="2" data-options="field:'type',width:100,halign:'center'">Type</th>
+            <th rowspan="2" data-options="field:'name',width:250,halign:'center'">Journal Name</th>
+            <th rowspan="2" data-options="field:'type',width:150,halign:'center'">Type</th>
             <th rowspan="2" data-options="field:'module',width:200,halign:'center'">Module</th>
+            <th rowspan="2" data-options="field:'module_type',width:100,halign:'center'">Module Type</th>
             <th rowspan="2" data-options="field:'account_number',width:100,halign:'center'">Account No</th>
             <th rowspan="2" data-options="field:'account_name',width:200,halign:'center'">Account Name</th>
             <th rowspan="2" data-options="field:'status',width:100,align:'center'">Debit/Credit</th>
@@ -57,13 +58,26 @@
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Module</span>
-                <select style="width:60%;" name="module" id="module" panelHeight="auto" required="" class="easyui-combobox">
+                <select style="width:60%; height: 60px;" id="moduleSelect" panelHeight="auto" required="" multiple="true" multiline="true" class="easyui-combobox">
                     <option value="SALES INVOICING">SALES INVOICING</option>
                     <option value="PURCHASE INVOICING">PURCHASE INVOICING</option>
                     <option value="AP PAYMENT">AP PAYMENT</option>
                     <option value="AR RECEIPT">AR RECEIPT</option>
                     <option value="ASSET">ASSET</option>
                 </select>
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Module</span>
+                <select style="width:60%;" name="module_type" id="module_type" panelHeight="auto" class="easyui-combobox">
+                    <option value="PURCHASE">PURCHASE</option>
+                    <option value="IMPREST">IMPREST</option>
+                    <option value="OTHERS">OTHERS</option>
+                    <option value="SALES">SALES</option>
+                </select>
+            </div>
+            <div class="fitem" hidden>
+                <span style="width:35%; display:inline-block;">Module Select</span>
+                <input style="width:60%;" name="module" id="module" required="" class="easyui-textbox">
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Default Account</span>
@@ -96,6 +110,7 @@
         if (row) {
             $('#dlg_insert').dialog('open');
             $('#frm_insert').form('load', row);
+            $("#moduleSelect").combobox('setValue', row.module);
             url_save = '<?= base_url('finance/journal_types/update') ?>?id=' + btoa(row.id);
         } else {
             toastr.warning("Please select one of the data in the table first!", "Information");
@@ -178,6 +193,12 @@
     }
 
     $(function() {
+        $("#moduleSelect").combobox({
+            onChange: function(val){
+                $("#module").textbox('setValue', val);
+            }
+        });
+
         //SETTING DATAGRID EASYUI
         $('#dg').datagrid({
             url: '<?= base_url('finance/journal_types/datatables') ?>',

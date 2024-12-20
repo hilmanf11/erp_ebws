@@ -20,7 +20,7 @@
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Currency</span>
-                    <input style="width:30%;" id="filter_currency" class="easyui-combobox">
+                    <input style="width:60%;" id="filter_currency" class="easyui-combobox">
                 </div>
             </div>
         </fieldset>
@@ -105,8 +105,8 @@
 
         $("#filter_currency").combobox({
             url: '<?= base_url('master/currencies/reads') ?>',
-            valueField: 'number',
-            textField: 'number',
+            valueField: 'name',
+            textField: 'name',
             prompt: "Choose Currencies",
         });
     });

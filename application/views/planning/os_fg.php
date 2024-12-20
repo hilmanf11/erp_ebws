@@ -3,15 +3,17 @@
     <thead>
         <tr>
             <th rowspan="2" field="ck" checkbox="true"></th>
-            <th rowspan="2" data-options="field:'item_fg_id',width:150,halign:'center'">Product ID</th>
-            <th rowspan="2" data-options="field:'item_fg_number',width:150,halign:'center'">Product No</th>
-            <th rowspan="2" data-options="field:'item_fg_name',width:100,halign:'center'">Product Name</th>
+            <th rowspan="2" data-options="field:'id',width:120,halign:'center'">STO ID</th>
+            <th rowspan="2" data-options="field:'item_fg_number',width:120,halign:'center'">Product No EBWS</th>
+            <th rowspan="2" data-options="field:'number_customer',width:150,halign:'center'">Product No Customer</th>
+            <th rowspan="2" data-options="field:'item_fg_name',width:120,halign:'center'">Description</th>
             <th rowspan="2" data-options="field:'trans_date',width:80,halign:'center'">Cut Off</th>
             <th rowspan="2" data-options="field:'uom',width:80,align:'center'">Uom</th>
             <th rowspan="2" data-options="field:'qty_box',width:80,halign:'center',align:'right',formatter:numberFormat">Lot Box</th>
             <th rowspan="2" data-options="field:'qty',width:80,halign:'center',align:'right',formatter:numberFormat">Quantity</th>
             <th rowspan="2" data-options="field:'location',width:100,halign:'center'">Location</th>
             <th rowspan="2" data-options="field:'label',width:80,align:'center',formatter:BtnPrintLabel">Label</th>
+            <th rowspan="2" data-options="field:'created_label',width:150,halign:'center'">Label Create</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
         </tr>
@@ -73,6 +75,16 @@
             </div>
         </fieldset>
     </form>
+</div>
+
+<div id="dlg_label" class="easyui-dialog" title="Create Label Data" data-options="closed: true,modal:true" style="width: 500px; padding:10px; top: 20px;">
+    <span style="float: left; color:green;">SUCCESS : <b id="p_success2">0</b></span><span style="float: right; color:red;"> FAILED : <b id="p_failed2">0</b></span>
+    <div id="p_upload2" class="easyui-progressbar" style="width:100%; margin-top: 10px;"></div>
+    <center><b id="p_start2">0</b> Of <b id="p_finish2">0</b></center>
+    <div id="p_remarks2" title="History Upload" class="easyui-panel" style="width:100%; height:200px; padding:10px; margin-top: 10px;">
+        <ul id="remarks2">
+        </ul>
+    </div>
 </div>
 
 <!-- Upload -->
@@ -200,16 +212,10 @@
     function excel() {
         var filter_from = $("#filter_from").datebox('getValue');
         var filter_to = $("#filter_to").datebox('getValue');
-        var filter_category = $("#filter_category").combobox('getValue');
-        var filter_product_family = $("#filter_product_family").combobox('getValue');
-        var filter_product_family_sub = $("#filter_product_family_sub").combobox('getValue');
         var filter_item_fg = $("#filter_item_fg").combogrid('getValue');
 
         var url = "?filter_from=" + window.btoa(filter_from) +
             "&filter_to=" + window.btoa(filter_to) +
-            "&filter_category=" + window.btoa(filter_category) +
-            "&filter_product_family=" + window.btoa(filter_product_family) +
-            "&filter_product_family_sub=" + window.btoa(filter_product_family_sub) + 
             "&filter_item_fg=" + window.btoa(filter_item_fg);
 
         window.location.assign('<?= base_url('planning/os_fg/print/excel') ?>' + url);
@@ -315,7 +321,7 @@
     });
 
     function numberFormat(value, row) {
-        const formatter = new Intl.NumberFormat('id-ID', {
+        const formatter = new Intl.NumberFormat('ja-JP', {
             minimumFractionDigits: 0
         });
         return "<b>" + formatter.format(value) + "</b>";
@@ -351,26 +357,31 @@
     }
 
     function createLabel(id, mpq){
-        Swal.fire({
-            title: 'Please Wait...',
-            showConfirmButton: false,
-            allowOutsideClick: false,
-            allowEscapeKey: false,
-            didOpen: () => {
-                Swal.showLoading();
-            },
-        });
+        if(mpq > 0){
+            Swal.fire({
+                title: 'Please Wait...',
+                showConfirmButton: false,
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                },
+            });
 
-        $.ajax({
-            type: "post",
-            url: "<?= base_url("planning/os_fg/createLabel") ?>",
-            data: "id=" + id + "&mpq=" + mpq,
-            dataType: "html",
-            success: function (qas) {
-                swal.close();
-                window.open("<?= base_url('planning/os_fg/print_label/') ?>" + window.btoa(id), '_blank');
-            }
-        });
+            $.ajax({
+                type: "post",
+                url: "<?= base_url("planning/os_fg/createLabel") ?>",
+                data: "id=" + id + "&mpq=" + mpq,
+                dataType: "html",
+                success: function (qas) {
+                    swal.close();
+                    window.open("<?= base_url('planning/os_fg/print_label/') ?>" + window.btoa(id), '_blank');
+                    $("#dg").datagrid("reload");
+                }
+            });
+        }else{
+            toastr.info("Lot Box is 0, Please change lot box first");
+        }
     }
 
     // UPLOAD DATA

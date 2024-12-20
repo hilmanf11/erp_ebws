@@ -12,7 +12,7 @@
             <th rowspan="2" data-options="field:'start_date',width:120,align:'center'">Start Date</th>
             <th colspan="2" data-options="field:'',width:120,halign:'center'">Original Currency</th>
             <th colspan="2" data-options="field:'',width:120,halign:'center'">Local Currency</th>
-            <th colspan="2" data-options="field:'',width:120,halign:'center'">Transaction</th>
+            <th colspan="3" data-options="field:'',width:120,halign:'center'">Transaction</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
         </tr>
@@ -23,6 +23,7 @@
             <th data-options="field:'balance_local',width:150,halign:'center',align:'right',formatter: priceformatLocal">Balance</th>
             <th data-options="field:'p_supplier',width:150,align:'center',formatter:statusformat,styler:statusStyle"> Payment Supplier</th>
             <th data-options="field:'p_customer',width:150,align:'center',formatter:statusformat,styler:statusStyle"> Customer Receipt</th>
+            <th data-options="field:'p_journal',width:150,align:'center',formatter:statusformat,styler:statusStyle"> Journal Bank</th>
             <th data-options="field:'created_by',width:100,align:'center'"> By</th>
             <th data-options="field:'created_date',width:150,align:'center'"> Date</th>
             <th data-options="field:'updated_by',width:100,align:'center'"> By</th>
@@ -97,13 +98,26 @@
                 </fieldset>
             </div>
             <div style="width: 50%; float: left;">
-                <div class="fitem" style="margin-bottom: 10px; margin-top:5px;">
+                <div class="fitem">
                     <span style="width:45%; display:inline-block;">Payment Supplier</span>
-                    <input class="easyui-checkbox" name="p_supplier" value="1">
+                    <select class="easyui-combobox" style="width:40%;" name="p_supplier" panelHeight="auto">
+                        <option value="1">ACTIVE</option>
+                        <option value="0">NOT ACTIVE</option>
+                    </select>
                 </div>
                 <div class="fitem">
                     <span style="width:45%; display:inline-block;">Customer Receipt</span>
-                    <input class="easyui-checkbox" name="p_customer" value="1">
+                    <select class="easyui-combobox" style="width:40%;" name="p_customer" panelHeight="auto">
+                        <option value="1">ACTIVE</option>
+                        <option value="0">NOT ACTIVE</option>
+                    </select>
+                </div>
+                <div class="fitem">
+                    <span style="width:45%; display:inline-block;">Journal Bank</span>
+                    <select class="easyui-combobox" style="width:40%;" name="p_journal" panelHeight="auto">
+                        <option value="1">ACTIVE</option>
+                        <option value="0">NOT ACTIVE</option>
+                    </select>
                 </div>
             </div>
             <div style="width: 50%; float: left;">

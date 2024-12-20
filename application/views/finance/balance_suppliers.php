@@ -13,43 +13,25 @@
 
 <!-- TABLE DATAGRID -->
 <table id="dg" class="easyui-datagrid" style="width:99.5%;" toolbar="#toolbar">
-
     <thead>
-
         <tr>
-
             <th rowspan="2" field="ck" checkbox="true"></th>
-
-            <th rowspan="2" data-options="field:'supplier_number',width:80,halign:'center'">Code</th>
-
+            <th rowspan="2" data-options="field:'supplier_ids',width:80,halign:'center'">Code</th>
             <th rowspan="2" data-options="field:'supplier_name',width:300,halign:'center'">Supplier Name</th>
-
+            <th rowspan="2" data-options="field:'supplier_type',width:100,halign:'center'">Supplier<br>Type</th>
             <th rowspan="2" data-options="field:'account_number',width:150,halign:'center', 
-
                 editor: {
-
                     type: 'combobox',
-
                     options: {
-
                         url: '<?= base_url('finance/account_coa/reads') ?>',
-
                         valueField: 'account_number',
-
                         textField: 'account_name',
-
                         prompt: 'Choose Account No',
-
                         required: true
-
                     }
-
                 }">Account No</th>
-
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Original Currency</th>
-
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Local Currency</th>
-
             <th rowspan="2" data-options="field:'start_date',width:120,align:'center',
 
                 editor: {

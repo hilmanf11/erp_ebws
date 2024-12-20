@@ -40,7 +40,6 @@ class Report_trial_balances extends CI_Controller
         $filter_before_to = date("Y-m-t", strtotime("-1 month", strtotime($filter_from)));
         $period = date("Ym", strtotime($filter_from));
         $period_before = date("Ym", strtotime("-1 month", strtotime($filter_from)));
-
         
         $this->db->select('*');
         $this->db->from('account_group_details');
@@ -134,12 +133,34 @@ class Report_trial_balances extends CI_Controller
                 $this->db->group_by('account_number');
                 $journal = $this->db->get()->row();
 
-                $trial_balances = $this->crud->reads('trial_balances', [], ["account_number" => $account['account_number'], "period" => $period_before]);
-                if(count($trial_balances) > 0){
-                    $journal_bf = $this->crud->read('trial_balances', [], ["account_number" => $account['account_number'], "period" => $period_before]);
+                $trial_balances = $this->crud->read('trial_balances', [], ["account_number" => $account['account_number'], "period" => $period_before]);
+                if(!empty($trial_balances)){
+                    // $journal_bf = $this->crud->read('trial_balances', [], ["account_number" => $account['account_number'], "period" => $period_before]);
 
-                    $begin_balance_credit = $journal_bf->ending_credit;
-                    $begin_balance_debit = $journal_bf->ending_debit;
+                    // $retained = $this->crud->query("SELECT account_number, SUM(ending_debit) as r_begin_debit, SUM(ending_credit) as r_begin_credit 
+                    //     FROM trial_balances WHERE `period` = '$period_before' and account_number IN ('3091100','3091200')");
+                    
+                    // if($period == date("Y01", strtotime($filter_from))){
+                    //     if($account['account_number'] == "3091100"){
+                    //         if((@$retained[0]->r_begin_debit - @$retained[0]->r_begin_credit) > 0){
+                    //             $begin_balance_credit = 0;
+                    //             $begin_balance_debit = (@$retained[0]->r_begin_debit - @$retained[0]->r_begin_credit);
+                    //         }else{
+                    //             $begin_balance_credit = abs(@$retained[0]->r_begin_debit - @$retained[0]->r_begin_credit);
+                    //             $begin_balance_debit = 0;
+                    //         }
+                    //     }elseif($account['account_number'] == "3091200"){
+                    //         $begin_balance_credit = 0;
+                    //         $begin_balance_debit = 0;
+                    //     }else{
+                    //         $begin_balance_credit = $journal_bf->ending_credit;
+                    //         $begin_balance_debit = $journal_bf->ending_debit;
+                    //     }
+                    // }else{
+                        $begin_balance_credit = $trial_balances->ending_credit;
+                        $begin_balance_debit = $trial_balances->ending_debit;
+                    // }
+                    
                 }else{
                     $begin_balance_debit = $account['local_debit'];
                     $begin_balance_credit = $account['local_kredit'];
@@ -236,7 +257,7 @@ class Report_trial_balances extends CI_Controller
         $this->db->from('trial_balances');
         $this->db->where('period >=', $period);
         $this->db->where('period <=', $period_to);
-        $this->db->order_by('id', 'asc');
+        $this->db->order_by('account_number', 'asc');
         $this->db->group_by('account_number', 'asc');
         $trial_balances = $this->db->get()->result_array();
 
@@ -250,7 +271,7 @@ class Report_trial_balances extends CI_Controller
                             </td>
                             <td style="font-size: 14px; text-align: left; margin:2px;">
                                 <b style="font-size:14px;">' . $config->name . '</b><br>
-                                <span style="font-size:10px;">' . $config->description . '</span><br>
+                                <span style="font-size:10px;">' . $config->address . '</span><br>
                             </td>
                         </tr>
                     </table>
@@ -273,6 +294,7 @@ class Report_trial_balances extends CI_Controller
                 <th rowspan="3">Account No</th>
                 <th rowspan="3">Account Name</th>
                 <th colspan="6">LOCAL CURRENCY</th>
+                <th rowspan="3">Final Balance</th>
             </tr>
             <tr>
                 <th colspan="2">Begin Balance</th>
@@ -295,6 +317,7 @@ class Report_trial_balances extends CI_Controller
         $grand_total_local_credit = 0;
         $grand_total_ending_debit = 0;
         $grand_total_ending_credit = 0;
+        $grand_total_final_balance = 0;
         foreach ($trial_balances as $trial_balance) {
             if($trial_balance['header'] == 0){
                 $style = 'style="background:#CAFFB3;"';
@@ -304,28 +327,53 @@ class Report_trial_balances extends CI_Controller
                 $font = '';
             }
 
+            $this->db->select('account_number, account_name, header,
+                SUM(begin_debit) as begin_debit, 
+                SUM(begin_credit) as begin_credit');
+            $this->db->from('trial_balances');
+            $this->db->where('period =', $period);
+            $this->db->where('account_number', $trial_balance['account_number']);
+            $this->db->order_by('account_number', 'asc');
+            $this->db->group_by('account_number', 'asc');
+            $begin_tb = $this->db->get()->row();
+
+            if(((@$begin_tb->begin_debit - @$begin_tb->begin_credit) + $trial_balance['local_debit'] - $trial_balance['local_credit']) > 0){
+                $balance_debit = (((@$begin_tb->begin_debit - @$begin_tb->begin_credit) + $trial_balance['local_debit']) - $trial_balance['local_credit']);
+                $balance_credit = 0;
+            }else{
+                $balance_debit = 0;
+                $balance_credit = abs(((@$begin_tb->begin_debit - @$begin_tb->begin_credit) + $trial_balance['local_debit']) - $trial_balance['local_credit']);
+            }
+
+            $final_balance = ((@$begin_tb->begin_debit + $trial_balance['local_debit']) - (@$begin_tb->begin_credit + $trial_balance['local_credit']));
+
             $html .= '  <tr '.$style.'>
                             <td style="'.$font.'">' . $no . '</td>
-                            <td style="'.$font.'">' . $trial_balance['account_number'] . '</td>
+                            <td style="'.$font.'mso-number-format:\@;">' . $trial_balance['account_number'] . '</td>
                             <td style="'.$font.'">' . $trial_balance['account_name'] . '</td>
-                            <td style="text-align:right;'.$font.'">' . number_format($trial_balance['begin_debit'], 2) . '</td>
-                            <td style="text-align:right;'.$font.'">' . number_format($trial_balance['begin_credit'], 2) . '</td>
+                            <td style="text-align:right;'.$font.'">' . number_format(@$begin_tb->begin_debit, 2) . '</td>
+                            <td style="text-align:right;'.$font.'">' . number_format(@$begin_tb->begin_credit, 2) . '</td>
                             <td style="text-align:right;'.$font.'">' . number_format($trial_balance['local_debit'], 2) . '</td>
                             <td style="text-align:right;'.$font.'">' . number_format($trial_balance['local_credit'], 2) . '</td>
-                            <td style="text-align:right;'.$font.'">' . number_format($trial_balance['ending_debit'], 2) . '</td>
-                            <td style="text-align:right;'.$font.'">' . number_format($trial_balance['ending_credit'], 2) . '</td>
+                            <td style="text-align:right;'.$font.'">' . number_format($balance_debit, 2) . '</td>
+                            <td style="text-align:right;'.$font.'">' . number_format($balance_credit, 2) . '</td>
+                            <td style="text-align:right;'.$font.'">' . number_format($final_balance, 2) . '</td>
                         </tr>';
 
             if($trial_balance['header'] == 0){
-                $grand_total_begin_debit += $trial_balance['begin_debit'];
-                $grand_total_begin_credit += $trial_balance['begin_credit'];
+                $grand_total_begin_debit += @$begin_tb->begin_debit;
+                $grand_total_begin_credit += @$begin_tb->begin_credit;
                 $grand_total_local_debit += $trial_balance['local_debit'];
                 $grand_total_local_credit += $trial_balance['local_credit'];
-                $grand_total_ending_debit += $trial_balance['ending_debit'];
-                $grand_total_ending_credit += $trial_balance['ending_credit'];
+                $grand_total_ending_debit += $balance_debit;
+                $grand_total_ending_credit += $balance_credit;
+                $grand_total_final_balance += $final_balance;
             }
             $no++;
         }
+
+        // <td style="text-align:right;'.$font.'">' . number_format(@$begin_tb->begin_debit, 2) . '</td>
+        // <td style="text-align:right;'.$font.'">' . number_format(@$begin_tb->begin_credit, 2) . '</td>
 
         $html .= '  <tr style="background:#EBEBEB;">
                         <td colspan="3"><b>GRAND TOTAL</b></td>
@@ -335,6 +383,7 @@ class Report_trial_balances extends CI_Controller
                         <td style="text-align:right;"><b>' . number_format(@$grand_total_local_credit, 2) . '</b></td>
                         <td style="text-align:right;"><b>' . number_format($grand_total_ending_debit, 2) . '</b></td>
                         <td style="text-align:right;"><b>' . number_format($grand_total_ending_credit, 2) . '</b></td>
+                        <td style="text-align:right;"><b>' . number_format($grand_total_final_balance, 2) . '</b></td>
                     </tr>';
 
 

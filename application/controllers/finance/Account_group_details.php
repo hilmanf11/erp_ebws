@@ -50,18 +50,22 @@ class Account_group_details extends CI_Controller
             $offset = ($page - 1) * $rows;
             $result = array();
             //Select Query
-            $this->db->select('account_group_details.*, account_groups.name as group_name');
-            $this->db->from('account_group_details');
-            $this->db->join('account_groups', 'account_group_details.account_group_id = account_groups.id', 'left');
-            $this->db->where('account_group_details.deleted', 0);
+            $this->db->select('a.*, b.name as group_name');
+            $this->db->from('account_group_details a');
+            $this->db->join('account_groups b', 'a.account_group_id = b.id', 'left');
+            $this->db->where('a.deleted', 0);
     
             if (@count($filters) > 0) {
                 foreach ($filters as $filter) {
-                    $this->db->like($filter->field, $filter->value);
+                    if($filter->field == "group_name"){
+                        $this->db->like("b.name", $filter->value);
+                    }else{
+                        $this->db->like("a.".$filter->field, $filter->value);
+                    }
                 }
             }
     
-            $this->db->order_by('account_group_details.number', 'asc');
+            $this->db->order_by('a.number', 'asc');
             //Total Data
             $totalRows = $this->db->count_all_results('', false);
             //Limit 1 - 10

@@ -30,16 +30,16 @@ class Report_serial_controls extends CI_Controller
     {
         $post = isset($_POST['q']) ? $_POST['q'] : "";
         $customer_id = $this->input->get("customer_id");
-        $item_fg_id = $this->input->get("item_fg_id");
+        $item_fg_id = $this->input->get("item_id");
 
         $post = isset($_POST['q']) ? $_POST['q'] : "";
 
-        $sales_orders = $this->crud->query("SELECT `number`
+        $sales_orders = $this->crud->query("SELECT delivery_order_no as `number`
         FROM delivery_orders
         WHERE customer_id = '$customer_id' 
         AND item_fg_id = '$item_fg_id'
-        GROUP BY `number` 
-        ORDER BY `number` DESC");
+        GROUP BY delivery_order_no 
+        ORDER BY delivery_order_no DESC");
         
         echo json_encode($sales_orders);
     }
@@ -51,11 +51,11 @@ class Report_serial_controls extends CI_Controller
 
         $post = isset($_POST['q']) ? $_POST['q'] : "";
 
-        $sales_orders = $this->crud->query("SELECT `number`
+        $sales_orders = $this->crud->query("SELECT delivery_note_no as `number`
         FROM delivery_notes
-        WHERE do_number = '$do_number'
-        GROUP BY `number` 
-        ORDER BY `number` DESC");
+        WHERE delivery_order_no = '$do_number'
+        GROUP BY delivery_note_no 
+        ORDER BY delivery_note_no DESC");
         
         echo json_encode($sales_orders);
     }
@@ -68,35 +68,48 @@ class Report_serial_controls extends CI_Controller
             header("Content-Disposition: attachment; filename=report_serial_controls_$format.xls");
         }
 
+        $filter_month = $this->input->get("filter_month");
+        $filter_year = $this->input->get("filter_year");
         $filter_customer = $this->input->get("filter_customer");
         $filter_product_no = $this->input->get("filter_product_no");
         $filter_do_no = base64_decode($this->input->get("filter_do_no"));
         $filter_dn_no = base64_decode($this->input->get("filter_dn_no"));
         $filter_serial_no = base64_decode($this->input->get("filter_serial_no"));
+        $period = $filter_year . '-' .$filter_month;
 
         //Config
         $this->db->select('*');
         $this->db->from('config');
         $config = $this->db->get()->row();
 
-        $this->db->select('a.delivery_order_no, h.delivery_note_no, b.name as customer_name, c.number as item_no, c.name as item_name, a.delivery_order_date, a.sales_order_no, f.checksheet_label, f.qty');
-        $this->db->from('delivery_orders a');
-        $this->db->join('customers b', 'a.customer_id = b.id');
-        $this->db->join('item_fg c', 'a.item_fg_id = c.id');
-        $this->db->join('delivery_notes h', 'a.delivery_order_no = h.delivery_order_no', 'left');
-        $this->db->join('shipping_orders f', 'a.delivery_order_no = f.delivery_order_no and a.sales_order_no = f.sales_order_no', 'left');
-        $this->db->like('a.customer_id', $filter_customer);
-        $this->db->like('a.item_fg_id', $filter_product_no);
-        $this->db->like('a.delivery_order_no ', $filter_do_no);
+        $this->db->select('g.delivery_note_no, a.checksheet_number, d.delivery_order_no, d.delivery_order_date, d.sales_order_no, e.name as customer_name, h.number_customer as item_no, h.name as item_name, b.checksheet_label, b.qty');
+        $this->db->from('item_fg h');
+        $this->db->join('wip_receipts a', 'h.id = a.item_fg_id', 'left');
+        $this->db->join('os_fg i', 'h.id = i.item_fg_id', 'left');
+        $this->db->join('scan_item_receipts_fg b', '(a.checksheet_number = b.checksheet_number or b.workorder = i.id)');
+        $this->db->join('shipping_orders c', 'b.checksheet_label = c.checksheet_label', 'left');
+        $this->db->join('delivery_orders d', 'c.delivery_order_no = d.delivery_order_no', 'left');
+        $this->db->join('customers e', 'a.customer_id = e.id', 'left');
+        $this->db->join('delivery_notes g', 'd.delivery_order_no = g.delivery_order_no', 'left');
+        $this->db->where("DATE_FORMAT(b.created_date, '%Y-%m') = '$period'");
+        if($filter_customer != ""){
+            $this->db->like('a.customer_id', $filter_customer);
+        }
+        if($filter_product_no != ""){
+            $this->db->like('a.item_fg_id', $filter_product_no);
+        }
+        if($filter_do_no != ""){
+            $this->db->like('d.delivery_order_no ', $filter_do_no);
+        }
         if($filter_dn_no != ""){
-            $this->db->like('h.delivery_note_no', $filter_dn_no);
+            $this->db->like('g.delivery_note_no', $filter_dn_no);
         }
         if($filter_serial_no != ""){
-            $this->db->like('f.checksheet_label', $filter_serial_no);
+            $this->db->like('b.checksheet_label', $filter_serial_no);
         }
-        $this->db->order_by('a.delivery_order_no', 'ASC');
-        $this->db->order_by('f.checksheet_label', 'ASC');
-        $this->db->group_by('f.checksheet_label');
+        $this->db->group_by('b.checksheet_label');
+        $this->db->order_by('d.delivery_order_no', 'ASC');
+        $this->db->order_by('b.checksheet_label', 'ASC');
         $records = $this->db->get()->result_array();
 
         $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#customers {border-collapse: collapse;width: 100%;font-size: 12px;}#customers td, #customers th {border: 1px solid #ddd;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: #ddd;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: center;color: black;}</style><body>
@@ -126,6 +139,8 @@ class Report_serial_controls extends CI_Controller
             <table id="customers" border="1">
             <tr>
                 <th width="20">No</th>
+                <th>Status</th>
+                <th>Checksheet No</th>
                 <th>Delivery Note</th>
                 <th>Delivery Order</th>
                 <th>Trans Date</th>
@@ -138,8 +153,18 @@ class Report_serial_controls extends CI_Controller
             </tr>';
         $no = 1;
         foreach ($records as $data) {
+            if(empty($data['delivery_note_no'])){
+                $status = "OPEN";
+                $style = "style='text-align: center; background: green; color:white;'";
+            }else{
+                $status = "CLOSED";
+                $style = "style='text-align: center; background: red; color:white;'";
+            }
+
             $html .= '  <tr>
                             <td style="text-align:center">' . $no . '</td>
+                            <td '.$style.'>' . $status . '</td>
+                            <td>' . $data['checksheet_number'] . '</td>
                             <td>' . $data['delivery_note_no'] . '</td>
                             <td>' . $data['delivery_order_no'] . '</td>
                             <td>' . $data['delivery_order_date'] . '</td>

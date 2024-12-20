@@ -3,13 +3,15 @@
     <thead>
         <tr>
             <th rowspan="2" field="ck" checkbox="true"></th>
+            <th rowspan="2" data-options="field:'status_bank',width:100,align:'center',formatter:statusformat,styler:statusStyle">Reconciliation<br>Status</th>
             <th rowspan="2" data-options="field:'payment_type',width:100,halign:'center'">Payment Type</th>
             <th rowspan="2" data-options="field:'payment_no',width:150,align:'center'">Payment No</th>
             <th rowspan="2" data-options="field:'payment_date',width:100,align:'center'">Payment Date</th>
+            <th rowspan="2" data-options="field:'supplier_id',width:100,halign:'center'">Supplier ID</th>
             <th rowspan="2" data-options="field:'supplier_name',width:250,halign:'center'">Supplier Name</th>
             <th rowspan="2" data-options="field:'bank_account',width:150,halign:'center'">Bank Account</th>
             <th rowspan="2" data-options="field:'payment_by',width:100,align:'center'">Payment By</th>
-            <th rowspan="2" data-options="field:'gl_no',width:100,align:'center'">GL No</th>
+            <th rowspan="2" data-options="field:'gl_no',width:120,align:'center'">GL No</th>
             <th rowspan="2" data-options="field:'note',width:200,halign:'center'">Note</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
@@ -24,12 +26,12 @@
 </table>
 
 <!-- FORM FILTER DATAGRID -->
-<div id="toolbar" style="height: 230px; padding: 10px;">
+<div id="toolbar" style="height: 200px; padding: 10px;">
     <!-- <div style="width: 100%; display: grid; grid-template-columns: auto auto auto; grid-gap: 5px; display: flex;"> -->
 
     <fieldset style="width: 99%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
         <legend><b>Form Filter Data</b></legend>
-        <div style="width: 50%; float: left;">
+        <div style="width: 30%; float: left;">
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Payment Date</span>
                 <input style="width:30%;" id="filter_payment_date_from" value="<?= date("Y-m-01") ?>" class="easyui-datebox" data-options="prompt:'Start Date',formatter:myformatter,parser:myparser, editable:false">
@@ -44,27 +46,39 @@
                 </select>
             </div>
             <div class="fitem">
-                <span style="width:35%; display:inline-block;">Supplier Name</span>
-                <input style="width:60%;" id="filter_supplier" class="easyui-combobox">
-            </div>
-            <div class="fitem">
                 <span style="width:35%; display:inline-block;"></span>
                 <a href="javascript:;" class="easyui-linkbutton" onclick="filter()"><i class="fa fa-search"></i> Filter Data</a>
                 <a href="javascript:;" class="easyui-linkbutton" onclick="print_voucher()"><i class="fa fa-print"></i> Print Voucher</a>
             </div>
         </div>
-        <div style="width: 50%; float: left;">
+        <div style="width: 30%; float: left;">
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Supplier Name</span>
+                <input style="width:60%;" id="filter_supplier" class="easyui-combogrid">
+            </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Payment No</span>
                 <input style="width:60%;" id="filter_payment_no" class="easyui-combobox">
             </div>
+        </div>
+        <div style="width: 20%; float: left;">
             <div class="fitem">
-                <span style="width:35%; display:inline-block;">Purchase Invoice No</span>
+                <span style="width:35%; display:inline-block;">Invoice No</span>
                 <input style="width:60%;" id="filter_invoice_no" class="easyui-combobox">
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Bank Account</span>
                 <input style="width:60%;" id="filter_bank_no" class="easyui-combobox">
+            </div>
+        </div>
+        <div style="width: 20%; float: left;">
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Status</span>
+                <select style="width:60%;" id="filter_status" class="easyui-combobox" panelHeight="auto">
+                    <option value="">Select All</option>
+                    <option value="0">PENDING</option>
+                    <option value="1">DONE</option>
+                </select>
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Payment By</span>
@@ -93,6 +107,7 @@
                         <select style="width:60%;" id="payment_type" name="payment_type" required class="easyui-combobox" panelHeight="auto">
                             <option value="" selected disabled>Select Payment Type</option>
                             <option value="PURCHASE">PURCHASE</option>
+                            <option value="IMPREST">IMPREST</option>
                             <option value="OTHERS">OTHERS</option>
                         </select>
                     </div>
@@ -104,9 +119,25 @@
                         <span style="width:35%; display:inline-block;">Payment No</span>
                         <input style="width:60%;" readonly id="payment_no" name="payment_no" class="easyui-textbox" data-options="prompt:'Automatic From Payment Date'">
                     </div>
-                    <div class="fitem">
+                    <div class="fitem" id="f_supplier">
                         <span style="width:35%; display:inline-block;">Supplier Name</span>
                         <input style="width:60%;" required="" id="supplier_id" name="supplier_id" class="easyui-combobox">
+                    </div>
+                    <div class="fitem" hidden>
+                        <span style="width:35%; display:inline-block;">Currency</span>
+                        <input style="width:60%;" id="currency" name="currency" class="easyui-textbox">
+                    </div>
+                    <div class="fitem" id="f_imprest">
+                        <span style="width:35%; display:inline-block;">Imprest No</span>
+                        <input style="width:60%;" id="imprest_account" name="imprest_account" class="easyui-combogrid">
+                    </div>
+                    <div class="fitem" id="f_account">
+                        <span style="width:35%; display:inline-block;">Account No</span>
+                        <input style="width:60%;" id="other_account" name="other_account" class="easyui-combogrid">
+                    </div>
+                    <div class="fitem" hidden>
+                        <span style="width:35%; display:inline-block;">Account No Name</span>
+                        <input style="width:60%;" id="other_account_name" name="other_account_name" class="easyui-textbox">
                     </div>
                     <div class="fitem">
                         <span style="width:35%; display:inline-block;"></span>
@@ -116,7 +147,7 @@
                 <div style="width: 50%; float: left;">
                     <div class="fitem">
                         <span style="width:35%; display:inline-block;">Purchase Invoice No</span>
-                        <input style="width:60%;" required="" id="purchase_invoice" name="purchase_invoice" class="easyui-combogrid">
+                        <input style="width:60%;" id="purchase_invoice" name="purchase_invoice" class="easyui-combogrid">
                     </div>
                     <div class="fitem">
                         <span style="width:35%; display:inline-block;">Journal Type</span>
@@ -166,13 +197,14 @@
                         type: 'combobox',
                         options: {
                             url: '<?= base_url('master/currencies/reads') ?>',
-                            valueField: 'number',
-                            textField: 'number',
+                            valueField: 'name',
+                            textField: 'name',
                             prompt: 'Choose Currency',
                             editable:false,
                             panelHeight: 'auto',
                             required: true,
                         }}">Currency</th>
+                    <th data-options="field:'rate',width:100, formatter:numberformat, align:'right', editor: {type: 'numberbox',options: {precision:4}}">Rate</th>
                     <th data-options="field:'amount',width:100, formatter:numberformat, align:'right', editor: {type: 'numberbox',options: {precision:2, readonly:true}}">Amount</th>
                     <th data-options="field:'balance',width:100, formatter:numberformat, align:'right', editor: {type: 'numberbox',options: {precision:2, readonly:true}}">Balance</th>
                     <th data-options="field:'payment',width:100, formatter:numberformat, align:'right', editor: {type: 'numberbox',options: {precision:2}}">Payment</th>
@@ -365,6 +397,8 @@
         $("#purchase_invoice").combogrid('enable');
         $("#payment_by").combobox('setValue', "TRANSFER");
         $("#f_cheque_no").hide();
+        $("#f_account").hide();
+        $("#f_imprest").hide();
 
         $("#payment_date").datebox({
             onChange: function(val) {
@@ -403,15 +437,18 @@
                         description: rows[i].supplier_invoice,
                         currency: rows[i].currency,
                         payment_date: payment_date,
-                        payment: rows[i].payment
+                        payment: rows[i].payment,
+                        rate: rows[i].rate
                     }
 
                     if (currency == rows[i].currency) {
                         total_currency += 1;
                         currency = rows[i].currency;
+                        rate = rows[i].rate;
                     } else {
                         total_currency += 0;
                         currency = rows[i].currency;
+                        rate = rows[i].rate;
                     }
 
                     if (rows[i].account_type == "DEBIT") {
@@ -463,7 +500,7 @@
                             jsonData2: jsonData2,
                         },
                         success: function(response) {
-                            addTable2('<?= base_url('finance/ap_payments/calculateJournal/') ?>' + window.btoa(journal_type) + "/" + window.btoa(bank_account));
+                            addTable2('<?= base_url('finance/ap_payments/calculateJournal/') ?>' + window.btoa(journal_type) + "/" + window.btoa(bank_account) + "/" + btoa(rate));
 
                             setTimeout(function() {
                                 balance_journal();
@@ -534,17 +571,64 @@
 
     function append() {
         if (endEditing()) {
-            $('#dg2').datagrid('appendRow', {
-                amount: '0',
-                balance: '0',
-            });
+            var supplier_id = $("#supplier_id").combogrid('getValue');
+            var payment_type = $("#payment_type").combobox('getValue');
+            var other_account = $("#other_account").combogrid('getValue');
+            var imprest_account = $("#imprest_account").combogrid('getValue');
+            var other_account_name = $("#other_account_name").textbox('getValue');
+            var currency = $("#currency").textbox('getValue');
+
+            if(currency == ""){
+                var currencyF = "INR";
+            }else{
+                var currencyF = currency;
+            }
+
+            if(payment_type == "OTHERS" || payment_type == "IMPREST"){
+                $('#dg2').datagrid('appendRow', {
+                    amount: '0',
+                    balance: '0',
+                    currency: 'INR',
+                    rate: 1,
+                    account_number: other_account,
+                    account_name: other_account_name,
+                    account_type: 'DEBIT',
+                });
+            }else{
+                if(supplier_id != ""){
+                    $.ajax({
+                        type: "post",
+                        url: "<?= base_url('finance/balance_suppliers/readCoa') ?>",
+                        data: "q=" + supplier_id,
+                        dataType: "json",
+                        success: function (json) {
+                            if(json.length > 0){
+                                $('#dg2').datagrid('appendRow', {
+                                    amount: '0',
+                                    balance: '0',
+                                    currency: currencyF,
+                                    rate: 1,
+                                    account_number: json[0].account_number,
+                                    account_name: json[0].account_name,
+                                    account_type: 'DEBIT',
+                                });
+                            }else{
+                                toastr.error("Plase Input Account No in Balance Supplier Module");
+                            }
+                        }
+                    });
+                }else{
+                    toastr.error("Plase Select Supplier First!!");
+                }
+            }
+
             editIndex = $('#dg2').datagrid('getRows').length - 1;
             $('#dg2').datagrid('selectRow', editIndex).datagrid('beginEdit', editIndex);
         }
     }
 
     function append_dp() {
-        var supplier_id = $("#supplier_id").combobox('getValue');
+        var supplier_id = $("#supplier_id").combogrid('getValue');
         var purchase_invoice = $("#purchase_invoice").combogrid('getValue');
 
         if (endEditing()) {
@@ -722,13 +806,32 @@
                         $("#f_cheque_no").hide();
                     }
 
-                    $("#supplier_id").combobox({
+                    $('#supplier_id').combogrid({
+                        // url: '<?= base_url('master/supplier_items/readSuppliers') ?>',
                         url: '<?= base_url('master/suppliers/reads') ?>',
-                        valueField: 'id',
+                        panelWidth: 520,
+                        idField: 'id',
                         textField: 'name',
+                        mode: 'remote',
+                        fitColumns: true,
                         prompt: "Choose Supplier",
+                        columns: [
+                            [{
+                                field: 'id',
+                                title: 'Supplier No',
+                                width: 80
+                            }, {
+                                field: 'name',
+                                title: 'Supplier Name',
+                                width: 300
+                            }, {
+                                field: 'state',
+                                title: 'State',
+                                width: 120
+                            }]
+                        ],
                         onLoadSuccess: function(load_supplier) {
-                            $("#supplier_id").combobox('setValue', row.supplier_id);
+                            $("#supplier_id").combogrid('setValue', row.supplier_id);
                         },
                         onSelect: function(supplier) {
                             $("#purchase_invoice").combogrid({
@@ -906,10 +1009,11 @@
         var filter_payment_date_from = $("#filter_payment_date_from").datebox('getValue');
         var filter_payment_date_to = $("#filter_payment_date_to").datebox('getValue');
         var filter_payment_no = $("#filter_payment_no").combobox('getValue');
-        var filter_supplier = $("#filter_supplier").combobox('getValue');
+        var filter_supplier = $("#filter_supplier").combogrid('getValue');
         var filter_invoice_no = $("#filter_invoice_no").combobox('getValue');
         var filter_bank_no = $("#filter_bank_no").combobox('getValue');
         var filter_payment_by = $("#filter_payment_by").combobox('getValue');
+        var filter_status = $("#filter_status").combobox('getValue');
 
         var url = "?filter_payment_type=" + window.btoa(filter_payment_type) +
             "&filter_payment_date_from=" + window.btoa(filter_payment_date_from) +
@@ -918,6 +1022,7 @@
             "&filter_supplier=" + window.btoa(filter_supplier) +
             "&filter_invoice_no=" + window.btoa(filter_invoice_no) +
             "&filter_bank_no=" + window.btoa(filter_bank_no) +
+            "&filter_status=" + window.btoa(filter_status) +
             "&filter_payment_by=" + window.btoa(filter_payment_by);
 
         $('#dg').datagrid({
@@ -939,10 +1044,11 @@
         var filter_payment_date_from = $("#filter_payment_date_from").datebox('getValue');
         var filter_payment_date_to = $("#filter_payment_date_to").datebox('getValue');
         var filter_payment_no = $("#filter_payment_no").combobox('getValue');
-        var filter_supplier = $("#filter_supplier").combobox('getValue');
+        var filter_supplier = $("#filter_supplier").combogrid('getValue');
         var filter_invoice_no = $("#filter_invoice_no").combobox('getValue');
         var filter_bank_no = $("#filter_bank_no").combobox('getValue');
         var filter_payment_by = $("#filter_payment_by").combobox('getValue');
+        var filter_status = $("#filter_status").combobox('getValue');
 
         var url = "?filter_payment_type=" + window.btoa(filter_payment_type) +
             "&filter_payment_date_from=" + window.btoa(filter_payment_date_from) +
@@ -951,6 +1057,7 @@
             "&filter_supplier=" + window.btoa(filter_supplier) +
             "&filter_invoice_no=" + window.btoa(filter_invoice_no) +
             "&filter_bank_no=" + window.btoa(filter_bank_no) +
+            "&filter_status=" + window.btoa(filter_status) +
             "&filter_payment_by=" + window.btoa(filter_payment_by);
 
         window.location.assign('<?= base_url('finance/ap_payments/print/excel') ?>' + url);
@@ -961,7 +1068,7 @@
         var filter_payment_date_from = $("#filter_payment_date_from").datebox('getValue');
         var filter_payment_date_to = $("#filter_payment_date_to").datebox('getValue');
         var filter_payment_no = $("#filter_payment_no").combobox('getValue');
-        var filter_supplier = $("#filter_supplier").combobox('getValue');
+        var filter_supplier = $("#filter_supplier").combogrid('getValue');
         var filter_invoice_no = $("#filter_invoice_no").combobox('getValue');
         var filter_bank_no = $("#filter_bank_no").combobox('getValue');
         var filter_payment_by = $("#filter_payment_by").combobox('getValue');
@@ -983,7 +1090,7 @@
         var filter_payment_date_from = $("#filter_payment_date_from").datebox('getValue');
         var filter_payment_date_to = $("#filter_payment_date_to").datebox('getValue');
         var filter_payment_no = $("#filter_payment_no").combobox('getValue');
-        var filter_supplier = $("#filter_supplier").combobox('getValue');
+        var filter_supplier = $("#filter_supplier").combogrid('getValue');
         var filter_invoice_no = $("#filter_invoice_no").combobox('getValue');
         var filter_bank_no = $("#filter_bank_no").combobox('getValue');
         var filter_payment_by = $("#filter_payment_by").combobox('getValue');
@@ -1144,9 +1251,11 @@
                     var payment_type = $("#payment_type").combobox('getValue');
                     var payment_date = $("#payment_date").datebox('getValue');
                     var payment_no = $("#payment_no").textbox('getValue');
-                    var supplier_id = $("#supplier_id").combobox('getValue');
+                    var supplier_id = $("#supplier_id").combogrid('getValue');
                     var journal_type_id = $("#journal_type").combobox('getValue');
                     var bank_account = $("#bank_account").combogrid('getValue');
+                    var other_account = $("#other_account").combogrid('getValue');
+                    var imprest_account = $("#imprest_account").combogrid('getValue');
                     var payment_by = $("#payment_by").combobox('getValue');
                     var cheque_no = $("#cheque_no").textbox('getValue');
                     var note = $("#note").textbox('getValue');
@@ -1242,6 +1351,8 @@
                                                             supplier_id: supplier_id,
                                                             journal_type_id: journal_type_id,
                                                             bank_account: bank_account,
+                                                            other_account: other_account,
+                                                            imprest_account: imprest_account,
                                                             payment_by: payment_by,
                                                             cheque_no: cheque_no,
                                                             note: note,
@@ -1254,6 +1365,7 @@
                                                             balance: json[i].balance,
                                                             payment: json[i].payment,
                                                             remarks: json[i].remarks,
+                                                            rate: json[i].rate,
                                                             account_number: json[i].account_number,
                                                             account_type: json[i].account_type,
                                                         },
@@ -1377,20 +1489,32 @@
             }]
         });
 
-        $("#filter_supplier").combobox({
+        $('#filter_supplier').combogrid({
             url: '<?= base_url('master/suppliers/reads') ?>',
-            valueField: 'id',
+            panelWidth: 520,
+            idField: 'id',
             textField: 'name',
+            mode: 'remote',
+            fitColumns: true,
             prompt: "Choose Supplier",
-            icons: [{
-                iconCls: 'icon-clear',
-                handler: function(e) {
-                    $(e.data.target).combobox('clear').combobox('textbox').focus();
-                }
-            }],
-            onSelect: function(supplier) {
+            columns: [
+                [{
+                    field: 'id',
+                    title: 'Supplier No',
+                    width: 80
+                }, {
+                    field: 'name',
+                    title: 'Supplier Name',
+                    width: 300
+                }, {
+                    field: 'state',
+                    title: 'State',
+                    width: 120
+                }]
+            ],
+            onSelect: function(val, supplier) {
                 $("#filter_payment_no").combobox({
-                    url: '<?= base_url('finance/ap_payments/readPayments/') ?>' + supplier.id,
+                    url: '<?= base_url('finance/ap_payments/readPayments/') ?>' + btoa(supplier.id),
                     valueField: 'payment_no',
                     textField: 'payment_no',
                     prompt: "Choose Payment No",
@@ -1403,7 +1527,7 @@
                 });
 
                 $("#filter_invoice_no").combobox({
-                    url: '<?= base_url('finance/ap_payments/readInvoices/') ?>' + supplier.id,
+                    url: '<?= base_url('finance/ap_payments/readInvoices/') ?>' + btoa(supplier.id),
                     valueField: 'purchase_invoice',
                     textField: 'purchase_invoice',
                     prompt: "Choose Purchase Invoice",
@@ -1418,9 +1542,9 @@
         });
 
         $("#filter_bank_no").combogrid({
-            url: '<?= base_url('finance/account_banks/reads') ?>',
+            url: '<?= base_url('finance/account_banks/reads/supplier') ?>',
             panelWidth: 500,
-            idField: 'bank_account',
+            idField: 'account_number',
             textField: 'bank_name',
             mode: 'remote',
             fitColumns: true,
@@ -1448,56 +1572,173 @@
             }],
         });
 
-        $("#journal_type").combobox({
-            url: '<?= base_url('finance/journal_types/reads/' . base64_encode("AP PAYMENT")) ?>',
-            valueField: 'id',
-            textField: 'name',
-            prompt: "Choose Journal Types"
-        });
+        $("#payment_type").combobox({
+            onChange: function(val){
+                if(val == "OTHERS"){
+                    $("#supplier_id").combogrid('setValue', "SUP-03-17");
+                    $("#f_account").show();
+                    $("#f_supplier").hide();
+                    $("#f_imprest").hide();
+                }else if(val == "IMPREST"){
+                    $("#supplier_id").combogrid('setValue', "SUP-03-17");
+                    $("#f_account").hide();
+                    $("#f_supplier").hide();
+                    $("#f_imprest").show();
+                }else{
+                    $("#supplier_id").combogrid('clear');
+                    $("#f_account").hide();
+                    $("#f_supplier").show();
+                    $("#f_imprest").hide();
+                }
 
-        $("#supplier_id").combobox({
-            url: '<?= base_url('master/suppliers/reads') ?>',
-            valueField: 'id',
-            textField: 'name',
-            prompt: "Choose Supplier",
-            onSelect: function(supplier) {
-                var payment_type = $("#payment_type").combobox('getValue');
-
-                $("#purchase_invoice").combogrid({
-                    url: '<?= base_url('finance/ap_payments/readInvoiceType?supplier_id=') ?>' + supplier.id + "&payment_type=" + payment_type,
-                    panelWidth: 500,
-                    idField: 'number',
-                    textField: 'number',
-                    // mode: 'remote',
-                    fitColumns: true,
-                    prompt: "Choose Purchase invoice No",
-                    columns: [
-                        [{
-                            field: 'number',
-                            title: 'Purchase Invoice No',
-                            width: 200
-                        }, {
-                            field: 'invoice_no',
-                            title: 'Supplier Invoice No',
-                            width: 250
-                        }, ]
-                    ],
-                    onSelect: function(valpi, pi) {
-                        if (pi.journal_type_id != null) {
-                            $("#journal_type").combobox('setValue', pi.journal_type_id);
-                        } else {
-                            toastr.info("The journal type on the purchase invoice is still empty");
-                            $("#journal_type").combobox('clear');
+                $("#journal_type").combobox({
+                    url: '<?= base_url('finance/journal_types/reads/' . base64_encode("AP PAYMENT") . '/') ?>' + btoa(val),
+                    valueField: 'id',
+                    textField: 'name',
+                    prompt: "Choose Journal Types",
+                    onLoadSuccess: function(row){
+                        if(val != "PURCHASE"){
+                            $("#journal_type").combobox('setValue', row[0].id);
                         }
+                    },
+                    onSelect: function(payment){
+                        $("#other_account").combogrid('setValue', payment.account_number);
+                        $("#other_account_name").textbox('setValue', payment.account_name);
                     }
                 });
             }
         });
 
+        $('#supplier_id').combogrid({
+            // url: '<?= base_url('master/supplier_items/readSuppliers') ?>',
+            url: '<?= base_url('master/suppliers/reads') ?>',
+            panelWidth: 520,
+            idField: 'id',
+            textField: 'name',
+            mode: 'remote',
+            fitColumns: true,
+            prompt: "Choose Supplier",
+            columns: [
+                [{
+                    field: 'id',
+                    title: 'Supplier No',
+                    width: 80
+                }, {
+                    field: 'name',
+                    title: 'Supplier Name',
+                    width: 300
+                }, {
+                    field: 'state',
+                    title: 'State',
+                    width: 120
+                }]
+            ],
+            onSelect: function(supp, supplier) {
+                var payment_type = $("#payment_type").combobox('getValue');
+                var payment_date = $("#payment_date").datebox('getValue');
+                $("#currency").textbox('setValue', supplier.currency);
+
+                if(payment_date != "" && payment_type != ""){
+                    $("#purchase_invoice").combogrid({
+                        url: '<?= base_url('finance/ap_payments/readInvoiceType?supplier_id=') ?>' + supplier.id + "&payment_type=" + payment_type + "&payment_date=" + payment_date,
+                        panelWidth: 600,
+                        idField: 'number',
+                        textField: 'number',
+                        mode: 'remote',
+                        fitColumns: true,
+                        prompt: "Choose Purchase invoice No",
+                        columns: [
+                            [{
+                                field: 'number',
+                                title: 'Purchase Invoice No',
+                                width: 200
+                            }, {
+                                field: 'invoice_no',
+                                title: 'Supplier Invoice No',
+                                width: 250
+                            }, ]
+                        ],
+                        onLoadSuccess: function(rowData){
+                            if(rowData.total == 0){
+                                toastr.warning("No data found with due date " + payment_date);
+                            }
+                        },
+                        onSelect: function(valpi, pi) {
+                            if (pi.journal_type_id != null) {
+                                $("#journal_type").combobox('setValue', pi.journal_type_id);
+                            } else {
+                                toastr.info("The journal type on the purchase invoice is still empty");
+                                $("#journal_type").combobox('clear');
+                            }
+                        }
+                    });
+                }else{
+                    toastr.error("Please Select Payment Type and Date First");
+                }
+            }
+        });
+
+        $("#other_account").combogrid({
+            url: '<?= base_url('finance/account_coa/readOthers/AP') ?>',
+            panelWidth: 320,
+            idField: 'account_number',
+            textField: 'account_number',
+            mode: 'remote', 
+            fitColumns: true,
+            prompt: 'Choose Account No',
+            columns: [
+                [{
+                    field: 'account_number',
+                    title: 'Account No',
+                    width: 100
+                }, {
+                    field: 'account_name',
+                    title: 'Account Name',
+                    width: 200
+                }, ]
+            ],
+            onSelect: function(val, row){
+                $("#other_account_name").textbox('setValue', row.account_name);
+            }
+        });
+
+        $("#imprest_account").combogrid({
+            url: '<?= base_url('finance/account_imprests/reads') ?>',
+            panelWidth: 600,
+            idField: 'number',
+            textField: 'name',
+            mode: 'remote', 
+            fitColumns: true,
+            prompt: 'Choose Imprest No',
+            columns: [
+                [{
+                    field: 'number',
+                    title: 'Imprest Code',
+                    width: 100
+                },{
+                    field: 'name',
+                    title: 'Imprest Name',
+                    width: 100
+                }, {
+                    field: 'account_number',
+                    title: 'Account No',
+                    width: 150
+                }, {
+                    field: 'account_name',
+                    title: 'Account Name',
+                    width: 200
+                }, ]
+            ],
+            onSelect: function(val, row){
+                $("#other_account").textbox('setValue', row.account_number);
+                $("#other_account_name").textbox('setValue', row.account_name);
+            }
+        });
+        
         $("#bank_account").combogrid({
-            url: '<?= base_url('finance/account_banks/reads') ?>',
+            url: '<?= base_url('finance/account_banks/reads/supplier') ?>',
             panelWidth: 500,
-            idField: 'bank_account',
+            idField: 'account_number',
             textField: 'bank_name',
             mode: 'remote',
             fitColumns: true,
@@ -1547,7 +1788,7 @@
         } else {
             var digits = 0;
             var currency = 'INR';
-            var format = "id-ID";
+            var format = "ja-JP";
         }
 
         if (value != null) {
@@ -1563,7 +1804,7 @@
     function priceformatlocal(value, row) {
         var digits = 0;
         var currency = 'INR';
-        var format = "id-ID";
+        var format = "ja-JP";
 
         if (value != null) {
             const formatter = new Intl.NumberFormat(format, {
@@ -1576,7 +1817,7 @@
     }
 
     function numberformat(value, row) {
-        const formatter = new Intl.NumberFormat('id-ID', {
+        const formatter = new Intl.NumberFormat('ja-JP', {
             minimumFractionDigits: 2
         });
 
@@ -1588,18 +1829,18 @@
     }
 
     function statusformat(value, row) {
-        if (value == 0) {
-            return "<b style='color:green;'>OPEN</b>";
+        if (value == 1) {
+            return "<b style='color:green;'>DONE</b>";
         } else {
-            return "<b style='color:red;'>CLOSED</b>";
+            return "<b style='color:orange;'>PENDING</b>";
         }
     }
 
     function statusStyle(value, row, index) {
-        if (value == 0) {
+        if (value == 1) {
             return 'background-color:#C8FFCC;';
         } else {
-            return 'background-color:#FFC8C8;';
-        }
+            return 'background-color:#ffd495;';
+        } 
     }
 </script>

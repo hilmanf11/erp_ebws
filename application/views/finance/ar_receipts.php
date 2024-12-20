@@ -3,13 +3,15 @@
     <thead>
         <tr>
             <th rowspan="2" field="ck" checkbox="true"></th>
+            <th rowspan="2" data-options="field:'status_bank',width:100,align:'center',formatter:statusformat,styler:statusStyle">Reconciliation<br>Status</th>
             <th rowspan="2" data-options="field:'receipt_type',width:100,halign:'center'">Receipt Type</th>
             <th rowspan="2" data-options="field:'receipt_no',width:150,align:'center'">Receipt No</th>
             <th rowspan="2" data-options="field:'receipt_date',width:100,align:'center'">Receipt Date</th>
             <th rowspan="2" data-options="field:'customer_name',width:250,halign:'center'">Customer Name</th>
+            <th rowspan="2" data-options="field:'plant',width:100,halign:'center'">Plant</th>
             <th rowspan="2" data-options="field:'bank_account',width:150,halign:'center'">Bank Account</th>
             <th rowspan="2" data-options="field:'receipt_by',width:100,align:'center'">Receipt By</th>
-            <th rowspan="2" data-options="field:'gl_no',width:100,align:'center'">GL No</th>
+            <th rowspan="2" data-options="field:'gl_no',width:120,align:'center'">GL No</th>
             <th rowspan="2" data-options="field:'note',width:200,halign:'center'">Note</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
@@ -24,12 +26,12 @@
 </table>
 
 <!-- FORM FILTER DATAGRID -->
-<div id="toolbar" style="height: 230px; padding: 10px;">
+<div id="toolbar" style="height: 240px; padding: 10px;">
     <!-- <div style="width: 100%; display: grid; grid-template-columns: auto auto auto; grid-gap: 5px; display: flex;"> -->
 
     <fieldset style="width: 99%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
         <legend><b>Form Filter Data</b></legend>
-        <div style="width: 50%; float: left;">
+        <div style="width: 35%; float: left;">
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Receipt Date</span>
                 <input style="width:30%;" id="filter_receipt_date_from" value="<?= date("Y-m-01") ?>" class="easyui-datebox" data-options="prompt:'Start Date',formatter:myformatter,parser:myparser, editable:false">
@@ -53,7 +55,11 @@
                 <a href="javascript:;" class="easyui-linkbutton" onclick="print_voucher()"><i class="fa fa-print"></i> Print Voucher</a>
             </div>
         </div>
-        <div style="width: 50%; float: left;">
+        <div style="width: 35%; float: left;">
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Plant</span>
+                <input style="width:60%;" id="filter_plant" class="easyui-combobox">
+            </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Receipt No</span>
                 <input style="width:60%;" id="filter_receipt_no" class="easyui-combobox">
@@ -62,6 +68,8 @@
                 <span style="width:35%; display:inline-block;">Sales Invoice No</span>
                 <input style="width:60%;" id="filter_invoice_no" class="easyui-combobox">
             </div>
+        </div>
+        <div style="width: 30%; float: left;">
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Bank Account</span>
                 <input style="width:60%;" id="filter_bank_no" class="easyui-combobox">
@@ -72,6 +80,14 @@
                     <option value="">Select All</option>
                     <option value="TRANSFER">TRANSFER</option>
                     <option value="CASH">CASH</option>
+                </select>
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Status</span>
+                <select style="width:60%;" id="filter_status" class="easyui-combobox" panelHeight="auto">
+                    <option value="">Select All</option>
+                    <option value="0">PENDING</option>
+                    <option value="1">DONE</option>
                 </select>
             </div>
         </div>
@@ -104,9 +120,21 @@
                         <span style="width:35%; display:inline-block;">Receipt No</span>
                         <input style="width:60%;" readonly id="receipt_no" name="receipt_no" class="easyui-textbox" data-options="prompt:'Automatic From Receipt Date'">
                     </div>
-                    <div class="fitem">
+                    <div class="fitem" id="f_customer">
                         <span style="width:35%; display:inline-block;">Customer Name</span>
                         <input style="width:60%;" required="" id="customer_id" name="customer_id" class="easyui-combobox">
+                    </div>
+                    <div class="fitem" id="f_plant">
+                        <span style="width:35%; display:inline-block;">Plant</span>
+                        <input style="width:30%;" id="plant" name="plant" required class="easyui-combobox">
+                    </div>
+                    <div class="fitem" id="f_account">
+                        <span style="width:35%; display:inline-block;">Account No</span>
+                        <input style="width:60%;" id="other_account" name="other_account" class="easyui-combogrid">
+                    </div>
+                    <div class="fitem" hidden>
+                        <span style="width:35%; display:inline-block;">Account No Name</span>
+                        <input style="width:60%;" id="other_account_name" name="other_account_name" class="easyui-textbox">
                     </div>
                     <div class="fitem">
                         <span style="width:35%; display:inline-block;"></span>
@@ -116,7 +144,7 @@
                 <div style="width: 50%; float: left;">
                     <div class="fitem" id="type_selection_purchase">
                         <span style="width:35%; display:inline-block;">Sales Invoice No</span>
-                        <input style="width:60%;" required="" id="sales_invoice" name="sales_invoice" class="easyui-combobox">
+                        <input style="width:60%;" id="sales_invoice" name="sales_invoice" class="easyui-combobox">
                     </div>
                     <div class="fitem">
                         <span style="width:35%; display:inline-block;">Journal Type</span>
@@ -173,6 +201,7 @@
                             panelHeight: 'auto',
                             required: true,
                         }}">Currency</th>
+                    <th data-options="field:'rate',width:100, formatter:numberformat, align:'right', editor: {type: 'numberbox',options: {precision:2, readonly:true}}">Rate</th>
                     <th data-options="field:'amount',width:100, formatter:numberformat, align:'right', editor: {type: 'numberbox',options: {precision:2, readonly:true}}">Amount</th>
                     <th data-options="field:'balance',width:100, formatter:numberformat, align:'right', editor: {type: 'numberbox',options: {precision:2, readonly:true}}">Balance</th>
                     <th data-options="field:'receipt',width:100, formatter:numberformat, align:'right', editor: {type: 'numberbox',options: {precision:2}}">Receipt</th>
@@ -212,18 +241,18 @@
                         }}">Account No</th>
                     <th data-options="field:'account_name',width:150, editor: {type: 'textbox', options: {readonly: true}}">Account Name</th>
                     <th data-options="field:'account_type',width:120, halign:'center', editor: {
-                    type: 'combobox',
-                    options: {
-                        data: [{
-                            'id':'DEBIT'
-                        },{
-                            'id':'CREDIT'
-                        }],
-                        valueField: 'id',
-                        textField: 'id',
-                        prompt: 'Choose Debit/Credit',
-                        panelHeight: 'auto'
-                    }}">Debit/Credit</th>
+                        type: 'combobox',
+                        options: {
+                            data: [{
+                                'id':'DEBIT'
+                            },{
+                                'id':'CREDIT'
+                            }],
+                            valueField: 'id',
+                            textField: 'id',
+                            prompt: 'Choose Debit/Credit',
+                            panelHeight: 'auto'
+                        }}">Debit/Credit</th>
                 </tr>
             </thead>
         </table>
@@ -340,9 +369,11 @@
         $("#receipt_date").datebox('enable');
         $("#receipt_type").combobox('enable');
         $("#customer_id").combogrid('enable');
+        $("#plant").combobox('enable');
         $("#sales_invoice").combobox('enable');
         $("#receipt_by").combobox('setValue', "TRANSFER");
         $("#f_cheque_no").hide();
+        $("#f_account").hide();
 
         $("#receipt_date").datebox({
             onChange: function(val) {
@@ -380,15 +411,18 @@
                         description: rows[i].description,
                         currency: rows[i].currency,
                         receipt_date: receipt_date,
-                        receipt: rows[i].receipt
+                        receipt: rows[i].receipt,
+                        rate: rows[i].rate,
                     }
 
                     if (currency == rows[i].currency) {
                         total_currency += 1;
                         currency = rows[i].currency;
+                        rate = rows[i].rate;
                     } else {
                         total_currency += 0;
                         currency = rows[i].currency;
+                        rate = rows[i].rate;
                     }
 
                     if (rows[i].account_type == "DEBIT") {
@@ -436,7 +470,7 @@
                             jsonData2: jsonData2,
                         },
                         success: function(response) {
-                            addTable2('<?= base_url('finance/ar_receipts/calculateJournal/') ?>' + window.btoa(journal_type) + "/" + window.btoa(bank_account));
+                            addTable2('<?= base_url('finance/ar_receipts/calculateJournal/') ?>' + window.btoa(journal_type) + "/" + window.btoa(bank_account) + "/" + btoa(rate));
 
                             setTimeout(function() {
                                 balance_journal();
@@ -508,23 +542,41 @@
 
     function append() {
         if (endEditing()) {
-            $('#dg2').datagrid('appendRow', {
-                delete: '0',
-            });
-            editIndex = $('#dg2').datagrid('getRows').length - 1;
-            $('#dg2').datagrid('selectRow', editIndex).datagrid('beginEdit', editIndex);
+
+            var receipt_type = $("#receipt_type").combobox('getValue');
+            var other_account = $("#other_account").combogrid('getValue');
+            var other_account_name = $("#other_account_name").textbox('getValue');
+
+            // if(receipt_type == "OTHERS"){
+                $('#dg2').datagrid('appendRow', {
+                    delete: '0',
+                    amount: '0',
+                    balance: '0',
+                    rate: '0',
+                    currency: 'INR',
+                    account_number: other_account,
+                    account_name: other_account_name,
+                    account_type: 'CREDIT',
+                });
+
+                editIndex = $('#dg2').datagrid('getRows').length - 1;
+                $('#dg2').datagrid('selectRow', editIndex).datagrid('beginEdit', editIndex);
+            // }else{
+            //     toastr.warning("Please Change Recepipt Type to OTHERS");
+            // }
         }
     }
 
     function append_dp() {
         var customer_id = $("#customer_id").combobox('getValue');
+        var plant = $("#plant").combobox('enable');
         var sales_invoice = $("#sales_invoice").combobox('getValue');
 
         if (endEditing()) {
             $.ajax({
                 type: "post",
                 url: "<?= base_url('finance/ar_receipts/readDp') ?>",
-                data: "customer_id=" + customer_id + "&sales_invoice=" + sales_invoice,
+                data: "customer_id=" + customer_id + "&sales_invoice=" + sales_invoice + "&plant=" + plant,
                 dataType: "json",
                 success: function(dp) {
                     if (parseInt(dp.length) > 0) {
@@ -667,6 +719,7 @@
                     $("#receipt_date").datebox('disable');
                     $("#receipt_type").combobox('disable');
                     $("#customer_id").combogrid('disable');
+                    $("#plant").combobox('disable');
                     $("#sales_invoice").combobox('disable');
                     $("#showExchange").hide();
 
@@ -687,16 +740,27 @@
                             $("#customer_id").combobox('setValue', row.customer_id);
                         },
                         onSelect: function(customer) {
-                            $("#sales_invoice").combobox({
-                                url: '<?= base_url('finance/ar_receipts/readInvoices/') ?>' + customer.id,
-                                valueField: 'sales_invoice',
-                                textField: 'sales_invoice',
-                                multiple: true,
-                                prompt: "Choose Sales Invoice No",
+                            $("#plant").combobox({
+                                url: '<?= base_url('master/customers/readAddress/') ?>' + btoa(customer.id),
+                                valueField: 'plant',
+                                textField: 'plant',
+                                prompt: "Choose Plant",
                                 onLoadSuccess: function(load_invoice) {
-                                    $("#sales_invoice").combobox('setValue', row.sales_invoice);
-                                    $("#journal_type").combobox('setValue', row.journal_type_id);
+                                    $("#plant").combobox('setValue', row.plant);
                                 },
+                                onSelect: function(plant){
+                                    $("#sales_invoice").combobox({
+                                        url: '<?= base_url('finance/ar_receipts/readInvoices/') ?>' + customer.id + "/" + btoa(plant.plant),
+                                        valueField: 'sales_invoice',
+                                        textField: 'sales_invoice',
+                                        multiple: true,
+                                        prompt: "Choose Sales Invoice No",
+                                        onLoadSuccess: function(load_invoice) {
+                                            $("#sales_invoice").combobox('setValue', row.sales_invoice);
+                                            $("#journal_type").combobox('setValue', row.journal_type_id);
+                                        },
+                                    });
+                                }
                             });
                         }
                     });
@@ -856,17 +920,21 @@
         var filter_receipt_date_to = $("#filter_receipt_date_to").datebox('getValue');
         var filter_receipt_no = $("#filter_receipt_no").combobox('getValue');
         var filter_customer = $("#filter_customer").combobox('getValue');
+        var filter_plant = $("#filter_plant").combobox('getValue');
         var filter_invoice_no = $("#filter_invoice_no").combobox('getValue');
         var filter_bank_no = $("#filter_bank_no").combobox('getValue');
         var filter_receipt_by = $("#filter_receipt_by").combobox('getValue');
+        var filter_status = $("#filter_status").combobox('getValue');
 
         var url = "?filter_receipt_type=" + window.btoa(filter_receipt_type) +
             "&filter_receipt_date_from=" + window.btoa(filter_receipt_date_from) +
             "&filter_receipt_date_to=" + window.btoa(filter_receipt_date_to) +
             "&filter_receipt_no=" + window.btoa(filter_receipt_no) +
             "&filter_customer=" + window.btoa(filter_customer) +
+            "&filter_plant=" + window.btoa(filter_plant) +
             "&filter_invoice_no=" + window.btoa(filter_invoice_no) +
             "&filter_bank_no=" + window.btoa(filter_bank_no) +
+            "&filter_status=" + window.btoa(filter_status) +
             "&filter_receipt_by=" + window.btoa(filter_receipt_by);
 
         $('#dg').datagrid({
@@ -889,17 +957,21 @@
         var filter_receipt_date_to = $("#filter_receipt_date_to").datebox('getValue');
         var filter_receipt_no = $("#filter_receipt_no").combobox('getValue');
         var filter_customer = $("#filter_customer").combobox('getValue');
+        var filter_plant = $("#filter_plant").combobox('getValue');
         var filter_invoice_no = $("#filter_invoice_no").combobox('getValue');
         var filter_bank_no = $("#filter_bank_no").combobox('getValue');
         var filter_receipt_by = $("#filter_receipt_by").combobox('getValue');
+        var filter_status = $("#filter_status").combobox('getValue');
 
         var url = "?filter_receipt_type=" + window.btoa(filter_receipt_type) +
             "&filter_receipt_date_from=" + window.btoa(filter_receipt_date_from) +
             "&filter_receipt_date_to=" + window.btoa(filter_receipt_date_to) +
             "&filter_receipt_no=" + window.btoa(filter_receipt_no) +
             "&filter_customer=" + window.btoa(filter_customer) +
+            "&filter_plant=" + window.btoa(filter_plant) +
             "&filter_invoice_no=" + window.btoa(filter_invoice_no) +
             "&filter_bank_no=" + window.btoa(filter_bank_no) +
+            "&filter_status=" + window.btoa(filter_status) +
             "&filter_receipt_by=" + window.btoa(filter_receipt_by);
 
         window.location.assign('<?= base_url('finance/ar_receipts/print/excel') ?>' + url);
@@ -911,17 +983,21 @@
         var filter_receipt_date_to = $("#filter_receipt_date_to").datebox('getValue');
         var filter_receipt_no = $("#filter_receipt_no").combobox('getValue');
         var filter_customer = $("#filter_customer").combobox('getValue');
+        var filter_plant = $("#filter_plant").combobox('getValue');
         var filter_invoice_no = $("#filter_invoice_no").combobox('getValue');
         var filter_bank_no = $("#filter_bank_no").combobox('getValue');
         var filter_receipt_by = $("#filter_receipt_by").combobox('getValue');
+        var filter_status = $("#filter_status").combobox('getValue');
 
         var url = "?filter_receipt_type=" + window.btoa(filter_receipt_type) +
             "&filter_receipt_date_from=" + window.btoa(filter_receipt_date_from) +
             "&filter_receipt_date_to=" + window.btoa(filter_receipt_date_to) +
             "&filter_receipt_no=" + window.btoa(filter_receipt_no) +
             "&filter_customer=" + window.btoa(filter_customer) +
+            "&filter_plant=" + window.btoa(filter_plant) +
             "&filter_invoice_no=" + window.btoa(filter_invoice_no) +
             "&filter_bank_no=" + window.btoa(filter_bank_no) +
+            "&filter_status=" + window.btoa(filter_status) +
             "&filter_receipt_by=" + window.btoa(filter_receipt_by);
 
         window.location.assign('<?= base_url('finance/ar_receipts/printDetail/excel') ?>' + url);
@@ -933,17 +1009,21 @@
         var filter_receipt_date_to = $("#filter_receipt_date_to").datebox('getValue');
         var filter_receipt_no = $("#filter_receipt_no").combobox('getValue');
         var filter_customer = $("#filter_customer").combobox('getValue');
+        var filter_plant = $("#filter_plant").combobox('getValue');
         var filter_invoice_no = $("#filter_invoice_no").combobox('getValue');
         var filter_bank_no = $("#filter_bank_no").combobox('getValue');
         var filter_receipt_by = $("#filter_receipt_by").combobox('getValue');
+        var filter_status = $("#filter_status").combobox('getValue');
 
         var url = "?filter_receipt_type=" + window.btoa(filter_receipt_type) +
             "&filter_receipt_date_from=" + window.btoa(filter_receipt_date_from) +
             "&filter_receipt_date_to=" + window.btoa(filter_receipt_date_to) +
             "&filter_receipt_no=" + window.btoa(filter_receipt_no) +
             "&filter_customer=" + window.btoa(filter_customer) +
+            "&filter_plant=" + window.btoa(filter_plant) +
             "&filter_invoice_no=" + window.btoa(filter_invoice_no) +
             "&filter_bank_no=" + window.btoa(filter_bank_no) +
+            "&filter_status=" + window.btoa(filter_status) +
             "&filter_receipt_by=" + window.btoa(filter_receipt_by);
 
         window.location.assign('<?= base_url('finance/ar_receipts/printJournal/excel') ?>' + url);
@@ -989,7 +1069,7 @@
 
     function numberformat(value, row) {
         if (value != null) {
-            const formatter = new Intl.NumberFormat('id-ID', {
+            const formatter = new Intl.NumberFormat('ja-JP', {
                 minimumFractionDigits: 2
             });
             return "<b>" + formatter.format(value) + "</b>";
@@ -1095,8 +1175,10 @@
                     var receipt_date = $("#receipt_date").datebox('getValue');
                     var receipt_no = $("#receipt_no").textbox('getValue');
                     var customer_id = $("#customer_id").combobox('getValue');
+                    var plant = $("#plant").combobox('getValue');
                     var journal_type_id = $("#journal_type").combobox('getValue');
                     var bank_account = $("#bank_account").combogrid('getValue');
+                    var other_account = $("#other_account").combogrid('getValue');
                     var receipt_by = $("#receipt_by").combobox('getValue');
                     var cheque_no = $("#cheque_no").textbox('getValue');
                     var note = $("#note").textbox('getValue');
@@ -1155,8 +1237,10 @@
                                                                 receipt_date: receipt_date,
                                                                 receipt_no: receipt_no,
                                                                 customer_id: customer_id,
+                                                                plant: plant,
                                                                 journal_type_id: journal_type_id,
                                                                 bank_account: bank_account,
+                                                                other_account: other_account,
                                                                 receipt_by: receipt_by,
                                                                 cheque_no: cheque_no,
                                                                 note: note,
@@ -1169,6 +1253,7 @@
                                                                 amount: rows[i].amount,
                                                                 balance: rows[i].balance,
                                                                 receipt: rows[i].receipt,
+                                                                rate: rows[i].rate,
                                                                 remarks: rows[i].remarks,
                                                                 account_number: rows[i].account_number,
                                                                 account_type: rows[i].account_type,
@@ -1244,7 +1329,7 @@
             }],
             onSelect: function(customer) {
                 $("#filter_receipt_no").combobox({
-                    url: '<?= base_url('finance/ar_receipts/readReceipts/') ?>' + customer.id,
+                    url: '<?= base_url('finance/ar_receipts/readReceipts/') ?>' + btoa(customer.id),
                     valueField: 'receipt_no',
                     textField: 'receipt_no',
                     prompt: "Choose Receipt No",
@@ -1256,8 +1341,21 @@
                     }],
                 });
 
+                $("#filter_plant").combobox({
+                    url: '<?= base_url('master/customers/readAddress/') ?>' + btoa(customer.id),
+                    valueField: 'plant',
+                    textField: 'plant',
+                    prompt: "Choose Plant",
+                    icons: [{
+                        iconCls: 'icon-clear',
+                        handler: function(e) {
+                            $(e.data.target).combobox('clear').combobox('textbox').focus();
+                        }
+                    }],
+                });
+
                 $("#filter_invoice_no").combobox({
-                    url: '<?= base_url('finance/ar_receipts/readInvoices/') ?>' + customer.id,
+                    url: '<?= base_url('finance/ar_receipts/readInvoices/') ?>' + btoa(customer.id),
                     valueField: 'sales_invoice',
                     textField: 'sales_invoice',
                     prompt: "Choose Sales Invoice",
@@ -1272,10 +1370,10 @@
         });
 
         $("#filter_bank_no").combogrid({
-            url: '<?= base_url('finance/account_banks/reads') ?>',
+            url: '<?= base_url('finance/account_banks/reads/customer') ?>',
             panelWidth: 500,
-            idField: 'bank_account',
-            textField: 'bank_account',
+            idField: 'account_number',
+            textField: 'bank_name',
             mode: 'remote',
             fitColumns: true,
             prompt: "Choose Bank Account",
@@ -1302,11 +1400,37 @@
             }],
         });
 
-        $("#journal_type").combobox({
-            url: '<?= base_url('finance/journal_types/reads/' . base64_encode("AP PAYMENT")) ?>',
-            valueField: 'id',
-            textField: 'name',
-            prompt: "Choose Journal Types"
+        $("#receipt_type").combobox({
+            onChange: function(val){
+                if(val == "OTHERS"){
+                    $("#customer_id").combobox('setValue', "CUS-01-06");
+                    $("#plant").combobox('setValue', "OTHER");
+                    $("#f_account").show();
+                    $("#f_customer").hide();
+                    $("#f_plant").hide();
+                }else{
+                    $("#customer_id").combobox('clear');
+                    $("#plant").combobox('clear');
+                    $("#f_account").hide();
+                    $("#f_customer").show();
+                    $("#f_plant").show();
+                }
+
+                $("#journal_type").combobox({
+                    url: '<?= base_url('finance/journal_types/reads/' . base64_encode("AR RECEIPT") . '/') ?>' + btoa(val),
+                    valueField: 'id',
+                    textField: 'name',
+                    prompt: "Choose Journal Types",
+                    onLoadSuccess: function(receipt){
+                        $("#journal_type").combobox('setValue', receipt.id);
+                        
+                    },
+                    onSelect: function(receipt){
+                        $("#other_account").combogrid('setValue', receipt.account_number);
+                        $("#other_account_name").textbox('setValue', receipt.account_name);
+                    }
+                });
+            }
         });
 
         $("#customer_id").combobox({
@@ -1317,29 +1441,61 @@
             onSelect: function(customer) {
                 var receipt_type = $("#receipt_type").combobox('getValue');
 
-                $("#sales_invoice").combobox({
-                    url: '<?= base_url('finance/ar_receipts/readInvoiceType?customer_id=') ?>' + customer.id + "&receipt_type=" + receipt_type,
-                    valueField: 'number',
-                    textField: 'number',
-                    multiple: true,
-                    prompt: "Choose Sales Invoice No",
-                    onSelect: function(pi) {
-                        if (pi.journal_type_id != null) {
-                            $("#journal_type").combobox('setValue', pi.journal_type_id);
-                        } else {
-                            toastr.info("The journal type on the Sales Invoice is still empty");
-                            $("#journal_type").combobox('clear');
-                        }
+                $("#plant").combobox({
+                    url: '<?= base_url('master/customers/readAddress/') ?>' + btoa(customer.id),
+                    valueField: 'plant',
+                    textField: 'plant',
+                    prompt: "Choose Plant",
+                    onSelect: function(plant) {
+                        $("#sales_invoice").combobox({
+                            url: '<?= base_url('finance/ar_receipts/readInvoiceType?customer_id=') ?>' + customer.id + "&receipt_type=" + receipt_type + "&plant=" + btoa(plant.plant),
+                            valueField: 'number',
+                            textField: 'number',
+                            multiple: true,
+                            prompt: "Choose Sales Invoice No",
+                            onSelect: function(pi) {
+                                if (pi.journal_type_id != null) {
+                                    $("#journal_type").combobox('setValue', pi.journal_type_id);
+                                } else {
+                                    toastr.info("The journal type on the Sales Invoice is still empty");
+                                    $("#journal_type").combobox('clear');
+                                }
+                            }
+                        });
                     }
                 });
             }
         });
 
+        $("#other_account").combogrid({
+            url: '<?= base_url('finance/account_coa/readOthers/AR') ?>',
+            panelWidth: 320,
+            idField: 'account_number',
+            textField: 'account_number',
+            mode: 'remote', 
+            fitColumns: true,
+            prompt: 'Choose Account No',
+            columns: [
+                [{
+                    field: 'account_number',
+                    title: 'Account No',
+                    width: 100
+                }, {
+                    field: 'account_name',
+                    title: 'Account Name',
+                    width: 200
+                }, ]
+            ],
+            onSelect: function(val, row){
+                $("#other_account_name").textbox('setValue', row.account_name);
+            }
+        });
+
         $("#bank_account").combogrid({
-            url: '<?= base_url('finance/account_banks/reads') ?>',
+            url: '<?= base_url('finance/account_banks/reads/customer') ?>',
             panelWidth: 500,
-            idField: 'bank_account',
-            textField: 'bank_account',
+            idField: 'account_number',
+            textField: 'bank_name',
             mode: 'remote',
             fitColumns: true,
             prompt: "Choose Bank Account",
@@ -1388,7 +1544,7 @@
         } else {
             var digits = 0;
             var currency = 'INR';
-            var format = "id-ID";
+            var format = "ja-JP";
         }
 
         if (value != null) {
@@ -1404,7 +1560,7 @@
     function priceformatlocal(value, row) {
         var digits = 0;
         var currency = 'INR';
-        var format = "id-ID";
+        var format = "ja-JP";
 
         if (value != null) {
             const formatter = new Intl.NumberFormat(format, {
@@ -1417,25 +1573,26 @@
     }
 
     function numberformat(value, row) {
-        const formatter = new Intl.NumberFormat('id-ID', {
+        const formatter = new Intl.NumberFormat('ja-JP', {
             minimumFractionDigits: 2
         });
+
         return "<b>" + formatter.format(value) + "</b>";
     }
 
     function statusformat(value, row) {
-        if (value == 0) {
-            return "<b style='color:green;'>OPEN</b>";
+        if (value == 1) {
+            return "<b style='color:green;'>DONE</b>";
         } else {
-            return "<b style='color:red;'>CLOSED</b>";
+            return "<b style='color:orange;'>PENDING</b>";
         }
     }
 
     function statusStyle(value, row, index) {
-        if (value == 0) {
+        if (value == 1) {
             return 'background-color:#C8FFCC;';
         } else {
-            return 'background-color:#FFC8C8;';
-        }
+            return 'background-color:#ffd495;';
+        } 
     }
 </script>

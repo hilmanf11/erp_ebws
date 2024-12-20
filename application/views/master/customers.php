@@ -7,10 +7,11 @@
             <th rowspan="2" data-options="field:'id',width:80,align:'center'">Customer<br>ID</th>
             <th rowspan="2" data-options="field:'name',width:250,halign:'center'">Customer Name</th>
             <th rowspan="2" data-options="field:'number',width:80,align:'center'">Customer<br>Code</th>
+            <th rowspan="2" data-options="field:'line_id',width:80,align:'center'">Line ID</th>
             <th rowspan="2" data-options="field:'line_no',width:80,align:'center'">Line No</th>
             <th rowspan="2" data-options="field:'type',width:80,align:'center'">Type</th>
             <th rowspan="2" data-options="field:'currency',width:80,align:'center'">Currency</th>
-            <th rowspan="2" data-options="field:'cin_no',width:80,halign:'center'">CIN No</th>
+            <th rowspan="2" data-options="field:'cin_no',width:180,halign:'center'">CIN No</th>
             <th rowspan="2" data-options="field:'status',width:80,align:'center', styler:cellStyler, formatter:cellFormatter">Status</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
@@ -53,6 +54,10 @@
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Customer Code</span>
                     <input style="width:60%;" name="number" id="number" required="" class="easyui-textbox">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Line ID</span>
+                    <input style="width:60%;" name="line_id" id="line_id" required="" class="easyui-textbox">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Line No</span>
@@ -104,10 +109,12 @@
                 <th rowspan="2" data-options="field:'ifsc_code',width:100,halign:'center'">IFSC Code</th>
                 <th rowspan="2" data-options="field:'bank_account',width:100,halign:'center'">Bank Account</th>
                 <th rowspan="2" data-options="field:'bank_name',width:100,halign:'center'">Bank Name</th>
+                <th rowspan="2" data-options="field:'ship_pin',width:100,halign:'center'">Shipping PIN</th>
                 <th rowspan="2" data-options="field:'ship_address',width:250,halign:'center'">Shipping Address</th>
                 <th rowspan="2" data-options="field:'ship_country',width:150,halign:'center'">Shipping Country</th>
                 <th rowspan="2" data-options="field:'ship_state',width:150,halign:'center'">Shipping State</th>
                 <th rowspan="2" data-options="field:'ship_city',width:150,halign:'center'">Shipping City</th>
+                <th rowspan="2" data-options="field:'bill_pin',width:100,halign:'center'">Bill PIN</th>
                 <th rowspan="2" data-options="field:'bill_address',width:250,halign:'center'">Billing Address</th>
                 <th rowspan="2" data-options="field:'bill_country',width:150,halign:'center'">Billing Country</th>
                 <th rowspan="2" data-options="field:'bill_state',width:150,halign:'center'">Billing State</th>
@@ -180,6 +187,10 @@
                 <legend><b>Shipping Information</b></legend>
                 <div style="float:left; width:100%;">
                 <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Pin Code</span>
+                    <input style="width:60%;" name="ship_pin" id="ship_pin" data-options="validType:'length[0,6]'" required class="easyui-textbox">
+                </div>
+                <div class="fitem">
                     <span style="width:35%; display:inline-block;">Address</span>
                     <input style="width:60%;" name="ship_address" id="ship_address" class="easyui-textbox">
                 </div>
@@ -219,6 +230,10 @@
             <fieldset style="width:49%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
                 <legend><b>Billing Information</b></legend>
                 <div style="float:left; width:100%;">
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Pin Code</span>
+                    <input style="width:60%;" name="bill_pin" id="bill_pin" data-options="validType:'length[0,6]'" required class="easyui-textbox">
+                </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Address</span>
                     <input style="width:60%;" name="bill_address" id="bill_address" class="easyui-textbox">

@@ -5,14 +5,14 @@
             <th rowspan="2" data-options="field:'request_no',halign:'center',width:190">Kanban No</th>
             <th rowspan="2" data-options="field:'request_date',width:120,halign:'center'">Kanban Date</th>
             <th rowspan="2" data-options="field:'request_name',width:120,halign:'center'">Requester</th>
-            <th rowspan="2" data-options="field:'period',width:100,halign:'center'">Period</th>
-            <th rowspan="2" data-options="field:'wp',width:50,halign:'center'">WP</th>
-            <th rowspan="2" data-options="field:'workorder',width:120,halign:'center'">Work Order</th>
-            <th rowspan="2" data-options="field:'item_number',width:150,halign:'center'">Product No</th>
-            <th rowspan="2" data-options="field:'item_name',width:150,halign:'center'">Product Name</th>
+            <!-- <th rowspan="2" data-options="field:'period',width:100,halign:'center'">Period</th> -->
+            <!-- <th rowspan="2" data-options="field:'wp',width:50,halign:'center'">WP</th> -->
+            <th rowspan="2" data-options="field:'workorder',width:120,halign:'center'">Workorder</th>
+            <th rowspan="2" data-options="field:'item_number',width:150,halign:'center'">Product No EBWS</th>
+            <th rowspan="2" data-options="field:'item_name',width:150,halign:'center'">Product No Customer</th>
             <th rowspan="2" data-options="field:'uom',width:80,align:'center'">UoM</th>
             <th rowspan="2" data-options="field:'qty',width:80,halign:'center',align:'right',formatter:numberformatQpa">Qty</th>
-            <!-- <th rowspan="2" data-options="field:'status',width:80,align:'center',formatter:statusformat,styler:statusStyle">Status</th> -->
+            <th rowspan="2" data-options="field:'status',width:80,align:'center',formatter:statusformat,styler:statusStyle">Status</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
         </tr>
@@ -25,7 +25,7 @@
     </thead>
 </table>
 
-<div id="toolbar" style="height: 235px; padding:10px;">
+<div id="toolbar" style="height: 200px; padding:10px;">
     <!-- <div style="width: 100%; display: grid; grid-template-columns: auto auto auto; grid-gap: 5px; display: flex;"> -->
     <div style="width: 100%;">
         <fieldset style="width: 35%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
@@ -33,11 +33,6 @@
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Period</span>
                 <input style="width:60%;" id="filter_period" class="easyui-combobox">
-            </div>
-
-            <div class="fitem">
-                <span style="width:35%; display:inline-block;">Work Period</span>
-                <input style="width:60%;" id="filter_wp" class="easyui-combobox">
             </div>
 
             <div class="fitem">
@@ -55,14 +50,8 @@
     </div>
 </div>
 
-<!-- TOOLBAR DATAGRID -->
-<div id="toolbar2">
-    <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="append()"><i class="fa fa-plus"></i> Add</a>
-    <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="removeit()"><i class="fa fa-times"></i> Remove</a>
-</div>
-
 <!-- Insert & Update -->
-<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 800px; height: 550px; padding:10px; top: 20px;">
+<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 900px; height: 550px; padding:10px; top: 20px;">
     <form id="frm_insert" method="post" novalidate>
         <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
             <legend><b>Form Data</b></legend>
@@ -71,32 +60,50 @@
                     <span style="width:35%; display:inline-block;">Request Date</span>
                     <input style="width:60%;" name="request_date" id="request_date" value="<?= date("Y-m-d") ?>" required="" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
                 </div>
-
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Request No</span>
                     <input style="width:60%;" name="request_no" id="request_no" readonly class="easyui-textbox">
                 </div>
-
                 <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Request Name</span>
-                    <input style="width:60%;" name="request_name" id="request_name" value="<?= $this->session->name ?>" readonly class="easyui-textbox">
+                    <span style="width:35%; display:inline-block;"></span>
+                    <a href="javascript:;" class="easyui-linkbutton" onclick="preview()"><i class="fa fa-search"></i> Preview Data</a>
                 </div>
             </div>
 
             <div style="width: 50%; float: left;">
                 <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Request Name</span>
+                    <input style="width:60%;" name="request_name" id="request_name" value="<?= $this->session->name ?>" readonly class="easyui-textbox">
+                </div>
+
+                <div class="fitem" hidden>
+                    <span style="width:35%; display:inline-block;">Scrap No</span>
+                    <input style="width:60%;" id="scrap_no" class="easyui-textbox">
+                </div>
+
+                <div class="fitem" hidden>
+                    <span style="width:35%; display:inline-block;">Rejection No</span>
+                    <input style="width:60%;" id="rejection_no" class="easyui-textbox">
+                </div>
+
+                <div class="fitem" hidden>
                     <span style="width:35%; display:inline-block;">Period</span>
-                    <input style="width:60%;" id="period" required="" class="easyui-combobox">
+                    <input style="width:60%;" id="period" class="easyui-textbox">
                 </div>
 
-                <div class="fitem">
+                <div class="fitem" hidden>
                     <span style="width:35%; display:inline-block;">WP</span>
-                    <input style="width:60%;" id="wp" required="" class="easyui-combobox">
+                    <input style="width:60%;" id="wp" class="easyui-textbox">
+                </div>
+
+                <div class="fitem" hidden>
+                    <span style="width:35%; display:inline-block;">Product No</span>
+                    <input style="width:60%;" id="item_fg_id" class="easyui-textbox">
                 </div>
 
                 <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Work Order</span>
-                    <input style="width:60%;" id="workorder" readonly="" class="easyui-textbox">
+                    <span style="width:35%; display:inline-block;">Workorder No</span>
+                    <input style="width:60%;" id="workorder" class="easyui-combogrid">
                 </div>
             </div>
         </fieldset>
@@ -113,47 +120,51 @@
 <script>
     //Add Data
     function add() {
-
         $('#dlg_insert').dialog('open');
-
         $('#dg2').datagrid('loadData', []);
-
         request_no("<?= $id_menu ?>");
 
-        $("#period").combobox({
-
-            url: '<?= base_url('planning/production_schedules/readPeriodAll') ?>',
-
-            valueField: 'period',
-
-            textField: 'period',
-
-            prompt: "Choose Period",
-
-            onSelect: function(rowPeriod) {
-
-                $("#wp").combobox({
-
-                    url: '<?= base_url('planning/production_schedules/readWpAll?period=') ?>' + window.btoa(rowPeriod.period),
-
-                    valueField: 'wp',
-
-                    textField: 'wp',
-
-                    prompt: "Choose WP",
-
-                    onSelect: function(rowWP) {
-
-                        $("#workorder").textbox('setValue', rowWP.workorder);
-
-                    }
-
-                });
-
+        $('#workorder').combogrid({
+            url: '<?= base_url('planning/scraps/readDocument') ?>',
+            panelWidth: 550,
+            idField: 'scrap_no',
+            textField: 'workorder',
+            mode: 'remote',
+            fitColumns: true,
+            prompt: "Select Workorder No",
+            icons: [{
+                iconCls: 'icon-clear',
+                handler: function(e) {
+                    $(e.data.target).combogrid('clear').combogrid('textbox').focus();
+                }
+            }],
+            columns: [
+                [{
+                    field: 'workorder',
+                    title: 'Workorder',
+                    width: 150
+                },{
+                    field: 'rejection_no',
+                    title: 'Rejection No',
+                    width: 150
+                },{
+                    field: 'scrap_no',
+                    title: 'Scrap No',
+                    width: 150
+                },{
+                    field: 'number_customer',
+                    title: 'Product No',
+                    width: 200
+                }]
+            ],
+            onSelect: function(val, row){
+                $("#scrap_no").textbox('setValue', row.workorder);
+                $("#rejection_no").textbox('setValue', row.rejection_no);
+                $("#period").textbox('setValue', row.period);
+                $("#wp").textbox('setValue', row.wp);
+                $("#item_fg_id").textbox('setValue', row.item_fg_id);
             }
-
         });
-
     }
 
     function request_no(id_menu) {
@@ -171,344 +182,190 @@
         });
     }
 
-    //INSERT ADD ROW
-    function addTable() {
-        var lastIndex;
-        var dg = $('#dg2').datagrid({
-            columns: [
-                [{
-                    field: 'item_number',
-                    width: 250,
-                    halign: 'center',
-                    title: "Product No",
-                    editor: {
-                        type: 'combogrid',
-                        options: {
-                            url: '<?= base_url('master/item_rm/reads/') ?>',
-                            required: true,
-                            panelWidth: 400,
-                            idField: 'number',
-                            textField: 'number',
-                            mode: 'remote',
-                            fitColumns: true,
-                            prompt: 'Choose Product No',
-                            columns: [
-                                [{
-                                    field: 'number',
-                                    title: 'Product No',
-                                    width: 100
-                                }, {
-                                    field: 'name',
-                                    title: 'Product Name',
-                                    width: 200
-                                }]
-                            ],
-                            onSelect: function(value, rows) {
-                                var dg = $('#dg2');
-                                var row = dg.datagrid('getSelected');
-                                var rowIndex = dg.datagrid('getRowIndex', row);
-                                var ed = dg.datagrid('getEditor', {
-                                    index: rowIndex,
-                                    field: 'item_rm_id'
-                                });
-                                var ed2 = dg.datagrid('getEditor', {
-                                    index: rowIndex,
-                                    field: 'item_name'
-                                });
-                                var ed3 = dg.datagrid('getEditor', {
-                                    index: rowIndex,
-                                    field: 'uom'
-                                });
-                                var ed4 = dg.datagrid('getEditor', {
-                                    index: rowIndex,
-                                    field: 'stock'
-                                });
-                                var ed5 = dg.datagrid('getEditor', {
-                                    index: rowIndex,
-                                    field: 'balance'
-                                });
-
-
-                                var item_rm_id = $(ed.target).textbox('setValue', rows.id);
-                                var item_name = $(ed2.target).textbox('setValue', rows.name);
-                                var uom = $(ed3.target).textbox('setValue', rows.uom);
-
-
-                                $.ajax({
-                                    type: "post",
-                                    url: "<?= base_url('warehouse/report_history_transactions/readEndingStock') ?>",
-                                    data: "item_rm_id=" + rows.id,
-                                    dataType: "json",
-                                    success: function(stockWarehouse) {
-                                        $(ed4.target).numberbox('setValue', stockWarehouse[0].end_stock);
-                                    }
-                                });
-
-
-                                $.ajax({
-                                    type: "post",
-                                    url: "<?= base_url('warehouse/report_history_transactions/readBalanceWip') ?>",
-                                    data: "item_rm_id=" + rows.id,
-                                    dataType: "json",
-                                    success: function(balanceWip) {
-                                        $(ed5.target).numberbox('setValue', balanceWip.balance);
-                                    }
-                                });
-                            }
-                        }
-                    }
-                }, {
-                    field: 'item_rm_id',
-                    width: 150,
-                    hidden: true,
-                    halign: 'center',
-                    title: "ID",
-                    editor: {
-                        type: 'textbox',
-                        options: {
-                            readonly: true
-                        }
-                    }
-                }, {
-                    field: 'item_name',
-                    width: 150,
-                    halign: 'center',
-                    title: "Product Name",
-                    editor: {
-                        type: 'textbox',
-                        options: {
-                            readonly: true
-                        }
-                    }
-                }, {
-                    field: 'qty',
-                    width: 80,
-                    halign: 'center',
-                    title: "Qty",
-                    editor: {
-                        type: 'numberbox',
-                        options: {
-                            required: true,
-                            precision: 2
-                        }
-                    }
-                }, {
-                    field: 'balance',
-                    width: 100,
-                    halign: 'center',
-                    title: "Balance WIP",
-                    editor: {
-                        type: 'numberbox',
-                        options: {
-                            readonly: true,
-                            precision: 2
-                        }
-                    }
-                }, {
-                    field: 'stock',
-                    width: 100,
-                    halign: 'center',
-                    title: "Warehouse",
-                    editor: {
-                        type: 'numberbox',
-                        options: {
-                            readonly: true,
-                            precision: 2
-                        }
-                    }
-                }, {
-                    field: 'uom',
-                    width: 80,
-                    align: 'center',
-                    title: "Uom",
-                    editor: {
-                        type: 'textbox',
-                        options: {
-                            readonly: true
-                        }
-                    }
-                }]
-            ],
-            onClickRow: function(rowIndex) {
-                if (lastIndex != rowIndex) {
-                    $(this).datagrid('endEdit', lastIndex);
-                    $(this).datagrid('beginEdit', rowIndex);
-                }
-                lastIndex = rowIndex;
-            },
-        });
-    }
-
-    var editIndex = undefined;
-
-    function endEditing() {
-
-        if (editIndex == undefined) {
-
-            return true
-
-        }
-
-        if ($('#dg2').datagrid('validateRow', editIndex)) {
-
-            $('#dg2').datagrid('endEdit', editIndex);
-
-            editIndex = undefined;
-
-            return true;
-
-        } else {
-
-            return false;
-
-        }
-
-    }
-
-
-
-    function append() {
-
-        if (endEditing()) {
-
-            $('#dg2').datagrid('appendRow', {
-
-                qty: '0'
-
-            });
-
-            editIndex = $('#dg2').datagrid('getRows').length - 1;
-
-            $('#dg2').datagrid('selectRow', editIndex).datagrid('beginEdit', editIndex);
-
-        }
-
-    }
-
-
-
-    function removeit() {
-
-        if (editIndex == undefined) {
-
-            return
-
-        }
-
-        $('#dg2').datagrid('cancelEdit', editIndex).datagrid('deleteRow', editIndex);
-
-        editIndex = undefined;
-
-    }
-
     //Delete Data
-
     function deleted() {
-
         var rows = $('#dg').treegrid('getSelections');
 
         if (rows.length > 0) {
-
             $.messager.confirm('Warning', 'Are you sure you want to delete this data?', function(r) {
-
                 if (r) {
-
                     for (var i = 0; i < rows.length; i++) {
-
                         var row = rows[i];
 
                         $.ajax({
-
                             method: 'post',
-
                             url: '<?= base_url('planning/supply_requestions/delete') ?>',
-
                             data: {
-
                                 id: row.id,
-
                                 request_no: row.request_no,
-
-                                item_rm_id: row.item_rm_id
-
+                                item_rm_id: row.item_rm_id,
+                                scrap_no: row.scrap_no,
+                                workorder: row.workorder
                             },
 
                             success: function(result) {
-
                                 var result = eval('(' + result + ')');
-
                                 $('#dg').treegrid('reload');
-
                             },
-
                             error: function(jqXHR, textStatus, errorThrown) {
-
                                 toastr.error("This data is already used in other modules, You must delete it First", "Error");
-
-                                
-
                             },
-
                             complete: function(data) {
-
                                 $('#dg').treegrid('reload');
-
                             }
-
                         });
-
                     }
-
                 }
-
             });
-
         } else {
-
             toastr.warning("Please select one of the data in the table first!", "Information");
-
         }
-
     }
 
+    function preview() {
+        var workorder = $("#workorder").combogrid('getValue');
 
+        if (workorder == "") {
+            toastr.warning('Please Select Document', 'Required');
+        } else {
+            var lastIndex;
+            var dg = $('#dg2').datagrid({
+                url: '<?= base_url('planning/supply_requestions/datatablesTemp') ?>?workorder=' + workorder,
+                singleSelect: false,
+                idField: 'item_rm_id',
+                columns: [[
+                    {
+                        field: 'ck',
+                        checkbox: true,
+                    },{
+                        field: 'item_rm_id',
+                        width: 120,
+                        halign: 'center',
+                        title: "Part No EBWS",
+                        editor: {
+                            type: 'textbox',
+                            options: {
+                                readonly: true
+                            }
+                        }
+                    }, {
+                        field: 'item_rm_number',
+                        width: 200,
+                        halign: 'center',
+                        title: "Part No Supplier",
+                    }, {
+                        field: 'qty',
+                        width: 80,
+                        halign: 'center',
+                        title: "Qty",
+                        editor: {
+                            type: 'numberbox',
+                            options: {
+                                required: true,
+                                readonly: true,
+                            }
+                        }
+                    }, {
+                        field: 'uom',
+                        width: 80,
+                        halign: 'center',
+                        title: "UoM",
+                    }, {
+                        field: 'description',
+                        width: 200,
+                        halign: 'center',
+                        title: "Remarks",
+                        editor: {
+                            type: 'textbox',
+                        }
+                    }]
+                ],
+                onLoadSuccess: function(data){
+                    if(data.total == 0){
+                        toastr.info("Data Not Found or already created, please check data");
+                    }
+                },
+                onBeginEdit: function(rowIndex, row) {
+                    var editors = $('#dg2').datagrid('getEditors', rowIndex);
+                },
+                onEndEdit: function(index, row) {
+                    var ed = $(this).datagrid('getEditor', {
+                        index: index,
+                        field: 'item_rm_id'
+                    });
+                },
+                onBeforeEdit: function(index, row) {
+                    row.editing = true;
+                    $(this).datagrid('refreshRow', index);
+                },
+                onAfterEdit: function(index, row) {
+                    row.editing = false;
+                    $(this).datagrid('refreshRow', index);
+                },
+                onCancelEdit: function(index, row) {
+                    row.editing = false;
+                    $(this).datagrid('refreshRow', index);
+                },
+                // rowStyler:function(index, row){
+                //     if (row.qty_req < 0){
+                //         return 'background-color:#ffa07a;';
+                //     }else if (row.qty_req == 0){
+                //         return 'background-color:#ff1919; color:white;';
+                //     }
+                // }
+            });
+        }
+    }
+
+    function getRowIndex(target) {
+        var tr = $(target).closest('tr.datagrid-row');
+        return parseInt(tr.attr('datagrid-row-index'));
+    }
+
+    function editrow(target) {
+        $('#dg2').datagrid('beginEdit', getRowIndex(target));
+    }
+
+    function deleterow(target) {
+        $.messager.confirm('Confirm', 'Are you sure?', function(r) {
+            if (r) {
+                $('#dg2').datagrid('deleteRow', getRowIndex(target));
+            }
+        });
+    }
+
+    function saverow(target) {
+        $('#dg2').datagrid('endEdit', getRowIndex(target));
+    }
+
+    function cancelrow(target) {
+        $('#dg2').datagrid('cancelEdit', getRowIndex(target));
+    }
 
     function filter() {
-
         var filter_period = $("#filter_period").combobox('getValue');
-        var filter_wp = $("#filter_wp").combobox('getValue');
         var filter_request_no = $("#filter_request_no").combobox('getValue');
-        url = "?filter_period=" + filter_period + "&filter_wp=" + filter_wp + "&filter_request_no=" + filter_request_no;
+        url = "?filter_period=" + filter_period + "&filter_request_no=" + filter_request_no;
+
         $('#dg').treegrid({
             url: '<?= base_url('planning/supply_requestions/datatables') ?>' + url
         });
+
         $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
         $("#printout").attr('src', '<?= base_url('planning/supply_requestions/print') ?>' + url);
-
     }
-
-
 
     function pdf() {
-
         $("#printout").get(0).contentWindow.print();
-
     }
 
-
-
     function excel() {
-
         var filter_period = $("#filter_period").combobox('getValue');
-
-        var filter_wp = $("#filter_wp").combobox('getValue');
-
         var filter_request_no = $("#filter_request_no").combobox('getValue');
 
-        url = "?filter_period=" + filter_period + "&filter_wp=" + filter_wp + "&filter_request_no=" + filter_request_no;
+        url = "?filter_period=" + filter_period + "&filter_request_no=" + filter_request_no;
 
         window.location.assign('<?= base_url('planning/supply_requestions/print/excel') ?>' + url);
-
     }
 
     function print_kanban() {
@@ -525,9 +382,6 @@
     }
 
     $(function() {
-
-        addTable();
-
         $('#dg').treegrid({
             url: '<?= base_url('planning/supply_requestions/datatables') ?>',
             pagination: true,
@@ -543,31 +397,9 @@
                     param.id = 0;
                 }
             },
-
-            // onClickRow: function(index) {
-
-            //     if (index != 1) {
-
-            //         $(this).datagrid('unselectRow', index).datagrid('selectRow', 1);
-
-            //     }
-
-            // }
-
-            // rowStyler: function(row) {
-
-            //     if (row.state != "closed") {
-
-            //         return 'background-color:#CFE6FF;font-weight:bold;';
-
-            //     }
-
-            // },
-
         });
 
         //Save Data
-
         $('#dlg_insert').dialog({
             buttons: [{
                 text: 'Save All',
@@ -576,15 +408,20 @@
                     var request_no = $("#request_no").textbox('getValue');
                     var request_date = $("#request_date").datebox('getValue');
                     var request_name = $("#request_name").textbox('getValue');
-                    var period = $("#period").combobox('getValue');
-                    var wp = $("#wp").combobox('getValue');
-                    var workorder = $("#workorder").textbox('getValue');
-                    if (period == "" || wp == "" || totalrows <= 0) {
+                    var period = $("#period").textbox('getValue');
+                    var wp = $("#wp").textbox('getValue');
+                    var workorder = $("#workorder").combogrid('getValue');
+                    var rejection_no = $("#rejection_no").textbox('getValue');
+                    var scrap_no = $("#scrap_no").textbox('getValue');
+                    var item_fg_id = $("#item_fg_id").textbox('getValue');
+
+                    if (workorder == "") {
                         toastr.error("please complete your input data");
                     } else {
+                        $('#dg2').datagrid('acceptChanges');
                         var rows = $('#dg2').datagrid('getRows');
                         var totalrows = rows.length;
-                        endEditing();
+                        // endEditing();
                         for (let i = 0; i < totalrows; i++) {
                             if (rows[i].item_rm_id) {
                                 $.ajax({
@@ -596,7 +433,10 @@
                                         request_name: request_name,
                                         period: period,
                                         wp: wp,
-                                        workorder: workorder,
+                                        workorder: scrap_no,
+                                        rejection_no: rejection_no,
+                                        scrap_no: workorder,
+                                        item_fg_id: item_fg_id,
                                         item_rm_id: rows[i].item_rm_id,
                                         qty: rows[i].qty
                                     },
@@ -668,127 +508,71 @@
         });
 
         $("#request_date").datebox({
-
             onChange: function(val) {
-
                 request_no(val);
-
             }
-
         });
-
     });
 
     //Format Datepicker
-
     function myformatter(date) {
-
         var y = date.getFullYear();
-
         var m = date.getMonth() + 1;
-
         var d = date.getDate();
-
         return y + '-' + (m < 10 ? ('0' + m) : m) + '-' + (d < 10 ? ('0' + d) : d);
-
     }
 
     //Format Datepicker
-
     function myparser(s) {
-
         if (!s) return new Date();
 
         var ss = (s.split('-'));
-
         var y = parseInt(ss[0], 10);
-
         var m = parseInt(ss[1], 10);
-
         var d = parseInt(ss[2], 10);
 
         if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
-
             return new Date(y, m - 1, d);
-
         } else {
-
             return new Date();
-
         }
-
     }
 
-
-
     function numberformat(value, row) {
-
-        const formatter = new Intl.NumberFormat('id-ID', {
-
+        const formatter = new Intl.NumberFormat('ja-JP', {
             minimumFractionDigits: 0
-
         });
 
         return "<b>" + formatter.format(value) + "</b>";
-
     }
-
-
 
     function numberformatQpa(value, row) {
-
         if (value) {
-
-            const formatter = new Intl.NumberFormat('id-ID', {
-
+            const formatter = new Intl.NumberFormat('ja-JP', {
                 minimumFractionDigits: 2
-
             });
-
             return "<b>" + formatter.format(value) + "</b>";
-
         }
-
     }
-
-
 
     function statusformat(value, row) {
-
         if (value == 0) {
-
             return "<b style='color:green;'>OPEN</b>";
-
         } else if (value == 1) {
-
             return "<b style='color:red;'>CLOSED</b>";
-
         }
-
     }
-
-
 
     function statusStyle(value, row, index) {
-
         if (value == 0) {
-
             return 'background-color:#C8FFCC;';
-
         } else if (value == 1) {
-
             return 'background-color:#FFC8C8;';
-
         }
-
     }
 
-
-
     function BtnPrintLabel(val, row) {
-
         return '<a style="text-decoration: none; font-weight:bold;" target="_blank" href="<?= base_url('planning/supply_requestions/print_label/') ?>' + window.btoa(row.id) + '"><i class="fa fa-print"></i> Print</a>';
-
     }
 
 </script>

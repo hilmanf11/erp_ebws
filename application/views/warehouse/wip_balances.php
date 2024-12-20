@@ -3,15 +3,17 @@
     <thead>
         <tr>
             <th rowspan="2" field="ck" checkbox="true"></th>
-            <th rowspan="2" data-options="field:'item_number',width:150,halign:'center'">Item ID</th>
-            <th rowspan="2" data-options="field:'item_name',width:150,halign:'center'">Item Name</th>
-            <th rowspan="2" data-options="field:'uom',width:100,align:'center'">Uom</th>
-            <th rowspan="2" data-options="field:'request_no',width:150,align:'center'">Supply Sheet</th>
-            <th rowspan="2" data-options="field:'begin',width:80,halign:'center',align:'right', formatter:numberformat">Begin</th>
-            <th rowspan="2" data-options="field:'need',width:80,halign:'center',align:'right', formatter:numberformat">Need</th>
+            <th rowspan="2" data-options="field:'supply_type',width:80,align:'center',formatter:issuedformat,styler:statusIssued">Status</th>
+            <th rowspan="2" data-options="field:'item_rm_id',width:120,halign:'center'">Part No EBWS</th>
+            <th rowspan="2" data-options="field:'item_rm_number',width:200,halign:'center'">Part No Supplier</th>
+            <!-- <th rowspan="2" data-options="field:'item_rm_name',width:200,halign:'center'">Description</th> -->
+            <th rowspan="2" data-options="field:'uom',width:80,align:'center'">Uom</th>
+            <th rowspan="2" data-options="field:'request_no',width:150,align:'center'">Kanban No</th>
+            <th rowspan="2" data-options="field:'workorder',width:150,align:'center'">Workorder No</th>
+            <th rowspan="2" data-options="field:'qty_act',width:80,halign:'center',align:'right', formatter:numberformat">Need</th>
             <th rowspan="2" data-options="field:'issued',width:80,halign:'center',align:'right', formatter:numberformat">Issued</th>
-            <th rowspan="2" data-options="field:'balance',width:80,halign:'center',align:'right', formatter:numberformat">Balance</th>
-            <th rowspan="2" data-options="field:'warehouse',width:80,halign:'center',align:'right', formatter:numberformat">Warehouse</th>
+            <th rowspan="2" data-options="field:'qty_issued_bal',width:80,halign:'center',align:'right', formatter:numberformat,styler:numberStyle">Balance</th>
+            <!-- <th rowspan="2" data-options="field:'warehouse',width:80,halign:'center',align:'right', formatter:numberformat">Warehouse</th> -->
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
         </tr>
@@ -67,64 +69,98 @@
         </fieldset>
     </form>
 </div>
+
 <!-- PDF -->
-<iframe id="printout" src="<?= base_url('warehouse/wip_balances/print') ?>" style="width: 100%;" hidden></iframe>
+<!-- <iframe id="printout" src="<?= base_url('warehouse/wip_balances/print') ?>" style="width: 100%;" hidden></iframe> -->
 <script>
     //ADD DATA
     function add() {
-        $('#dlg_insert').dialog('open');
-        url_save = '<?= base_url('warehouse/wip_balances/create') ?>';
-        $('#frm_insert').form('clear');
+        // $('#dlg_insert').dialog('open');
+        // url_save = '<?= base_url('warehouse/wip_balances/create') ?>';
+        // $('#frm_insert').form('clear');
     }
+
     //EDIT DATA
     function update() {
-        var row = $('#dg').datagrid('getSelected');
-        if (row) {
-            $('#dlg_insert').dialog('open');
-            $('#frm_insert').form('load', row);
-            url_save = '<?= base_url('warehouse/wip_balances/update') ?>?id=' + btoa(row.id);
-        } else {
-            toastr.warning("Please select one of the data in the table first!", "Information");
-        }
+        // var row = $('#dg').datagrid('getSelected');
+        // if (row) {
+        //     $('#dlg_insert').dialog('open');
+        //     $('#frm_insert').form('load', row);
+        //     url_save = '<?= base_url('warehouse/wip_balances/update') ?>?id=' + btoa(row.id);
+        // } else {
+        //     toastr.warning("Please select one of the data in the table first!", "Information");
+        // }
     }
+
     //DELETE DATA
     function deleted() {
-        var rows = $('#dg').datagrid('getSelections');
-        if (rows.length > 0) {
-            $.messager.confirm('Warning', 'Are you sure you want to delete this data?', function(r) {
-                if (r) {
-                    for (var i = 0; i < rows.length; i++) {
-                        var row = rows[i];
-                        $.ajax({
-                            method: 'post',
-                            url: '<?= base_url('warehouse/wip_balances/delete') ?>',
-                            data: {
-                                id: row.id
-                            },
-                            success: function(result) {
-                                var result = eval('(' + result + ')');
-                            },
-                            error: function(jqXHR, textStatus, errorThrown) {
-                                toastr.error("This data is already used in other modules, You must delete it First", "Error");
+        // var rows = $('#dg').datagrid('getSelections');
+        // if (rows.length > 0) {
+        //     $.messager.confirm('Warning', 'Are you sure you want to delete this data?', function(r) {
+        //         if (r) {
+        //             for (var i = 0; i < rows.length; i++) {
+        //                 var row = rows[i];
+        //                 $.ajax({
+        //                     method: 'post',
+        //                     url: '<?= base_url('warehouse/wip_balances/delete') ?>',
+        //                     data: {
+        //                         id: row.id
+        //                     },
+        //                     success: function(result) {
+        //                         var result = eval('(' + result + ')');
+        //                     },
+        //                     error: function(jqXHR, textStatus, errorThrown) {
+        //                         toastr.error("This data is already used in other modules, You must delete it First", "Error");
                                 
-                            },
-                            complete: function(data) {
-                                $('#dg').datagrid('reload');
-                            }
-                        });
-                    }
-                }
-            });
-        } else {
-            toastr.warning("Please select one of the data in the table first!", "Information");
-        }
+        //                     },
+        //                     complete: function(data) {
+        //                         $('#dg').datagrid('reload');
+        //                     }
+        //                 });
+        //             }
+        //         }
+        //     });
+        // } else {
+        //     toastr.warning("Please select one of the data in the table first!", "Information");
+        // }
     }
+
     //PRINT PDF
     function pdf() {
-        $("#printout").get(0).contentWindow.print();
+        // $("#printout").get(0).contentWindow.print();
     }
+
     //PRINT EXCEL
     function excel() {
+        // var supply_type = $('#dg').datagrid('getFilterRule', 'supply_type');
+        // var item_rm_id = $('#dg').datagrid('getFilterRule', 'item_rm_id');
+        // var item_rm_number = $('#dg').datagrid('getFilterRule', 'item_rm_number');
+        // var uom = $('#dg').datagrid('getFilterRule', 'uom');
+        // var request_no = $('#dg').datagrid('getFilterRule', 'request_no');
+        // var workorder = $('#dg').datagrid('getFilterRule', 'workorder');
+        // var qty_act = $('#dg').datagrid('getFilterRule', 'qty_act');
+        // var issued = $('#dg').datagrid('getFilterRule', 'issued');
+        // var qty_issued_bal = $('#dg').datagrid('getFilterRule', 'qty_issued_bal');
+        // var created_by = $('#dg').datagrid('getFilterRule', 'created_by');
+        // var created_date = $('#dg').datagrid('getFilterRule', 'created_date');
+        // var updated_by = $('#dg').datagrid('getFilterRule', 'updated_by');
+        // var updated_date = $('#dg').datagrid('getFilterRule', 'updated_date');
+        
+        // var url = "?supply_type=" + window.btoa(supply_type.value) +
+        //     "&item_rm_id=" + window.btoa(item_rm_id.value) +
+            // "&item_rm_number=" + window.btoa(item_rm_number.value) +
+            // "&uom=" + window.btoa(uom.value) +
+            // "&request_no=" + window.btoa(request_no.value) +
+            // "&workorder=" + window.btoa(workorder.value) +
+            // "&qty_act=" + window.btoa(qty_act.value) +
+            // "&issued=" + window.btoa(issued.value) +
+            // "&qty_issued_bal=" + window.btoa(qty_issued_bal.value) +
+            // "&created_by=" + window.btoa(created_by.value) +
+            // "&created_date=" + window.btoa(created_date.value) +
+            // "&updated_by=" + window.btoa(updated_by.value) +
+            // "&updated_date=" + window.btoa(updated_date.value);
+
+        // $('#dg').datagrid('toExcel','wip_balances.xls');
         window.location.assign('<?= base_url('warehouse/wip_balances/print/excel') ?>');
     }
     //RELOAD
@@ -143,6 +179,15 @@
             pageList: [20, 50, 100, 500, 1000],
             pageSize: 20,
         }).datagrid('enableFilter');
+
+        // $('#dg').datagrid('addFilterRule', {
+        //     field: 'created_date',
+        //     op: 'contains',
+        //     value: "<?= date("Y-m-d") ?>"
+        // });
+
+        // $('#dg').datagrid('doFilter');
+
         //SAVE DATA
         $('#dlg_insert').dialog({
             buttons: [{
@@ -168,6 +213,7 @@
                 }
             }]
         });
+
         $('#item_rm_id').combogrid({
             url: '<?= base_url('master/item_rm/reads') ?>',
             panelWidth: 400,
@@ -200,10 +246,34 @@
     });
     function numberformat(value, row) {
         if (value) {
-            const formatter = new Intl.NumberFormat('id-ID', {
-                minimumFractionDigits: 2
+            const formatter = new Intl.NumberFormat('ja-JP', {
+                minimumFractionDigits: 0
             });
             return "<b>" + formatter.format(value) + "</b>";
+        }
+    }
+
+    function numberStyle(value, row, index) {
+        if (value < 0) {
+            return 'background-color:#FFC8C8;';
+        } else {
+            return 'background-color:#C8FFCC;';
+        }
+    }
+
+    function statusIssued(value, row, index) {
+        if (value == "OPEN") {
+            return 'background-color:#C8FFCC;';
+        } else {
+            return 'background-color:#FFC8C8;';
+        }
+    }
+
+    function issuedformat(value, row) {
+        if (value == "OPEN") {
+            return "<b style='color:green;'>OPEN</b>";
+        } else {
+            return "<b style='color:red;'>CLOSED</b>";
         }
     }
 </script>

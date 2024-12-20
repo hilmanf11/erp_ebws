@@ -42,7 +42,7 @@ class Supplier_item_others extends CI_Controller
        $item_family_id = explode(",", $this->input->get('item_family_id'));
        $supplier_id = $this->input->get('supplier_id');
        
-       $this->db->select('a.*, b.currency, c.number as item_number, c.name as item_name, c.uom');//c.specification
+       $this->db->select('a.*, b.currency, c.number as item_number, c.name as item_name, c.uom');
        $this->db->from('supplier_items a');
        $this->db->join('suppliers b', 'a.supplier_id = b.id');
        $this->db->join('item_rm c', 'a.item_rm_id = c.id');
@@ -99,7 +99,7 @@ class Supplier_item_others extends CI_Controller
         $this->db->from('supplier_items a');
         $this->db->join('suppliers b', 'a.supplier_id = b.id');
         $this->db->join('item_rm c', 'a.item_rm_id = c.id');
-        $this->db->join('item_familys d', 'c.item_family_id = d.id');
+        $this->db->join('item_familys d', "c.item_family_id = d.id and d.item_category_id NOT IN ('C01','C08')");
         $this->db->where('a.deleted', 0);
         // $this->db->where('a.status', 0);
         $this->db->like("c.number", $item_number);
@@ -139,8 +139,8 @@ class Supplier_item_others extends CI_Controller
         $this->db->from('supplier_items a');
         $this->db->join('suppliers b', 'b.id = a.supplier_id');
         $this->db->join('item_rm c', 'c.id = a.item_rm_id');
-        $this->db->join('item_familys d', "c.item_family_id = d.id and d.item_category_id NOT IN ('C01','C03')");
-        $this->db->join('makers e', 'a.maker = e.number', 'left');
+        $this->db->join('item_familys d', "c.item_family_id = d.id and d.item_category_id NOT IN ('C01','C08')");
+        $this->db->join('makers e', 'c.maker_id = e.id', 'left');
         $this->db->join('hsn f', 'c.hsn_code = f.number', 'left');
         if($filter_check == "true"){
             $this->db->join("(SELECT item_rm_id FROM supplier_items GROUP BY item_rm_id HAVING COUNT(*) > 1) h", 'a.item_rm_id = h.item_rm_id');
@@ -205,7 +205,7 @@ class Supplier_item_others extends CI_Controller
         $this->db->join('suppliers b', 'b.id = a.supplier_id');
         $this->db->join('item_rm c', 'c.id = a.item_rm_id');
         $this->db->join('item_familys e', 'c.item_family_id = e.id', 'left');
-        $this->db->join('makers f', 'a.maker = f.number');
+        $this->db->join('makers f', 'c.maker_id = f.id', 'left');
         $this->db->where('a.supplier_id', $supplier_id);
         $this->db->where('a.item_rm_id', $item_rm_id);
         $this->db->order_by('b.name', 'ASC');
@@ -230,7 +230,10 @@ class Supplier_item_others extends CI_Controller
             $post   = $this->input->post();
             $supplier_items = $this->crud->read('supplier_items', [], ["supplier_id" => $post['supplier_id'], "item_rm_id" => $post['item_rm_id']]);
             if (!$supplier_items) {
-                $send = $this->crud->create('supplier_items', $post);
+                $attachment = $this->crud->upload('attachment', ["jpg", "png", "jpeg", "pdf", "xls", "docx"], 'assets/documents/supplier_items/', [], "supplier_items", "attachment");
+                $postFinal = array_merge($post, ["attachment" => $attachment]);
+
+                $send = $this->crud->create('supplier_items', $postFinal);
                 echo $send;
             } else {
                 $send = $this->crud->update('supplier_items', ["supplier_id" => $post['supplier_id'], "item_rm_id" => $post['item_rm_id']], $post);
@@ -254,7 +257,7 @@ class Supplier_item_others extends CI_Controller
                 "supplier_id" => $read->supplier_id,
                 "item_rm_id" => $read->item_rm_id,
                 "item_supplier" => $read->item_supplier,
-                "maker" => $read->maker,
+                "maker_id" => $read->maker_id,
                 "type" => $read->type,
                 "mpq" => $read->mpq,
                 "moq" => $read->moq,
@@ -269,9 +272,18 @@ class Supplier_item_others extends CI_Controller
                 "remarks" => $read->remarks,
             );
 
-            $this->crud->create("supplier_item_histories", $history);
+            $attachment = $this->crud->upload('attachment', ["jpg", "png", "jpeg", "pdf", "xls", "docx"], 'assets/documents/supplier_items/', [], "supplier_items", "attachment");
+            $postFinal = array_merge($post, ["attachment" => $attachment]);
 
-            echo $send;
+            if(@$read->price == $post['price']){
+                $this->db->update('supplier_items', $postFinal, ["id" => $id]);
+                echo json_encode(array("title" => "Good Job", "message" => "Change Data Success, By Pass Approval", "theme" => "success"));
+            }else{
+                $send = $this->crud->update('supplier_items', ["id" => $id], $postFinal);
+                echo $send;
+
+                $this->crud->create("supplier_item_histories", $history);
+            }
         } else {
             show_error("Cannot Process your request");
         }
@@ -304,19 +316,17 @@ class Supplier_item_others extends CI_Controller
                 //excel
                 'supplier_id' => $data->val($i, 2),
                 'item_rm_id' => $data->val($i, 3),
-                'maker' => $data->val($i, 4),
-                'type' => $data->val($i, 5),
-                'item_supplier' => $data->val($i, 6),
-                'mpq' => $data->val($i, 7),
-                'moq' => $data->val($i, 8),
-                'share_order' => $data->val($i, 9),
-                'leadtime' => $data->val($i, 10),
-                'transit' => $data->val($i, 11),
-                'currency' => $data->val($i, 12),
-                'price' => $data->val($i, 13),
-                'valid_date' => $data->val($i, 14),
-                'safety_stock' => $data->val($i, 15),
-                'calculate' => $data->val($i, 16)
+                // 'item_supplier' => $data->val($i, 4),
+                'mpq' => $data->val($i, 4),
+                'moq' => $data->val($i, 5),
+                'share_order' => $data->val($i, 6),
+                'leadtime' => $data->val($i, 7),
+                'transit' => $data->val($i, 8),
+                'currency' => $data->val($i, 9),
+                'price' => $data->val($i, 10),
+                'valid_date' => $data->val($i, 11),
+                'safety_stock' => $data->val($i, 12),
+                'calculate' => $data->val($i, 13)
             );
         }
         $datas['total'] = count($datas);
@@ -361,7 +371,7 @@ class Supplier_item_others extends CI_Controller
 
             //Cek Process Number          //table       //field        //field excel
             $supplier = $this->crud->read('suppliers', [], ["id" => $data['supplier_id']]);
-            $item_rm = $this->crud->read('item_rm', [], ["number" => $data['item_rm_id']]);
+            $item_rm = $this->crud->read('item_rm', [], ["id" => $data['item_rm_id']]);
             $supplier_items = $this->crud->read('supplier_items', [], ["supplier_id" => $data['supplier_id'], "item_rm_id" => @$item_rm->id]);
             $supplier_item_histories = $this->crud->read("supplier_item_histories", [], ["supplier_id" => $data['supplier_id'], "item_rm_id" => @$item_rm->id, "price" => $data['price']]);
 
@@ -369,9 +379,8 @@ class Supplier_item_others extends CI_Controller
                 //field
                 "supplier_id" => $data['supplier_id'],
                 "item_rm_id" => @$item_rm->id,
-                "maker" => $data['maker'],
-                "type" => $data['type'],
-                "item_supplier" => $data['item_supplier'],
+                "maker_id" => @$item_rm->maker_id,
+                "item_supplier" => @$item_rm->number,
                 "mpq" => $data['mpq'],
                 "moq" => $data['moq'],
                 "share_order" => $data['share_order'],
@@ -419,6 +428,7 @@ class Supplier_item_others extends CI_Controller
         $filter_item_rm = base64_decode($this->input->get('filter_item_rm'));
         $filter_item_vendor = base64_decode($this->input->get('filter_item_vendor'));
         $filter_share_order = base64_decode($this->input->get('filter_share_order'));
+        $filter_status_price = base64_decode($this->input->get('filter_status_price'));
         $filter_check = $this->input->get('filter_check');
 
         //Config
@@ -426,15 +436,46 @@ class Supplier_item_others extends CI_Controller
         $this->db->from('config');
         $config = $this->db->get()->row();
 
-        $this->db->select('a.*, b.number as supplier_number, b.name as supplier_name, b.currency as supplier_currency, c.number as item_rm_number, c.name as item_rm_name, c.item_family_id as item_rm_family, d.name as item_family_name');
+        $this->db->select('a.*, c.number as item_rm_number, 
+            c.name as item_rm_name, a.item_supplier, b.number as supplier_number, b.origin, b.name as supplier_name,
+            d.name as item_family_name, b.type, c.uom, e.name as maker_name, e.type as maker_type,
+            f.number as hsn_number, f.name as hsn_name, f.igst, f.sgst, f.cgst');
         $this->db->from('supplier_items a');
-        $this->db->join('suppliers b', 'a.supplier_id = b.id');
-        $this->db->join('item_rm c', 'a.item_rm_id = c.id');
-        $this->db->join('item_familys d', "c.item_family_id = d.id and d.item_category_id NOT IN ('C01','C03')");
-        $this->db->like('a.supplier_id', $filter_suppliers);
-        $this->db->like('a.item_rm_id', $filter_item_rm);
-        $this->db->like('c.item_family_id', $filter_category);
-        $this->db->order_by('a.id', 'ASC');
+        $this->db->join('suppliers b', 'b.id = a.supplier_id');
+        $this->db->join('item_rm c', 'c.id = a.item_rm_id');
+        $this->db->join('item_familys d', "c.item_family_id = d.id and d.item_category_id NOT IN ('C01','C08')");
+        $this->db->join('makers e', 'c.maker_id = e.id', 'left');
+        $this->db->join('hsn f', 'c.hsn_code = f.number', 'left');
+        if($filter_check == "true"){
+            $this->db->join("(SELECT item_rm_id FROM supplier_items GROUP BY item_rm_id HAVING COUNT(*) > 1) h", 'a.item_rm_id = h.item_rm_id');
+        }
+        if($filter_category != ""){
+            $this->db->like('c.item_family_id', $filter_category);
+        }
+        if($filter_suppliers != ""){
+            $this->db->like('a.supplier_id', $filter_suppliers);
+        }
+        if($filter_item_rm != ""){
+            $this->db->like('a.item_rm_id', $filter_item_rm);
+        }
+        if($filter_maker != ""){
+            $this->db->like('e.number', $filter_maker);
+        }
+        if($filter_item_vendor != ""){
+            $this->db->like('a.item_supplier', $filter_item_vendor);
+        }
+        if($filter_share_order != ""){
+            $this->db->where('a.share_order', $filter_share_order);
+        }
+        if($filter_status_price == "Approved"){
+            $this->db->where("a.approved_to is null or f.approved_to = ''");
+        }elseif($filter_status_price == "Checking"){
+            $this->db->where("a.approved_to != ''");
+        }
+        if($filter_check == "false"){
+            $this->db->order_by('b.name', 'ASC');
+        }
+        $this->db->order_by('c.number', 'ASC');
         $records = $this->db->get()->result_array();
         $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#supplier_items {border-collapse: collapse;width: 100%;font-size: 12px;}#supplier_items td, #supplier_items th {border: 1px solid #ddd;padding: 2px;}#supplier_items tr:nth-child(even){background-color: #f2f2f2;}#supplier_items tr:hover {background-color: #ddd;}#supplier_items th {padding-top: 2px;padding-bottom: 2px;text-align: left;color: black;}</style><body>
         <center>
@@ -463,47 +504,81 @@ class Supplier_item_others extends CI_Controller
         <table id="supplier_items" border="1">
             <tr>
                 <th width="20">No</th>
-                <th>Supplier ID</th>
-                <th>Supplier Code</th>
+                <th>Approved</th>
+                <th>Approved By</th>
+                <th>Approved Date</th>
                 <th>Supplier Name</th>
-                <th>Part ID</th>
-                <th>Part No.</th>
-                <th>Part Name</th>
-                <th>Maker</th>
+                <th>Part No EBWS</th>
+                <th>Part No Supplier</th>
+                <th>Description</th>
+                <th>Supplier Type</th>
+                <th>Supplier Origin</th>
                 <th>Product Family</th>
+                <th>Maker</th>
+                <th>Maker Type</th>
                 <th>MPQ</th>
                 <th>MOQ</th>
-                <th>Share Order %</th>
-                <th>Manufacture<br>Leadtime (Days)</th>
-                <th>Item Transit (Days)</th>
+                <th>Uom</th>
                 <th>Currency</th>
                 <th>Price</th>
                 <th>Valid Date</th>
-                <th>Safety<br>Leadtime (days)</th>
-                <th>Calculate</th>
+                <th>HSN Code</th>
+                <th>IGST %</th>
+                <th>SGST %</th>
+                <th>CGST %</th>
+                <th>Mfg L/T<br>(Days)</th>
+                <th>Transit<br>(Days)</th>
+                <th>Share Order</th>
+                <th>Safety<br>Stock (%)</th>
+                <th>Calculate MPQ</th>
+                <th>Remarks</th>
+                <th>Created By</th>
+                <th>Created Date</th>
+                <th>Updated By</th>
+                <th>Updated Date</th>
             </tr>';
         $no = 1;
         foreach ($records as $data) {
+            if($data['approved_to'] == ""){
+                $approved = "APPROVED";
+            }else{
+                $approved = "CHECKING";
+            }
+            
             $html .= '<tr>
                     <td>' . $no . '</td>
-                    <td>' . $data['supplier_id'] . '</td>
-                    <td>' . $data['supplier_number'] . '</td>
+                    <td>' . $approved . '</td>
+                    <td>' . $data['approved_by'] . '</td>
+                    <td>' . $data['approved_date'] . '</td>
                     <td>' . $data['supplier_name'] . '</td>
                     <td>' . $data['item_rm_id'] . '</td>
                     <td style="mso-number-format:\@;">' . $data['item_rm_number'] . '</td>
                     <td style="mso-number-format:\@;">' . $data['item_rm_name'] . '</td>
-                    <td>' . $data['maker'] . '</td>
+                    <td>' . $data['type'] . '</td>
+                    <td>' . $data['origin'] . '</td>
                     <td>' . $data['item_family_name'] . '</td>
+                    <td>' . $data['maker_name'] . '</td>
+                    <td>' . $data['maker_type'] . '</td>
                     <td>' . $data['mpq'] . '</td>
                     <td>' . $data['moq'] . '</td>
-                    <td>' . $data['share_order'] . '</td>
-                    <td>' . $data['leadtime'] . '</td>
-                    <td>' . $data['transit'] . '</td>
-                    <td>' . $data['supplier_currency'] . '</td>
+                    <td>' . $data['uom'] . '</td>
+                    <td>' . $data['currency'] . '</td>
                     <td>' . $data['price'] . '</td>
                     <td>' . $data['valid_date'] . '</td>
+                    <td>' . $data['hsn_number'] . '</td>
+                    <td>' . $data['igst'] . '</td>
+                    <td>' . $data['sgst'] . '</td>
+                    <td>' . $data['cgst'] . '</td>
+                    <td>' . $data['leadtime'] . '</td>
+                    <td>' . $data['transit'] . '</td>
+                    <td>' . $data['share_order'] . '</td>
                     <td>' . $data['safety_stock'] . '</td>
-                    <td>' . $data['calculate'] . '</td>';
+                    <td>' . $data['calculate'] . '</td>
+                    <td>' . $data['remarks'] . '</td>
+                    <td>' . $data['created_by'] . '</td>
+                    <td>' . $data['created_date'] . '</td>
+                    <td>' . $data['updated_by'] . '</td>
+                    <td>' . $data['updated_date'] . '</td>';
             $no++;
         }
         $html .= '</table></body></html>';

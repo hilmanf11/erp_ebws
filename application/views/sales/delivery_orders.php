@@ -8,7 +8,8 @@
             <th rowspan="2" data-options="field:'delivery_order_no',width:160,halign:'center'">Delivery Order No</th>
             <th rowspan="2" data-options="field:'delivery_order_date',width:100,halign:'center'">Delivery Order<br>Date</th>
             <th rowspan="2" data-options="field:'delivery_date',width:100,halign:'center'">Delivery Date</th>
-            <th rowspan="2" data-options="field:'customer_name',width:200,halign:'center'">Customer Name</th>
+            <th rowspan="2" data-options="field:'customer_name',width:250,halign:'center'">Customer Name</th>
+            <th rowspan="2" data-options="field:'plant',width:100,halign:'center'">Plant</th>
             <th rowspan="2" data-options="field:'remarks',width:150,halign:'center'">Remarks</th>
             <th rowspan="2" data-options="field:'delivery_note_no',width:150,halign:'center'">Delivery Note</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
@@ -24,12 +25,12 @@
 </table>
 
 <!-- TOOLBAR DATAGRID -->
-<div id="toolbar" style="height: 240px; padding: 10px;">
+<div id="toolbar" style="height: 200px; padding: 10px;">
     <!-- <div style="width: 100%; display: grid; grid-template-columns: auto auto auto; grid-gap: 5px; display: flex;"> -->
     <div style="width: 100%;">
-        <fieldset style="width: 80%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
+        <fieldset style="width: 100%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
             <legend><b>Form Filter Data</b></legend>
-            <div style="width: 50%; float: left;">
+            <div style="width: 30%; float: left;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Delivery Order Date</span>
                     <input style="width:30%;" id="filter_from" value="<?= date("Y-m-01") ?>" data-options="formatter:myformatter,parser:myparser,editable:false" class="easyui-datebox">
@@ -40,19 +41,25 @@
                     <input style="width:60%;" id="filter_customer_id" class="easyui-combobox">
                 </div>
                 <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Delivery Order No</span>
-                    <input style="width:60%;" id="filter_delivery_order_no" class="easyui-combobox">
-                </div>
-                <div class="fitem">
                     <span style="width:35%; display:inline-block;"></span>
                     <a href="javascript:;" class="easyui-linkbutton" onclick="filter()"><i class="fa fa-search"></i> Filter Data</a>
                 </div>
             </div>
-            <div style="width: 50%; float: left;">
+            <div style="width: 30%; float: left;">
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Plant</span>
+                    <input style="width:60%;" id="filter_plant" class="easyui-combobox">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Delivery Order No</span>
+                    <input style="width:60%;" id="filter_delivery_order_no" class="easyui-combobox">
+                </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Sales Order No</span>
                     <input style="width:60%;" id="filter_sales_order_no" class="easyui-combobox">
                 </div>
+            </div>
+            <div style="width: 30%; float: left;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Product No</span>
                     <input style="width:60%;" id="filter_item_fg" class="easyui-combogrid">
@@ -76,7 +83,7 @@
     <form id="frm_insert" method="post" novalidate>
         <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
             <legend><b>Form Data</b></legend>
-            <div style="width: 50%; float: left;">
+            <div style="width: 40%; float: left;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Delivery Order Date</span>
                     <input style="width:40%;" name="delivery_order_date" id="delivery_order_date" required="" data-options="formatter:myformatter,parser:myparser,editable:false" class="easyui-datebox">
@@ -94,11 +101,14 @@
                     <a href="javascript:;" class="easyui-linkbutton" id="btnPreview" onclick="preview()"><i class="fa fa-search"></i> Preview</a>
                 </div>
             </div>
-            <div style="width: 50%; float: left;">
-                
+            <div style="width: 40%; float: left;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Delivery Date</span>
                     <input style="width:40%;" name="delivery_date" id="delivery_date" required="" class="easyui-combobox">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Plant</span>
+                    <input style="width:60%;" name="plant" id="plant" required class="easyui-combobox">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Remarks</span>
@@ -170,14 +180,19 @@
 
                 // number(delivery_order_date, customer.id);
                 number("<?= $id_menu ?>");
-                
+
                 $('#delivery_date').combobox({
                     url: '<?= base_url('sales/sales_order_deliveries/readTransdate/'); ?>' + btoa(customer.id),
                     valueField: 'trans_date',
                     textField: 'trans_date',
                     prompt: 'Choose Delivery Date',
-                    onSelect: function(customer){
-                        
+                    onSelect: function(delivery_date){
+                        $('#plant').combobox({
+                            url: '<?= base_url('sales/sales_order_deliveries/readPlant/'); ?>' + btoa(customer.id) + "/" + btoa(delivery_date.trans_date),
+                            valueField: 'plant',
+                            textField: 'plant',
+                            prompt: 'Choose Plant',
+                        });
                     }
                 });
             }
@@ -204,9 +219,10 @@
     function preview(url = "") {
         var delivery_date = $("#delivery_date").combobox('getValue');
         var customer_id = $("#customer_id").combobox('getValue');
+        var plant = $("#plant").combobox('getValue');
 
         if(url == ""){
-            var urlGet = "<?= base_url('sales/delivery_orders/datatablesTemp/') ?>" + btoa(delivery_date) + "/" + btoa(customer_id);
+            var urlGet = "<?= base_url('sales/delivery_orders/datatablesTemp/') ?>" + btoa(delivery_date) + "/" + btoa(customer_id) + "/" + btoa(plant);
         }else{
             var urlGet = url;
         }
@@ -217,7 +233,7 @@
             var lastIndex;
             var dg = $('#dg_request').datagrid({
                 url: urlGet,
-                fitColumns: true,
+                fitColumns: false,
                 onClickRow: function(rowIndex) {
                     if (lastIndex != rowIndex) {
                         $(this).datagrid('endEdit', lastIndex);
@@ -237,7 +253,7 @@
                     var balance = $(editors[7].target);
 
                     sales_order.combobox({
-                        url: '<?= base_url('sales/delivery_orders/readSo/'); ?>' + btoa(row.trans_date) + "/" + btoa(row.customer_id) + "/" + btoa(row.item_fg_id),
+                        url: '<?= base_url('sales/delivery_orders/readSo/'); ?>' + btoa(row.trans_date) + "/" + btoa(row.customer_id) + "/" + btoa(row.item_fg_id) + "/" + btoa(row.plant),
                         valueField: 'sales_order_no',
                         textField: 'sales_order_no',
                         prompt: 'Choose SO',
@@ -246,6 +262,9 @@
                             customer_order_no.textbox('setValue', so.customer_order_no);
                             $(editors[3].target).numberbox('setValue', so.qty_remain);
                             balance.numberbox('setValue', (parseInt(so.qty_remain) - (parseInt(qty_del))));
+                        },
+                        formatter: function(row){
+                            return row.sales_order_no + " | " + row.plant;
                         }
                     });
 
@@ -259,6 +278,9 @@
 
                             if(parseInt(val) > parseInt(qty_del)){
                                 toastr.info("Qty DO Cannot > Qty Delivery");
+                                qty_do.numberbox('setValue', qty_del);
+                            }else if(parseInt(val) > parseInt(qty_remain)){
+                                toastr.info("Qty DO Cannot > Qty Remain");
                                 qty_do.numberbox('setValue', qty_del);
                             }
 
@@ -335,6 +357,7 @@
         var filter_delivery_order_no = $("#filter_delivery_order_no").combobox('getValue');
         var filter_sales_order_no = $("#filter_sales_order_no").combobox('getValue');
         var filter_item_fg = $("#filter_item_fg").combogrid('getValue');
+        var filter_plant = $("#filter_plant").combobox('getValue');
         var filter_status = $("#filter_status").combobox('getValue');
 
         var url = "?filter_from=" + window.btoa(filter_from) +
@@ -342,6 +365,7 @@
             "&filter_customer_id=" + window.btoa(filter_customer_id) +
             "&filter_delivery_order_no=" + window.btoa(filter_delivery_order_no) +
             "&filter_sales_order_no=" + window.btoa(filter_sales_order_no) +
+            "&filter_plant=" + window.btoa(filter_plant) +
             "&filter_item_fg=" + window.btoa(filter_item_fg) +
             "&filter_status=" + window.btoa(filter_status);
 
@@ -468,6 +492,7 @@
         var filter_delivery_order_no = $("#filter_delivery_order_no").combobox('getValue');
         var filter_sales_order_no = $("#filter_sales_order_no").combobox('getValue');
         var filter_item_fg = $("#filter_item_fg").combogrid('getValue');
+        var filter_plant = $("#filter_plant").combobox('getValue');
         var filter_status = $("#filter_status").combobox('getValue');
 
         var url = "?filter_from=" + window.btoa(filter_from) +
@@ -475,6 +500,7 @@
             "&filter_customer_id=" + window.btoa(filter_customer_id) +
             "&filter_delivery_order_no=" + window.btoa(filter_delivery_order_no) +
             "&filter_sales_order_no=" + window.btoa(filter_sales_order_no) +
+            "&filter_plant=" + window.btoa(filter_plant) +
             "&filter_item_fg=" + window.btoa(filter_item_fg) +
             "&filter_status=" + window.btoa(filter_status);
 
@@ -499,6 +525,7 @@
                     var customer_id = $("#customer_id").combobox('getValue');
                     var delivery_order_date = $("#delivery_order_date").datebox('getValue');
                     var delivery_date = $("#delivery_date").combobox('getValue');
+                    var plant = $("#plant").combobox('getValue');
                     var delivery_order_no = $("#delivery_order_no").textbox('getValue');
                     var remarks = $("#remarks").textbox('getValue');
 
@@ -524,56 +551,61 @@
                             function requestData(total, json, number = 1, value = 0, success = 1, failed = 1) {
                                 var i = (number - 1);
                                 if (value < 100) {
-                                    value = Math.floor((number / total) * 100);
-                                    $.ajax({
-                                        type: "post",
-                                        url: '<?= base_url('sales/delivery_orders/create') ?>',
-                                        data: {
-                                            customer_id: customer_id,
-                                            delivery_order_date: delivery_order_date,
-                                            delivery_order_no: delivery_order_no,
-                                            delivery_date: delivery_date,
-                                            remarks: remarks,
-                                            item_fg_id: json[i].item_fg_id,
-                                            sales_order_no: json[i].sales_order_no,
-                                            customer_order_no: json[i].customer_order_no,
-                                            uom: json[i].uom,
-                                            qty_so: json[i].qty_so,
-                                            qty_remain: json[i].qty_remain,
-                                            qty_do: json[i].qty_do,
-                                            qty_del: json[i].qty_del,
-                                            stock: json[i].stock_fg,
-                                            stock_bal: json[i].balance,
-                                        },
-                                        dataType: "json",
-                                        success: function(result) {
-                                            if (result.theme == "success") {
-                                                if (value >= 100) {
-                                                    Swal.close();
-                                                    Swal.fire({
-                                                        title: result.message,
-                                                        icon: result.theme,
-                                                        confirmButtonText: 'Ok',
-                                                        allowOutsideClick: false,
-                                                    }).then((result) => {
-                                                        if (result.isConfirmed) {
-                                                            window.location.reload();
-                                                        }
-                                                    });
-                                                }else{
-                                                    requestData(total, json, number + 1, value, success + 1, failed + 0);
-                                                }
-                                            } else {
-                                                if (value >= 100) {
-                                                    Swal.close();
-                                                    toastr.error(result.message, result.title);
-                                                }else{
-                                                    toastr.error(result.message, result.title);
-                                                    requestData(total, json, number + 1, value, success + 1, failed + 0);
+                                    if(parseInt(json[i].qty_remain) >= parseInt(json[i].qty_do)){
+                                        value = Math.floor((number / total) * 100);
+                                        $.ajax({
+                                            type: "post",
+                                            url: '<?= base_url('sales/delivery_orders/create') ?>',
+                                            data: {
+                                                customer_id: customer_id,
+                                                delivery_order_date: delivery_order_date,
+                                                delivery_order_no: delivery_order_no,
+                                                delivery_date: delivery_date,
+                                                plant: plant,
+                                                remarks: remarks,
+                                                item_fg_id: json[i].item_fg_id,
+                                                sales_order_no: json[i].sales_order_no,
+                                                customer_order_no: json[i].customer_order_no,
+                                                uom: json[i].uom,
+                                                qty_so: json[i].qty_so,
+                                                qty_remain: json[i].qty_remain,
+                                                qty_do: json[i].qty_do,
+                                                qty_del: json[i].qty_del,
+                                                stock: json[i].stock_fg,
+                                                stock_bal: json[i].balance,
+                                            },
+                                            dataType: "json",
+                                            success: function(result) {
+                                                if (result.theme == "success") {
+                                                    if (value >= 100) {
+                                                        Swal.close();
+                                                        Swal.fire({
+                                                            title: result.message,
+                                                            icon: result.theme,
+                                                            confirmButtonText: 'Ok',
+                                                            allowOutsideClick: false,
+                                                        }).then((result) => {
+                                                            if (result.isConfirmed) {
+                                                                window.location.reload();
+                                                            }
+                                                        });
+                                                    }else{
+                                                        requestData(total, json, number + 1, value, success + 1, failed + 0);
+                                                    }
+                                                } else {
+                                                    if (value >= 100) {
+                                                        Swal.close();
+                                                        toastr.error(result.message, result.title);
+                                                    }else{
+                                                        toastr.error(result.message, result.title);
+                                                        requestData(total, json, number + 1, value, success + 1, failed + 0);
+                                                    }
                                                 }
                                             }
-                                        }
-                                    });
+                                        });
+                                    }else{
+                                        toastr.error("Cannot Create Data because Remain <= qty DO");
+                                    }
                                 }
                             }
 
@@ -602,6 +634,19 @@
             }
         }],
         onSelect: function(customer) {
+            $('#filter_plant').combobox({
+                url: '<?= base_url('master/customers/readAddress/') ?>' + btoa(customer.id),
+                valueField: 'plant',
+                textField: 'plant',
+                prompt: 'Select Plant',
+                icons: [{
+                    iconCls: 'icon-clear',
+                    handler: function(e) {
+                        $(e.data.target).combobox('clear').combobox('textbox').focus();
+                    }
+                }],
+            });
+
             $('#filter_delivery_order_no').combobox({
                 url: '<?= base_url('sales/delivery_orders/readDeliveryOrders/'); ?>' + customer.id,
                 valueField: 'delivery_order_no',
@@ -614,19 +659,6 @@
                     }
                 }],
                 onSelect: function(deliver_order) {
-                    $('#filter_sales_order_no').combobox({
-                        url: '<?= base_url('sales/delivery_orders/readSalesOrder/'); ?>' + deliver_order.deliver_order_no,
-                        valueField: 'sales_order_no',
-                        textField: 'sales_order_no',
-                        prompt: 'Choose All',
-                        icons: [{
-                            iconCls: 'icon-clear',
-                            handler: function(e) {
-                                $(e.data.target).combobox('clear').combobox('textbox').focus();
-                            }
-                        }],
-                    });
-
                     $('#filter_customer_order_no').combobox({
                         url: '<?= base_url('sales/delivery_orders/readCustomerOrder/'); ?>' + deliver_order.deliver_order_no,
                         valueField: 'customer_order_no',
@@ -641,12 +673,25 @@
                     });
                 }
             });
+
+            $('#filter_sales_order_no').combobox({
+                url: '<?= base_url('sales/sales_orders/readSalesOrder/'); ?>' + btoa(customer.id),
+                valueField: 'sales_order_no',
+                textField: 'sales_order_no',
+                prompt: 'Choose All',
+                icons: [{
+                    iconCls: 'icon-clear',
+                    handler: function(e) {
+                        $(e.data.target).combobox('clear').combobox('textbox').focus();
+                    }
+                }],
+            });
         }
     });
 
     $('#filter_item_fg').combogrid({
         url: '<?= base_url("master/item_fg/reads") ?>',
-        panelWidth: 400,
+        panelWidth: 550,
         idField: 'id',
         textField: 'number',
         mode: 'remote',
@@ -661,7 +706,11 @@
         columns: [
             [{
                 field: 'number',
-                title: 'Product No',
+                title: 'Product No EBWS',
+                width: 150
+            }, {
+                field: 'number_customer',
+                title: 'Product No Customer',
                 width: 200
             }, {
                 field: 'name',
@@ -710,7 +759,7 @@
     }
 
     function numberFormat(value, row) {
-        const formatter = new Intl.NumberFormat('id-ID', {
+        const formatter = new Intl.NumberFormat('ja-JP', {
             minimumFractionDigits: 0
         });
         return "<b>" + formatter.format(value) + "</b>";

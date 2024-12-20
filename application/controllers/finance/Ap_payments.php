@@ -63,7 +63,8 @@ class Ap_payments extends CI_Controller
           $payment_date = date("Y-m-d", strtotime('-1 days', strtotime($payment_date)));
         }
         
-        $monthBf = date('Y-m-01', strtotime('-1 month', strtotime($payment_date)));
+        // $monthBf = date('Y-m-01', strtotime($payment_date));
+        $monthBf = $payment_date;
         $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $monthBf, "currency_from" => $currency, "currency_to" => "INR"]);
 
         if ($exchange) {
@@ -75,14 +76,15 @@ class Ap_payments extends CI_Controller
         echo "Rate $currency to INR : " . number_format($amount, 2);
     }
 
-    public function calculateJournal($journal_type_id = "", $bank_account = "")
+    public function calculateJournal($journal_type_id = "", $bank_account = "", $rate = "")
     {
         $journal_type_id = base64_decode($journal_type_id);
         $bank_account = base64_decode($bank_account);
+        $rate = base64_decode($rate);
 
         $banks = $this->crud->query("SELECT a.*, b.account_name FROM account_banks a 
             JOIN account_coa b ON a.account_number = b.account_number 
-            WHERE a.bank_account = '$bank_account'");
+            WHERE a.account_number = '$bank_account'");
 
         $jsonDatas = json_decode(file_get_contents("json/ap_payments.json"), true);
         $total = 0;
@@ -103,15 +105,16 @@ class Ap_payments extends CI_Controller
               $payment_date = date("Y-m-d", strtotime('-1 days', strtotime($payment_date)));
             }
 
-            $monthBf = date('Y-m-01', strtotime('-1 month', strtotime($payment_date)));
-            $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $monthBf, "currency_from" => $currency, "currency_to" => "INR"]);
+            // $monthBf = date('Y-m-01', strtotime($payment_date));
+            // $monthBf = $payment_date;
+            // $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $monthBf, "currency_from" => $currency, "currency_to" => "INR"]);
 
             if ($currency != "INR") {
-                if ($exchange) {
-                    $amount = ($total * $exchange->middle);
-                } else {
-                    $amount = 0;
-                }
+                // if ($exchange) {
+                    $amount = ($total * $rate);
+                // } else {
+                //     $amount = 0;
+                // }
             } else {
                 $amount = $total;
             }
@@ -168,11 +171,11 @@ class Ap_payments extends CI_Controller
 
         foreach ($banks as $bank) {
             if ($currency != "INR") {
-                if ($exchange) {
-                    $amount = ($grand_total * $exchange->middle);
-                } else {
-                    $amount = 0;
-                }
+                // if ($exchange) {
+                    $amount = ($grand_total * $rate);
+                // } else {
+                //     $amount = 0;
+                // }
             } else {
                 $amount = $grand_total;
             }
@@ -193,8 +196,10 @@ class Ap_payments extends CI_Controller
 
     public function readInvoiceType()
     {
+        $post = isset($_POST['q']) ? $_POST['q'] : "";
         $supplier_id = $this->input->get('supplier_id');
         $payment_type = $this->input->get('payment_type');
+        $payment_date = $this->input->get('payment_date');
 
         if ($payment_type == "PURCHASE") {
             $where_por = "por_no != '-'";
@@ -202,12 +207,13 @@ class Ap_payments extends CI_Controller
             $where_por = "por_no = '-'";
         }
 
-        $records = $this->crud->query("SELECT DISTINCT `number`, journal_type_id, invoice_no FROM purchase_invoices WHERE supplier_id = '$supplier_id' and `status` = 0");
+        $records = $this->crud->query("SELECT DISTINCT `number`, journal_type_id, invoice_no FROM purchase_invoices WHERE (`number` like '%$post%' or invoice_no like '%$post%') and supplier_id = '$supplier_id' and due_date >= '$payment_date' and `status` = 0");
         echo json_encode($records);
     }
 
     public function readPayments($supplier_id)
     {
+        $supplier_id = base64_decode($supplier_id);
         $data = $this->crud->query("SELECT DISTINCT payment_no FROM ap_payments WHERE supplier_id = '$supplier_id' ORDER BY `payment_no` ASC");
         echo json_encode($data);
     }
@@ -215,6 +221,7 @@ class Ap_payments extends CI_Controller
     public function readInvoices($supplier_id)
     {
         $date_now = date("Y-m-t");
+        $supplier_id = base64_decode($supplier_id);
         $data = $this->crud->query("SELECT DISTINCT `purchase_invoice`, supplier_invoice FROM ap_payments WHERE supplier_id = '$supplier_id' and `status` = 0 ORDER BY `purchase_invoice` ASC");
         echo json_encode($data);
     }
@@ -275,7 +282,7 @@ class Ap_payments extends CI_Controller
         $purchase_invoice = base64_decode($this->input->get('purchase_invoice'));
         $purchase_invoice_ex = explode(",", $purchase_invoice);
 
-        $this->db->select("number, journal_type_id, invoice_no, currency, (SUM(CASE WHEN account_type = 'DEBIT' THEN total ELSE -total END) + total_vat - total_pph) as total");
+        $this->db->select("number, journal_type_id, invoice_no, currency, rate, (SUM(CASE WHEN account_type = 'DEBIT' THEN total ELSE -total END) + total_vat - total_pph) as total");
         $this->db->from('purchase_invoices');
         $this->db->where('deleted', 0);
         $this->db->where('status', 0);
@@ -300,6 +307,7 @@ class Ap_payments extends CI_Controller
                 "purchase_invoice" => $record['number'],
                 "supplier_invoice" => $record['invoice_no'],
                 "currency" => $record['currency'],
+                "rate" => $record['rate'],
                 "amount" => $record['total'],
                 "balance" => ($record['total'] - @$ap_payment[0]->payment),
                 "payment" => ($record['total'] - @$ap_payment[0]->payment),
@@ -324,6 +332,7 @@ class Ap_payments extends CI_Controller
         $filter_invoice_no = base64_decode($this->input->get('filter_invoice_no'));
         $filter_bank_no = base64_decode($this->input->get('filter_bank_no'));
         $filter_payment_by = base64_decode($this->input->get('filter_payment_by'));
+        $filter_status = base64_decode($this->input->get('filter_status'));
 
         $date_from = date("Y-m-01");
         $date_to = date("Y-m-t");
@@ -337,7 +346,7 @@ class Ap_payments extends CI_Controller
             $offset = ($page - 1) * $rows;
             $result = array();
             //Select Query
-            $this->db->select("a.*, d.number as gl_no, b.name as supplier_name, SUM(CASE WHEN a.account_type = 'DEBIT' THEN payment ELSE -payment END) as total_ap, (CASE WHEN a.journal_type_id is null THEN c.journal_type_id ELSE a.journal_type_id END) as journal_type");
+            $this->db->select("a.*, d.number as gl_no, d.status_bank, b.name as supplier_name, SUM(CASE WHEN a.account_type = 'DEBIT' THEN payment ELSE -payment END) as total_ap, (CASE WHEN a.journal_type_id is null THEN c.journal_type_id ELSE a.journal_type_id END) as journal_type");
             $this->db->from('ap_payments a');
             $this->db->join('suppliers b', 'a.supplier_id = b.id');
             $this->db->join('purchase_invoices c', 'a.purchase_invoice = c.number', 'left');
@@ -347,6 +356,9 @@ class Ap_payments extends CI_Controller
                 $this->db->where("a.payment_date between '$filter_payment_date_from' and '$filter_payment_date_to'");
             }else{
                 $this->db->where("a.payment_date between '$date_from' and '$date_to'");
+            }
+            if($filter_status != ""){
+                $this->db->like('d.status_bank', $filter_status);
             }
             $this->db->like('a.payment_no', $filter_payment_no);
             $this->db->like('a.supplier_id', $filter_supplier);
@@ -745,7 +757,8 @@ class Ap_payments extends CI_Controller
               $payment_date = date("Y-m-d", strtotime('-1 days', strtotime($payment_date)));
             }
 
-            $monthBf = date('Y-m-01', strtotime('-1 month', strtotime($payment_date)));
+            // $monthBf = date('Y-m-01', strtotime($payment_date));
+            $monthBf = $payment_date;
             $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $monthBf, "currency_from" => $currency, "currency_to" => "INR"]);
 
             if ($exchange) {

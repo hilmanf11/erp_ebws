@@ -57,7 +57,7 @@ class Os_fg extends CI_Controller
             $result = array();
 
             //Select Query
-            $this->db->select('a.*, b.uom, b.number as item_fg_number, b.qty_box, b.name as item_fg_name');
+            $this->db->select('a.*, b.uom, b.number as item_fg_number, b.qty_box, b.number_customer, b.name as item_fg_name');
             $this->db->from('os_fg a');
             $this->db->join('item_fg b', 'a.item_fg_id = b.id');
             if($filter_from != "" && $filter_to != ""){
@@ -65,7 +65,7 @@ class Os_fg extends CI_Controller
                 $this->db->where('a.trans_date <=', $filter_to);
             }
             $this->db->like('b.id', $filter_item_fg);
-            $this->db->order_by('a.trans_date', 'DESC');
+            $this->db->order_by('b.number', 'ASC');
 
             //Total Data
             $totalRows = $this->db->count_all_results('', false);
@@ -84,12 +84,17 @@ class Os_fg extends CI_Controller
     public function create()
     {
         if ($this->input->post()) {
-            if ($this->form_validation->run() == TRUE) {
-                $post   = $this->input->post();
-                $send   = $this->crud->create('os_fg', $post);
+            $post   = $this->input->post();
+            $whereDate = date("ymd", strtotime($post['trans_date']));
+            $document_no = "STO-FG-".$whereDate."-1";
+
+            $os_rm = $this->crud->read('os_fg', [], ["item_rm_id" => $data['item_rm_id'], "document_no" => $document_no]);
+
+            if(empty($os_rm->id)){
+                $send = $this->crud->create('os_fg', array_merge($post, array("document_no" => $document_no)));
                 echo $send;
-            } else {
-                show_error(validation_errors());
+            }else{
+                echo json_encode(array("title" => "Duplicate", "message" => "Duplicate Data for Product No and Document No", "theme" => "error"));
             }
         } else {
             show_error("Cannot Process your request");
@@ -132,8 +137,9 @@ class Os_fg extends CI_Controller
 
         for ($i = 3; $i <= $total_row; $i++) {
             $datas[] = array(
-                'item_fg_id' => $data->val($i, 2),
+                'item_fg_number' => $data->val($i, 2),
                 'qty' => $data->val($i, 3),
+                'trans_date' => $data->val($i, 4),
             );
         }
 
@@ -176,25 +182,29 @@ class Os_fg extends CI_Controller
     {
         if ($this->input->post()) {
             $data = $this->input->post('data');
+            $whereDate = date("ymd", strtotime($data['trans_date']));
+            $document_no = "STO-RM-".$whereDate."-1";
+
+            $item_fg = $this->crud->read('item_fg', [], ["number_customer" => $data['item_fg_number']]);
 
             $os_fg = $this->crud->read('os_fg', [], [
-                "item_fg_id" => $data['item_fg_id']
+                "item_fg_id" => @$item_fg->id, 
+                "document_no" => $document_no
             ]);
 
-            $item_fg = $this->crud->read('item_fg', [], ["id" => $data['item_fg_id']]);
-
             if (!empty($os_fg->item_fg_id)) {
-                echo json_encode(array("title" => "Duplicated", "message" => "Product No EBWS " . $data['item_fg_id'] . " is Duplicate Data", "theme" => "error"));
+                echo json_encode(array("title" => "Duplicated", "message" => "Product No EBWS " . $data['item_fg_number'] . " is Duplicate Data", "theme" => "error"));
             }elseif(empty($item_fg->id)){
-                echo json_encode(array("title" => "Not Found", "message" => "Product No EBWS " . $data['item_fg_id'] . " is Not Found", "theme" => "error"));
+                echo json_encode(array("title" => "Not Found", "message" => "Product No EBWS " . $data['item_fg_number'] . " is Not Found", "theme" => "error"));
             } else {
                 $location = $this->crud->query("SELECT `number` from warehouse_locations where `type` = 'FG' order by RAND() limit 1");
 
                 if(empty($location->number)){
                     $dataFinal = array(
-                        "item_fg_id" => $data['item_fg_id'],
-                        "trans_date" => date("Y-m-d"),
+                        "item_fg_id" => $item_fg->id,
+                        "trans_date" => $data['trans_date'],
                         "location" => @$location[0]->number,
+                        "document_no" => $document_no,
                         "qty" => $data['qty']
                     );
     
@@ -250,6 +260,7 @@ class Os_fg extends CI_Controller
                 $qty_receipt = ($qty_receipt - $mpq);
             }
 
+            $this->db->update("os_fg", ["created_label" => date("Y-m-d H:i:s")], ["id" => $id]);
             echo "OK";
         }
     }
@@ -375,7 +386,7 @@ class Os_fg extends CI_Controller
         $this->db->from('config');
         $config = $this->db->get()->row();
 
-        $this->db->select('a.*, b.uom, b.number as item_fg_number, b.name as item_fg_name');
+        $this->db->select('a.*, b.uom, b.number as item_fg_number, b.number_customer, b.name as item_fg_name');
         $this->db->from('os_fg a');
         $this->db->join('item_fg b', 'a.item_fg_id = b.id');
         if($filter_from != "" && $filter_to != ""){
@@ -383,7 +394,7 @@ class Os_fg extends CI_Controller
             $this->db->where('a.trans_date <=', $filter_to);
         }
         $this->db->like('b.id', $filter_item_fg);
-        $this->db->order_by('a.trans_date', 'DESC');
+        $this->db->order_by('b.number', 'ASC');
         $records = $this->db->get()->result_array();
 
             $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#os_fg {border-collapse: collapse;width: 100%;font-size: 12px;}#os_fg td, #os_fg th {border: 1px solid #ddd;padding: 2px;}#os_fg tr:nth-child(even){background-color: #f2f2f2;}#os_fg tr:hover {background-color: #ddd;}#os_fg th {padding-top: 2px;padding-bottom: 2px;text-align: left;color: black;}</style><body>
@@ -428,9 +439,9 @@ class Os_fg extends CI_Controller
             <table id="os_fg" border="1">
                 <tr>
                     <th width="20">No</th>
-                    <th>Product ID</th>
-                    <th>Product No</th>
-                    <th>Product Name</th>
+                    <th>Product No EBWS</th>
+                    <th>Product No Customer</th>
+                    <th>Description</th>
                     <th>Cut Off</th>
                     <th>Location</th>
                     <th>Qty</th>
@@ -439,8 +450,8 @@ class Os_fg extends CI_Controller
             foreach ($records as $data) {
                 $html .= '<tr>
                             <td>' . $no . '</td>
-                            <td>' . $data['item_fg_id'] . '</td>
-                            <td>' . $data['item_fg_number'] . '</td>
+                            <td style="mso-number-format:\@;">' . $data['item_fg_number'] . '</td>
+                            <td style="mso-number-format:\@;">' . $data['number_customer'] . '</td>
                             <td>' . $data['item_fg_name'] . '</td>
                             <td>' . $data['trans_date'] . '</td>
                             <td>' . $data['location'] . '</td>

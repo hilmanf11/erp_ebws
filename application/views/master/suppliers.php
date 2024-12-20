@@ -1,11 +1,16 @@
 <!-- TABLE DATAGRID -->
 <table id="dg" class="easyui-datagrid" style="width:99.5%;" toolbar="#toolbar">
+    <thead frozen="true">
+        <tr>
+            <th field="ck" checkbox="true"></th>
+            <th data-options="field:'id',width:100,align:'center'">Supplier ID</th>
+            <th data-options="field:'name',width:250,halign:'center'">Supplier Name</th>
+            <th data-options="field:'number',width:80,align:'center'">Supplier<br>Code</th>
+        </tr>
+    </thead>
     <thead>
         <tr>
-            <th rowspan="2" field="ck" checkbox="true"></th>
-            <th rowspan="2" data-options="field:'id',width:100,align:'center'">Supplier ID</th>
-            <th rowspan="2" data-options="field:'name',width:250,halign:'center'">Supplier Name</th>
-            <th rowspan="2" data-options="field:'number',width:80,align:'center'">Supplier<br>Code</th>
+            <th rowspan="2" data-options="field:'supplier_type',width:100,align:'center'">Supplier<br>Type</th>
             <th rowspan="2" data-options="field:'type',width:80,align:'center'">Type</th>
             <th rowspan="2" data-options="field:'address',width:250,halign:'center'">Address</th>
             <th rowspan="2" data-options="field:'origin',width:120,halign:'center'">Country of Origin</th>
@@ -27,6 +32,7 @@
             <th rowspan="2" data-options="field:'ifsc',halign:'center',width:120">Bank IFSC Code</th>
             <th rowspan="2" data-options="field:'bank_account',width:150,halign:'center'">Bank Account</th>
             <th rowspan="2" data-options="field:'bank_name',width:150,halign:'center'">Bank Name</th>
+            <!-- <th rowspan="2" data-options="field:'terms',width:100,halign:'center',formatter:btnTerms">Terms<br>Condition</th> -->
             <th rowspan="2" data-options="field:'status',width:80,align:'center', styler:cellStyler, formatter:cellFormatter">Status</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
@@ -45,7 +51,7 @@
 </div>
 
 <!-- DIALOG SAVE AND UPDATE -->
-<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 70%; padding:10px; top: 10px;">
+<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 70%; height: 550px; padding:10px; top: 10px;">
     <form id="frm_insert" method="post" novalidate>
         <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
             <legend><b>Form Data</b></legend>
@@ -61,6 +67,16 @@
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Supplier Code</span>
                     <input style="width:60%;" name="number" id="number" required="" class="easyui-textbox">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Supplier Type</span>
+                    <select style="width:60%;" name="supplier_type" id="supplier_type" required="" panelHeight="auto" class="easyui-combobox">
+                        <option value="RAW MATERIAL">RAW MATERIAL</option>
+                        <option value="CAPITAL GOODS">CAPITAL GOODS</option>
+                        <option value="SERVICE">SERVICE</option>
+                        <option value="CONSUMABLE">CONSUMABLE</option>
+                        <option value="OTHER">OTHER</option>
+                    </select>
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Type</span>
@@ -101,12 +117,12 @@
                     <span style="width:35%; display:inline-block;">Country of Origin</span>
                     <input style="width:60%;" name="origin" id="origin" class="easyui-combobox">
                 </div>
+            </div>
+            <div style="float:left; width:50%;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">State</span>
                     <input style="width:60%;" name="state" id="state" class="easyui-combobox">
                 </div>
-            </div>
-            <div style="float:left; width:50%;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">TDS</span>
                     <input style="width:60%;" name="tds" id="tds" class="easyui-combogrid">
@@ -163,6 +179,30 @@
                 </div>
             </div>
         </fieldset>
+    </form>
+</div>
+
+<div id="dlg_terms" class="easyui-dialog" title="Update Terms & Conditions" data-options="closed: true,modal:true" style="width: 60%; height: 500px; top: 0px; left: 0px; padding:10px;">
+    <form id="frm_terms" method="post" enctype="multipart/form-data" novalidate>
+        <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; padding: 10px; float: left;">
+            <legend><b>Setting Terms & Conditions for Purchase Order</b></legend>
+            <div class="fitem" hidden>
+                <span style="width:35%; display:inline-block;">Supplier ID</span>
+                <input style="width:60%;" id="supplier_id_terms" name="supplier_id" class="easyui-textbox">
+            </div>
+
+            <div style="width:100%;">
+                <textarea class="summernote" name="terms" id="terms"></textarea>
+            </div>
+
+            <div style="float: left; width: 100%;">
+                <br><br>
+                <center>
+                    <a class="easyui-linkbutton c6" style="width: 200px;" onclick="saved()"><i class="fa fa-save"></i> Save Changes</a>
+                </center>
+            </div>
+        </fieldset>
+        
     </form>
 </div>
 
@@ -303,6 +343,44 @@
         window.location.reload();
     }
 
+    function btnTerms(val, row) {
+        var details = "terms('"+row.id+"')";
+        return '<a class="btn btn-primary w-100" style="pointer-events: visible; opacity:1;" onClick="'+details+'"><i class="fa fa-edit"></i> Edit</a>';
+    }
+
+    function terms(supplier_id) {
+        $("#dlg_terms").dialog('open');
+        $("#supplier_id_terms").textbox('setValue', supplier_id);
+
+        $.ajax({
+            type: "post",
+            url: "<?= base_url('master/suppliers/read') ?>",
+            data: "supplier_id=" + supplier_id,
+            dataType: "json",
+            success: function (json) {
+                $(".summernote").summernote("code", json.terms);
+            }
+        });
+    }
+
+    function saved() {
+        $('#frm_terms').form('submit', {
+            url: '<?= base_url('master/suppliers/updateTerms') ?>',
+            method: 'POST',
+            onSubmit: function() {
+                return $(this).form('validate');
+            },
+            success: function(result) {
+                var result = eval('(' + result + ')');
+                if (result.theme == "success") {
+                    toastr.success(result.message, result.title);
+                } else {
+                    toastr.error(result.message, result.title);
+                }
+            }
+        });
+    }
+
     $(function() {
         //SETTING DATAGRID EASYUI
         $('#dg').datagrid({
@@ -315,6 +393,23 @@
             pageList: [20, 50, 100, 500, 1000],
             pageSize: 20,
         }).datagrid('enableFilter');
+
+        $('.summernote').summernote({
+            height: 280,
+            hintMode: 'words',
+            hintSelect: 'next',
+            toolbar: [
+                // [groupName, [list of button]]
+                ['style', ['bold', 'italic', 'underline', 'clear']],
+                ['font', ['strikethrough', 'superscript', 'subscript']],
+                ['fontname', ['fontname']],
+                ['fontsize', ['fontsize']],
+                ['color', ['color']],
+                ['para', ['ul', 'ol', 'paragraph']],
+                ['height', ['height']],
+                ['table', ['table']]
+            ]
+        });
 
         //SAVE DATA
         $('#dlg_insert').dialog({

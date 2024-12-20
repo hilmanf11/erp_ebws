@@ -7,7 +7,7 @@
             <th rowspan="2" data-options="field:'account_number',width:100,halign:'center'">Account Code</th>
             <th rowspan="2" data-options="field:'account_name',width:200,halign:'center'">Account Name</th>
             <th rowspan="2" data-options="field:'status',width:80,align:'center', styler:cellStyler, formatter:cellFormatter">Closing<br>Journal</th>
-            <!-- <th rowspan="2" data-options="field:'closing_jurnal',width:150,halign:'center'">Closing Jurnal</th> -->
+            <th rowspan="2" data-options="field:'other',width:80,align:'center'">AP/AR<br>Other</th>
             <th colspan="3" data-options="field:'',width:150,halign:'center'"> Original Currency</th>
             <th colspan="3" data-options="field:'',width:150,halign:'center'"> Local Currency</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
@@ -32,7 +32,7 @@
     <?= $button ?>
 </div>
 <!-- DIALOG SAVE AND UPDATE -->
-<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 600px; padding:10px; top: 20px;">
+<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 600px; height: 550px; padding:10px; top: 20px;">
     <form id="frm_insert" method="post" novalidate>
         <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
             <legend><b>Form Data</b></legend>
@@ -51,6 +51,15 @@
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Status</span>
                 <input style="width:25%;" name="status" id="status" required="" panelHeight="auto" class="easyui-combobox">
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">AP/AR Other</span>
+                <select style="width:25%;" name="other" id="other" required="" panelHeight="auto" class="easyui-combobox">
+                    <option value="">Choose AP/AR</option>
+                    <option value="AP">AP Payment</option>
+                    <option value="AR">AR Receipt</option>
+                    <option value="BOTH">BOTH</option>
+                </select>
             </div>
         </fieldset>
         <div style="width:50%; float: left; box-sizing: border-box; margin-bottom: 10px;">

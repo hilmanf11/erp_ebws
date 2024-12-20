@@ -30,6 +30,10 @@ class item_fg extends CI_Controller
     //GET DATA
     public function reads()
     {
+        //master/bom
+        //master/wos
+        //master/customers
+        //master/customer_items
         $post = isset($_POST['q']) ? $_POST['q'] : "";
         $send = $this->crud->query("SELECT * FROM item_fg WHERE `number` like '%$post%' or number_customer like '%$post%' or `name` like '%$post%'");
         echo json_encode($send);
@@ -48,11 +52,12 @@ class item_fg extends CI_Controller
             $offset = ($page - 1) * $rows;
             $result = array();
             //Select Query
-            $this->db->select('a.*, b.number as hsn_number, b.name as hsn_name, b.igst, b.sgst, b.cgst, c.number as customer_number, c.name as customer_name, d.name as harnes_type_name');
+            $this->db->select('a.*, b.number as hsn_number, b.name as hsn_name, b.igst, b.sgst, b.cgst, c.number as customer_number, c.name as customer_name, d.name as harnes_type_name, e.total_cct');
             $this->db->from('item_fg a');
             $this->db->join('hsn b', 'a.hsn_code = b.number', 'left');
             $this->db->join('customers c', 'a.customer_id = c.id', 'left');
             $this->db->join('harnes_types d', 'd.number = a.harnes_type', 'left');
+            $this->db->join("(SELECT item_fg_id, COUNT(id) as total_cct FROM wos GROUP BY item_fg_id) e", 'e.item_fg_id = a.id', 'left');
             $this->db->where('a.deleted', 0);
             if (@count($filters) > 0) {
                 foreach ($filters as $filter) {
@@ -439,6 +444,7 @@ class item_fg extends CI_Controller
                 <th>IS No.</th>
                 <th>Weight (Gram)</th>
                 <th>Leadtime (Day)</th>
+                <th>Safety Stock (%)</th>
                 <th>MPQ</th>
                 <th>MOQ</th>
                 <th>Qty/Box</th>
@@ -471,6 +477,7 @@ class item_fg extends CI_Controller
                         <td>' . $data['is_no'] . '</td>
                         <td>' . $data['weight'] . '</td>
                         <td>' . $data['leadtime'] . '</td>
+                        <td>' . $data['safety_stock'] . '</td>
                         <td>' . $data['mpq'] . '</td>
                         <td>' . $data['moq'] . '</td>
                         <td>' . $data['qty_box'] . '</td>

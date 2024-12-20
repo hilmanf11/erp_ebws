@@ -3,19 +3,22 @@
     <thead>
         <tr>
             <th rowspan="2" field="ck" checkbox="true"></th>
-            <th rowspan="2" data-options="field:'number',width:150,halign:'center'">Purchase Invoice No</th>
+            <th rowspan="2" data-options="field:'number',width:150,halign:'center'">Document No</th>
             <th rowspan="2" data-options="field:'status',width:100,align:'center',formatter:statusformat,styler:statusStyle">Payment<br>Status</th>
             <th rowspan="2" data-options="field:'status_invoice',width:110,align:'center',formatter:statusformatInv,styler:statusStyleInv">Supplier<br>Invoice</th>
-            <th rowspan="2" data-options="field:'gl_no',width:100,align:'center'">GL No</th>
+            <th rowspan="2" data-options="field:'gl_no',width:140,align:'center'">GL No</th>
             <th rowspan="2" data-options="field:'trans_date',width:100,align:'center'">Trans Date</th>
             <!-- <th rowspan="2" data-options="field:'item_family_name',width:150,halign:'center'">Sub Category</th> -->
-            <th rowspan="2" data-options="field:'journal_type_name',width:150,halign:'center'">Journal Name</th>
-            <th rowspan="2" data-options="field:'supplier_name',width:200,halign:'center'">Supplier Name</th>
+            <th rowspan="2" data-options="field:'journal_type_name',width:200,halign:'center'">Journal Name</th>
+            <th rowspan="2" data-options="field:'supplier_name',width:250,halign:'center'">Supplier Name</th>
             <th rowspan="2" data-options="field:'invoice_no',width:150,halign:'center'">Invoice No</th>
+            <th rowspan="2" data-options="field:'invoice_date',width:120,halign:'center'">Invoice Date</th>
+            <th rowspan="2" data-options="field:'boe_no',width:150,halign:'center'">BOE No</th>
+            <th rowspan="2" data-options="field:'boe_date',width:120,halign:'center'">BOE Date</th>
             <th rowspan="2" data-options="field:'taxes',width:80,halign:'center',align:'right'">Taxes %</th>
             <th rowspan="2" data-options="field:'payment_term',width:100,align:'center'">Payment Term <br>(Days)</th>
             <th rowspan="2" data-options="field:'due_date',width:100,align:'center'">Payment Due</th>
-            <th rowspan="2" data-options="field:'currency',width:100,align:'center'">Currency</th>
+            <th rowspan="2" data-options="field:'currency',width:80,align:'center'">Currency</th>
             <th rowspan="2" data-options="field:'total_sub',width:120,halign:'center',align:'right',formatter: numberformat">Taxable Value</th>
             <!-- <th rowspan="2" data-options="field:'total_vat',width:120,halign:'center',align:'right',formatter: numberformat">VAT</th> -->
             <!-- <th rowspan="2" data-options="field:'total_pph',width:120,halign:'center',align:'right',formatter: numberformat">PPH</th> -->
@@ -42,7 +45,7 @@
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Type Date</span>
                 <select style="width:60%;" id="filter_type" class="easyui-combobox" panelHeight="auto">
-                    <option value="">Select All</option>
+                    <option value="">Choose Type Date</option>
                     <option value="PID">Purchase Invoice Date</option>
                     <option value="PAY">Payment Due</option>
                 </select>
@@ -109,7 +112,7 @@
         </div>
     </fieldset>
     <?= $button ?>
-    <!-- <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="excelDetail()"><i class="fa fa-file"></i> Export Excel Detail</a> -->
+    <!-- <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="excelDetail()"><i class="fa fa-file"></i> Purchase Register Report</a> -->
     <!-- <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="excelJournal()"><i class="fa fa-file"></i> Export Excel Journal</a> -->
 </div>
 
@@ -139,24 +142,20 @@
                         </select>
                     </div>
                     <div class="fitem">
-                        <span style="width:35%; display:inline-block;">Supplier Invoice Date</span>
+                        <span style="width:35%; display:inline-block;">Purchase Invoice Date</span>
                         <input style="width:60%;" id="trans_date" name="trans_date" required="" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
                     </div>
                     <div class="fitem">
-                        <span style="width:35%; display:inline-block;">Purchase Invoice No</span>
+                        <span style="width:35%; display:inline-block;">Document No</span>
                         <input style="width:60%;" readonly id="number" name="number" class="easyui-textbox" data-options="prompt:'Automatic From Purchase Invoce Date'">
                     </div>
                     <div class="fitem">
                         <span style="width:35%; display:inline-block;">Supplier Name</span>
                         <input style="width:60%;" required="" id="supplier_id" name="supplier_id" class="easyui-combogrid">
                     </div>
-                    <div class="fitem" id="type_selection_purchase">
+                    <div class="fitem">
                         <span style="width:35%; display:inline-block;">Purchase Order Receipt</span>
                         <input style="width:60%;" required="" id="por_no" name="por_no" class="easyui-combobox">
-                    </div>
-                    <div class="fitem" id="type_selection_others">
-                        <span style="width:35%; display:inline-block;">Purchase Order Misc</span>
-                        <input style="width:60%;" required="" id="po_no" name="po_no" class="easyui-combobox">
                     </div>
                     <div class="fitem">
                         <span style="width:35%; display:inline-block;"></span>
@@ -170,19 +169,22 @@
                     </div>
                     <div class="fitem">
                         <span style="width:35%; display:inline-block;">Supplier Invoice</span>
-                        <input style="width:60%;" required="" id="invoice_no" name="invoice_no" class="easyui-textbox">
+                        <input style="width:30%;" required="" data-options="prompt:'Invoice No'" id="invoice_no" name="invoice_no" class="easyui-textbox">
+                        <input style="width:30%;" required="" data-options="prompt:'Invoice Date', formatter:myformatter, parser:myparser, editable:false" id="invoice_date" name="invoice_date" class="easyui-datebox">
                     </div>
                     <div class="fitem" hidden>
                         <span style="width:35%; display:inline-block;">Taxes</span>
                         <input style="width:60%;" id="taxes" name="taxes" readonly class="easyui-numberbox">
                     </div>
                     <div class="fitem">
-                        <span style="width:35%; display:inline-block;">Payment Term</span>
-                        <input style="width:60%;" required="" readonly="" id="payment_term" name="payment_term" class="easyui-numberbox" data-options="buttonText:'Days',buttonAlign:'right'">
+                        <span style="width:35%; display:inline-block;">Payment Term / Due</span>
+                        <input style="width:30%;" required="" readonly="" id="payment_term" name="payment_term" class="easyui-numberbox" data-options="buttonText:'Days',buttonAlign:'right'">
+                        <input style="width:30%;" id="due_date" name="due_date" required="" readonly class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
                     </div>
                     <div class="fitem">
-                        <span style="width:35%; display:inline-block;">Payment Due</span>
-                        <input style="width:60%;" id="due_date" name="due_date" required="" readonly class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
+                        <span style="width:35%; display:inline-block;">BOE No / Date</span>
+                        <input style="width:30%;" id="boe_no" name="boe_no" class="easyui-textbox">
+                        <input style="width:30%;" id="boe_date" name="boe_date" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
                     </div>
                     <div class="fitem" hidden>
                         <span style="width:35%; display:inline-block;">Voucher</span>
@@ -196,7 +198,7 @@
             </fieldset>
         </div>
 
-        <table id="dg2" class="easyui-datagrid" style="width:100%;" title="Purchase Invoice Lists" data-options="singleSelect: true" toolbar="#toolbar2">
+        <table id="dg2" class="easyui-datagrid" style="width:100%;" showFooter="true" title="Purchase Invoice Lists" data-options="singleSelect: true" toolbar="#toolbar2">
             <thead>
                 <tr>
                     <th rowspan="2" data-options="field:'action',width:120,formatter:buttonEdit">Action</th>
@@ -303,7 +305,7 @@
                         textField: 'name',
                         prompt: 'Choose Currencies'
                     }}">Currency</th>
-                    <th data-options="field:'price', width:80, halign:'center', align:'right', formatter:numberformat,editor: {type: 'numberbox', 
+                    <th data-options="field:'price', width:80, halign:'center', align:'right', formatter:priceformat,editor: {type: 'numberbox', 
                         options: {
                             readonly: true,
                             required: true,
@@ -315,7 +317,7 @@
 
                                 var ed = dg.datagrid('getEditor', {
                                     index: rowIndex,
-                                    field: 'total2'
+                                    field: 'total'
                                 });
 
                                 var ed2 = dg.datagrid('getEditor', {
@@ -323,18 +325,175 @@
                                     field: 'qty'
                                 });
 
+                                var ed3 = dg.datagrid('getEditor', {
+                                    index: rowIndex,
+                                    field: 'total2'
+                                });
+
+                                var ed4 = dg.datagrid('getEditor', {
+                                    index: rowIndex,
+                                    field: 'total_local'
+                                });
+
                                 var qty = $(ed2.target).numberbox('getValue');
-                                $(ed.target).textbox('setValue', (parseFloat(value) * parseFloat(qty)));
+                                $(ed.target).numberbox('setValue', (parseFloat(value) * parseFloat(qty)));
+                                $(ed3.target).numberbox('setValue', (parseFloat(value) * parseFloat(qty)));
+                                $(ed4.target).numberbox('setValue', (parseFloat(value) * parseFloat(qty)));
                             }
                         }}">Price</th>
                     <th data-options="field:'total',width:120, formatter:numberformat, halign:'center', align:'right',editor: {type: 'numberbox', options: {required: true, readonly: true, precision: 2}}">Amount</th>
-                    <th data-options="field:'igst',width:80, formatter:numberformat, halign:'center', align:'right',editor: {type: 'numberbox', options: {required: true, readonly: true, precision: 2}}">IGST</th>
-                    <th data-options="field:'sgst',width:80, formatter:numberformat, halign:'center', align:'right',editor: {type: 'numberbox', options: {required: true, readonly: true, precision: 2}}">SGST</th>
-                    <th data-options="field:'cgst',width:80, formatter:numberformat, halign:'center', align:'right',editor: {type: 'numberbox', options: {required: true, readonly: true, precision: 2}}">CGST</th>
+                    <th data-options="field:'igst',width:80, formatter:numberformat, halign:'center', align:'right',editor: {type: 'numberbox', 
+                        options: {
+                            required: true,
+                            precision: 2,
+                            onChange: function(igst) {
+                                var dg = $('#dg2');
+                                var row = dg.datagrid('getSelected');
+                                var rowIndex = dg.datagrid('getRowIndex', row);
+
+                                var ed = dg.datagrid('getEditor', {
+                                    index: rowIndex,
+                                    field: 'sgst'
+                                });
+
+                                var ed1 = dg.datagrid('getEditor', {
+                                    index: rowIndex,
+                                    field: 'total'
+                                });
+
+                                var ed2 = dg.datagrid('getEditor', {
+                                    index: rowIndex,
+                                    field: 'cgst'
+                                });
+
+                                var ed3 = dg.datagrid('getEditor', {
+                                    index: rowIndex,
+                                    field: 'total2'
+                                });
+
+                                var ed4 = dg.datagrid('getEditor', {
+                                    index: rowIndex,
+                                    field: 'total_local'
+                                });
+
+                                var sgst = $(ed.target).numberbox('getValue');
+                                var total = $(ed1.target).numberbox('getValue');
+                                var cgst = $(ed2.target).numberbox('getValue');
+                                $(ed3.target).numberbox('setValue', (parseFloat(igst) + parseFloat(sgst) + parseFloat(cgst) + parseFloat(total)));
+                                $(ed4.target).numberbox('setValue', (parseFloat(igst) + parseFloat(sgst) + parseFloat(cgst) + parseFloat(total)));
+                            }
+                        }
+                    }">IGST</th>
+                    <th data-options="field:'sgst',width:80, formatter:numberformat, halign:'center', align:'right',editor: {type: 'numberbox', 
+                    options: {
+                            required: true,
+                            precision: 2,
+                            onChange: function(sgst) {
+                                var dg = $('#dg2');
+                                var row = dg.datagrid('getSelected');
+                                var rowIndex = dg.datagrid('getRowIndex', row);
+
+                                var ed = dg.datagrid('getEditor', {
+                                    index: rowIndex,
+                                    field: 'igst'
+                                });
+
+                                var ed1 = dg.datagrid('getEditor', {
+                                    index: rowIndex,
+                                    field: 'total'
+                                });
+
+                                var ed2 = dg.datagrid('getEditor', {
+                                    index: rowIndex,
+                                    field: 'cgst'
+                                });
+
+                                var ed3 = dg.datagrid('getEditor', {
+                                    index: rowIndex,
+                                    field: 'total2'
+                                });
+
+                                var ed4 = dg.datagrid('getEditor', {
+                                    index: rowIndex,
+                                    field: 'total_local'
+                                });
+
+                                var igst = $(ed.target).numberbox('getValue');
+                                var total = $(ed1.target).numberbox('getValue');
+                                var cgst = $(ed2.target).numberbox('getValue');
+                                $(ed3.target).numberbox('setValue', (parseFloat(igst) + parseFloat(sgst) + parseFloat(cgst) + parseFloat(total)));
+                                $(ed4.target).numberbox('setValue', (parseFloat(igst) + parseFloat(sgst) + parseFloat(cgst) + parseFloat(total)));
+                            }
+                        }
+                    }">SGST</th>
+                    <th data-options="field:'cgst',width:80, formatter:numberformat, halign:'center', align:'right',editor: {type: 'numberbox', 
+                    options: {
+                            required: true,
+                            precision: 2,
+                            onChange: function(cgst) {
+                                var dg = $('#dg2');
+                                var row = dg.datagrid('getSelected');
+                                var rowIndex = dg.datagrid('getRowIndex', row);
+
+                                var ed = dg.datagrid('getEditor', {
+                                    index: rowIndex,
+                                    field: 'igst'
+                                });
+
+                                var ed1 = dg.datagrid('getEditor', {
+                                    index: rowIndex,
+                                    field: 'total'
+                                });
+
+                                var ed2 = dg.datagrid('getEditor', {
+                                    index: rowIndex,
+                                    field: 'sgst'
+                                });
+
+                                var ed3 = dg.datagrid('getEditor', {
+                                    index: rowIndex,
+                                    field: 'total2'
+                                });
+
+                                var ed4 = dg.datagrid('getEditor', {
+                                    index: rowIndex,
+                                    field: 'total_local'
+                                });
+
+                                var igst = $(ed.target).numberbox('getValue');
+                                var total = $(ed1.target).numberbox('getValue');
+                                var sgst = $(ed2.target).numberbox('getValue');
+                                $(ed3.target).numberbox('setValue', (parseFloat(igst) + parseFloat(sgst) + parseFloat(cgst) + parseFloat(total)));
+                                $(ed4.target).numberbox('setValue', (parseFloat(igst) + parseFloat(sgst) + parseFloat(cgst) + parseFloat(total)));
+                            }
+                        }
+                    }">CGST</th>
                     <th data-options="field:'total2',width:100, formatter:numberformat, halign:'center', align:'right',editor: {type: 'numberbox', options: {required: true, readonly: true, precision: 2}}">Amount<br>After Tax</th>
-                    <th data-options="field:'rate',width:100, formatter:numberformat, halign:'center', align:'right',editor: {type: 'numberbox', options: {required: true, precision: 2}}">Rate</th>
+                    <th data-options="field:'rate',width:100, formatter:numberformat, halign:'center', align:'right',editor: {type: 'numberbox', options: {
+                            required: true,
+                            precision: 4,
+                            onChange: function(rate) {
+                                var dg = $('#dg2');
+                                var row = dg.datagrid('getSelected');
+                                var rowIndex = dg.datagrid('getRowIndex', row);
+
+                                var ed = dg.datagrid('getEditor', {
+                                    index: rowIndex,
+                                    field: 'total2'
+                                });
+
+                                var ed1 = dg.datagrid('getEditor', {
+                                    index: rowIndex,
+                                    field: 'total_local'
+                                });
+
+                                var total2 = $(ed.target).numberbox('getValue');
+                                $(ed1.target).numberbox('setValue', (parseFloat(total2) * parseFloat(rate)));
+                            }
+                        }
+                    }">Rate</th>
                     <th data-options="field:'currency_local',align:'center',width:80">Currency</th>
-                    <th data-options="field:'total_local',width:120, formatter:numberformat, halign:'center', align:'right'">Amount</th>
+                    <th data-options="field:'total_local',width:120, formatter:numberformat, halign:'center', align:'right',editor: {type: 'numberbox', options: {required: true, precision: 2}}">Amount</th>
                 </tr>
             </thead>
         </table>
@@ -346,8 +505,8 @@
 
             <div class="fitem">
                 <b style="width:50%; display:inline-block; padding-left: 50px;">BALANCE TOTAL</b>
-                <input style="width:18%;" id="balance_debit" name="balance_debit" readonly class="easyui-numberbox" data-options="precision:2,groupSeparator:'.', decimalSeparator:','">
-                <input style="width:18%;" id="balance_credit" name="balance_credit" readonly class="easyui-numberbox" data-options="precision:2,groupSeparator:'.', decimalSeparator:','">
+                <input style="width:18%;" id="balance_debit" name="balance_debit" readonly class="easyui-numberbox" data-options="precision:2,groupSeparator:',', decimalSeparator:'.'">
+                <input style="width:18%;" id="balance_credit" name="balance_credit" readonly class="easyui-numberbox" data-options="precision:2,groupSeparator:',', decimalSeparator:'.'">
             </div>
         </div>
 
@@ -372,8 +531,21 @@
                         <input style="width:40%;" id="total_cgst" name="total_cgst" class="easyui-numberbox" disabled data-options="precision:2,groupSeparator:','">
                     </div>
                     <div class="fitem">
+                        <b style="width:35%; display:inline-block;">TCS Amount</b>
+                        <select style="width:20%;" id="tcs" name="tcs" panelHeight="auto" class="easyui-combobox">
+                            <option value="0">0%</option>
+                            <option value="0.1">0.1%</option>
+                            <option value="1">1%</option>
+                        </select>
+                        <input style="width:40%;" id="total_tcs" name="total_tcs" disabled required class="easyui-numberbox" data-options="precision:2,groupSeparator:','">
+                    </div>
+                    <div class="fitem">
                         <b style="width:35%; display:inline-block;">TDS <span id="txt_tds"></span> <span id="nom_tds"></span></b>
-                        <input style="width:30%;" id="total_tds" name="total_tds" class="easyui-numberbox" data-options="precision:2,groupSeparator:','">
+                        <input style="width:40%;" id="total_tds" name="total_tds" class="easyui-numberbox" data-options="precision:2,groupSeparator:','">
+                    </div>
+                    <div class="fitem">
+                        <b style="width:35%; display:inline-block;">FREIGHT</b>
+                        <input style="width:40%;" id="total_freight" name="total_freight" class="easyui-numberbox" data-options="precision:2,groupSeparator:','">
                     </div>
                     <div class="fitem">
                         <b style="width:35%; display:inline-block;">INVOICE VALUE</b>
@@ -416,21 +588,24 @@
         $('#dg3').datagrid('loadData', []);
         $('#frm_insert').form('clear');
 
-        $("#type_selection_others").hide();
-        $("#type_selection_purchase").hide();
         $("#type_selection_dp").hide();
 
         $("#type").combobox({
             readonly: false
         });
-        $("#trans_date").datebox('enable');
+        // $("#trans_date").datebox('enable');
         $("#supplier_id").combobox('enable');
         $("#por_no").combobox('enable');
-        $("#po_no").combobox('enable');
+        // $("#po_no").combobox('enable');
         $("#account_purchase_name").textbox('setValue', "PURCHASE");
         $("#account_pay_name").textbox('setValue', "PAYABLE");
         $("#account_bal_name").textbox('setValue', "BALANCE");
         $("#preview").linkbutton('enable');
+
+        $("#tcs").combobox('setValue', 0);
+        $("#total_tcs").numberbox('setValue', 0);
+        $("#total_tds").numberbox('setValue', 0);
+        $("#total_freight").numberbox('setValue', 0);
 
         $("#trans_date").datebox({
             onChange: function(val) {
@@ -448,7 +623,7 @@
                     });
                 }
 
-                number("<?= $id_menu ?>");
+                number("<?= $menus_id ?>");
             }
         });
 
@@ -456,20 +631,12 @@
             onChange: function(t) {
                 var type = $("#type").combobox('getValue');
 
-                if (type == "purchase") {
-                    $("#type_selection_purchase").show();
-                    $("#type_selection_others").hide();
+                if (type != "dp") {
                     $("#type_selection_dp").hide();
                     $("#total_dp").numberbox('clear');
-                } else if (type == "dp") {
-                    $("#type_selection_purchase").show();
-                    $("#type_selection_others").hide();
-                    $("#type_selection_dp").show();
                 } else {
-                    $("#type_selection_others").show();
-                    $("#type_selection_purchase").hide();
-                    $("#type_selection_dp").hide();
-                    $("#total_dp").numberbox('clear');
+                    $("#type_selection_dp").show();
+                    $("#total_dp").numberbox('setValue', 0);
                 }
 
                 //Supplier Invoice Auto
@@ -483,6 +650,10 @@
                 });
             }
         });
+
+        $("#type").combobox('setValue', "purchase");
+        $("#trans_date").datebox("setValue", "<?= date("Y-m-d") ?>");
+        $("#invoice_date").datebox("setValue", "<?= date("Y-m-d") ?>");
     }
 
     function addJournal() {
@@ -499,6 +670,9 @@
             var data_array = [];
             var data_array2 = [];
             var total_sub = 0;
+            var total_igst = 0;
+            var total_cgst = 0;
+            var total_sgst = 0;
             for (let i = 0; i < totalrows; i++) {
                 var data = {
                     account_number: rows[i].account_number,
@@ -513,21 +687,32 @@
                     total_sub -= Math.abs(parseFloat(rows[i].total));
                 }
 
+                total_igst += Math.abs(parseFloat(rows[i].igst));
+                total_cgst += Math.abs(parseFloat(rows[i].cgst));
+                total_sgst += Math.abs(parseFloat(rows[i].sgst));
                 data_array.push(data);
             }
 
             $("#total_sub").numberbox('setValue', total_sub);
+            $("#total_igst").numberbox('setValue', total_igst);
+            $("#total_cgst").numberbox('setValue', total_cgst);
+            $("#total_sgst").numberbox('setValue', total_sgst);
 
-            var total_igst = $("#total_igst").numberbox('getValue');
-            var total_cgst = $("#total_cgst").numberbox('getValue');
-            var total_sgst = $("#total_sgst").numberbox('getValue');
             var total_tds = $("#total_tds").numberbox('getValue');
-            var total_grand = (parseFloat(total_sub) + parseFloat(total_igst) + parseFloat(total_cgst) + parseFloat(total_sgst) + parseFloat(total_tds));
+            var total_tcs = $("#total_tcs").numberbox('getValue');
+            var total_freight = $("#total_freight").numberbox('getValue');
+
+            if(total_tds == ""){
+                $("#total_tds").numberbox('setValue', 0);
+                var total_tds = 0;
+            }
+
+            var total_grand = (parseFloat(total_sub) + parseFloat(total_igst) + parseFloat(total_cgst) + parseFloat(total_sgst) - parseFloat(total_tds) + parseFloat(total_tcs) + parseFloat(total_freight));
             $("#total_grand").numberbox('setValue', (total_grand));
 
             var tds_val = 0;
-            var arr_tds = ["17000001","17000002","17000003","17000004","17000005","17000006"];
-            var arr_ap = ["16000001"];
+            var arr_tds = ["17000001","17000002","17000003","17000004","17000005","17000006","17000028","17000029"];
+            var arr_ap = ['16000001','16000002','16000003','16000004','16000005','16000006','16000007','16000008'];
 
             for (let z = 0; z < totalrows2; z++) {
                 var debit = rows2[z].debit;
@@ -548,9 +733,24 @@
                     var credit = 0;
                 }
 
-                if (jQuery.inArray(rows2[z].account_number, arr_tds) >= 0) {
-                    var debit = total_tds;
+                if (rows2[z].account_number == "17000007") {
+                    var debit = 0;
+                    var credit = total_tcs;
+                }
+
+                if (rows2[z].account_number == "20100008") {
+                    var debit = total_tcs;
                     var credit = 0;
+                }
+
+                if (rows2[z].account_number == "40000002") {
+                    var debit = 0;
+                    var credit = total_freight;
+                }
+
+                if (jQuery.inArray(rows2[z].account_number, arr_tds) >= 0) {
+                    var debit = 0;
+                    var credit = total_tds;
                     tds_val = 1;
                 }
 
@@ -740,28 +940,41 @@
 
     function append() {
         if (endEditing()) {
-            $('#dg2').datagrid('appendRow', {
-                "action": 0
-            });
-            editIndex = $('#dg2').datagrid('getRows').length - 1;
-            $('#dg2').datagrid('selectRow', editIndex).datagrid('beginEdit', editIndex);
+            var type = $("#type").combobox('getValue');
 
-            var dg = $('#dg2');
-            var row = dg.datagrid('getSelected');
-            var rowIndex = dg.datagrid('getRowIndex', row);
+            if(type == "others"){
+                $('#dg2').datagrid('appendRow', {
+                    "action": 0,
+                    "currency": "INR",
+                    "currency_local": "INR",
+                    "igst": 0,
+                    "sgst": 0,
+                    "cgst": 0,
+                    "rate": 1.00,
+                });
 
-            var qty = dg.datagrid('getEditor', {
-                index: rowIndex,
-                field: 'qty'
-            });
+                editIndex = $('#dg2').datagrid('getRows').length - 1;
+                $('#dg2').datagrid('selectRow', editIndex).datagrid('beginEdit', editIndex);
 
-            var price = dg.datagrid('getEditor', {
-                index: rowIndex,
-                field: 'price'
-            });
+                var dg = $('#dg2');
+                var row = dg.datagrid('getSelected');
+                var rowIndex = dg.datagrid('getRowIndex', row);
 
-            $(qty.target).numberbox('readonly', false);
-            $(price.target).numberbox('readonly', false);
+                var qty = dg.datagrid('getEditor', {
+                    index: rowIndex,
+                    field: 'qty'
+                });
+
+                var price = dg.datagrid('getEditor', {
+                    index: rowIndex,
+                    field: 'price'
+                });
+
+                $(qty.target).numberbox('readonly', false);
+                $(price.target).numberbox('readonly', false);
+            }else{
+                toastr.info("Available only Other Type");
+            }
         }
     }
 
@@ -815,6 +1028,42 @@
 
     function saverow(target) {
         $('#dg2').datagrid('endEdit', getRowIndex(target));
+
+        var rows = $('#dg2').datagrid('getRows');
+        var totalrows = rows.length;
+
+        var qty = 0;
+        var price = 0;
+        var total = 0;
+        var total2 = 0;
+        var rate = 0;
+        var igst = 0;
+        var sgst = 0;
+        var cgst = 0;
+        var total_local = 0;
+        for (let i = 0; i < totalrows; i++) {
+            qty += parseFloat(rows[i].qty);
+            price += parseFloat(rows[i].price);
+            total += parseFloat(rows[i].total);
+            total2 += parseFloat(rows[i].total2);
+            rate += parseFloat(rows[i].rate);
+            igst += parseFloat(rows[i].igst);
+            sgst += parseFloat(rows[i].sgst);
+            cgst += parseFloat(rows[i].cgst);
+            total_local += parseFloat(rows[i].total_local);
+        }
+
+        $('#dg2').datagrid('reloadFooter', [{
+            currency: "TOTAL",
+            price: price,
+            total: total,
+            total2: total2,
+            rate:rate,
+            igst:igst,
+            sgst:sgst,
+            cgst:cgst,
+            total_local:total_local,
+        }]);
     }
 
     function cancelrow(target) {
@@ -879,8 +1128,6 @@
                     $('#dlg_insert').dialog('open');
                     $('#frm_insert').form('load', row);
 
-                    $("#type_selection_others").hide();
-                    $("#type_selection_purchase").hide();
                     $("#type_selection_dp").hide();
 
                     $("#taxes").numberbox('setValue', row.taxes);
@@ -888,30 +1135,22 @@
                     $("#type").combobox({
                         readonly: true
                     });
-                    $("#trans_date").datebox('disable');
+                    // $("#trans_date").datebox('disable');
                     $("#supplier_id").combobox('disable');
                     $("#por_no").combobox('disable');
-                    $("#po_no").combobox('disable');
+                    // $("#po_no").combobox('disable');
                     $("#preview").linkbutton('disable');
 
-                    if (row.type == "purchase") {
-                        $("#type_selection_purchase").show();
-                        $("#type_selection_others").hide();
+                    if (row.type != "dp") {
                         $("#type_selection_dp").hide();
                         $("#total_dp").numberbox('clear');
-                    } else if (row.type == "dp") {
-                        $("#type_selection_purchase").show();
-                        $("#type_selection_others").hide();
-                        $("#type_selection_dp").show();
                     } else {
-                        $("#type_selection_others").show();
-                        $("#type_selection_purchase").hide();
-                        $("#type_selection_dp").hide();
-                        $("#total_dp").numberbox('clear');
+                        $("#type_selection_dp").show();
+                        $("#total_dp").numberbox('setValue', 0);
                     }
 
                     $('#supplier_id').combogrid({
-                        url: '<?= base_url('master/supplier_items/readSuppliers') ?>',
+                        url: '<?= base_url('master/suppliers/reads') ?>',
                         panelWidth: 520,
                         idField: 'id',
                         textField: 'name',
@@ -920,13 +1159,13 @@
                         prompt: "Choose Supplier",
                         columns: [
                             [{
-                                field: 'number',
+                                field: 'id',
                                 title: 'Supplier No',
-                                width: 120
+                                width: 80
                             }, {
                                 field: 'name',
                                 title: 'Supplier Name',
-                                width: 250
+                                width: 300
                             }, {
                                 field: 'state',
                                 title: 'State',
@@ -959,7 +1198,9 @@
                             $("#total_sgst").numberbox('setValue', row.total_sgst);
                             $("#total_cgst").numberbox('setValue', row.total_cgst);
                             $("#total_grand").numberbox('setValue', row.total_grand);
+                            $("#total_tcs").numberbox('setValue', row.total_tcs);
                             $("#total_tds").numberbox('setValue', row.total_tds);
+                            $("#total_freight").numberbox('setValue', row.total_freight);
                             $("#txt_tds").html("("+row.tds+")");
                             $("#nom_tds").html(row.individual + "%");
                         }
@@ -983,10 +1224,10 @@
     }
 
     //NOMOR AUTOMATIC
-    function number(id_menu) {
+    function number(menus_id) {
         $.ajax({
             type: "post",
-            url: "<?= base_url('finance/purchase_invoices/number/') ?>" + id_menu,
+            url: "<?= base_url('finance/purchase_invoices/number/') ?>" + menus_id,
             dataType: "html",
             success: function(result) {
                 if(result == ""){
@@ -1000,19 +1241,20 @@
 
     function preview() {
         var por_no = $("#por_no").combobox('getText');
-        var po_no = $("#po_no").combobox('getValue');
+        var type = $("#type").combobox('getValue');
+        // var po_no = $("#po_no").combobox('getValue');
         var trans_date = $("#trans_date").datebox('getValue');
         var invoice_no = $("#invoice_no").textbox('getValue');
-        var taxes = $("#taxes").numberbox('getValue');
+        // var taxes = $("#taxes").numberbox('getValue');
         var journal_type_id = $("#journal_type").combobox('getValue');
 
-        if (trans_date == "" || invoice_no == "" || taxes == "" || journal_type_id == "") {
+        if (trans_date == "" || invoice_no == "" || journal_type_id == "") {
             toastr.info('Please completed your data');
         } else {
             var lastIndex;
             if (por_no != "") {
                 var dg = $('#dg2').datagrid({
-                    url: '<?= base_url('finance/purchase_invoices/datatablesTemp') ?>?por_no=' + window.btoa(por_no),
+                    url: '<?= base_url('finance/purchase_invoices/datatablesTemp') ?>?por_no=' + window.btoa(por_no) + "&type=" + type,
                     onLoadSuccess: function(row) {
                         $("#total_sub").numberbox('setValue', row.total_sub);
                         $("#total_igst").numberbox('setValue', row.total_igst);
@@ -1022,26 +1264,9 @@
                         $("#txt_tds").html("("+row.tds+")");
                         $("#nom_tds").html(row.individual + "%");
 
-                        var total_grand = (parseFloat(row.total_sub) + parseFloat(row.total_igst) + parseFloat(row.total_cgst) + parseFloat(row.total_sgst) + parseFloat(row.total_tds));
+                        var total_grand = (parseFloat(row.total_sub) + parseFloat(row.total_igst) + parseFloat(row.total_cgst) + parseFloat(row.total_sgst) - parseFloat(row.total_tds));
                         $("#total_grand").numberbox('setValue', (total_grand));
 
-                        addTable2('<?= base_url('finance/purchase_invoices/readJournal/') ?>' + window.btoa(journal_type_id));
-                    }
-                });
-            } else if (po_no != "") {
-                var dg = $('#dg2').datagrid({
-                    url: '<?= base_url('finance/purchase_invoices/datatablesTemp2') ?>?po_no=' + window.btoa(po_no),
-                    onLoadSuccess: function(row) {
-                        $("#total_sub").numberbox('setValue', row.total_sub);
-                        $("#total_igst").numberbox('setValue', row.total_igst);
-                        $("#total_cgst").numberbox('setValue', row.total_cgst);
-                        $("#total_sgst").numberbox('setValue', row.total_sgst);
-                        $("#total_tds").numberbox('setValue', row.total_tds);
-                        $("#txt_tds").html("("+row.tds+")");
-                        $("#nom_tds").html(row.individual + "%");
-                        
-                        var total_grand = (parseFloat(row.total_sub) + parseFloat(row.total_igst) + parseFloat(row.total_cgst) + parseFloat(row.total_sgst) + parseFloat(row.total_tds));
-                        $("#total_grand").numberbox('setValue', (total_grand));
                         addTable2('<?= base_url('finance/purchase_invoices/readJournal/') ?>' + window.btoa(journal_type_id));
                     }
                 });
@@ -1213,7 +1438,11 @@
             "&filter_supplier=" + window.btoa(filter_supplier) +
             "&filter_status=" + window.btoa(filter_status);
 
-        window.location.assign('<?= base_url('finance/purchase_invoices/printDetail/excel') ?>' + url);
+        if(filter_type == ""){
+            toastr.info("Please Choose Filter Type Date");
+        }else{
+            window.location.assign('<?= base_url('finance/purchase_invoices/printDetail/excel') ?>' + url);
+        }
     }
 
     function excelJournal() {
@@ -1286,24 +1515,19 @@
         }
     }
 
-    function numberformat(value, row) {
-        if (value != null) {
-            const formatter = new Intl.NumberFormat('id-ID', {
-                minimumFractionDigits: 2
-            });
-            return "<b>" + formatter.format(value) + "</b>";
-        }
-    }
-
     function buttonEdit(value, row, index) {
-        if (row.editing) {
-            var s = '<a href="javascript:void(0)" class="btn btn-success btn-sm" style="pointer-events:auto; opacity:1;" onclick="saverow(this)">Save</a> ';
-            var c = '<a href="javascript:void(0)" class="btn btn-danger btn-sm" style="pointer-events:auto; opacity:1;" onclick="cancelrow(this)">Cancel</a>';
-            return s + c;
-        } else {
-            var e = '<a href="javascript:void(0)" class="btn btn-primary btn-sm" style="pointer-events:auto; opacity:1;" onclick="editrow(this)">Edit</a> ';
-            var d = '<a href="javascript:void(0)" class="btn btn-danger btn-sm" style="pointer-events:auto; opacity:1;" onclick="deleterow(this)">Delete</a>';
-            return e + d;
+        if(row.por_no == "GRAND TOTAL"){
+            return "-";
+        }else{
+            if (row.editing) {
+                var s = '<a href="javascript:void(0)" class="btn btn-success btn-sm" style="pointer-events:auto; opacity:1;" onclick="saverow(this)">Save</a> ';
+                var c = '<a href="javascript:void(0)" class="btn btn-danger btn-sm" style="pointer-events:auto; opacity:1;" onclick="cancelrow(this)">Cancel</a>';
+                return s + c;
+            } else {
+                var e = '<a href="javascript:void(0)" class="btn btn-primary btn-sm" style="pointer-events:auto; opacity:1;" onclick="editrow(this)">Edit</a> ';
+                var d = '<a href="javascript:void(0)" class="btn btn-danger btn-sm" style="pointer-events:auto; opacity:1;" onclick="deleterow(this)">Delete</a>';
+                return e + d;
+            }
         }
     }
 
@@ -1316,7 +1540,7 @@
                 var total_igst = $("#total_igst").numberbox("getValue");
                 var total_cgst = $("#total_cgst").numberbox("getValue");
                 var total_sgst = $("#total_sgst").numberbox("getValue");
-                var total_grand = (parseFloat(total_sub) + parseFloat(total_igst) + parseFloat(total_cgst) + parseFloat(total_sgst) + parseFloat(total_tds));
+                var total_grand = (parseFloat(total_sub) + parseFloat(total_igst) + parseFloat(total_cgst) + parseFloat(total_sgst) - parseFloat(total_tds));
                 $("#total_grand").numberbox('setValue', (total_grand));
             }
         });
@@ -1449,17 +1673,24 @@
                     var supplier_id = $("#supplier_id").combogrid('getValue');
                     var journal_type_id = $("#journal_type").combobox('getValue');
                     var invoice_no = $("#invoice_no").textbox('getValue');
+                    var invoice_date = $("#invoice_date").datebox('getValue');
+                    var boe_no = $("#boe_no").textbox('getValue');
+                    var boe_date = $("#boe_date").datebox('getValue');
                     var taxes = $("#taxes").numberbox('getValue');
                     var payment_term = $("#payment_term").numberbox('getValue');
                     var due_date = $("#due_date").datebox('getValue');
                     var voucher = $("#voucher").textbox('getValue');
                     var remarks = $("#remarks").textbox('getValue');
-
+                    
                     var balance_debit = $("#balance_debit").numberbox('getValue');
                     var balance_credit = $("#balance_credit").numberbox('getValue');
+                    
+                    var tcs = $("#tcs").combobox('getValue');
 
                     var total_sub = $("#total_sub").numberbox('getValue');
-                    // var total_pph = $("#total_pph").numberbox('getValue');
+                    var total_tds = $("#total_tds").numberbox('getValue');
+                    var total_tcs = $("#total_tcs").numberbox('getValue');
+                    var total_freight = $("#total_freight").numberbox('getValue');
                     var total_grand = $("#total_grand").numberbox('getValue');
                     var total_dp = $("#total_dp").numberbox('getValue');
 
@@ -1518,18 +1749,25 @@
                                                             data: {
                                                                 type: type,
                                                                 trans_date: trans_date,
+                                                                invoice_date: invoice_date,
                                                                 number: number,
                                                                 supplier_id: supplier_id,
                                                                 journal_type_id: journal_type_id,
                                                                 invoice_no: invoice_no,
+                                                                boe_no: boe_no,
+                                                                boe_date: boe_date,
                                                                 taxes: taxes,
                                                                 payment_term: payment_term,
                                                                 due_date: due_date,
                                                                 voucher: voucher,
                                                                 remarks: remarks,
+                                                                tcs: tcs,
                                                                 //total_sub: total_sub,
                                                                 //total_vat: total_vat,
                                                                 //total_pph: total_pph,
+                                                                total_tds: total_tds,
+                                                                total_tcs: total_tcs,
+                                                                total_freight: total_freight,
                                                                 //total_grand: total_grand,
                                                                 total_dp: total_dp,
                                                                 id: json[i].id,
@@ -1619,6 +1857,17 @@
             }]
         });
 
+        $("#tcs").combobox({
+            onChange: function(tcs) {
+                var total_sub = $("#total_sub").numberbox('getValue');
+                var total_igst = $("#total_igst").numberbox('getValue');
+                var total_cgst = $("#total_cgst").numberbox('getValue');
+                var total_sgst = $("#total_sgst").numberbox('getValue');
+                var grand_total = (parseFloat(total_sub) + parseFloat(total_igst) + parseFloat(total_cgst) + parseFloat(total_sgst));
+                $("#total_tcs").numberbox('setValue', (parseFloat(grand_total) * parseFloat(tcs)) / 100);
+            }
+        });
+
         $("#filter_type").combobox({
             onChange: function(val) {
                 if (val == "PID") {
@@ -1644,7 +1893,7 @@
             url: '<?= base_url('finance/purchase_invoices/readPurchaseInvoice') ?>',
             valueField: 'number',
             textField: 'number',
-            prompt: "Choose Purchase Invoice No",
+            prompt: "Choose Document No",
             icons: [{
                 iconCls: 'icon-clear',
                 handler: function(e) {
@@ -1707,7 +1956,8 @@
 
         //GET SUPPLIER
         $('#supplier_id').combogrid({
-            url: '<?= base_url('master/supplier_items/readSuppliers') ?>',
+            // url: '<?= base_url('master/supplier_items/readSuppliers') ?>',
+            url: '<?= base_url('master/suppliers/reads') ?>',
             panelWidth: 520,
             idField: 'id',
             textField: 'name',
@@ -1716,13 +1966,13 @@
             prompt: "Choose Supplier",
             columns: [
                 [{
-                    field: 'number',
+                    field: 'id',
                     title: 'Supplier No',
-                    width: 120
+                    width: 80
                 }, {
                     field: 'name',
                     title: 'Supplier Name',
-                    width: 250
+                    width: 300
                 }, {
                     field: 'state',
                     title: 'State',
@@ -1745,18 +1995,33 @@
                     }
                 });
 
-                if (type == "purchase") {
-                    $("#por_no").combobox({
-                        url: '<?= base_url('finance/purchase_invoices/readReceipt?supplier_id=') ?>' + row.id,
-                        valueField: 'receipt_no',
-                        textField: 'receipt_no',
-                        // multiple: true,
-                        prompt: "Choose Purchase Order Receipts",
-                        onSelect: function(row) {
-                            $("#invoice_no").textbox('setValue', row.bc_document);
-                        }
-                    });
-                } else if (type == "dp") {
+                if (type != "dp") {
+                    if (type == "purchase") {
+                        $("#por_no").combobox({
+                            url: '<?= base_url('finance/purchase_invoices/readReceipt/purchase?supplier_id=') ?>' + row.id,
+                            valueField: 'receipt_no',
+                            textField: 'receipt_no',
+                            // multiple: true,
+                            prompt: "Choose Purchase Order Receipts",
+                            onSelect: function(row) {
+                                $("#invoice_no").textbox('setValue', row.bc_document);
+                                $("#boe_no").textbox('setValue', row.awb_no);
+                            }
+                        });
+                    }else{
+                        $("#por_no").combobox({
+                            url: '<?= base_url('finance/purchase_invoices/readReceipt/other?supplier_id=') ?>' + row.id,
+                            valueField: 'receipt_no',
+                            textField: 'receipt_no',
+                            // multiple: true,
+                            prompt: "Choose Purchase Order Receipts",
+                            onSelect: function(row) {
+                                $("#invoice_no").textbox('setValue', row.bc_document);
+                                $("#boe_no").textbox('setValue', row.awb_no);
+                            }
+                        });
+                    }
+                } else {
                     $("#por_no").combobox({
                         url: '<?= base_url('finance/purchase_invoices/readReceipt/dp?supplier_id=') ?>' + row.id,
                         valueField: 'receipt_no',
@@ -1766,13 +2031,6 @@
                             $("#invoice_no").textbox('setValue', row.bc_document);
                             $("#total_dp").numberbox('setValue', row.total_dp);
                         }
-                    });
-                } else {
-                    $("#po_no").combobox({
-                        url: '<?= base_url('purchase/purchase_order_others/readPono/') ?>' + row.id,
-                        valueField: 'po_no',
-                        textField: 'po_no',
-                        prompt: "Choose Purchase Order Misc",
                     });
                 }
             }
@@ -1790,14 +2048,14 @@
     });
 
     function priceformat(value, row) {
-        var digits = 2;
+        var digits = 4;
         var currency = 'JPY';
         var format = "ja-JP";
 
         if (value != null) {
             const formatter = new Intl.NumberFormat(format, {
-                style: 'currency',
-                currency: currency,
+                // style: 'currency',
+                // currency: currency,
                 minimumFractionDigits: digits
             });
             return "<b>" + formatter.format(value) + "</b>";

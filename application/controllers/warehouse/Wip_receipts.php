@@ -39,12 +39,20 @@ class Wip_receipts extends CI_Controller
     }
 
     public function readChecksheet(){
+        $post = isset($_POST['q']) ? $_POST['q'] : "";
         $send = $this->crud->query("SELECT a.checksheet_number, c.number_customer, b.name as customer_name
             FROM wip_receipts a 
             JOIN customers b ON a.customer_id = b.id
             JOIN item_fg c ON a.item_fg_id = c.id
-            WHERE a.status = '0'
-            GROUP BY a.checksheet_number");
+            WHERE a.status = '0' and a.checksheet_number like '%$post%'
+            GROUP BY a.checksheet_number
+            LIMIT 50");
+        echo json_encode($send);
+    }
+
+    public function readWo(){
+        $period = date("Y-m");
+        $send = $this->crud->query("SELECT DISTINCT workorder FROM wip_receipts WHERE trans_date_from like '%$period%' and workorder != '' ORDER BY workorder");
         echo json_encode($send);
     }
 
@@ -129,32 +137,28 @@ class Wip_receipts extends CI_Controller
         return $workOrderNo;
     }
 
-    public function datatablesTemp($trans_date, $customer_id, $item_fg_id)
+    public function datatablesTemp($period, $wp, $customer_id, $item_fg_id = "")
     {
         $this->dummy = $this->load->database('dummy', TRUE);
 
-        $trans_date = base64_decode($trans_date);
+        // $trans_date_from = base64_decode($trans_date_from);
+        // $trans_date_to = base64_decode($trans_date_to);
         $customer_id = base64_decode($customer_id);
         $item_fg_id = base64_decode($item_fg_id);
-        $period = date("Ym", strtotime($trans_date));
-
-        // $delivery = $this->crud->reads("delivery_orders", [], ["delivery_date" => $trans_date]);
-        // $whereArr = array();
-        // foreach ($delivery as $del) {
-        //     $whereArr[] = $del->item_fg_id;
-        // }
+        $period = base64_decode($period);
+        $wp = base64_decode($wp);
+        // $period = date("Ym", strtotime($trans_date_from));
+        
+        // $item_fg = $this->crud->read("item_fg", [], ["id" => $item_fg_id]);
 
         $this->db->select('a.*, c.qty_box, b.name as customer_name, c.number_customer');
         $this->db->from('production_schedules a');
         $this->db->join('customers b', "a.customer_id = b.id");
         $this->db->join('item_fg c', "a.item_fg_id = c.id");
-        $this->db->where('a.status_wip', 0);
         $this->db->where('a.period', $period);
+        $this->db->where('a.wp', $wp);
         $this->db->where('a.customer_id', $customer_id);
         $this->db->where('a.item_fg_id', $item_fg_id);
-        // if(!empty($whereArr)){
-        //     $this->db->where_not_in('a.item_fg_id', $whereArr);
-        // }
         $this->db->order_by('a.workorder', 'asc');
         $records = $this->db->get()->result_array();
 
@@ -164,30 +168,119 @@ class Wip_receipts extends CI_Controller
             $mpp = $record['period'];
             $wp = sprintf("%02s", $record['wp'])."/".substr($mpp, -2);
 
-            $sqlQty = $this->dummy->query("SELECT assy_number, mpp, wp, customer, COUNT(qty) as qty 
-                from mst_scan_proses 
-                where kode_proses = '6' and assy_number = '$assy_number' and mpp ='$mpp' and wp = '$wp'
-                GROUP BY assy_number, mpp, wp, customer");
-            $rowQty = $sqlQty->row();
+            // $sqlQty = $this->dummy->query("SELECT SUM(z.qty) as qty FROM (SELECT assy_number, mpp, wp, customer, COUNT(qty) as qty
+            //     from mst_scan_proses 
+            //     where kode_proses = '5' and assy_number = '$assy_number' and mpp = '$period' and wp = '$wp'
+            //     GROUP BY assy_number, mpp, wp, customer) z");
+            // $rowQty = $sqlQty->row();
 
-            if(!empty($rowQty)){
+            // $qty_scan = empty(@$rowQty->qty) ? 0 : @$rowQty->qty;
+
+            $sqlQty = $this->dummy->query("SELECT COUNT(x.serial_number) as qty FROM (
+                SELECT DISTINCT z.serial_number FROM (
+                SELECT DISTINCT
+                    TRIM(a.serial_number) AS serial_number,
+                    TRIM(a.assy_number) AS assy_number,
+                    TRIM(a.customer) AS customer,
+                    TRIM(a.mpp) AS mpp,
+                    TRIM(a.wp) AS wp,
+                    TRIM(a.lot) AS lot,
+                    DATE(a.tanggal_proses) AS tanggal,
+                    COALESCE(a.jam_scan,'00:00:00') AS jam,
+                    a.wds_qty
+                FROM mst_scan_proses a
+                WHERE kode_proses = '5' and assy_number = '$assy_number' and mpp = '$period' and wp = '$wp'
+                and status_repair = 'false' 
+                AND status_before IS NOT NULL
+                AND status_repair = 'f'
+                ORDER BY serial_number) z ) x");
+            $rowQty = $sqlQty->row();
+            $qty_scan = empty(@$rowQty->qty) ? 0 : @$rowQty->qty;
+
+            $this->db->select('SUM(qty) as qty_rfg');
+            $this->db->from('wip_receipts');
+            $this->db->where('workorder', $record['workorder']);
+            $rfg = $this->db->get()->row();
+            
+            if(($qty_scan - round($rfg->qty_rfg)) > 0){
+                $qty_scan2 = ($qty_scan - round($rfg->qty_rfg));
+            }else{
+                $qty_scan2 = 0;
+            }
+            
+            $qty_balance = (round($record['qty']) - round($rfg->qty_rfg));
+            // if($qty_balance >= $qty_scan){
+            //     $qty_scan2 = $qty_scan;
+            // }else{
+            //     $qty_scan2 = $qty_balance;
+            // }
+
+            if($qty_scan2 > 0){
                 $arr[] = array(
                     "workorder" => $record['workorder'],
                     "period" => $record['period'],
                     "wp" => $record['wp'],
-                    "qty_receipt" => empty(@$rowQty->qty) ? 0 : @$rowQty->qty,
-                    "qty" => empty(@$rowQty->qty) ? 0 : @$rowQty->qty,
+                    "qty_wo" => round($record['qty']),
+                    "qty_rfg" => round($rfg->qty_rfg),
+                    "qty_receipt" => $qty_scan2,
+                    "qty" => $qty_scan2,
                     "qty_box" => $record['qty_box'],
-                    "label_box" => round(empty(@$rowQty->qty) ? 0 : @$rowQty->qty / $record['qty_box']),
+                    "label_box" => ceil($qty_scan2 / $record['qty_box']),
                 );
+
+                // $qty_scan -= $qty_scan2;
+            // }else{
+                // $arr[] = array(
+                //     "workorder" => $record['workorder'],
+                //     "period" => $record['period'],
+                //     "wp" => $record['wp'],
+                //     "qty_receipt" => $record['qty'] ? 0 : $record['qty'],
+                //     "qty" => $record['qty'] ? 0 : $record['qty'],
+                //     "qty_box" => $record['qty_box'],
+                //     "label_box" => ceil(empty($record['qty']) ? 0 : $record['qty'] / $record['qty_box']),
+                // );
             }
         }
 
-        if(empty($arr)){
-            show_error("Data Not Found");
-        }else{
-            echo json_encode($arr);
-        }
+        // $item_fg = $this->crud->read("item_fg", [], ["id" => $item_fg_id]);
+        // $item_fg_number = @$item_fg->number_customer;
+        // $qProses = $this->dummy->query("SELECT a.serial_number, a.assy_number, a.mpp, a.wp, a.customer, COUNT(a.qty) as qty, c.temp_woc_id
+        //     from mst_scan_proses a
+        //     left join wip_trx_mpp c ON a.assy_number = c.assy_no and a.wp = c.wp and a.mpp = c.periode
+        //     where a.kode_proses = '5' and status_before = 'false' and status_next = 'true' and sts_rfg is null
+        //     -- and a.tanggal_proses between '2024-11-01' and '$trans_date_to' and and a.assy_number = '$item_fg_number'
+        //     and a.mpp = '$period' and a.assy_number = '$item_fg_number'
+        //     GROUP BY a.serial_number, a.assy_number, a.mpp, a.wp, a.customer, c.temp_woc_id
+        //     ORDER BY mpp, wp asc");
+        // $dProses = $qProses->result();
+            
+        // $parr = array();
+        // $workorder = "";
+        // $period = "";
+        // $wp = "";
+        // $qty_receipt = 0;
+        // $qty = 0;
+        // foreach ($dProses as $proses) {
+        //     if(@$item_fg->qty_box > 0 && $proses->qty > 0){
+        //         $workorder = trim($proses->temp_woc_id);
+        //         $mpp = trim($proses->mpp);
+        //         $wp = trim($proses->wp);
+        //         $qty_receipt += empty(@$proses->qty) ? 0 : @$proses->qty;
+        //         $qty += empty(@$proses->qty) ? 0 : @$proses->qty;
+        //     }
+        // }
+
+        // $parr[] = array(
+        //     "workorder" => $workorder,
+        //     "period" => $mpp,
+        //     "wp" => $wp,
+        //     "qty_receipt" => $qty_receipt,
+        //     "qty" => $qty,
+        //     "qty_box" => @$item_fg->qty_box,
+        //     "label_box" => ceil(empty($qty) ? 0 : ($qty / @$item_fg->qty_box)),
+        // );
+
+        echo json_encode($arr);
     }
 
     public function datatables()
@@ -196,6 +289,9 @@ class Wip_receipts extends CI_Controller
             $filter_from = $this->input->get('filter_from');
             $filter_to = $this->input->get('filter_to');
             $filter_checksheet = $this->input->get('filter_checksheet');
+            $filter_workorder = $this->input->get('filter_workorder');
+            $filter_item_fg_id = $this->input->get('filter_item_fg_id');
+            $filter_status = $this->input->get('filter_status');
 
             $page = $this->input->post('page');
             $rows = $this->input->post('rows');
@@ -205,18 +301,25 @@ class Wip_receipts extends CI_Controller
             $offset = ($page - 1) * $rows;
             $result = array();
             //Select Query
-            $this->db->select('a.*, c.workorder, d.number as item_fg_number, d.name as item_fg_name, d.number_customer, d.uom');
+            $this->db->select('a.*, d.number as item_fg_number, d.name as item_fg_name, d.number_customer, d.uom, COAlESCE(c.total_label, 0) as total_label, (CASE WHEN b.total_scan = a.label_box THEN 1 ELSE 0 END) as scan');
             $this->db->from('wip_receipts a');
-            $this->db->join('production_schedules c', 'a.workorder = c.workorder and a.wp = c.wp');
-            $this->db->join('item_fg d', 'c.item_fg_id = d.id');
-            // $this->db->join('uom e', 'd.uom_id = e.id');
+            $this->db->join('item_fg d', 'a.item_fg_id = d.id');
+            $this->db->join("(SELECT workorder, checksheet_number, COUNT(id) as total_scan FROM scan_item_receipts_fg GROUP BY workorder, checksheet_number) b", 'b.workorder = a.workorder and a.checksheet_number = b.checksheet_number', 'left');
+            $this->db->join("(SELECT checksheet_number, COUNT(id) as total_label FROM wip_receipt_boxs GROUP BY checksheet_number) c", 'a.checksheet_number = c.checksheet_number', 'left');
             $this->db->where('a.deleted', 0);
             if ($filter_from != "" or $filter_to != "") {
-                $this->db->where('a.trans_date >=', $filter_from);
-                $this->db->where('a.trans_date <=', $filter_to);
+                $this->db->where('a.trans_date_from >=', $filter_from);
+                $this->db->where('a.trans_date_to <=', $filter_to);
             }
             $this->db->like('a.checksheet_number', $filter_checksheet);
-            $this->db->order_by('a.trans_date', 'DESC');
+            $this->db->like('a.workorder', $filter_workorder);
+            $this->db->like('d.id', $filter_item_fg_id);
+            if($filter_status == "0"){
+                $this->db->where('b.total_scan < a.label_box');
+            }elseif($filter_status == "1"){
+                $this->db->where('b.total_scan = a.label_box');
+            }
+            $this->db->order_by('a.trans_date_from', 'DESC');
             $this->db->order_by('a.checksheet_number', 'DESC');
             //Total Data
             $totalRows = $this->db->count_all_results('', false);
@@ -237,12 +340,35 @@ class Wip_receipts extends CI_Controller
             if ($this->form_validation->run() == TRUE) {
                 $post = $this->input->post();
                 $read = $this->crud->reads("wip_receipts", [], ["checksheet_number" => $post['checksheet_number'], "workorder" => $post['workorder']]);
+                // $item_fg_id = $post['item_fg_id'];
+                // $trans_date_from = $post['trans_date_from'];
+                // $trans_date_to = $post['trans_date_to'];
+                // $period = $post['period'];
+                // $wp = $post['wp'];
+                // $qty = $post['qty'];
 
+                // $item_fg = $this->crud->read("item_fg", [], ["id" => $item_fg_id]);
+                // $item_fg_number = @$item_fg->number_customer;
+
+                // $this->dummy = $this->load->database('dummy', TRUE);
+                // $qProses = $this->dummy->query("SELECT a.serial_number, a.assy_number, a.mpp, a.wp, a.customer, COUNT(a.qty) as qty, c.temp_woc_id
+                //     from mst_scan_proses a
+                //     left join wip_trx_mpp c ON a.assy_number = c.assy_no and a.wp = c.wp and a.mpp = c.periode
+                //     where a.kode_proses = '5' and status_before = 'false' and status_next = 'true' and sts_rfg is null
+                //     and a.mpp = '$period' and a.wp = '$wp' and a.assy_number = '$item_fg_number'
+                //     GROUP BY a.serial_number, a.assy_number, a.mpp, a.wp, a.customer, c.temp_woc_id
+                //     ORDER BY mpp, wp asc");
+                // $dProses = $qProses->result();
+                
+                // for ($i=0; $i < $qty; $i++) {
+                //     $this->dummy->update("mst_scan_proses", ["sts_rfg" => true], ["serial_number" => $dProses[$i]->serial_number, "kode_proses" => '5']);
+                // }
+                
                 if (count($read) > 0) {
                     echo json_encode(array("title" => "Error", "message" => "Duplicate Workorder", "theme" => "error"));
                 } else {
                     $send_wip_receipt = $this->crud->create('wip_receipts', $post);
-                    $this->crud->update('production_schedules', ["workorder" => $post['workorder']], ["status_wip" => 1]);
+                    $this->db->update('production_schedules', ["status_wip" => 1], ["workorder" => $post['workorder']]);
                     die($send_wip_receipt);
                 }
             } else {
@@ -252,34 +378,6 @@ class Wip_receipts extends CI_Controller
             show_error("Cannot Process your request");
         }
     }
-
-    // public function create_label()
-    // {
-    //     $post = $this->input->post();
-    //     $checksheet_number = $post['checksheet_number'];
-    //     $qty = $post['qty'];
-
-    //     //Read Label ID
-    //     $sqlGetID = $this->db->query("SELECT max(checksheet_label) as kode FROM wip_receipt_labels WHERE checksheet_number = '$checksheet_number'");
-    //     $rowID = $sqlGetID->row();
-    //     $label = $rowID->kode;
-    //     if ($label == NULL) {
-    //         $autoID = $checksheet_number .  sprintf("%03s", $label + 1);
-    //     } else {
-    //         $urutan = (int) substr($label, -3);
-    //         $autoID = $checksheet_number . sprintf("%03s", $urutan + 1);
-    //     }
-
-    //     //Simpan Label
-    //     $arrLabel = [
-    //         "checksheet_number" => $checksheet_number,
-    //         "checksheet_label" => $autoID,
-    //         "qty" => $qty
-    //     ];
-
-    //     $send = $this->crud->create('wip_receipt_labels', $arrLabel);
-    //     die($send);
-    // }
 
     public function create_label_box()
     {
@@ -314,117 +412,49 @@ class Wip_receipts extends CI_Controller
     public function delete()
     {
         $data = $this->input->post();
-        $send = $this->crud->delete('wip_receipt_boxs', ["workorder" => $data['workorder']]);
-        // $send = $this->crud->delete('wip_receipt_labels', ["checksheet_number" => $data['checksheet_number']]);
-        $send = $this->crud->delete('wip_receipts', ["id" => $data['id']]);
-        $update = $this->crud->update('production_schedules', ["workorder" => $data['workorder']], ["status_wip" => 0]);
+        $read = $this->crud->read('wip_receipts', ["id" => $data['id']]);
+        // $item_fg_id = $read->item_fg_id;
+        // $period = $read->period;
+        // $wp = $read->wp;
+        // $item_fg = $this->crud->read("item_fg", [], ["id" => $item_fg_id]);
+
+        $checksheet_number = @$read->checksheet_number;
+
+        // $trans_date_from = @$read->trans_date_from;
+        // $trans_date_to = @$read->trans_date_to;
+        
+        // $item_fg_number = @$item_fg->number_customer;
+        // $qty = @$read->qty;
+
+        // if($period == ""){
+        //     $where_period = "and a.tanggal_proses between '$trans_date_from' and '$trans_date_to'";
+        // }else{
+        //     $where_period = "and a.mpp between '$period' and a.wp = '$wp'";
+        // }
+
+        // $this->dummy = $this->load->database('dummy', TRUE);
+        // $qProses = $this->dummy->query("SELECT a.serial_number, a.assy_number, a.mpp, a.wp, a.customer, COUNT(a.qty) as qty, c.temp_woc_id
+        //     from mst_scan_proses a
+        //     left join wip_trx_mpp c ON a.assy_number = c.assy_no and a.wp = c.wp and a.mpp = c.periode
+        //     where a.kode_proses = '5' and status_before = 'false' and status_next = 'true' and sts_rfg = 'true'
+        //     and a.assy_number = '$item_fg_number' $where_period
+        //     GROUP BY a.serial_number, a.assy_number, a.mpp, a.wp, a.customer, c.temp_woc_id
+        //     ORDER BY mpp, wp asc");
+        // $dProses = $qProses->result();
+        
+        // for ($i=0; $i < $qty; $i++) {
+        //     $this->dummy->update("mst_scan_proses", ["sts_rfg" => null], ["serial_number" => $dProses[$i]->serial_number, "kode_proses" => '5']);
+        // }
+        
+        $send = $this->crud->delete('wip_receipt_boxs', ["checksheet_number" => $checksheet_number]);
+
+        if($send){
+            $send = $this->crud->delete('wip_receipts', ["id" => $data['id']]);
+        }
+
+        $update = $this->db->update('production_schedules', ["status_wip" => 0], ["workorder" => $data['workorder']]);
         echo $send;
     }
-
-    // public function print_label($checksheet_number)
-    // {
-    //     //Config
-    //     $this->db->select('*');
-    //     $this->db->from('config');
-    //     $config = $this->db->get()->row();
-
-    //     $checksheet_number = base64_decode($checksheet_number);
-    //     //Cek Label
-    //     $this->db->select('d.number, d.name, d.alias, a.qty, a.checksheet_label, f.trans_date, g.location, c.so_number, i.number as customer_number, d.control_id, d.logo, h.item_cust, j.customer_order_no');// d.description,
-    //     $this->db->from('wip_receipt_labels a');
-    //     $this->db->join('checksheets b', 'a.checksheet_number = b.number');
-    //     $this->db->join('production_schedules c', 'b.workorder = c.workorder');
-    //     $this->db->join('item_fg d', 'c.item_fg_id = d.id');
-    //     // $this->db->join('uom e', 'd.uom_id = e.id');
-    //     $this->db->join('wip_receipts f', 'a.checksheet_number = f.checksheet_number');
-    //     // $this->db->join('warehouse_location_items g', 'd.id = g.item_rm_id', 'left');
-    //     $this->db->join('customer_items h', 'h.customer_id = c.customer_id and d.id = h.item_fg_id', 'left');
-    //     $this->db->join('customers i', 'i.id = h.customer_id', 'left');
-    //     $this->db->join('sales_orders j', 'c.so_number = j.sales_order_no', 'left');
-    //     $this->db->where('a.deleted', 0);
-    //     $this->db->where('a.status', 0);
-    //     $this->db->where('a.checksheet_number', $checksheet_number);
-    //     $wip_receipt_labels = $this->db->get()->result_object();
-
-    //     $html = '<html>
-    //                 <head>
-    //                     <title>' . $checksheet_number . '</title>
-    //                     <link rel="icon" href="' . $config->favicon . '" type="image/png" sizes="16x16">
-    //                 </head>
-    //                 <style>body {font-family: Arial, Helvetica, sans-serif; margin:5px;}#customers {border-collapse: collapse; width: 100%; font-size: 9px;}#customers td, #customers th {border: 1px solid black;padding: 2px;}#customers tr:hover {background-color: #ddd;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: center;color: black;}</style><body>';
-    //     if ($wip_receipt_labels) {
-    //         //$html .= '<div style="width: 120mm;">';
-    //         $no = 1;
-    //         foreach ($wip_receipt_labels as $wip_receipt_label) {
-    //             // if ($no == 3) {
-    //             //     $no = 1;
-    //             // }
-    //             // if ($no == 1) {
-    //             //     $padding = "padding:0 3mm 1mm 0mm;";
-    //             // } else {
-    //             //     $padding = "padding:0 0mm 1mm 4mm;";
-    //             // }
-
-    //             if ($wip_receipt_label->logo == "0") {
-    //                 $img_leoco = '<img style="width:100%;" src="' . base_url("assets/image/BPI.png") . '" />';
-    //             } else {
-    //                 $img_leoco = '';
-    //             }
-
-    //             //Generate QRcode
-    //             $qrcodes = $wip_receipt_label->customer_order_no . "|" . $wip_receipt_label->item_cust . "|" . $wip_receipt_label->alias . "|" . $wip_receipt_label->checksheet_label . "|" . $wip_receipt_label->qty . "|" . $wip_receipt_label->trans_date;
-    //             $this->createQrcode($qrcodes, "assets/image/qrcode/", $wip_receipt_label->checksheet_label);
-    //             $html .= '  <div style="width: 70mm; max-height:90mm; border:1px solid black; margin-bottom:5px;">
-    //                             <table id="customers" border="1">
-    //                                 <tr>
-    //                                     <td style="width:15mm; height: 9mm; font-size:12px; text-align:center;">Cust. Code</td>
-    //                                     <th colspan="2" style="font-size:15px; text-align:left;"><b>' . $wip_receipt_label->customer_number . '</b></th>
-    //                                 </tr>
-    //                                 <tr>
-    //                                     <td style="width:15mm; height: 9mm; font-size:12px; text-align:center;">P/O No.</td>
-    //                                     <td colspan="2"><small style="font-size:14px;"><b>' . $wip_receipt_label->customer_order_no . '</b></small></td>
-    //                                 </tr>
-    //                                 <tr>
-    //                                     <td style="width:15mm; height: 9mm; font-size:12px; text-align:center;">Cust P/N</td>
-    //                                     <td colspan="2"><small style="font-size:14px;"><b>' . $wip_receipt_label->item_cust . '</b></small></td>
-    //                                 </tr>
-    //                                 <tr>
-    //                                     <td style="width:15mm; height: 9mm; font-size:14px; text-align:center;">P/N</td>
-    //                                     <td colspan="2"><small style="font-size:14px;"><b>' . $wip_receipt_label->alias . '</b></small></td>
-    //                                 </tr>
-    //                                 <tr>
-    //                                     <td style="width:15mm; height: 9mm; font-size:12px; text-align:center;">Lot. No</td>
-    //                                     <td colspan="2"><small style="font-size:14px;"><b>' . $wip_receipt_label->checksheet_label . '</b></small></td>
-    //                                 </tr>
-    //                                 <tr>
-    //                                     <td style="width:15mm; height: 9mm; font-size:12px; text-align:center;">Quantity</td>
-    //                                     <td style="width:25mm;"><small style="font-size:20px;"><b>' . number_format($wip_receipt_label->qty, 2) . '</b></small></td>
-    //                                     <td style="text-align:left;" style="width:25mm" rowspan="3">
-    //                                         <img src="' . base_url('assets/image/qrcode/' . $wip_receipt_label->checksheet_label . '.png') . '" width="100"/>
-    //                                     </td>
-    //                                 </tr>
-    //                                 <tr>
-    //                                     <td style="width:15mm; height: 9mm; font-size:10px; text-align:center;">Control ID</td>
-    //                                     <td><b style="font-size:10px;">' . $wip_receipt_label->control_id . '</b></td>
-    //                                 </tr>
-    //                                 <tr>
-    //                                     <td style="width:15mm; height: 9mm; font-size:12px; text-align:center;">Date</td>
-    //                                     <td><small style="font-size:12px;"><b>' . $wip_receipt_label->trans_date . '</b></small></td>
-    //                                 </tr>
-    //                                 <tr>
-    //                                     <td style="width:15mm; height: 9mm;">' . $img_leoco . '</td>
-    //                                     <td colspan="2" style="text-align:center;"><small style="font-size:14px;"><b>PT BANSHU PLASTIC INDONESIA</b></small></td>
-    //                                 </tr>
-    //                             </table>
-    //                         </div>';
-    //             $no++;
-    //         }
-    //         $html .= '</div><script>window.print()</script>';
-    //     } else {
-    //         $html .= "<br><br><br><center><h3>Data not found or data has been scanned</h3></center>";
-    //     }
-    //     die($html);
-    // }
 
     public function print_label_box($checksheet_number)
     {
@@ -435,20 +465,22 @@ class Wip_receipts extends CI_Controller
 
         $checksheet_number = base64_decode($checksheet_number);
         //Cek Label
-        $this->db->select('d.number, d.name, d.number_customer, d.alias, a.qty, a.checksheet_label, f.trans_date, i.id as customer_number, i.name as customer_name');//d.description,
+        $this->db->select('d.number, d.name, d.number_customer, d.alias, a.qty, a.checksheet_label, f.trans_date_to, i.id as customer_number, i.name as customer_name');//d.description,
         $this->db->from('wip_receipt_boxs a');
-        $this->db->join('production_schedules c', 'a.workorder = c.workorder');
-        $this->db->join('item_fg d', 'c.item_fg_id = d.id');
+        // $this->db->join('production_schedules c', 'a.workorder = c.workorder');
         // $this->db->join('uom e', 'd.uom_id = e.id');
         $this->db->join('wip_receipts f', 'a.checksheet_number = f.checksheet_number');
+        $this->db->join('item_fg d', 'f.item_fg_id = d.id');
         // $this->db->join('warehouse_location_items g', 'd.id = g.item_rm_id', 'left');
-        $this->db->join('customer_items h', 'h.customer_id = c.customer_id and d.id = h.item_fg_id', 'left');
+        $this->db->join('customer_items h', 'h.customer_id = f.customer_id and d.id = h.item_fg_id', 'left');
         $this->db->join('customers i', 'i.id = h.customer_id', 'left');
         $this->db->where('a.deleted', 0);
-        $this->db->where('a.status', 0);
+        // $this->db->where('a.status', 0);
         $this->db->where('a.checksheet_number', $checksheet_number);
         $this->db->group_by('a.checksheet_label');
         $wip_receipt_labels = $this->db->get()->result_object();
+
+        $this->createQrcode($checksheet_number, "assets/image/qrcode/");
 
         $html = '<html>
                     <head>
@@ -456,49 +488,35 @@ class Wip_receipts extends CI_Controller
                         <link rel="icon" href="' . $config->favicon . '" type="image/png" sizes="16x16">
                     </head>
                     <style>body {font-family: Arial, Helvetica, sans-serif; margin:5px;}#customers {border-collapse: collapse; width: 100%; font-size: 9px;}#customers td, #customers th {border: 1px solid black;padding: 2px;}#customers tr:hover {background-color: #ddd;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: center;color: black;}</style><body>';
-        if ($wip_receipt_labels) {
+        // if ($wip_receipt_labels) {
             //$html .= '<div style="width: 120mm;">';
             $no = 1;
             foreach ($wip_receipt_labels as $wip_receipt_label) {
-                // if ($no == 3) {
-                //     $no = 1;
-                // }
-                // if ($no == 1) {
-                //     $padding = "padding:0 3mm 1mm 0mm;";
-                // } else {
-                //     $padding = "padding:0 0mm 1mm 4mm;";
-                // }
-                //Generate QRcode
-
-                // if ($wip_receipt_label->logo == "0") {
-                //     $img_leoco = '<img style="width:100%;" src="' . base_url("assets/image/BPI.png") . '" />';
-                // } else {
-                //     $img_leoco = '';
-                // }
-
-                // $qrcodes = $wip_receipt_label->number . "|" . $wip_receipt_label->customer_number . "|" . $wip_receipt_label->alias . "|" . $wip_receipt_label->checksheet_label . "|" . $wip_receipt_label->qty . "|" . $wip_receipt_label->trans_date;
+                // $qrcodes = $wip_receipt_label->number . "|" . $wip_receipt_label->customer_number . "|" . $wip_receipt_label->alias . "|" . $wip_receipt_label->checksheet_label . "|" . $wip_receipt_label->qty . "|" . $wip_receipt_label->trans_date_to;
                 $qrcodes = $wip_receipt_label->checksheet_label;
                 $this->createQrcode($qrcodes, "assets/image/qrcode/", $wip_receipt_label->checksheet_label);
                 $html .= '  <div style="width: 70mm; max-height:90mm; border:1px solid black; margin-bottom:5px;">
                                 <table id="customers" border="1">
                                     <tr>
-                                        <td style="width:15mm; height: 9mm; font-size:12px; text-align:center;">Cust. Code</td>
-                                        <th colspan="2" style="font-size:15px; text-align:left;"><b>' . $wip_receipt_label->customer_number . '</b></th>
+                                        <td style="width:15mm; height: 9mm; font-size:12px; text-align:center;">
+                                            <img src="' . base_url('assets/image/qrcode/' . $checksheet_number . '.png') . '" width="50"/>
+                                        </td>
+                                        <td colspan="2" style="font-size:15px; text-align:left;"><span style="font-size:10px;">Checksheet ID</span><br><b>'.$checksheet_number.'</b></td>
                                     </tr>
                                     <tr>
                                         <td style="width:15mm; height: 9mm; font-size:12px; text-align:center;">Cust. Name.</td>
-                                        <td colspan="2"><small style="font-size:14px;"><b>' . $wip_receipt_label->customer_name . '</b></small></td>
+                                        <td colspan="2"><small style="font-size:12px;"><span style="font-size:10px;">' . $wip_receipt_label->customer_number . '</span><br><b>' . $wip_receipt_label->customer_name . '</b></small></td>
                                     </tr>
                                     <tr>
                                         <td style="width:15mm; height: 9mm; font-size:14px; text-align:center;">EBWS P/N</td>
-                                        <td colspan="2"><small style="font-size:14px;"><b>' . $wip_receipt_label->number . '</b></small></td>
+                                        <td colspan="2"><small style="font-size:30px;"><b>' . $wip_receipt_label->number . '</b></small></td>
                                     </tr>
                                     <tr>
                                         <td style="width:15mm; height: 9mm; font-size:12px; text-align:center;">Cust P/N</td>
                                         <td colspan="2"><small style="font-size:14px;"><b>' . $wip_receipt_label->number_customer . '</b></small></td>
                                     </tr>
                                     <tr>
-                                        <td style="width:15mm; height: 9mm; font-size:12px; text-align:center;">Lot. No</td>
+                                        <td style="width:15mm; height: 9mm; font-size:12px; text-align:center;">Label. No</td>
                                         <td colspan="2"><small style="font-size:14px;"><b>' . $wip_receipt_label->checksheet_label . '</b></small></td>
                                     </tr>
                                     <tr>
@@ -510,97 +528,21 @@ class Wip_receipts extends CI_Controller
                                     </tr>
                                     <tr>
                                         <td style="width:15mm; height: 9mm; font-size:12px; text-align:center;">Date</td>
-                                        <td><small style="font-size:12px;"><b>' . $wip_receipt_label->trans_date . '</b></small></td>
+                                        <td><small style="font-size:16px;"><b>' . $wip_receipt_label->trans_date_to . '</b></small></td>
                                     </tr>
                                     <tr>
-                                        <td style="width:15mm; height: 9mm; font-size:10px; text-align:center;">Control ID</td>
-                                        <td><small style="font-size:12px;"><b></b></small></td>
-                                    </tr>
-                                    <tr>
-                                        <td style="width:15mm; height: 9mm;"></td>
-                                        <td colspan="2" style="text-align:center;"><small style="font-size:14px;"><b>ELCON BANSHU</b></small></td>
+                                        <td colspan="2" style="text-align:center;"><img src="'.$config->favicon.'" width="60"/></td>
                                     </tr>
                                 </table>
                             </div>';
                 $no++;
             }
             $html .= '</div><script>window.print()</script>';
-        } else {
-            $html .= "<br><br><br><center><h3>Data not found or data has been scanned</h3></center>";
-        }
+        // } else {
+            // $html .= "<br><br><br><center><h3>Data not found or data has been scanned</h3></center>";
+        // }
         die($html);
     }
-
-    // public function print_label_strip($checksheet_number)
-    // {
-    //     //Config
-    //     $this->db->select('*');
-    //     $this->db->from('config');
-    //     $config = $this->db->get()->row();
-
-    //     $checksheet_number = base64_decode($checksheet_number);
-    //     //Cek Label
-    //     $this->db->select('d.number, d.name, a.qty, a.checksheet_label, f.trans_date, i.number as customer_number');// d.description,
-    //     $this->db->from('wip_receipt_labels a');
-    //     $this->db->join('checksheets b', 'a.checksheet_number = b.number');
-    //     $this->db->join('production_schedules c', 'b.workorder = c.workorder');
-    //     $this->db->join('item_fg d', 'c.item_fg_id = d.id');
-    //     // $this->db->join('uom e', 'd.uom_id = e.id');
-    //     $this->db->join('wip_receipts f', 'a.checksheet_number = f.checksheet_number');
-    //     $this->db->join('customer_items h', 'h.customer_id = c.customer_id and d.id = h.item_fg_id', 'left');
-    //     $this->db->join('customers i', 'i.id = h.customer_id', 'left');
-    //     $this->db->where('a.deleted', 0);
-    //     $this->db->where('a.status', 0);
-    //     $this->db->where('a.checksheet_number', $checksheet_number);
-    //     $wip_receipt_labels = $this->db->get()->result_object();
-
-    //     $html = '<html>
-    //                 <head>
-    //                     <title>' . $checksheet_number . '</title>
-    //                     <link rel="icon" href="' . $config->favicon . '" type="image/png" sizes="16x16">
-    //                 </head>
-    //                 <style>body {font-family: Arial, Helvetica, sans-serif; margin:5px;}#customers {border-collapse: collapse; width: 100%; font-size: 9px;}#customers td, #customers th {border: 0px solid black;padding: 2px;}#customers tr:hover {background-color: #ddd;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: center;color: black;}</style><body>';
-    //     if ($wip_receipt_labels) {
-    //         $html .= '  <div style="width: 90mm; max-height:17mm;">';
-    //         $no = 1;
-    //         foreach ($wip_receipt_labels as $wip_receipt_label) {
-
-    //             if ($no == 3) {
-    //                 $no = 1;
-    //             }
-    //             if ($no == 1) {
-    //                 $margin = "margin:2mm 1mm 2mm 0mm;";
-    //             } else {
-    //                 $margin = "margin:2mm 0mm 2mm 1mm;";
-    //             }
-
-    //             $qrcodes = "ELCON" . $wip_receipt_label->checksheet_label . "-" . $wip_receipt_label->trans_date . "-" . $wip_receipt_label->qty;
-    //             $this->createQrcode($qrcodes, "assets/image/qrcode/", $wip_receipt_label->checksheet_label);
-    //             $html .= '  <div style="float:left; width:48%; ' . $margin . '">
-    //                             <table id="customers" style="border: 1px solid black;">
-    //                                 <tr>
-    //                                     <td style="width:10mm; text-align:center;" rowspan="4"><img src="' . base_url('assets/image/qrcode/' . $wip_receipt_label->checksheet_label . '.png') . '" width="50"/></td>
-    //                                     <th style="font-size:8px; text-align:left;">ELCON BANSHU</th>
-    //                                 </tr>
-    //                                 <tr>
-    //                                     <th style="font-size:8px; text-align:left;">' . $wip_receipt_label->name . '</th>
-    //                                 </tr>
-    //                                 <tr>
-    //                                     <th style="font-size:8px; text-align:left;">' . date("d-m-Y") . '</th>
-    //                                 </tr>
-    //                                 <tr>
-    //                                     <th style="font-size:8px; text-align:left;">' . $wip_receipt_label->checksheet_label . '</th>
-    //                                 </tr>
-    //                             </table>
-    //                         </div>';
-    //             $no++;
-    //         }
-    //         $html .= '</div><script>window.print()</script>';
-    //     } else {
-    //         $html .= "<br><br><br><center><h3>Data not found or data has been scanned</h3></center>";
-    //     }
-    //     die($html);
-    // }
 
     public function print_checksheet($checksheet)
     {
@@ -715,7 +657,7 @@ class Wip_receipts extends CI_Controller
                             <tr>
                                 <td width="100" style="padding:5px;">Date</td>
                                 <td width="20">:</td>
-                                <td><b>' . date("d F Y", strtotime($checksheets[0]['trans_date'])) . '</b></td>
+                                <td><b>' . date("d F Y", strtotime($checksheets[0]['trans_date_to'])) . '</b></td>
 
                                 <td width="100" style="padding:5px;">Product No EBWS</td>
                                 <td width="20">:</td>
@@ -739,7 +681,7 @@ class Wip_receipts extends CI_Controller
                                 <th style="text-align:center;">Qty</th>
                             </tr>';
                             foreach ($checksheets as $checksheet) {
-                                $period = date("Ym", strtotime($checksheet['trans_date']));
+                                $period = date("Ym", strtotime($checksheet['trans_date_to']));
                                 $html .= '  <tr>
                                                 <td>'.$checksheet['workorder'].'</td>
                                                 <td>'.$period.'</td>
@@ -788,6 +730,8 @@ class Wip_receipts extends CI_Controller
         $filter_from = $this->input->get('filter_from');
         $filter_to = $this->input->get('filter_to');
         $filter_checksheet = $this->input->get('filter_checksheet');
+        $filter_workorder = $this->input->get('filter_workorder');
+        $filter_item_fg_id = $this->input->get('filter_item_fg_id');
 
         //Config
         $this->db->select('*');
@@ -796,16 +740,18 @@ class Wip_receipts extends CI_Controller
 
         $this->db->select('a.*, d.number as item_fg_number, d.name as item_fg_name, d.number_customer, d.uom');
         $this->db->from('wip_receipts a');
-        $this->db->join('production_schedules c', 'a.workorder = c.workorder and a.wp = c.wp');
-        $this->db->join('item_fg d', 'c.item_fg_id = d.id');
+        // $this->db->join('production_schedules c', 'a.workorder = c.workorder and a.wp = c.wp');
+        $this->db->join('item_fg d', 'a.item_fg_id = d.id');
         // $this->db->join('uom e', 'd.uom_id = e.id');
         $this->db->where('a.deleted', 0);
         if ($filter_from != "" or $filter_to != "") {
-            $this->db->where('a.trans_date >=', $filter_from);
-            $this->db->where('a.trans_date <=', $filter_to);
+            $this->db->where('a.trans_date_from >=', $filter_from);
+            $this->db->where('a.trans_date_to <=', $filter_to);
         }
         $this->db->like('a.checksheet_number', $filter_checksheet);
-        $this->db->order_by('a.trans_date', 'DESC');
+        $this->db->like('a.workorder', $filter_workorder);
+        $this->db->like('d.id', $filter_item_fg_id);
+        $this->db->order_by('a.trans_date_from', 'DESC');
         $this->db->order_by('a.checksheet_number', 'DESC');
         $records = $this->db->get()->result_array();
 
@@ -836,7 +782,8 @@ class Wip_receipts extends CI_Controller
                     <th width="20">No</th>
                     <th>Checksheet No</th>
                     <th>Workorder</th>
-                    <th>Trans Date</th>
+                    <th>Date<br>From</th>
+                    <th>Date<br>To</th>
                     <th>WP</th>
                     <th>Product No EBWS</th>
                     <th>Product No Customer</th>
@@ -845,6 +792,8 @@ class Wip_receipts extends CI_Controller
                     <th>Qty</th>
                     <th>Lot Box</th>
                     <th>Label Box</th>
+                    <th>Created By</th>
+                    <th>Created Date</th>
                 </tr>';
         $no = 1;
         foreach ($records as $data) {
@@ -852,15 +801,18 @@ class Wip_receipts extends CI_Controller
                             <td style="text-align:center">' . $no . '</td>
                             <td>' . $data['checksheet_number'] . '</td>
                             <td>' . $data['workorder'] . '</td>
-                            <td>' . $data['trans_date'] . '</td>
-                            <td>' . $data['wp'] . '</td>
-                            <td>' . $data['item_fg_number'] . '</td>
-                            <td>' . $data['number_customer'] . '</td>
+                            <td>' . $data['trans_date_from'] . '</td>
+                            <td>' . $data['trans_date_to'] . '</td>
+                            <td style="mso-number-format:\@;">' . $data['wp'] . '</td>
+                            <td style="mso-number-format:\@;">' . $data['item_fg_number'] . '</td>
+                            <td style="mso-number-format:\@;">' . $data['number_customer'] . '</td>
                             <td>' . $data['item_fg_name'] . '</td>
                             <td>' . $data['uom'] . '</td>
                             <td>' . number_format($data['qty']) . '</td>
                             <td>' . number_format($data['lot_box']) . '</td>
                             <td>' . number_format($data['label_box']) . '</td>
+                            <td>' . $data['created_by'] . '</td>
+                            <td>' . $data['created_date'] . '</td>
                         </tr>';
             $no++;
         }

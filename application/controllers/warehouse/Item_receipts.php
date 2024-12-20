@@ -59,6 +59,7 @@ class Item_receipts extends CI_Controller
             echo json_encode($result);
         }
     }
+    
     public function datatables($label_no = "")
     {
         $date = date("Y-m-d");

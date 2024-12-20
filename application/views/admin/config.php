@@ -1,7 +1,7 @@
 <!-- UPDATE DATA -->
 <div class="easyui-panel" title="Configuration" style="width:100%; padding:10px; background:#fafafa;" data-options="collapsible:true, maximizable:false, fit:true">
     <form id="frm_insert" method="post" enctype="multipart/form-data" novalidate>
-        <fieldset style="width:39%; height: 550px; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
+        <fieldset style="width:39%; height: 570px; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
             <legend><b>Setting Application</b></legend>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">ID</span>
@@ -40,6 +40,10 @@
                 <input style="width:60%;" name="image" class="easyui-filebox">
             </div>
             <div class="fitem">
+                <span style="width:35%; display:inline-block;">PIN Code</span>
+                <input style="width:60%;" name="pin_code" value="<?= $config->pin_code ?>" data-options="validType:'length[0,6]'" required class="easyui-textbox">
+            </div>
+            <div class="fitem">
                 <span style="width:35%; display:inline-block;">CIN No</span>
                 <input style="width:60%;" name="cin_no" value="<?= $config->cin_no ?>" class="easyui-textbox">
             </div>
@@ -74,7 +78,7 @@
             </div>
         </fieldset>
 
-        <fieldset style="width:30%; height: 550px; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
+        <fieldset style="width:30%; height: 570px; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
             <legend><b>Setting Generate MPS</b></legend>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Finishgood SS</span>
@@ -111,7 +115,7 @@
             </div>
         </fieldset>
 
-        <fieldset style="width:30%; height: 550px; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
+        <fieldset style="width:30%; height: 570px; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
             <legend><b>Setting Purchase Invoice</b></legend>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Tax Rates (%)</span>
@@ -121,14 +125,26 @@
                 <span style="width:35%; display:inline-block;">PPH Rates (%)</span>
                 <input style="width:60%;" name="pph" value="<?= $config->pph ?>" class="easyui-numberbox">
             </div>
+            <br>
+            <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
+                <legend><b>Account IRIS SGST Sales Invoice</b></legend>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Email</span>
+                    <input style="width:60%;" name="iris_email" value="<?= $config->iris_email ?>" class="easyui-textbox">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Password</span>
+                    <input style="width:60%;" name="iris_password" value="<?= $config->iris_password ?>" class="easyui-textbox">
+                </div>
+            </fieldset>
 
-            <div style="width:100%;">
+            <!-- <div style="width:100%;">
                 <br><br>
                 <h2 style="font-weight: bold; font-size: 15px;">Setting Terms and Conditions (Purchase Order)</h2>
                 <textarea class="summernote" name="si_terms" id="description">
                     <?= $config->si_terms ?>
                 </textarea>
-            </div>
+            </div> -->
         </fieldset>
         <div style="float: left; width: 100%;">
             <center>

@@ -2,22 +2,28 @@
     <thead>
         <tr>
             <th rowspan="2" field="ck" checkbox="true"></th>
+            <th rowspan="2" data-options="field:'print_pr',width:80,halign:'center',formatter:BtnPrint">Print PR</th>
             <th rowspan="2" data-options="field:'status',width:120,align:'center',formatter:statusformat,styler:statusStyle">Status</th>
             <th rowspan="2" data-options="field:'request_no',width:200,halign:'center'">Request No</th>
             <th rowspan="2" data-options="field:'request_date',width:100,halign:'center'">Request Date</th>
             <th rowspan="2" data-options="field:'request_name',width:150,halign:'center'">Request Name</th>
-            <th rowspan="2" data-options="field:'supplier_name',width:250,halign:'center'">Supplier</th>
             <th rowspan="2" data-options="field:'expected_date',width:100,halign:'center'">Expected Date</th>
-            <th rowspan="2" data-options="field:'item_number',width:150,halign:'center'">Part No</th>
-            <th rowspan="2" data-options="field:'item_name',width:150,halign:'center'">Part Name</th>
+            <th rowspan="2" data-options="field:'item_family_name',width:150,halign:'center'">Product Family</th>
+            <th rowspan="2" data-options="field:'item_rm_id',width:120,halign:'center'">Part No EBWS</th>
+            <th rowspan="2" data-options="field:'item_rm_number',width:200,halign:'center'">Part No Supplier</th>
+            <th rowspan="2" data-options="field:'item_rm_name',width:200,halign:'center'">Description</th>
             <th rowspan="2" data-options="field:'uom',width:80,align:'center'">UoM</th>
             <th rowspan="2" data-options="field:'qty',width:80,halign:'center',align:'right',formatter:numberformat">Qty</th>
-            <th rowspan="2" data-options="field:'remarks',width:100,halign:'center'">Remarks</th>
+            <th rowspan="2" data-options="field:'remarks',width:200,halign:'center'">Remarks</th>
             <th rowspan="2" data-options="field:'po_no',width:120,align:'center'">Po No</th>
+            <th colspan="3" data-options="field:'',width:100,halign:'center'">Approved</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
         </tr>
         <tr>
+            <th data-options="field:'approved_to',width:80,align:'center', styler:cellStylerApproval, formatter:cellFormatterApproval">Status</th>
+            <th data-options="field:'approved_by',width:100,align:'center'">By</th>
+            <th data-options="field:'approved_date',width:120,align:'center'">Date</th>
             <th data-options="field:'created_by',width:100,align:'center'"> By</th>
             <th data-options="field:'created_date',width:150,align:'center'"> Date</th>
             <th data-options="field:'updated_by',width:100,align:'center'"> By</th>
@@ -29,13 +35,13 @@
 <div id="toolbar" style="height: 200px; padding:10px;">
     <!-- <div style="width: 100%; display: grid; grid-template-columns: auto auto auto; grid-gap: 5px; display: flex;"> -->
     <div style="width: 100%;">
-        <fieldset style="width: 55%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
+        <fieldset style="width: 70%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
             <legend><b>Form Filter Data</b></legend>
             <div style="float: left; width: 50%;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Period</span>
-                    <input style="width:28%;" id="filter_from" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false"> To
-                    <input style="width:28%;" id="filter_to" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
+                    <input style="width:28%;" id="filter_from" value="<?= date("Y-m-01") ?>" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false"> To
+                    <input style="width:28%;" id="filter_to" value="<?= date("Y-m-t") ?>" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Request No</span>
@@ -48,12 +54,12 @@
             </div>
             <div style="float: left; width: 50%;">
                 <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Supplier</span>
-                    <input style="width:60%;" id="filter_supplier" class="easyui-combobox">
-                </div>
-                <div class="fitem">
                     <span style="width:35%; display:inline-block;">Product Family</span>
                     <input style="width:60%;" id="filter_item_familys" class="easyui-combogrid">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Part No</span>
+                    <input style="width:60%;" id="filter_item_rm" class="easyui-combogrid">
                 </div>
             </div>
         </fieldset>
@@ -67,7 +73,7 @@
 </div>
 
 <!-- Insert & Update -->
-<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 900px; height: 600px; padding:10px; top: 20px;">
+<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 1000px; height: 550px; padding:10px; left: 10px; top: 20px;">
     <form id="frm_insert" method="post" novalidate>
         <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
             <legend><b>Form Data</b></legend>
@@ -80,27 +86,19 @@
                     <span style="width:35%; display:inline-block;">Request Date</span>
                     <input style="width:60%;" name="request_date" id="request_date" value="<?= date("Y-m-d") ?>" required="" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
                 </div>
+            </div>
+            <div style="width: 50%; float: left;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Request Name</span>
                     <input style="width:60%;" name="request_name" id="request_name" value="<?= $this->session->name ?>" readonly class="easyui-textbox">
                 </div>
-            </div>
-            <div style="width: 50%; float: left;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Expected Date</span>
                     <input style="width:60%;" name="expected_date" id="expected_date" value="<?= date("Y-m-d") ?>" required="" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
                 </div>
-                <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Supplier</span>
-                    <input style="width:60%;" name="supplier_id" id="supplier_id" class="easyui-combobox" required>
-                </div>
-                <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Product Family</span>
-                    <input style="width:60%;" name="item_family_id" id="item_family_id" class="easyui-combobox" required>
-                </div>
             </div>
         </fieldset>
-        <table id="dg2" class="easyui-datagrid" style="width:100%;" title="Purchase Request List" toolbar="#toolbar2"></table>
+        <table id="dg2" class="easyui-datagrid" style="width:100%;" title="Purchase Request Lists" toolbar="#toolbar2"></table>
     </form>
 </div>
 
@@ -131,46 +129,58 @@
     function add() {
         $('#dlg_insert').dialog('open');
         $('#dg2').datagrid('loadData', []);
-        $("#item_family_id").combobox('enable');
         $('#request_no').textbox('clear');
-        $('#item_family_id').combobox('clear');
+        
+        request_no();
+        addTable();
     }
 
-    function addTable(supplier_id, item_family_id, link = "") {
+    function request_no(){
+        $.ajax({
+            type: "post",
+            url: "<?= base_url("purchase/purchase_request_others/request_no/" . $id_menu . "/add") ?>",
+            dataType: "json",
+            success: function (response) {
+                $("#request_no").textbox('setValue', response.code);
+            }
+        });
+    }
+
+    function addTable(link = "") {
         var lastIndex;
         var dg = $('#dg2').datagrid({
             url: link,
             singleSelect: true,
             columns: [
                 [{
-                    field: 'item_number',
-                    width: 250,
+                    field: 'item_rm_id',
+                    width: 150,
                     halign: 'center',
-                    title: "Part No",
+                    title: "Part No EBWS",
                     editor: {
                         type: 'combogrid',
                         options: {
-                            url: '<?= base_url('master/supplier_items/readItems?item_family_id=') ?>' + item_family_id + "&supplier_id=" + supplier_id,
+                            url: '<?= base_url('master/item_rm/readNotRm') ?>',
                             required: true,
-                            panelWidth: 400,
-                            idField: 'item_rm_id',
-                            textField: 'item_number',
+                            panelWidth: 550,
+                            idField: 'id',
+                            textField: 'number',
                             mode: 'remote',
                             fitColumns: true,
                             prompt: 'Choose Part',
                             columns: [
                                 [{
-                                    field: 'item_number',
-                                    title: 'Part No',
-                                    width: 150
+                                    field: 'id',
+                                    title: 'Part No EBWS',
+                                    width: 100
                                 }, {
-                                    field: 'item_name',
-                                    title: 'Part Name',
-                                    width: 150
+                                    field: 'number',
+                                    title: 'Part No Supplier',
+                                    width: 200
                                 }, {
-                                    field: 'uom',
-                                    title: 'UoM',
-                                    width: 80
+                                    field: 'name',
+                                    title: 'Description',
+                                    width: 200
                                 }]
                             ],
                             onSelect: function(value, rows) {
@@ -184,7 +194,22 @@
 
                                 var ed2 = dg.datagrid('getEditor', {
                                     index: rowIndex,
-                                    field: 'item_name'
+                                    field: 'item_number'
+                                });
+
+                                var ed5 = dg.datagrid('getEditor', {
+                                    index: rowIndex,
+                                    field: 'item_rm_name'
+                                });
+
+                                var ed6 = dg.datagrid('getEditor', {
+                                    index: rowIndex,
+                                    field: 'item_family_name'
+                                });
+
+                                var ed7 = dg.datagrid('getEditor', {
+                                    index: rowIndex,
+                                    field: 'item_family_id'
                                 });
 
                                 var ed3 = dg.datagrid('getEditor', {
@@ -197,55 +222,76 @@
                                     field: 'po'
                                 });
 
-                                $(ed.target).textbox('setValue', rows.item_rm_id);
-                                $(ed2.target).textbox('setValue', rows.item_name);
+                                $(ed.target).textbox('setValue', rows.id);
+                                $(ed2.target).textbox('setValue', rows.number);
+                                $(ed5.target).textbox('setValue', rows.name);
+                                $(ed6.target).textbox('setValue', rows.item_family_name);
+                                $(ed7.target).textbox('setValue', rows.item_family_id);
+                                
+                                // $.ajax({
+                                //     type: "post",
+                                //     url: "<?= base_url('warehouse/report_history_transactions/readEndingStock') ?>",
+                                //     data: "item_rm_id=" + btoa(rows.id),
+                                //     dataType: "json",
+                                //     success: function(json) {
+                                //         if (json != null) {
+                                //             $(ed3.target).numberbox('setValue', json[0].end_stock);
+                                //         } else {
+                                //             $(ed3.target).numberbox('setValue', 0);
+                                //         }
+                                //     }
+                                // });
 
-
-                                $.ajax({
-                                    type: "post",
-                                    url: "<?= base_url('warehouse/report_history_transactions/readEndingStock') ?>",
-                                    data: "item_rm_id=" + btoa(rows.item_rm_id),
-                                    dataType: "json",
-                                    success: function(json) {
-                                        if (json != null) {
-                                            $(ed3.target).numberbox('setValue', json[0].end_stock);
-                                        } else {
-                                            $(ed3.target).numberbox('setValue', 0);
-                                        }
-                                    }
-                                });
-
-                                $.ajax({
-                                    type: "post",
-                                    url: "<?= base_url('purchase/purchase_orders/readTotalPo') ?>",
-                                    data: "item_rm_id=" + btoa(rows.item_rm_id),
-                                    dataType: "json",
-                                    success: function(jsonpo) {
-                                        if (jsonpo != null) {
-                                            $(ed4.target).numberbox('setValue', jsonpo.qty);
-                                        } else {
-                                            $(ed4.target).numberbox('setValue', 0);
-                                        }
-                                    }
-                                });
+                                // $.ajax({
+                                //     type: "post",
+                                //     url: "<?= base_url('purchase/purchase_order_others/readTotalPo') ?>",
+                                //     data: "item_rm_id=" + btoa(rows.id),
+                                //     dataType: "json",
+                                //     success: function(jsonpo) {
+                                //         if (jsonpo != null) {
+                                //             $(ed4.target).numberbox('setValue', jsonpo.qty);
+                                //         } else {
+                                //             $(ed4.target).numberbox('setValue', 0);
+                                //         }
+                                //     }
+                                // });
                             }
                         }
                     }
                 }, {
-                    field: 'item_name',
-                    width: 150,
+                    field: 'item_number',
+                    width: 200,
                     readonly: true,
                     halign: 'center',
-                    title: "Part Name",
+                    title: "Part No Supplier",
                     editor: {
                         type: 'textbox'
                     }
                 }, {
-                    field: 'item_rm_id',
-                    hidden: true,
-                    width: 100,
+                    field: 'item_rm_name',
+                    width: 150,
+                    readonly: true,
                     halign: 'center',
-                    title: "ID",
+                    title: "Description",
+                    editor: {
+                        type: 'textbox'
+                    }
+                }, {
+                    field: 'item_family_id',
+                    width: 150,
+                    readonly: true,
+                    hidden: true,
+                    halign: 'center',
+                    title: "Product Family ID",
+                    editor: {
+                        type: 'textbox'
+                    }
+                }, {
+                    field: 'item_family_name',
+                    width: 150,
+                    readonly: true,
+                    halign: 'center',
+                    title: "Product Family",
                     editor: {
                         type: 'textbox'
                     }
@@ -266,6 +312,7 @@
                     width: 80,
                     halign: 'center',
                     title: "Stock",
+                    hidden: true,
                     editor: {
                         type: 'numberbox',
                         options: {
@@ -278,6 +325,7 @@
                     width: 80,
                     halign: 'center',
                     title: "PO",
+                    hidden: true,
                     editor: {
                         type: 'numberbox',
                         options: {
@@ -324,8 +372,8 @@
     }
 
     function append() {
-        var item_family_id = $("#item_family_id").combobox('getValue');
-        if (item_family_id != "") {
+        // var item_family_id = $("#item_family_id").combobox('getValue');
+        // if (item_family_id != "") {
             if (endEditing()) {
                 $('#dg2').datagrid('appendRow', {
                     qty: '0',
@@ -335,9 +383,9 @@
                 editIndex = $('#dg2').datagrid('getRows').length - 1;
                 $('#dg2').datagrid('selectRow', editIndex).datagrid('beginEdit', editIndex);
             }
-        } else {
-            toastr.error("Please Choose Product Family first");
-        }
+        // } else {
+        //     toastr.error("Please Choose Product Family first");
+        // }
     }
 
     function removeit() {
@@ -356,13 +404,13 @@
                 if (row.status == "0") {
                     $('#dlg_insert').dialog('open');
                     $('#frm_insert').form('load', row);
-                    $("#supplier_id").combobox('disable');
-                    $("#item_family_id").combobox('disable');
+                    // $("#item_family_id").combobox('disable');
+
                     setTimeout(function() {
                         $('#request_no').textbox('setValue', row.request_no);
                     }, 3000);
 
-                    addTable(row.supplier_id, row.item_family_id, '<?= base_url('purchase/purchase_request_others/datatable_updates?request_no=') ?>' + window.btoa(row.request_no));
+                    addTable('<?= base_url('purchase/purchase_request_others/datatable_updates?request_no=') ?>' + window.btoa(row.request_no));
                 } else {
                     toastr.error("You cannot update this data, because status Purchase Request is CONVERTED");
                 }
@@ -384,12 +432,15 @@
                         var row = rows[i];
                         if (row.state == "closed") {
                             toastr.error("Please Select Detail of PR <br>" + row.id);
+                        } else if(row.status != "0"){
+                            toastr.error("Data cannot deleted, because the status already converted");
                         } else {
                             $.ajax({
                                 method: 'post',
                                 url: '<?= base_url('purchase/purchase_request_others/delete') ?>',
                                 data: {
-                                    id: row.id
+                                    id: row.id,
+                                    request_no: row.request_no
                                 },
                                 success: function(result) {
                                     readRequestno();
@@ -425,13 +476,28 @@
         var filter_from = $("#filter_from").datebox('getValue');
         var filter_to = $("#filter_to").datebox('getValue');
         var filter_request_no = $("#filter_request_no").combobox('getValue');
-        var filter_supplier = $("#filter_supplier").combobox('getValue');
+        var filter_item_rm = $("#filter_item_rm").combogrid('getValue');
         var filter_item_familys = $("#filter_item_familys").combogrid('getValue');
 
-        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_request_no=" + filter_request_no + "&filter_item_familys=" + filter_item_familys + "&filter_supplier=" + filter_supplier;
+        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_request_no=" + filter_request_no + "&filter_item_familys=" + filter_item_familys + "&filter_item_rm=" + filter_item_rm;
+        
         $('#dg').treegrid({
-            url: '<?= base_url('purchase/purchase_request_others/datatables') ?>' + url
+            url: '<?= base_url('purchase/purchase_request_others/datatables') ?>' + url,
+            pagination: true,
+            rownumbers: true,
+            idField: 'id',
+            treeField: 'request_no',
+            fit: true,
+            singleSelect: false,
+            pageList: [20, 50, 100, 500, 1000],
+            pageSize: 20,
+            onBeforeLoad: function(row, param) {
+                if (!row) {
+                    param.id = 0;
+                }
+            },
         });
+
         $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
         $("#printout").attr('src', '<?= base_url('purchase/purchase_request_others/print') ?>' + url);
     }
@@ -444,19 +510,19 @@
         var filter_from = $("#filter_from").datebox('getValue');
         var filter_to = $("#filter_to").datebox('getValue');
         var filter_request_no = $("#filter_request_no").combobox('getValue');
-        var filter_supplier = $("#filter_supplier").combobox('getValue');
+        var filter_item_rm = $("#filter_item_rm").combogrid('getValue');
         var filter_item_familys = $("#filter_item_familys").combogrid('getValue');
 
-        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_request_no=" + filter_request_no + "&filter_item_familys=" + filter_item_familys + "&filter_supplier=" + filter_supplier;
+        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_request_no=" + filter_request_no + "&filter_item_familys=" + filter_item_familys + "&filter_item_rm=" + filter_item_rm;
         window.location.assign('<?= base_url('purchase/purchase_request_others/print/excel') ?>' + url);
     }
 
     function print_pr() {
-        var request_no = $("#filter_request_no").combobox('getValue');
-        if (request_no == "") {
-            toastr.warning("Please select Request No!", "Information");
-        } else {
-            window.open("<?= base_url('purchase/purchase_request_others/print_request/') ?>" + window.btoa(request_no), "_blank");
+        var rows = $('#dg').treegrid('getSelected');
+        if (rows.length > 0) {
+            window.open("<?= base_url('purchase/purchase_request_others/print_request/') ?>" + window.btoa(rows.request_no), "_blank");
+        }else{
+            toastr.warning("Please select one of the data in the table first!", "Information");
         }
     }
 
@@ -479,25 +545,15 @@
         });
     }
 
+    function BtnPrint(val, row) {
+        if(row.datatable == 1){
+            return '<a class="btn btn-primary w-100" target="_blank" href="<?= base_url('purchase/purchase_request_others/print_request/') ?>'+btoa(row.request_no)+'" style="pointer-events: visible; opacity:1;"><i class="fa fa-print"></i> Print</a>';
+        }
+    }
+
     $(function() {
-        $('#dg').treegrid({
-            url: '<?= base_url('purchase/purchase_request_others/datatables') ?>',
-            pagination: true,
-            rownumbers: true,
-            idField: 'id',
-            treeField: 'request_no',
-            singleSelect: false,
-            onBeforeLoad: function(row, param) {
-                if (!row) {
-                    param.id = 0;
-                }
-            },
-            // rowStyler: function(row) {
-            //     if (row.state != "closed") {
-            //         return 'background-color:#CFE6FF;font-weight:bold;';
-            //     }
-            // },
-        });
+        filter();
+
         $("#expected_date").datebox({
             onChange: function() {
                 var request_date = $("#request_date").datebox('getValue');
@@ -508,6 +564,7 @@
                 }
             }
         });
+
         $("#request_date").datebox({
             onChange: function() {
                 var request_date = $("#request_date").datebox('getValue');
@@ -525,55 +582,64 @@
                 text: 'Save All',
                 iconCls: 'icon-ok',
                 handler: function() {
-                    var request_no = $("#request_no").textbox('getValue');
-                    var request_date = $("#request_date").datebox('getValue');
-                    var request_name = $("#request_name").textbox('getValue');
-                    var expected_date = $("#expected_date").datebox('getValue');
-                    var supplier_id = $("#supplier_id").combobox('getValue');
-                    var item_family_id = $("#item_family_id").combobox('getValue');
+                    $.ajax({
+                        type: "post",
+                        url: "<?= base_url("purchase/purchase_request_others/request_no/" . $id_menu . "/add") ?>",
+                        dataType: "json",
+                        success: function (response) {
+                            // $("#request_no").textbox('setValue', response.code);
+                            // var request_no = $("#request_no").textbox('getValue');
+                            var request_no = response.code;
+                            var request_date = $("#request_date").datebox('getValue');
+                            var request_name = $("#request_name").textbox('getValue');
+                            var expected_date = $("#expected_date").datebox('getValue');
+                            // var item_family_id = $("#item_family_id").combobox('getValue');
 
-                    $("#dg2").datagrid('acceptChanges');
-                    var rows = $('#dg2').datagrid('getRows');
-                    var totalrows = rows.length;
-                    endEditing();
-                    for (let i = 0; i < totalrows; i++) {
-                        if (rows[i].item_rm_id) {
-                            $.ajax({
-                                type: "post",
-                                url: '<?= base_url('purchase/purchase_request_others/create') ?>',
-                                data: {
-                                    request_no: request_no,
-                                    request_date: request_date,
-                                    request_name: request_name,
-                                    supplier_id: supplier_id,
-                                    item_family_id: item_family_id,
-                                    item_rm_id: rows[i].item_rm_id,
-                                    qty: rows[i].qty,
-                                    forecast_m1: rows[i].forecast_m1,
-                                    forecast_m2: rows[i].forecast_m2,
-                                    forecast_m3: rows[i].forecast_m3,
-                                    expected_date: expected_date,
-                                    remarks: rows[i].remarks
-                                },
-                                dataType: "json",
-                                success: function(result) {
-                                    Swal.fire({
-                                        title: result.message,
-                                        icon: result.theme,
-                                        confirmButtonText: 'Ok',
-                                        allowOutsideClick: false,
-                                    }).then((result) => {
-                                        if (result.isConfirmed) {
-                                            window.location.reload();
+                            $("#dg2").datagrid('acceptChanges');
+                            var rows = $('#dg2').datagrid('getRows');
+                            var totalrows = rows.length;
+                            endEditing();
+
+                            for (let i = 0; i < totalrows; i++) {
+                                if (rows[i].item_rm_id) {
+                                    $.ajax({
+                                        type: "post",
+                                        url: '<?= base_url('purchase/purchase_request_others/create') ?>',
+                                        data: {
+                                            request_no: request_no,
+                                            request_date: request_date,
+                                            request_name: request_name,
+                                            item_family_id: rows[i].item_family_id,
+                                            item_rm_id: rows[i].item_rm_id,
+                                            qty: rows[i].qty,
+                                            forecast_m1: rows[i].forecast_m1,
+                                            forecast_m2: rows[i].forecast_m2,
+                                            forecast_m3: rows[i].forecast_m3,
+                                            expected_date: expected_date,
+                                            remarks: rows[i].remarks
+                                        },
+                                        dataType: "json",
+                                        success: function(result) {
+                                            Swal.fire({
+                                                title: result.message,
+                                                icon: result.theme,
+                                                confirmButtonText: 'Ok',
+                                                allowOutsideClick: false,
+                                            }).then((result) => {
+                                                if (result.isConfirmed) {
+                                                    window.location.reload();
+                                                }
+                                            });
                                         }
                                     });
                                 }
-                            });
+                            }
+
+                            readRequestno();
+                            $('#dg').treegrid('reload');
+                            $('#dlg_insert').dialog('close');
                         }
-                    }
-                    readRequestno();
-                    $('#dg').treegrid('reload');
-                    $('#dlg_insert').dialog('close');
+                    });
                 }
             }]
         });
@@ -657,51 +723,17 @@
             }]
         });
 
-        $('#supplier_id').combobox({
-            url: '<?php echo base_url('purchase/purchase_request_others/readSupplier'); ?>',
-            valueField: 'id',
-            textField: 'name',
-            prompt: 'Select Supplier',
-            onSelect: function(supp){
-                $('#item_family_id').combobox({
-                    url: '<?php echo base_url('purchase/purchase_request_others/readprodfam/'); ?>' + btoa(supp.id),
-                    valueField: 'id',
-                    textField: 'name',
-                    prompt: 'Select Product Family',
-                    onSelect: function(prodfam){
-                        addTable(supp.id, prodfam.id);
-
-                        var date = $("#request_date").datebox('getValue');
-                        var split = date.split('-');
-                        var y = split[0];
-                        var m = split[1];
-                        
-                        // var code = "PR"+supp.number+y+m+"-"+prodfam.number;
-                        $.ajax({
-                            type: "post",
-                            url: "<?= base_url("purchase/purchase_request_others/request_no") ?>",
-                            dataType: "html",
-                            success: function (response) {
-                                $("#request_no").textbox('setValue', response);
-                            }
-                        });
-                    }
-                });
-            }
-        });
-
-        $('#filter_supplier').combobox({
-            url: '<?php echo base_url('purchase/purchase_request_others/readSupplier'); ?>',
-            valueField: 'id',
-            textField: 'name',
-            prompt: 'Select Supplier',
-            icons: [{
-                iconCls: 'icon-clear',
-                handler: function(e) {
-                    $(e.data.target).combobox('clear').combobox('textbox').focus();
-                }
-            }],
-        });
+        // $('#item_family_id').combobox({
+        //     url: '<?php echo base_url('purchase/purchase_request_others/readprodfam'); ?>',
+        //     valueField: 'id',
+        //     textField: 'name',
+        //     prompt: 'Select Product Family',
+        //     onSelect: function(prodfam){
+                
+                
+                
+        //     }
+        // });
 
         //Get Customer
         $('#filter_item_familys').combogrid({
@@ -729,6 +761,30 @@
                     width: 250
                 }, ]
             ]
+        });
+        
+        $('#filter_item_rm').combogrid({
+            url: '<?= base_url('master/item_rm/readNotRm') ?>',
+            panelWidth: 600,
+            idField: 'id',
+            mode: 'remote',
+            fitColumns: true,
+            prompt: 'Choose Part No',
+            columns: [
+                [{
+                    field: 'id',
+                    title: 'Part No EBWS',
+                    width: 100
+                }, {
+                    field: 'number',
+                    title: 'Part No Supplier',
+                    width: 200
+                }, {
+                    field: 'name',
+                    title: 'Description',
+                    width: 200
+                }]
+            ],
         });
 
         readRequestno();
@@ -777,6 +833,26 @@
             return 'background-color:#FFC8C8;';
         } else if (value == 1) {
             return 'background-color:#C8FFCC;';
+        }
+    }
+
+    function cellFormatterApproval(val, row) {
+        if(val == ""){
+            return 'Approved';
+        } else if(val == null){
+            return '-';
+        } else {
+            return 'Checking';
+        }
+    };
+
+    function cellStylerApproval(value, row, index) {
+        if(value == ""){
+            return 'background: #53D636; color:white;';
+        } else if(value == null){
+            return '';
+        } else {
+            return 'background: #FF5F5F; color:white;';
         }
     }
 </script>

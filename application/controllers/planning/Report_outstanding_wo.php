@@ -34,37 +34,16 @@ class Report_outstanding_wo extends CI_Controller
     public function readWp()
     {
         $period = base64_decode($this->input->get('period'));
-        $send = $this->crud->query("SELECT DISTINCT wp, workorder FROM production_schedules WHERE `period` = '$period' ORDER BY `wp` DESC");
+        $send = $this->crud->query("SELECT DISTINCT wp FROM production_schedules WHERE `period` = '$period' ORDER BY `wp` DESC");
         echo json_encode($send);
     }
-    public function readCustomer()
-    {
-        $period = base64_decode($this->input->get('period'));
-        $wp = base64_decode($this->input->get('wp'));
-        $send = $this->crud->query("SELECT a.customer_id, b.number as customer_number, b.name as customer_name 
-            FROM production_schedules a
-            JOIN customers b on a.customer_id = b.id
-            WHERE a.period = '$period' and a.wp = '$wp' ORDER BY a.workorder DESC");
-        echo json_encode($send);
-    }
-    public function readItems()
-    {
-        $period = base64_decode($this->input->get('period'));
-        $wp = base64_decode($this->input->get('wp'));
-        $customer_id = $this->input->get('customer_id');
-        $send = $this->crud->query("SELECT a.workorder, b.id as item_fg_id, b.number as item_number, b.name as item_name, c.name as customer_name  
-            FROM production_schedules a
-            JOIN item_fg b on a.item_fg_id = b.id
-            JOIN customers c on a.customer_id = c.id
-            WHERE a.period = '$period' and a.wp = '$wp' and a.customer_id = '$customer_id' ORDER BY a.workorder DESC");
-        echo json_encode($send);
-    }
+    
     public function print($option = "")
     {
         if ($option == "excel") {
             $format  = date("Ymd");
             header("Content-type: application/vnd-ms-excel");
-            header("Content-Disposition: attachment; filename=sales_orders_$format.xls");
+            header("Content-Disposition: attachment; filename=outstanding_wo_$format.xls");
         }
         $filter_from = base64_decode($this->input->get("filter_from"));
         $filter_to = base64_decode($this->input->get("filter_to"));
@@ -79,20 +58,22 @@ class Report_outstanding_wo extends CI_Controller
         $this->db->from('config');
         $config = $this->db->get()->row();
         
-        $this->db->select('*');
-        $this->db->from('production_schedules');
-        $this->db->where('deleted', 0);
-        $this->db->where("trans_date between '$filter_from' and '$filter_to'");
-        $this->db->like('period', $filter_period);
-        $this->db->like('wp', $filter_wp);
-        $this->db->like('customer_id', $filter_customer);
-        $this->db->like('item_fg_id', $filter_product_no);
+        $this->db->select('a.*, b.number as item_fg_number, b.number_customer, b.name as item_fg_name, c.id as customer_id, c.name as customer_name');
+        $this->db->from('production_schedules a');
+        $this->db->join('item_fg b', 'a.item_fg_id = b.id');
+        $this->db->join('customers c', 'a.customer_id = c.id');
+        $this->db->where("a.trans_date between '$filter_from' and '$filter_to'");
+        $this->db->like('a.period', $filter_period);
+        $this->db->like('a.wp', $filter_wp);
+        $this->db->like('a.customer_id', $filter_customer);
+        $this->db->like('a.item_fg_id', $filter_product_no);
         if ($filter_status != "-") {
-            $this->db->like('status', $filter_status);
+            $this->db->like('a.status', $filter_status);
         }
-        $this->db->order_by('status', 'ASC');
-        $this->db->order_by('workorder', 'ASC');
+        // $this->db->order_by('a.status', 'ASC');
+        $this->db->order_by('a.workorder', 'DESC');
         $records = $this->db->get()->result_array();
+
         $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#customers {border-collapse: collapse;width: 100%;font-size: 12px;}#customers td, #customers th {border: 1px solid #ddd;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: #ddd;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: center;color: black;}</style><body>
             <center>
                 <div style="float: left; font-size: 12px; text-align: left;">
@@ -121,6 +102,10 @@ class Report_outstanding_wo extends CI_Controller
             <table id="customers" border="1">
             <tr>
                 <th width="20">No</th>
+                <th>Customer Name</th>
+                <th>Product No EBWS</th>
+                <th>Product No Customer</th>
+                <th>Description</th>
                 <th>Work Order No</th>
                 <th>Work Order Period</th>
                 <th>Work Order Date</th>
@@ -137,6 +122,10 @@ class Report_outstanding_wo extends CI_Controller
             }
             $html .= '  <tr>
                             <td style="text-align:center">' . $no . '</td>
+                            <td>' . $data['customer_name'] . '</td>
+                            <td>' . $data['item_fg_number'] . '</td>
+                            <td>' . $data['number_customer'] . '</td>
+                            <td>' . $data['item_fg_name'] . '</td>
                             <td>' . $data['workorder'] . '</td>
                             <td>' . $data['period'] . '</td>
                             <td>' . $data['trans_date'] . '</td>

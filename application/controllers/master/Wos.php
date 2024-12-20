@@ -81,13 +81,15 @@ class Wos extends CI_Controller
                         $this->db->like("b.number", $filter->value);
                     }elseif($filter->field == "item_fg_name"){
                         $this->db->like("b.name", $filter->value);
+                    }elseif($filter->field == "number_customer"){
+                        $this->db->like("b.number_customer", $filter->value);
                     }else{
                         $this->db->like("a.".$filter->field, $filter->value);
                     }
                 }
             }
             $this->db->order_by('a.item_fg_id', 'asc');
-            $this->db->order_by('a.circuit_no', 'asc');
+            $this->db->order_by('CAST(a.circuit_no AS UNSIGNED)', 'asc');
             //Total Data
             $totalRows = $this->db->count_all_results('', false);
             //Limit 1 - 10
@@ -186,18 +188,20 @@ class Wos extends CI_Controller
                 'cwi_2' => $data->val($i, 25),
                 'accessories_1' => $data->val($i, 26),
                 'accessories_2' => $data->val($i, 27),
-                'tube_1' => $data->val($i, 28),
-                'tube_size_1' => $data->val($i, 29),
-                'end_1' => $data->val($i, 30),
-                'tube_2' => $data->val($i, 31),
-                'tube_size_2' => $data->val($i, 32),
-                'end_2' => $data->val($i, 33),
-                'note_r' => $data->val($i, 34),
-                'note_f' => $data->val($i, 35),
-                'cct_order' => $data->val($i, 36),
-                'cct_range' => $data->val($i, 37),
-                'mc' => $data->val($i, 38),
-                'order' => $data->val($i, 39),
+                'mark_r' => $data->val($i, 28),
+                'mark_f' => $data->val($i, 29),
+                'tube_1' => $data->val($i, 30),
+                'tube_size_1' => $data->val($i, 31),
+                'end_1' => $data->val($i, 32),
+                'tube_2' => $data->val($i, 33),
+                'tube_size_2' => $data->val($i, 34),
+                'end_2' => $data->val($i, 35),
+                'note_r' => $data->val($i, 36),
+                'note_f' => $data->val($i, 37),
+                'cct_order' => $data->val($i, 38),
+                'cct_range' => $data->val($i, 39),
+                'mc' => $data->val($i, 40),
+                'order' => $data->val($i, 41),
             );
         }
         $datas['total'] = count($datas);
@@ -243,9 +247,9 @@ class Wos extends CI_Controller
             if (empty($item_fg->id)) {
                 echo json_encode(array("title" => "Not Found", "message" => "Product No " . $data['item_fg_number'] . " is Not Found", "theme" => "error"));
             }elseif(!empty($wos->item_fg_id)){
-                echo json_encode(array("title" => "Duplicate", "message" => "Product No " . $data['item_fg_number'] . " and Circuit No " . $data['circuit_no'] . " is Duplicate", "theme" => "error"));
+                $send = $this->crud->update('wos', ["item_fg_id" => @$item_fg->id, "circuit_no" => $data['circuit_no']], $data);
+                echo $send;
             } else {
-
                 $data["item_fg_id"] = $item_fg->id;
                 unset($data["item_fg_number"]);
 
@@ -278,7 +282,8 @@ class Wos extends CI_Controller
             $autoID	= sprintf("%05s", $urutan);
             $autoNo = $whereDate.$autoID;
         }else{
-            $autoID = sprintf("%05s", $kode + 1);
+            $urutan = (int) substr($kode, 4);
+            $autoID = sprintf("%05s", $urutan + 1);
             $autoNo = $whereDate.$autoID;
         }
 
@@ -312,6 +317,8 @@ class Wos extends CI_Controller
             "cwi_f" => @$data['cwi_2'],
             "ass_number_r" => @$data['accessories_1'],
             "ass_number_r2" => @$data['accessories_2'],
+            "mark_r" => @$data['mark_r'],
+            "mark_f" => @$data['mark_f'],
             "tube_r" => @$data['tube_1'],
             "tube_f" => @$data['tube_2'],
             "drawing_r" => @$data['end_1'],
@@ -356,6 +363,8 @@ class Wos extends CI_Controller
                 "cwi_f" => @$data['cwi_2'],
                 "ass_number_r" => @$data['accessories_1'],
                 "ass_number_r2" => @$data['accessories_2'],
+                "mark_r" => @$data['mark_r'],
+                "mark_f" => @$data['mark_f'],
                 "tube_r" => @$data['tube_1'],
                 "tube_f" => @$data['tube_2'],
                 "drawing_r" => @$data['end_1'],
@@ -453,6 +462,8 @@ class Wos extends CI_Controller
                 <th>CW/I 2</th>
                 <th>Accessories 1</th>
                 <th>Accessories 2</th>
+                <th>Mark R</th>
+                <th>Mark F</th>
                 <th>Tube 1</th>
                 <th>Tube Size 1</th>
                 <th>Tube 2</th>
@@ -461,6 +472,8 @@ class Wos extends CI_Controller
                 <th>End 2</th>
                 <th>Note R</th>
                 <th>Note F</th>
+                <th>CCT Order</th>
+                <th>CCT Range</th>
                 <th>MC No</th>
                 <th>Process<br>Sequence 1</th>
             </tr>';
@@ -496,6 +509,8 @@ class Wos extends CI_Controller
                     <td>' . $data['cwi_2'] . '</td>
                     <td>' . $data['accessories_1'] . '</td>
                     <td>' . $data['accessories_2'] . '</td>
+                    <td>' . $data['mark_r'] . '</td>
+                    <td>' . $data['mark_f'] . '</td>
                     <td>' . $data['tube_1'] . '</td>
                     <td>' . $data['tube_size_1'] . '</td>
                     <td>' . $data['tube_2'] . '</td>
@@ -504,6 +519,8 @@ class Wos extends CI_Controller
                     <td>' . $data['end_2'] . '</td>
                     <td>' . $data['note_r'] . '</td>
                     <td>' . $data['note_f'] . '</td>
+                    <td>' . $data['cct_order'] . '</td>
+                    <td>' . $data['cct_range'] . '</td>
                     <td>' . $data['mc'] . '</td>
                     <td>' . $data['order'] . '</td>';
             $no++;

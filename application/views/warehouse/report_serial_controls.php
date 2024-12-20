@@ -1,7 +1,22 @@
 <div id="f" class="easyui-panel" style="width:100%; padding:10px; background: #F4F4F4;">
     <fieldset style="width: 98%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; margin-left: 10px; border-radius:4px;">
         <legend><b>Form Filter Data</b></legend>
-        <div style="width: 50%; float: left;">
+        <div style="width: 35%; float: left;">
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Period</span>
+                <input style="width:30%;" name="filter_month" id="filter_month" value="<?= date("m") ?>" class="easyui-combobox" data-options="prompt:'Month'">
+                <input style="width:30%;" name="filter_year" id="filter_year" value="<?= date("Y") ?>" class="easyui-combobox" data-options="prompt:'Year'">
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Serial No</span>
+                <input style="width:60%;" id="filter_serial_no" class="easyui-textbox">
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;"></span>
+                <a href="javascript:;" class="easyui-linkbutton" onclick="filter()"><i class="fa fa-search"></i> Filter Data</a>
+            </div>
+        </div>
+        <div style="width: 35%; float: left;">
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Customer</span>
                 <input style="width:60%;" id="filter_customer" class="easyui-combobox">
@@ -10,12 +25,8 @@
                 <span style="width:35%; display:inline-block;">Product No</span>
                 <input style="width:60%;" id="filter_product_no" class="easyui-combogrid">
             </div>
-            <div class="fitem">
-                <span style="width:35%; display:inline-block;"></span>
-                <a href="javascript:;" class="easyui-linkbutton" onclick="filter()"><i class="fa fa-search"></i> Filter Data</a>
-            </div>
         </div>
-        <div style="width: 50%; float: left;">
+        <div style="width: 30%; float: left;">
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Delivery Order</span>
                 <input style="width:60%;" id="filter_do_no" class="easyui-combobox">
@@ -23,10 +34,6 @@
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Delivery Note</span>
                 <input style="width:60%;" id="filter_dn_no" class="easyui-combobox">
-            </div>
-            <div class="fitem">
-                <span style="width:35%; display:inline-block;">Serial No</span>
-                <input style="width:60%;" id="filter_serial_no" class="easyui-textbox">
             </div>
         </div>
     </fieldset>
@@ -40,6 +47,8 @@
 
 <script>
     function filter() {
+        var filter_month = $("#filter_month").combobox("getValue");
+        var filter_year = $("#filter_year").combobox("getValue");
         var filter_customer = $("#filter_customer").combobox("getValue");
         var filter_product_no = $("#filter_product_no").combogrid("getValue");
         var filter_do_no = $("#filter_do_no").combobox("getValue");
@@ -47,6 +56,8 @@
         var filter_serial_no = $("#filter_serial_no").textbox("getValue");
 
         var url = "?filter_customer=" + filter_customer +
+            "&filter_month=" + filter_month +
+            "&filter_year=" + filter_year +
             "&filter_product_no=" + filter_product_no +
             "&filter_do_no=" + window.btoa(filter_do_no) +
             "&filter_dn_no=" + window.btoa(filter_dn_no) +
@@ -61,6 +72,8 @@
     }
 
     function excel() {
+        var filter_month = $("#filter_month").combobox("getValue");
+        var filter_year = $("#filter_year").combobox("getValue");
         var filter_customer = $("#filter_customer").combobox("getValue");
         var filter_product_no = $("#filter_product_no").combogrid("getValue");
         var filter_do_no = $("#filter_do_no").combobox("getValue");
@@ -68,6 +81,8 @@
         var filter_serial_no = $("#filter_serial_no").textbox("getValue");
 
         var url = "?filter_customer=" + filter_customer +
+            "&filter_month=" + filter_month +
+            "&filter_year=" + filter_year +
             "&filter_product_no=" + filter_product_no +
             "&filter_do_no=" + window.btoa(filter_do_no) +
             "&filter_dn_no=" + window.btoa(filter_dn_no) +
@@ -88,6 +103,20 @@
         window.location.reload();
     }
     $(function() {
+        $('#filter_month').combobox({
+            url: '<?php echo base_url('planning/generate_mps/readMonths'); ?>',
+            valueField: 'id',
+            textField: 'name',
+            prompt: 'Choose Month',
+        });
+
+        $('#filter_year').combobox({
+            url: '<?php echo base_url('planning/generate_mps/readYears'); ?>',
+            valueField: 'id',
+            textField: 'name',
+            prompt: 'Choose Year',
+        });
+
         $('#filter_customer').combobox({
             url: '<?php echo base_url('master/customers/reads'); ?>',
             valueField: 'id',

@@ -43,7 +43,7 @@ class Sales_orders extends CI_Controller
             FROM customer_items a 
             JOIN item_fg b ON a.item_fg_id = b.id
             JOIN customers c ON a.customer_id = c.id
-            LEFT JOIN delivery_orders d ON b.id = d.item_fg_id and d.status = 0 and c.id = d.customer_id
+            LEFT JOIN delivery_orders d ON b.id = d.item_fg_id and d.status = 0 and c.id = d.customer_id and a.plant = d.plant
             WHERE a.customer_id = '$customer_id' and a.plant = '$plant' and (b.number LIKE '%$post%' or b.name LIKE '%$post%') GROUP BY b.number");
         echo json_encode($send);
     }
@@ -63,7 +63,7 @@ class Sales_orders extends CI_Controller
     public function readSalesOrder($customer_id)
     {
         $customer_id = base64_decode($customer_id);
-        $send = $this->crud->query("SELECT DISTINCT sales_order_no, sales_order_date FROM sales_orders WHERE customer_id = '$customer_id' and status = 0");
+        $send = $this->crud->query("SELECT DISTINCT sales_order_no, sales_order_date FROM sales_orders WHERE customer_id = '$customer_id'");
         echo json_encode($send);
     }
 
@@ -142,9 +142,10 @@ class Sales_orders extends CI_Controller
             $offset = ($page - 1) * $rows;
             $result = array();
             //Select Query
-            $this->db->select("a.*, b.name as customer_name, SUM(a.total) as total_sub2, SUM(a.total) as total_grand2");
-            $this->db->from('sales_orders a');
+            $this->db->select("a.*, b.name as customer_name, COALESCE(c.qty_delivery, 0) as qty_delivery, (a.qty_so - COALESCE(c.qty_delivery, 0)) as qty_outstanding");
+            $this->db->from('(select *, SUM(qty) as qty_so, SUM(total) as total_sub2 from sales_orders GROUP by sales_order_no) a');
             $this->db->join('customers b', 'a.customer_id = b.id');
+            $this->db->join("(select sales_order_no, SUM(qty) as qty_delivery from delivery_notes WHERE delivery_note_date BETWEEN '$filter_from' AND '$filter_to' GROUP by sales_order_no) c", 'a.sales_order_no = c.sales_order_no', 'left');
             if ($filter_from != "" && $filter_to != "") {
                 $this->db->where('a.sales_order_date >=', $filter_from);
                 $this->db->where('a.sales_order_date <=', $filter_to);
@@ -172,11 +173,18 @@ class Sales_orders extends CI_Controller
     {
         if ($this->input->get()) {
             $sales_order_no = base64_decode($this->input->get('sales_order_no'));
+            $filter_from = base64_decode($this->input->get('filter_from'));
+            $filter_to = base64_decode($this->input->get('filter_to'));
 
-            $this->db->select('a.*, b.number as item_fg_number, b.name as item_fg_name, b.number_customer');
-            $this->db->from('sales_orders a');
+            $this->db->select('a.*, b.number as item_fg_number, b.name as item_fg_name, b.number_customer, COALESCE(c.qty_delivery, 0) as qty_delivery, (a.qty_so - COALESCE(c.qty_delivery, 0)) as qty_outstanding');
+            $this->db->from('(select *, SUM(qty) as qty_so from sales_orders GROUP by sales_order_no, item_fg_id) a');
             $this->db->join('item_fg b', 'a.item_fg_id = b.id');
+            $this->db->join("(select sales_order_no, item_fg_id, SUM(qty) as qty_delivery from delivery_notes WHERE delivery_note_date BETWEEN '$filter_from' AND '$filter_to' GROUP by sales_order_no, item_fg_id) c", 'a.sales_order_no = c.sales_order_no AND a.item_fg_id = c.item_fg_id', 'left');
             $this->db->where('a.sales_order_no', $sales_order_no);
+            $this->db->group_by('a.sales_order_no');
+            $this->db->group_by('a.item_fg_id');
+            $this->db->group_by('a.customer_id');
+            $this->db->group_by('a.plant');
             $this->db->order_by('b.number', 'ASC');
             $records = $this->db->get()->result_array();
 
@@ -190,10 +198,15 @@ class Sales_orders extends CI_Controller
         if ($this->input->get()) {
             $sales_order_no = base64_decode($this->input->get('sales_order_no'));
 
-            $this->db->select('a.*, b.number as item_fg_number, b.name as item_fg_name');
+            $this->db->select('a.*, b.number as item_fg_number, b.name as item_fg_name, SUM(a.qty) AS qty, COALESCE(SUM(c.qty), 0) AS delivery, (SUM(a.qty) - COALESCE(SUM(c.qty), 0)) as outstanding');
             $this->db->from('sales_orders a');
             $this->db->join('item_fg b', 'a.item_fg_id = b.id');
+            $this->db->join('delivery_notes c', 'a.sales_order_no = c.sales_order_no AND a.item_fg_id = c.item_fg_id AND a.customer_id = c.customer_id AND a.plant = c.plant', 'left');
             $this->db->where('a.sales_order_no', $sales_order_no);
+            $this->db->group_by('a.sales_order_no');
+            $this->db->group_by('a.item_fg_id');
+            $this->db->group_by('a.customer_id');
+            $this->db->group_by('a.plant');
             $this->db->order_by('b.number', 'ASC');
             $records = $this->db->get()->result_array();
 
@@ -217,6 +230,15 @@ class Sales_orders extends CI_Controller
             echo $send;
         } else {
             show_error("Cannot Process your request");
+        }
+    }
+
+    public function closeSo(){
+        if ($this->input->post()) {
+            $sales_order_no = $this->input->post('sales_order_no');
+            $closing_reason = $this->input->post('closing_reason');
+
+            $this->db->update('sales_orders', ["closing_reason" => $closing_reason, "closing_date" => date("Y-m-d"), "status" => 1], ["sales_order_no" => $sales_order_no]);
         }
     }
 
@@ -294,143 +316,193 @@ class Sales_orders extends CI_Controller
         $data = new Spreadsheet_Excel_Reader($file, false);
         $total_row = $data->rowcount($sheet_index = 0);
 
-        $customer_id = $data->val(2, 3);
-        $sales_order_date = $data->val(3, 3);
-
-        $datenow    = "SO" . $customer_id . date("ymd", strtotime($sales_order_date));
-        $sqlGetID   = $this->db->query("SELECT max(`sales_order_no`) as kode FROM sales_orders WHERE `sales_order_no` like '%$datenow%'");
-        $rowID      = $sqlGetID->row();
-        $kode       = $rowID->kode;
-        if ($kode == NULL) {
-            $autoID = sprintf("%03s", $kode + 1);
-        } else {
-            $urutan = (int) substr($kode, -3);
-            $urutan++;
-            $autoID = sprintf("%03s", $urutan);
-        }        
-
-        $sales_order_no = $datenow . $autoID;
-
         $total_sub = 0;
-         for ($i = 7; $i <= $total_row; $i++) {
-            $item_fg_number = $data->val($i, 3);
-            $cust_address = $data->val(2, 5);
-            $item_fg = $this->crud->read('item_fg', [], ["number" => $item_fg_number]);
-            $cust_add = $this->crud->read('customer_address', [], ["id" => $cust_address]);
+        $last_customer_order_no = "";
+        $urutan_id = 0;
+        $last_customer_id = "";
+        $last_sales_order_no = "";
+        $sales_order_date = date("Y-m-d");
+
+        $datas = [];
+        $total_per_sales_order = []; 
+
+        for ($i = 4; $i <= $total_row; $i++) {
+            $customer_id = $data->val($i, 2);
+            $plant = $data->val($i, 3);
+            $sales_order_date = $data->val($i, 4);
+            $customer_order_no = $data->val($i, 5);
+            $item_fg_number = $data->val($i, 6);
+            $qty = $data->val($i, 7);
+            $delivery_date = $data->val($i, 8);
+
+            $item_fg = $this->crud->read('item_fg', [], ["number_customer" => $item_fg_number]);
 
             if (!empty($item_fg->number)) {
-                $customer_items = $this->crud->read('customer_items', [], ["item_fg_id" => $item_fg->id,"customer_id" => $customer_id]);
-                $total = ($data->val($i, 4) * $customer_items->price);
+                // Skip baris kosong
+                if (empty($customer_id) && empty($customer_order_no) && empty($item_fg_number) && empty($qty)) {
+                    continue;
+                }
+
+                if ($last_customer_order_no == $customer_order_no) {
+                    $customer_id = $last_customer_id;
+                    $sales_order_no = $last_sales_order_no;
+                    $urutan_id = $urutan_id;
+                } else {
+                    if ($last_customer_id != $customer_id) {
+                        $datenow    = "SO" . $customer_id . date("ymd");
+                        $sqlGetID   = $this->db->query("SELECT max(`sales_order_no`) as kode FROM sales_orders WHERE `sales_order_no` like '%$datenow%'");
+                        $rowID      = $sqlGetID->row();
+                        $kode       = $rowID->kode;
+                        if ($kode == NULL) {
+                            $autoID = sprintf("%03s", $kode + 1);
+                            $urutan_id = 1;
+                        } else {
+                            $urutan = (int) substr($kode, -3);
+                            $urutan++;
+                            $autoID = sprintf("%03s", $urutan);
+                            $urutan_id = $urutan;
+                        }
+
+                        $sales_order_no = $datenow . $autoID;
+                    } else {
+                        $datenow    = "SO" . $customer_id . date("ymd");
+                        $sales_order_no = $datenow . sprintf("%03s", $urutan_id + 1);
+                        $urutan_id++;
+                    }
+                }
+
+                $cust_add = $this->crud->read('customer_address', [], ["customer_id" => $customer_id, "plant" => $plant]);
+                $customer_items = $this->crud->read('customer_items', [], ["item_fg_id" => $item_fg->id,"customer_id" => @$customer_id]);
+                $price = $customer_items->price;
+                $total = ($qty * $price);
+
+                // Simpan total untuk setiap sales_order_no di array $total_per_sales_order
+                if (isset($total_per_sales_order[$sales_order_no])) {
+                    $total_per_sales_order[$sales_order_no] += $total;
+                } else {
+                    $total_per_sales_order[$sales_order_no] = $total;
+                }
+
                 $datas[] = array(
                     //excel
                     'customer_id' => $customer_id,
-                    'sales_order_date' => $data->val(3, 3),
-                    'delivery_date' => $data->val(4, 3),
-                    'customer_address_id' => $data->val(2, 5),
-                    // 'division' => $data->val(3, 5),
-                    'remarks' => $data->val(4, 5),
-                    'customer_order_no' => $data->val($i, 2),
+                    'customer_address_id' => @$cust_add->id,
                     'item_fg_id' => $item_fg->id,
-                    'qty' => $data->val($i, 4),
-                    'price' => $customer_items->price,
+                    'customer_order_no' => $customer_order_no,
                     'sales_order_no' => $sales_order_no,
-                    "total" => $total,
+                    'sales_order_date' => $sales_order_date,
+                    'delivery_date' => $delivery_date,
                     'uom' => $item_fg->uom,
-                    'plant' => $cust_add->plant,
+                    'qty' => $qty,
+                    'outstanding' => $qty,
+                    'price' => $customer_items->price,
+                    "total" => $total,
+                    'plant' => $plant,
                     'department' => $cust_add->department,
                     'attention_to' => $cust_add->contact_person,
-                
                 );
-                $total_sub += $total;
+
+                $last_customer_order_no = $customer_order_no;
+                $urutan_id = $urutan_id;
+                $last_customer_id = $customer_id;
+                $last_sales_order_no = $sales_order_no;
+                
             }
-         }
+        }
 
-         $datas['total_sub'] = $total_sub;
-         $datas['total'] = count($datas);
-         echo json_encode($datas);
-         unlink($_FILES['file_upload']['name']);
+        // Tambahkan total_sub per sales_order_no ke array data
+        foreach ($datas as &$data_row) {
+            $sales_order_no = $data_row['sales_order_no'];
+            if (isset($total_per_sales_order[$sales_order_no])) {
+                $data_row['total_sub'] = $total_per_sales_order[$sales_order_no];
+            }
+        }
+
+        $datas['total'] = count($datas);
+        echo json_encode($datas);
+        unlink($_FILES['file_upload']['name']);
     }
-     public function uploadclearFailed()
-     {
-         @unlink('failed/sales_orders.txt');
-     }
-     public function uploadcreateFailed()
-     {
-         if ($this->input->post()) {
-             $message = $this->input->post('message');
-             $textFailed = fopen('failed/sales_orders.txt', 'a');
-             fwrite($textFailed, $message . "\n");
-             fclose($textFailed);
-         }
-     }
- 
-     //UPLOAD DOWNLOAD FAILED
-     public function uploadDownloadFailed()
-     {
-         $file = "failed/sales_orders.txt";
-         header('Content-Description: File Failed');
-         header('Content-Disposition: attachment; filename=' . basename($file));
-         header('Expires: 0');
-         header('Cache-Control: must-revalidate');
-         header('Pragma: public');
-         header('Content-Length: ' . @filesize($file));
-         header("Content-Type: text/plain");
-         @readfile($file);
-     }
- 
-     //UPLOAD CREATE DATA
-     public function uploadcreate()
-     {
-         if ($this->input->post()) {
-            $data = $this->input->post('data');//field excel
-            $total_sub = $this->input->post('total_sub');
 
-            //Cek Process Number                //table             //field           //field excel
+    public function uploadclearFailed()
+    {
+        @unlink('failed/sales_orders.txt');
+    }
+    
+    public function uploadcreateFailed(){
+        if ($this->input->post()) {
+            $message = $this->input->post('message');
+            $textFailed = fopen('failed/sales_orders.txt', 'a');
+            fwrite($textFailed, $message . "\n");
+            fclose($textFailed);
+        }
+    }
+
+    //UPLOAD DOWNLOAD FAILED
+    public function uploadDownloadFailed()
+    {
+        $file = "failed/sales_orders.txt";
+        header('Content-Description: File Failed');
+        header('Content-Disposition: attachment; filename=' . basename($file));
+        header('Expires: 0');
+        header('Cache-Control: must-revalidate');
+        header('Pragma: public');
+        header('Content-Length: ' . @filesize($file));
+        header("Content-Type: text/plain");
+        @readfile($file);
+    }
+ 
+    //UPLOAD CREATE DATA
+    public function uploadcreate()
+    {
+        if ($this->input->post()) {
+            $data = $this->input->post('data'); //field excel
+
             $customers = $this->crud->read('customers', [], ["id" => $data['customer_id']]);
-            $customer_address = $this->crud->read('customer_address', [], ["id" => $data['customer_address_id'],"customer_id" => $data['customer_id']]);
+            $customer_items = $this->crud->read('customer_items', [], ["item_fg_id" => $data['item_fg_id'], "customer_id" => $data['customer_id']]);
+            $item_fg = $this->crud->read('item_fg', [], ["id" => $data['item_fg_id']]);
 
-            if (empty($customers->id)) {
+            // Check for duplicate sales order by customer_order_no AND delivery_date
+            $sales_orders = $this->crud->read('sales_orders', [], [
+                "customer_order_no" => $data['customer_order_no'],
+                "item_fg_id" => $data['item_fg_id'],
+                "delivery_date" => $data['delivery_date'] // Include delivery date in the check
+            ]);
+
+            if (empty($customers)) {
                 echo json_encode(array("title" => "Not Found", "message" => "Customers ID " . $data['customer_id'] . " Not Found", "theme" => "error"));
-            } elseif (empty($customer_address->id)) {
-                echo json_encode(array("title" => "Not Found", "message" => "Customers Address ID " . $data['customer_address_id'] . " Not Found in Customers ID ". $data['customer_id'] . "", "theme" => "error"));
+            } else if (empty($customer_items)) {
+                echo json_encode(array("title" => "Not Match", "message" => "Product No " . $data['item_fg_id'] . " Not Match With Cust ID " . $data['customer_id'], "theme" => "error"));
+            } else if (!empty($sales_orders->sales_order_no)) {
+                echo json_encode(array("title" => "Duplicated", "message" => "Product ID " . $data['item_fg_id'] . " and Customer Order No " . $data['customer_order_no'] . " with Delivery Date " . $data['delivery_date'] . " Duplicated", "theme" => "error"));
+            } else if (empty($data['customer_id'])) {
+                $this->uploadcreateFailed();
             } else {
-                $customer_items = $this->crud->read('customer_items', [], ["item_fg_id" => $data['item_fg_id'],"customer_id" => $data['customer_id']]);
-                $sales_orders = $this->crud->read('sales_orders', [], ["customer_order_no" => $data['customer_order_no'], "item_fg_id" => $data['item_fg_id']]);
-
-                if (!empty($sales_orders->sales_order_no )) {
-                    echo json_encode(array("title" => "Duplicated", "message" => "Product ID " . $data['item_fg_id'] . " and Customer Order No " . $data['customer_order_no'] . " Duplicated", "theme" => "error"));
-                } else {
-                    $dataFinal = array(
-                        //field        //excel
-                        "customer_id" => $data['customer_id'],
-                        "sales_order_date" => $data['sales_order_date'],
-                        "sales_order_no" => $data['sales_order_no'],
-                        "delivery_date" => $data['delivery_date'],
-                        "customer_address_id" => $data['customer_address_id'],
-                        "plant" => $data['plant'],
-                        "attention_to" => $data['attention_to'],
-                        "department" => $data['department'],
-                        "remarks" => $data['remarks'],
-                        // "division" => $data['division'],
-                        "customer_order_no" => $data['customer_order_no'],
-                        "item_fg_id" => $data['item_fg_id'],
-                        "qty" => $data['qty'],
-                        "uom" => $data['uom'],
-                        "currency" => $customers->currency,
-                        "price" => $data['price'],
-                        "total" => $data['total'],
-                        "total_sub" => $total_sub,
-                        "total_tax" => ($total_sub * ($customers->taxes / 100)),
-                        "total_pph" => 0,
-                        "total_grand" => ($total_sub + ($total_sub * ($customers->taxes / 100))),
-                        
-                    );
-                    $send   = $this->crud->create('sales_orders', $dataFinal);
-                    echo $send;
-                }
-             }
-         }
-     }
+                $dataFinal = array(
+                    //field        //excel
+                    "customer_id" => $data['customer_id'],
+                    "sales_order_date" => $data['sales_order_date'],
+                    "sales_order_no" => $data['sales_order_no'],
+                    "delivery_date" => $data['delivery_date'],
+                    "customer_address_id" => $data['customer_address_id'],
+                    "plant" => $data['plant'],
+                    "attention_to" => $data['attention_to'],
+                    "department" => $data['department'],
+                    "customer_order_no" => $data['customer_order_no'],
+                    "item_fg_id" => $customer_items->item_fg_id,
+                    "qty" => $data['qty'],
+                    "uom" => $data['uom'],
+                    "outstanding" => $data['qty'],
+                    "currency" => $customers->currency,
+                    "price" => $customer_items->price,
+                    "total" => $data['total'],
+                    "total_sub" => $data['total_sub'],
+                    "total_grand" => $data['total_sub'],
+                );
+                $send = $this->crud->create('sales_orders', $dataFinal);
+                echo json_encode(array("title" => "Success", "message" => "Data successfully created with Sales Order No: " . $data['sales_order_no'], "theme" => "success"));
+            }
+        }
+    }
 
     //PRINT & EXCEL DATA
     public function print($option = "")
@@ -453,10 +525,13 @@ class Sales_orders extends CI_Controller
         $this->db->from('config');
         $config = $this->db->get()->row();
 
-        $this->db->select("a.*, b.name as customer_name, c.number as item_fg_number, c.name as item_fg_name");
-        $this->db->from('sales_orders a');
-        $this->db->join('customers b', 'a.customer_id = b.id');
-        $this->db->join('item_fg c', 'a.item_fg_id = c.id');
+        $this->db->select('a.*, b.number as item_fg_number, b.name as item_fg_name, b.number_customer, 
+            d.name as customer_name,
+            COALESCE(c.qty_delivery, 0) as qty_delivery, (a.qty_so - COALESCE(c.qty_delivery, 0)) as qty_outstanding');
+        $this->db->from('(select *, SUM(qty) as qty_so from sales_orders GROUP by sales_order_no, item_fg_id) a');
+        $this->db->join('item_fg b', 'a.item_fg_id = b.id');
+        $this->db->join('customers d', 'a.customer_id = d.id');
+        $this->db->join("(select sales_order_no, item_fg_id, SUM(qty) as qty_delivery from delivery_notes WHERE delivery_note_date BETWEEN '$filter_from' AND '$filter_to' GROUP by sales_order_no, item_fg_id) c", 'a.sales_order_no = c.sales_order_no AND a.item_fg_id = c.item_fg_id', 'left');
         if ($filter_from != "" && $filter_to != "") {
             $this->db->where('a.sales_order_date >=', $filter_from);
             $this->db->where('a.sales_order_date <=', $filter_to);
@@ -464,6 +539,11 @@ class Sales_orders extends CI_Controller
         $this->db->like('a.customer_id', $filter_customer_id);
         $this->db->like('a.sales_order_no', $filter_sales_order_no);
         $this->db->like('a.status', $filter_status);
+        $this->db->group_by('a.sales_order_no');
+        $this->db->group_by('a.item_fg_id');
+        $this->db->group_by('a.customer_id');
+        $this->db->group_by('a.plant');
+        $this->db->order_by('b.number', 'ASC');
         $this->db->order_by('a.sales_order_no', 'ASC');
         $records = $this->db->get()->result_array();
 
@@ -496,14 +576,15 @@ class Sales_orders extends CI_Controller
             <tr>
                 <th width="20">No</th>
                 <th>Customer Name</th>
+                <th>Plant</th>
                 <th>Customer Order No</th>
                 <th>Sales Order No</th>
                 <th>Sales Order Date</th>
                 <th>Delivery Date</th>
                 <th>Remarks</th>
-                <th>Product ID</th>
-                <th>Product No</th>
-                <th>Product Name</th>
+                <th>Product No EBWS</th>
+                <th>Product No Customer</th>
+                <th>Description</th>
                 <th>Uom</th>
                 <th>Qty</th>
                 <th>Delivery</th>
@@ -517,18 +598,19 @@ class Sales_orders extends CI_Controller
             $html .= '<tr>
                         <td>' . $no . '</td>
                         <td>' . $data['customer_name'] . '</td>
+                        <td>' . $data['plant'] . '</td>
                         <td>' . $data['customer_order_no'] . '</td>
                         <td>' . $data['sales_order_no'] . '</td>
                         <td>' . $data['sales_order_date'] . '</td>
                         <td>' . $data['delivery_date'] . '</td>
                         <td>' . $data['remarks'] . '</td>
                         <td>' . $data['item_fg_id'] . '</td>
-                        <td>' . $data['item_fg_number'] . '</td>
-                        <td>' . $data['item_fg_name'] . '</td>
+                        <td style="mso-number-format:\@;">' . $data['number_customer'] . '</td>
+                        <td style="mso-number-format:\@;">' . $data['item_fg_name'] . '</td>
                         <td>' . $data['uom'] . '</td>
-                        <td>' . $data['qty'] . '</td>
-                        <td>' . $data['delivery'] . '</td>
-                        <td>' . $data['outstanding'] . '</td>
+                        <td>' . $data['qty_so'] . '</td>
+                        <td>' . $data['qty_delivery'] . '</td>
+                        <td>' . $data['qty_outstanding'] . '</td>
                         <td>' . $data['currency'] . '</td>
                         <td>' . $data['price'] . '</td>
                         <td>' . $data['total'] . '</td>

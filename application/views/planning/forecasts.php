@@ -56,6 +56,10 @@
             </div>
             <div style="float: left; width: 50%;">
                 <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Product No</span>
+                    <input style="width:60%;" name="filter_item_fg" id="filter_item_fg" class="easyui-combogrid">
+                </div>
+                <div class="fitem">
                     <span style="width:35%; display:inline-block;">Revision</span>
                     <select style="width:30%;" id="filter_revision" class="easyui-combobox" panelHeight="auto">
                         <option value="" selected disabled>Choose All</option>
@@ -81,7 +85,7 @@
 </div>
 
 <!-- Insert & Update -->
-<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 1300px; height: 550px; padding:10px; top: 20px; left: 20px;">
+<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 100%; height: 550px; padding:10px; top: 20px;">
     <form id="frm_insert" method="post" novalidate>
         <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
             <legend><b>Form Data</b></legend>
@@ -192,11 +196,15 @@
             onChange: function(value){
                 $.ajax({
                     type: "post",
-                    url: "<?= base_url('planning/forecasts/autoid') ?>",
+                    url: "<?= base_url('planning/forecasts/autoid/'. $id_menu) ?>",
                     data: "issued_date="+value,
                     dataType: "html",
                     success: function(response) {
-                        $('#document_no').textbox('setValue', response);
+                        if(response == ""){
+                            toastr.info("Please Check Configuration in Serial No First");
+                        }else{
+                            $('#document_no').textbox('setValue', response);
+                        }
                     }
                 });
             }
@@ -575,7 +583,7 @@
             $("#p_month").combobox('disable');
             $("#p_year").combobox('disable');
 
-            addTable(row.customer_id, row.plant, '<?= base_url('planning/forecasts/datatableUpdates?customer_id=') ?>' + btoa(row.customer_id) + "&plant=" + btoa(plant) + "&p_month=" + btoa(row.p_month) + "&p_year=" + btoa(row.p_year) + "&revision=" + btoa(row.revision));
+            addTable(row.customer_id, row.plant, '<?= base_url('planning/forecasts/datatableUpdates?document_no=') ?>' + btoa(row.document_no));
         } else {
             toastr.warning("Please select one of the data in the table first!", "Information");
         }
@@ -665,6 +673,7 @@
         // var filter_period_month = $("#filter_period_month").combobox('getValue');
         // var filter_period_year = $("#filter_period_year").combobox('getValue');
         var filter_customer_id = $("#filter_customer_id").combogrid('getValue');
+        var filter_item_fg = $("#filter_item_fg").combogrid('getValue');
         var filter_revision = $("#filter_revision").combobox('getValue');
 
         var url = "?filter_issued_date_from=" + window.btoa(filter_issued_date_from) +
@@ -672,6 +681,7 @@
             // "&filter_period_month=" + window.btoa(filter_period_month) +
             // "&filter_period_year=" + window.btoa(filter_period_year) +
             "&filter_customer_id=" + window.btoa(filter_customer_id) +
+            "&filter_item_fg=" + window.btoa(filter_item_fg) +
             "&filter_revision=" + window.btoa(filter_revision);
 
             $('#dg').datagrid({
@@ -695,7 +705,7 @@
                         dataType: "json",
                         success: function(result) {
                             ddv.datagrid({
-                                url: '<?= base_url('planning/forecasts/datatableDetails?customer_id=') ?>' + window.btoa(row.customer_id) + "&plant=" + btoa(row.plant) + "&p_month=" + window.btoa(row.p_month) + "&p_year=" + window.btoa(row.p_year) + "&revision=" + window.btoa(row.revision),
+                                url: '<?= base_url('planning/forecasts/datatableDetails?customer_id=') ?>' + window.btoa(row.customer_id) + "&item_fg_id=" + window.btoa(filter_item_fg) + "&plant=" + btoa(row.plant) + "&p_month=" + window.btoa(row.p_month) + "&p_year=" + window.btoa(row.p_year) + "&revision=" + window.btoa(row.revision),
                                 singleSelect: true,
                                 rownumbers: true,
                                 columns: [
@@ -853,6 +863,7 @@
         // var filter_period_month = $("#filter_period_month").combobox('getValue');
         // var filter_period_year = $("#filter_period_year").combobox('getValue');
         var filter_customer_id = $("#filter_customer_id").combogrid('getValue');
+        var filter_item_fg = $("#filter_item_fg").combogrid('getValue');
         var filter_revision = $("#filter_revision").combobox('getValue');
 
         var url = "?filter_issued_date_from=" + window.btoa(filter_issued_date_from) +
@@ -860,6 +871,7 @@
             // "&filter_period_month=" + window.btoa(filter_period_month) +
             // "&filter_period_year=" + window.btoa(filter_period_year) +
             "&filter_customer_id=" + window.btoa(filter_customer_id) +
+            "&filter_item_fg=" + window.btoa(filter_item_fg) +
             "&filter_revision=" + window.btoa(filter_revision);
 
         window.location.assign('<?= base_url('planning/forecasts/print/excel') ?>' + url);
@@ -1096,6 +1108,38 @@
                 $(e.data.target).combogrid('clear').combogrid('textbox').focus();
             }
         }],
+        onSelect: function(val, customer) {
+            $('#filter_item_fg').combogrid({
+                url: '<?= base_url('master/customer_items/reads/') ?>' + btoa(customer.id),
+                panelWidth: 600,
+                idField: 'id',
+                textField: 'number',
+                mode: 'remote',
+                fitColumns: true,
+                prompt: "Choose Product No",
+                icons: [{
+                    iconCls: 'icon-clear',
+                    handler: function(e) {
+                        $(e.data.target).combogrid('clear').combogrid('textbox').focus();
+                    }
+                }],
+                columns: [
+                    [{
+                        field: 'number',
+                        title: 'Product EBWS',
+                        width: 150
+                    },{
+                        field: 'number_customer',
+                        title: 'Product Customer',
+                        width: 200
+                    }, {
+                        field: 'name',
+                        title: 'Description',
+                        width: 200
+                    }]
+                ]
+            });
+        }
     });
 
     $('#filter_period_month').combobox({

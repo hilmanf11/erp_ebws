@@ -1,15 +1,3 @@
-<div id="dlg_help" class="easyui-dialog" title="About Menu" data-options="closed: true,modal:true" style="width: 800px; height: 500px; left: 10px; top: 20px;">
-    <div class="easyui-accordion" style="width:100%; height: 100%;">
-        <div title="RELATIONS" style="padding: 20px;">
-            <ul>
-                <li>The Data Part No is taken from <b>Master Data > Engineering > Item Raw Material</b></li>
-                <li>The Data UOM PO Family is taken from <b>Master Data > General Master > Unit of Measure</b></li>
-                <li>The Data UOM Soft is taken from <b>Master Data > General Master > Unit of Measure</b></li>
-            </ul>
-        </div>
-    </div>
-</div>
-
 <!-- TABLE DATAGRID -->
 <table id="dg" class="easyui-datagrid" style="width:99.5%;" toolbar="#toolbar">
     <thead>
@@ -31,11 +19,12 @@
         </tr>
     </thead>
 </table>
+
 <!-- TOOLBAR DATAGRID -->
 <div id="toolbar" style="height: 35px;">
     <?= $button ?>
-    <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="$('#dlg_help').dialog('open');"><i class="fa fa-info"></i> Help</a>
 </div>
+
 <!-- DIALOG SAVE AND UPDATE -->
 <div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 500px; padding:10px; top: 20px;">
     <form id="frm_insert" method="post" novalidate>
@@ -55,7 +44,7 @@
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Convertion</span>
-                <input style="width:60%;" name="convertion" id="convertion" class="easyui-numberbox">
+                <input style="width:60%;" name="convertion" id="convertion" class="easyui-numberbox" data-options="precision:2">
             </div>
         </fieldset>
     </form>

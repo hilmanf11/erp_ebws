@@ -20,6 +20,7 @@ class Journal_entries extends CI_Controller
             redirect('error_session');
         } elseif ($this->checkuserAccess($this->id_menu()) > 0) {
             $data['button'] = $this->getbutton($this->id_menu());
+            $data['menus_id'] = $this->id_menu();
 
             $this->load->view('template/header', $data);
             $this->load->view('assets/journal_entries');
@@ -72,7 +73,8 @@ class Journal_entries extends CI_Controller
             $this->db->select('*');
             $this->db->from('asset_fixeds');
             $this->db->where('trans_date <=', $period);
-            $this->db->where("DATE_ADD(trans_date, INTERVAL estimate_month MONTH) >=", $period);
+            // $this->db->where("DATE_ADD(trans_date, INTERVAL estimate_month MONTH) >=", $period);
+            $this->db->where("expired_date >=", $period);
             $this->db->like('asset_category_number', $category);
             $this->db->like('number', $number);
             $this->db->order_by('number', 'asc');
@@ -93,6 +95,13 @@ class Journal_entries extends CI_Controller
     {
         if ($this->input->get()) {
 
+            $page = $this->input->post('page');
+            $rows = $this->input->post('rows');
+            //Pagination 1-10
+            $page   = isset($page) ? intval($page) : 1;
+            $rows   = isset($rows) ? intval($rows) : 10;
+            $offset = ($page - 1) * $rows;
+
             $filter_month = base64_decode($this->input->get('filter_month'));
             $filter_year = base64_decode($this->input->get('filter_year'));
             $filter_category = base64_decode($this->input->get('filter_category'));
@@ -101,15 +110,18 @@ class Journal_entries extends CI_Controller
             $filter_period = $filter_year . "-" . $filter_month;
 
             //Select Query
-            $this->db->select('b.*, (DATE_ADD(a.trans_date, INTERVAL a.estimate_month MONTH)) as expired, 
-            c.name as asset_category_name, a.residual,
+            $this->db->select('b.*, d.number as gl_no, a.expired_date, 
+            c.name as asset_category_name,
             a.purchase_invoice_number, a.trans_date as purchase_date, a.cost, 
             a.estimate_month, a.estimate_year');
             $this->db->from('asset_journals b');
             $this->db->join('asset_fixeds a', 'a.number = b.asset_no');
             $this->db->join('asset_categories c', 'a.asset_category_number = c.number');
+            $this->db->join('journal_postings d', "b.asset_no = d.document_no and b.periode = DATE_FORMAT(d.journal_date, '%Y-%m')", 'left');
             $this->db->where('b.periode', $filter_period);
-            $this->db->like('b.asset_category_number', $filter_category);
+            if($filter_category != ""){
+                $this->db->where('b.asset_category_number', $filter_category);
+            }
             $this->db->like('b.asset_no', $filter_asset_no);
             $this->db->group_by('b.id');
             $this->db->order_by('b.periode', 'asc');
@@ -117,6 +129,8 @@ class Journal_entries extends CI_Controller
 
             //Total Data
             $totalRows = $this->db->count_all_results('', false);
+            //Limit 1 - 10
+            $this->db->limit($rows, $offset);
             //Get Data Array
             $records = $this->db->get()->result_array();
             //Mapping Data
@@ -165,7 +179,9 @@ class Journal_entries extends CI_Controller
             if (@$asset_journals->id != "") {
                 echo json_encode(array("title" => "Duplicate", "message" => "Asset No " . $post['asset_no'] . " in Period " . $post['periode'] . " Duplicate", "theme" => "error"));
             } else {
-                $asset_categories = $this->crud->reads("asset_categories", [], ["number" => $post['asset_category_number'], "account_type" => "DEBIT"]);
+                $asset_categories = $this->crud->reads("asset_categories", [], ["number" => $post['asset_category_number']]);
+
+                $send = json_encode(array("title" => "Not Found", "message" => "Asset Category " . $post['asset_category_number'] . " Not Found", "theme" => "error"));
                 foreach ($asset_categories as $asset_category) {
 
                     if ($asset_category->account_type == "DEBIT") {
@@ -181,6 +197,7 @@ class Journal_entries extends CI_Controller
                         "asset_no" => $post['asset_no'],
                         "asset_name" => $post['asset_name'],
                         "periode" => $post['periode'],
+                        "trans_date" => $post['trans_date'],
                         "account_number" => $asset_category->account_number,
                         "account_name" => $asset_category->account_name,
                         "debit" => $debit,
@@ -189,6 +206,7 @@ class Journal_entries extends CI_Controller
 
                     $send = $this->crud->create('asset_journals', $data);
                 }
+
                 echo $send;
             }
         } else {
@@ -245,5 +263,113 @@ class Journal_entries extends CI_Controller
         header('Content-Length: ' . @filesize($file));
         header("Content-Type: text/plain");
         @readfile($file);
+    }
+
+    public function print($option = "")
+    {
+        if ($option == "excel") {
+            $format  = date("Ymd");
+            header("Content-type: application/vnd-ms-excel");
+            header("Content-Disposition: attachment; filename=journal_entries_$format.xls");
+        }
+
+        $filter_month = base64_decode($this->input->get('filter_month'));
+        $filter_year = base64_decode($this->input->get('filter_year'));
+        $filter_category = base64_decode($this->input->get('filter_category'));
+        $filter_asset_no = base64_decode($this->input->get('filter_asset_no'));
+
+        $filter_period = $filter_year . "-" . $filter_month;
+
+        //Select Query
+        $this->db->select('b.*, d.number as gl_no, a.expired_date, 
+            c.name as asset_category_name,
+            a.purchase_invoice_number, a.trans_date as purchase_date, a.cost, 
+            a.estimate_month, a.estimate_year');
+        $this->db->from('asset_journals b');
+        $this->db->join('asset_fixeds a', 'a.number = b.asset_no');
+        $this->db->join('asset_categories c', 'a.asset_category_number = c.number');
+        $this->db->join('journal_postings d', "b.asset_no = d.document_no and b.periode = DATE_FORMAT(d.journal_date, '%Y-%m')", 'left');
+        $this->db->where('b.periode', $filter_period);
+        if($filter_category != ""){
+            $this->db->where('b.asset_category_number', $filter_category);
+        }
+        $this->db->like('b.asset_no', $filter_asset_no);
+        $this->db->group_by('b.id');
+        $this->db->order_by('b.periode', 'asc');
+        $this->db->order_by('a.number', 'asc');
+        //Get Data Array
+        $records = $this->db->get()->result_array();
+
+        $this->db->select('*');
+        $this->db->from('config');
+        $config = $this->db->get()->row();
+        
+        $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#customers {border-collapse: collapse;width: 100%;font-size: 12px;}#customers td, #customers th {border: 1px solid black;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: black;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: center;color: black;}</style><body>
+            <center>
+                <div style="float: left; font-size: 12px; text-align: left;">
+                    <table style="width: 100%;">
+                        <tr>
+                            <td width="50" style="font-size: 12px; vertical-align: top; text-align: center; vertical-align:jus margin-right:10px;">
+                                <img src="' . $config->favicon . '" width="30">
+                            </td>
+                            <td style="font-size: 14px; text-align: left; margin:2px;">
+                                <b>' . $config->name . '</b><br>
+                                <small>JOURNAL ENTRIES</small>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+                <div style="float: right; font-size: 12px; text-align: right;">
+                    Print Date ' . date("d M Y H:i:s") . ' <br>
+                    Print By ' . $this->session->username . '  
+                </div>
+            </center>
+            <br><br><br>
+            
+            <table id="customers" border="1">
+            <tr>
+                <th>No</th>
+                <th>Period</th>
+                <th>Trans Date</th>
+                <th>GL No</th>
+                <th>Asset No</th>
+                <th>Asset Name</th>
+                <th>Asset Category</th>
+                <th>Purchase Invoice</th>
+                <th>Purchase Date</th>
+                <th>Asset Cost</th>
+                <th>Est. Economic<br>(Year)</th>
+                <th>Est. Economic<br>(Month)</th>
+                <th>Expired Date</th>
+                <th>Account No</th>
+                <th>Account Name</th>
+                <th>Debit</th>
+                <th>Credit</th>
+            </tr>';
+        $no = 1;
+        foreach ($records as $data) {
+            $html .= '<tr>
+                        <td style="text-align:center">' . $no . '</td>
+                        <td>' . $data['periode'] . '</td>
+                        <td>' . $data['trans_date'] . '</td>
+                        <td>' . $data['gl_no'] . '</td>
+                        <td>' . $data['asset_no'] . '</td>
+                        <td>' . $data['asset_name'] . '</td>
+                        <td>' . $data['asset_category_name'] . '</td>
+                        <td>' . $data['purchase_invoice_number'] . '</td>
+                        <td>' . $data['purchase_date'] . '</td>
+                        <td style="text-align:right;">' . number_format($data['cost']) . '</td>
+                        <td style="text-align:right;">' . number_format($data['estimate_year']) . '</td>
+                        <td style="text-align:right;">' . number_format($data['estimate_month']) . '</td>
+                        <td>' . $data['expired_date'] . '</td>
+                        <td>' . $data['account_number'] . '</td>
+                        <td>' . $data['account_name'] . '</td>
+                        <td style="text-align:right;">' . number_format($data['debit']) . '</td>
+                        <td style="text-align:right;">' . number_format($data['credit']) . '</td>
+                    </tr>';
+            $no++;
+        }
+        $html .= '</table></body></html>';
+        echo $html;
     }
 }

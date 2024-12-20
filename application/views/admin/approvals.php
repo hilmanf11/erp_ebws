@@ -3,12 +3,12 @@
     <thead>
         <tr>
             <th rowspan="2" field="ck" checkbox="true"></th>
-            <th rowspan="2" data-options="field:'table_name',width:150,halign:'center'">Module</th>
-            <th rowspan="2" data-options="field:'user_approval_name_1',width:100,align:'center'">Approval 1</th>
-            <th rowspan="2" data-options="field:'user_approval_name_2',width:100,align:'center'">Approval 2</th>
-            <th rowspan="2" data-options="field:'user_approval_name_3',width:100,align:'center'">Approval 3</th>
-            <th rowspan="2" data-options="field:'user_approval_name_4',width:100,align:'center'">Approval 4</th>
-            <th rowspan="2" data-options="field:'user_approval_name_5',width:100,align:'center'">Approval 5</th>
+            <th rowspan="2" data-options="field:'table_name',width:200,halign:'center'">Module</th>
+            <th rowspan="2" data-options="field:'user_approval_name_1',width:120,align:'center'">Approval 1</th>
+            <th rowspan="2" data-options="field:'user_approval_name_2',width:120,align:'center'">Approval 2</th>
+            <th rowspan="2" data-options="field:'user_approval_name_3',width:120,align:'center'">Approval 3</th>
+            <th rowspan="2" data-options="field:'user_approval_name_4',width:120,align:'center'">Approval 4</th>
+            <th rowspan="2" data-options="field:'user_approval_name_5',width:120,align:'center'">Approval 5</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
         </tr>
@@ -44,10 +44,20 @@
                     <option value="stock_so">Upload Data SO</option>
                     <option value="os_so">Upload OS SO</option>
                     <option value="os_mpp">Upload OS MPP</option>
+                    <option value="generate_mrp_finals">Generate MRP</option>
                     <option value="forecasts">Forecasts</option>
                     <option value="supplier_items">Supplier Contract</option>
-                    <option value="supplier_item_prices">Supplier Contract Prices</option>
+                    <!-- <option value="supplier_item_prices">Supplier Contract Prices</option> -->
                     <option value="purchase_requests">Purchase Requests</option>
+                    <option value="purchase_request_others">Purchase Request Others</option>
+                    <option value="purchase_orders">Purchase Order</option>
+                    <option value="purchase_order_others">Purchase Order Others</option>
+                    <option value="supply_materials">Part Requisition</option>
+                    <option value="item_ng">Material NG</option>
+                    <option value="sto_rm">STO Raw Material</option>
+                    <option value="sto_fg">STO Finish Good</option>
+                    <option value="scraps">Scraps</option>
+                    <option value="item_mpq">Item MPQ</option>
                 </select>
             </div>
             <div class="fitem">

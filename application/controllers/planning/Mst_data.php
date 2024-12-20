@@ -19,7 +19,7 @@ class Mst_data extends CI_Controller
         $tahun_before = date('Y', strtotime('-7 year', strtotime(date('Y'))));
         $tahun_next = date('Y', strtotime('+1 year', strtotime(date('Y'))));
         for ($i = $tahun_next; $i >= $tahun_before; $i--) {
-            $arr[] = array("id" => $i, "name" => $i);
+            $arr[] = array("id" => "$i", "name" => $i);
         }
 
         echo json_encode($arr);
@@ -49,21 +49,21 @@ class Mst_data extends CI_Controller
         echo json_encode($arr);
     }
 
-    public function readProductFamily(){
-        $this->dummy = $this->load->database('dummy', TRUE);
-        $query = $this->dummy->query("SELECT * FROM r_prodfam WHERE prod_group = 'Raw Material' and pfm_id != '06' ORDER BY pfm_id ASC");
-        $records = $query->result_array();
+    // public function readProductFamily(){
+    //     $this->dummy = $this->load->database('dummy', TRUE);
+    //     $query = $this->dummy->query("SELECT * FROM r_prodfam WHERE prod_group = 'Raw Material' and pfm_id != '06' ORDER BY pfm_id ASC");
+    //     $records = $query->result_array();
 
-        echo json_encode($records);
-    }
+    //     echo json_encode($records);
+    // }
 
-    public function readProducts($pfm_id)
-    {
-        $post = isset($_POST['q']) ? $_POST['q'] : "";
-        $this->dummy = $this->load->database('dummy', TRUE);
-        $query = $this->dummy->query("SELECT * FROM mst_item WHERE pfm_id = '$pfm_id' and stscode_id = '01' and item_id LIKE '%$post%' ORDER BY item_id ASC");
-        $records = $query->result_array();
+    // public function readProducts($pfm_id)
+    // {
+    //     $post = isset($_POST['q']) ? $_POST['q'] : "";
+    //     $this->dummy = $this->load->database('dummy', TRUE);
+    //     $query = $this->dummy->query("SELECT * FROM mst_item WHERE pfm_id = '$pfm_id' and stscode_id = '01' and item_id LIKE '%$post%' ORDER BY item_id ASC");
+    //     $records = $query->result_array();
 
-        echo json_encode($records);
-    }
+    //     echo json_encode($records);
+    // }
 }

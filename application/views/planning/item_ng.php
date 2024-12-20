@@ -2,17 +2,19 @@
     <thead>
         <tr>
             <th rowspan="2" field="ck" checkbox="true"></th>
+            <th rowspan="2" data-options="field:'status',width:80,align:'center',formatter:statusformat,styler:statusStyle">Status</th>
             <th rowspan="2" data-options="field:'trans_date',width:100,align:'center'">Trans Date</th>
             <th rowspan="2" data-options="field:'document',width:150,halign:'center'">Document No</th>
             <th rowspan="2" data-options="field:'departement',width:120,halign:'center'">Departement</th>
             <th rowspan="2" data-options="field:'process',width:120,halign:'center'">Process</th>
             <th rowspan="2" data-options="field:'type',width:100,halign:'center'">NG Type</th>
             <th rowspan="2" data-options="field:'workorder',width:150,halign:'center'">Work Order</th>
-            <th rowspan="2" data-options="field:'item_number',width:150,halign:'center'">Product No</th>
-            <th rowspan="2" data-options="field:'item_name',width:200,halign:'center'">Product Name</th>
+            <th rowspan="2" data-options="field:'item_rm_id',width:100,halign:'center'">Part No EBWS</th>
+            <th rowspan="2" data-options="field:'item_rm_number',width:200,halign:'center'">Part No Supplier</th>
+            <th rowspan="2" data-options="field:'item_rm_name',width:200,halign:'center'">Description</th>
             <th rowspan="2" data-options="field:'stock',width:80,halign:'center',align:'right',formatter:numberformat">Qty</th>
-            <th rowspan="2" data-options="field:'qty',width:80,halign:'center',align:'right',formatter:numberformat">NG</th>
-            <th rowspan="2" data-options="field:'scrap',width:80,halign:'center',align:'right',formatter:numberformat">Scrap</th>
+            <th rowspan="2" data-options="field:'qty',width:80,halign:'center',align:'right',formatter:numberformat">Rejection</th>
+            <!-- <th rowspan="2" data-options="field:'scrap',width:80,halign:'center',align:'right',formatter:numberformat">Scrap</th> -->
             <th rowspan="2" data-options="field:'balance',width:80,halign:'center',align:'right',formatter:numberformat">Balance</th>
             <th rowspan="2" data-options="field:'uom',width:80,align:'center'">Uom</th>
             <th rowspan="2" data-options="field:'remarks',width:150,halign:'center'">Remarks</th>
@@ -36,8 +38,8 @@
             <div style="float: left; width: 50%;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Trans Date</span>
-                    <input style="width:30%;" id="filter_from" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
-                    <input style="width:30%;" id="filter_to" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
+                    <input style="width:30%;" id="filter_from" value="<?= date("Y-m-01") ?>" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
+                    <input style="width:30%;" id="filter_to" value="<?= date("Y-m-t") ?>" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Document No</span>
@@ -54,7 +56,7 @@
                     <input style="width:60%;" id="filter_family_id" class="easyui-combobox">
                 </div>
                 <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Product No</span>
+                    <span style="width:35%; display:inline-block;">Part No</span>
                     <input style="width:60%;" id="filter_item_rm_id" class="easyui-combogrid">
                 </div>
             </div>
@@ -69,7 +71,7 @@
 </div>
 
 <!-- Insert -->
-<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 1100px; height: 600px; padding:10px; top: 20px;">
+<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 1100px; height: 550px; padding:10px; top: 20px;">
     <form id="frm_insert" method="post" novalidate>
         <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
             <legend><b>Form Data</b></legend>
@@ -89,12 +91,12 @@
             </div>
             <div style="width: 50%; float: left;">
                 <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Process</span>
-                    <input style="width:60%;" name="process" id="process" class="easyui-textbox" required>
+                    <span style="width:35%; display:inline-block;">NG Type</span>
+                    <input style="width:60%;" name="type" id="type" class="easyui-combogrid" required>
                 </div>
                 <div class="fitem">
-                    <span style="width:35%; display:inline-block;">NG Type</span>
-                    <input style="width:60%;" name="type" id="type" class="easyui-textbox" required>
+                    <span style="width:35%; display:inline-block;">Process</span>
+                    <input style="width:60%;" name="process" id="process" class="easyui-textbox" required readonly>
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Workorder</span>
@@ -169,43 +171,43 @@
             singleSelect: true,
             columns: [
                 [{
-                    field: 'item_number',
-                    width: 250,
+                    field: 'item_rm_id',
+                    width: 150,
                     halign: 'center',
-                    title: "Product No",
+                    title: "Part No EBWS",
                     editor: {
                         type: 'combogrid',
                         options: {
                             url: '<?= base_url('planning/item_ng/readItems/') ?>' + window.btoa(workorder),
                             required: true,
-                            panelWidth: 350,
-                            idField: 'number',
-                            textField: 'number',
+                            panelWidth: 550,
+                            idField: 'id',
+                            textField: 'id',
                             mode: 'remote',
                             fitColumns: true,
-                            prompt: 'Choose Product',
+                            prompt: 'Choose Product No',
                             columns: [
                                 [{
+                                    field: 'id',
+                                    title: 'Part No EBWS',
+                                    width: 100
+                                },{
                                     field: 'number',
-                                    title: 'Product No',
-                                    width: 150
+                                    title: 'Part No Customer',
+                                    width: 200
                                 }, {
                                     field: 'name',
-                                    title: 'Product Name',
-                                    width: 150
+                                    title: 'Description',
+                                    width: 200
                                 }]
                             ],
                             onSelect: function(value, rows) {
                                 var dg = $('#dg2');
                                 var row = dg.datagrid('getSelected');
                                 var rowIndex = dg.datagrid('getRowIndex', row);
-                                var ed = dg.datagrid('getEditor', {
-                                    index: rowIndex,
-                                    field: 'item_rm_id'
-                                });
                                 var ed2 = dg.datagrid('getEditor', {
                                     index: rowIndex,
-                                    field: 'item_name'
+                                    field: 'item_rm_number'
                                 });
                                 var ed3 = dg.datagrid('getEditor', {
                                     index: rowIndex,
@@ -216,32 +218,22 @@
                                     field: 'stock'
                                 });
 
-                                $(ed.target).textbox('setValue', rows.id);
-                                $(ed2.target).textbox('setValue', rows.name);
+                                $(ed2.target).textbox('setValue', rows.number);
                                 $(ed3.target).textbox('setValue', rows.uom);
                                 $(ed4.target).numberbox('setValue', rows.qty);
                             }
                         }
                     }
                 }, {
-                    field: 'item_name',
-                    width: 150,
+                    field: 'item_rm_number',
+                    width: 200,
                     halign: 'center',
-                    title: "Product Name",
+                    title: "Part No Supplier",
                     editor: {
                         type: 'textbox',
                         options: {
                             readonly: true
                         }
-                    }
-                }, {
-                    field: 'item_rm_id',
-                    hidden: true,
-                    width: 100,
-                    halign: 'center',
-                    title: "ID",
-                    editor: {
-                        type: 'textbox'
                     }
                 }, {
                     field: 'uom',
@@ -271,48 +263,13 @@
                     field: 'qty',
                     width: 80,
                     halign: 'center',
-                    title: "NG",
+                    title: "Rejection",
                     editor: {
                         type: 'numberbox',
                         options: {
                             required: true,
                             precision: 2,
                             onChange: function(valQty) {
-                                var row = $('#dg2').datagrid('getSelected');
-                                var rowIndex = $('#dg2').datagrid('getRowIndex', row);
-
-                                var ed = $('#dg2').datagrid('getEditor', {
-                                    index: rowIndex,
-                                    field: 'stock'
-                                });
-
-                                var ed2 = $('#dg2').datagrid('getEditor', {
-                                    index: rowIndex,
-                                    field: 'scrap'
-                                });
-
-                                var ed3 = $('#dg2').datagrid('getEditor', {
-                                    index: rowIndex,
-                                    field: 'balance'
-                                });
-
-                                var stock = $(ed.target).numberbox('getValue');
-                                var scrap = $(ed2.target).numberbox('getValue');
-                                $(ed3.target).numberbox('setValue', (parseInt(stock) - (parseInt(valQty) + parseInt(scrap))));
-                            }
-                        }
-                    }
-                }, {
-                    field: 'scrap',
-                    width: 80,
-                    halign: 'center',
-                    title: "Scrap",
-                    editor: {
-                        type: 'numberbox',
-                        options: {
-                            required: true,
-                            precision: 2,
-                            onChange: function(valScrap) {
                                 var row = $('#dg2').datagrid('getSelected');
                                 var rowIndex = $('#dg2').datagrid('getRowIndex', row);
 
@@ -332,11 +289,53 @@
                                 });
 
                                 var stock = $(ed.target).numberbox('getValue');
-                                var qty = $(ed2.target).numberbox('getValue');
-                                $(ed3.target).numberbox('setValue', (parseInt(stock) - (parseInt(valScrap) + parseInt(qty))));
+                                // var scrap = $(ed2.target).numberbox('getValue');
+                                // $(ed3.target).numberbox('setValue', (parseInt(stock) - (parseInt(valQty) + parseInt(scrap))));
+                                if((parseInt(stock) - (parseInt(valQty))) >= 0){
+                                    $(ed3.target).numberbox('setValue', (parseInt(stock) - (parseInt(valQty))));
+                                }else{
+                                    toastr.error("Qty Receipt Cannot < Qty Rejection");
+                                    $(ed3.target).numberbox('clear');
+                                    $(ed2.target).numberbox('clear');
+                                }
                             }
                         }
                     }
+                // }, {
+                //     field: 'scrap',
+                //     width: 80,
+                //     halign: 'center',
+                //     title: "Scrap",
+                //     editor: {
+                //         type: 'numberbox',
+                //         options: {
+                //             required: true,
+                //             precision: 2,
+                //             onChange: function(valScrap) {
+                //                 var row = $('#dg2').datagrid('getSelected');
+                //                 var rowIndex = $('#dg2').datagrid('getRowIndex', row);
+
+                //                 var ed = $('#dg2').datagrid('getEditor', {
+                //                     index: rowIndex,
+                //                     field: 'stock'
+                //                 });
+
+                //                 var ed2 = $('#dg2').datagrid('getEditor', {
+                //                     index: rowIndex,
+                //                     field: 'qty'
+                //                 });
+
+                //                 var ed3 = $('#dg2').datagrid('getEditor', {
+                //                     index: rowIndex,
+                //                     field: 'balance'
+                //                 });
+
+                //                 var stock = $(ed.target).numberbox('getValue');
+                //                 var qty = $(ed2.target).numberbox('getValue');
+                //                 $(ed3.target).numberbox('setValue', (parseInt(stock) - (parseInt(valScrap) + parseInt(qty))));
+                //             }
+                //         }
+                //     }
                 }, {
                     field: 'balance',
                     width: 80,
@@ -400,7 +399,7 @@
                 $('#dg2').datagrid('selectRow', editIndex).datagrid('beginEdit', editIndex);
             }
         } else {
-            toastr.error("Please Choose Workorder first");
+            toastr.error("Please Choose Workorder No first");
         }
     }
 
@@ -466,9 +465,11 @@
         var filter_item_rm_id = $("#filter_item_rm_id").combogrid('getValue');
 
         url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_document=" + filter_document + "&filter_family_id" + filter_family_id + "&filter_item_rm_id=" + filter_item_rm_id;
+        
         $('#dg').datagrid({
             url: '<?= base_url('planning/item_ng/datatables') ?>' + url
         });
+
         $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
         $("#printout").attr('src', '<?= base_url('planning/item_ng/print') ?>' + url);
     }
@@ -494,8 +495,9 @@
     }
 
     $(function() {
+        filter();
+
         $('#dg').datagrid({
-            url: '<?= base_url('planning/item_ng/datatables') ?>',
             pagination: true,
             rownumbers: true,
             fit: true,
@@ -513,7 +515,7 @@
                     var document = $("#document").textbox('getValue');
                     var departement = $("#departement").textbox('getValue');
                     var process = $("#process").textbox('getValue');
-                    var type = $("#type").textbox('getValue');
+                    var type = $("#type").combogrid('getValue');
                     var workorder = $("#workorder").combogrid('getValue');
 
                     var rows = $('#dg2').datagrid('getRows');
@@ -534,7 +536,7 @@
                                     item_rm_id: rows[i].item_rm_id,
                                     stock: rows[i].stock,
                                     qty: rows[i].qty,
-                                    scrap: rows[i].scrap,
+                                    // scrap: rows[i].scrap,
                                     balance: rows[i].balance,
                                     uom: rows[i].uom,
                                     remarks: rows[i].remarks
@@ -603,26 +605,61 @@
 
         $('#workorder').combogrid({
             url: '<?= base_url('planning/item_ng/readWorkorders') ?>',
-            panelWidth: 350,
+            panelWidth: 400,
             idField: 'workorder',
             textField: 'workorder',
             mode: 'remote',
             fitColumns: true,
-            prompt: "Choose Workorder",
+            prompt: "Choose Workorder No",
             columns: [
                 [{
+                    field: 'number_customer',
+                    title: 'Number Customer',
+                    width: 200
+                }, {
                     field: 'workorder',
                     title: 'Workorder',
-                    width: 150
-                }, {
-                    field: 'wp',
-                    title: 'WP',
-                    width: 80,
-                    align: 'center'
+                    width: 120,
+                    halign: 'center'
                 }]
             ],
             onSelect: function(val, row) {
                 addTable(row.workorder);
+            }
+        });
+
+        // $("#type").combobox({
+        //     url: '<?= base_url('master/ng_types/reads') ?>',
+        //     valueField: 'id',
+        //     textField: 'name',
+        //     prompt: "Choose NG Types",
+        //     onSelect: function(ng){
+        //         $("#process").textbox('setValue', ng.process_main_name);
+        //     }
+        // });
+
+        $('#type').combogrid({
+            url: '<?= base_url('master/ng_types/reads') ?>',
+            panelWidth: 300,
+            idField: 'id',
+            textField: 'name',
+            mode: 'remote',
+            fitColumns: true,
+            prompt: "Choose NG Type",
+            columns: [
+                [{
+                    field: 'name',
+                    title: 'Name',
+                    width: 150
+                }, {
+                    field: 'process_main_name',
+                    title: 'Process Main',
+                    width: 150,
+                    halign: 'center'
+                }]
+            ],
+            onSelect: function(ngval, ngRow){
+                $("#process").textbox('setValue', ngRow.process_main_name);
             }
         });
 
@@ -640,8 +677,8 @@
             }],
             onSelect: function(row) {
                 $('#filter_item_rm_id').combogrid({
-                    url: '<?= base_url('master/items/reads/') ?>' + row.number,
-                    panelWidth: 500,
+                    url: '<?= base_url('master/item_rm/reads/') ?>' + row.id,
+                    panelWidth: 550,
                     idField: 'id',
                     textField: 'number',
                     mode: 'remote',
@@ -655,12 +692,16 @@
                     }],
                     columns: [
                         [{
+                            field: 'id',
+                            title: 'Part No EBWS',
+                            width: 100
+                        }, {
                             field: 'number',
-                            title: 'Product No',
-                            width: 150
+                            title: 'Part No Supplier',
+                            width: 200
                         }, {
                             field: 'name',
-                            title: 'Product Name',
+                            title: 'Description',
                             width: 200
                         }]
                     ],
@@ -709,5 +750,21 @@
             minimumFractionDigits: 2
         });
         return "<b>" + formatter.format(value) + "</b>";
+    }
+
+    function statusformat(value, row) {
+        if (value == 0) {
+            return "<b style='color:green;'>OPEN</b>";
+        } else if (value == 1) {
+            return "<b style='color:red;'>CLOSED</b>";
+        }
+    }
+
+    function statusStyle(value, row, index) {
+        if (value == 0) {
+            return 'background-color:#C8FFCC;';
+        } else if (value == 1) {
+            return 'background-color:#FFC8C8;';
+        }
     }
 </script>

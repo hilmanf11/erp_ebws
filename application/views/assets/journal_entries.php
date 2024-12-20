@@ -1,10 +1,11 @@
 <!-- TABLE DATAGRID -->
-<table id="dg" class="easyui-datagrid" style="width:100%; height: 640px;" toolbar="#toolbar">
+<table id="dg" class="easyui-datagrid" style="width:100%;" toolbar="#toolbar">
     <thead>
         <tr>
             <th rowspan="2" field="ck" checkbox="true"></th>
             <th rowspan="2" data-options="field:'periode',width:80,halign:'center'">Period</th>
             <th rowspan="2" data-options="field:'trans_date',width:80,halign:'center'">Trans Date</th>
+            <th rowspan="2" data-options="field:'gl_no',width:100,halign:'center'">GL No</th>
             <th rowspan="2" data-options="field:'asset_no',width:150,halign:'center'">Asset No</th>
             <th rowspan="2" data-options="field:'asset_name',width:200,halign:'center'">Asset Name</th>
             <th rowspan="2" data-options="field:'asset_category_name',width:150,halign:'center'">Asset Category</th>
@@ -13,8 +14,7 @@
             <th rowspan="2" data-options="field:'cost',width:100,halign:'center',align:'right', formatter:priceformat">Asset Cost</th>
             <th rowspan="2" data-options="field:'estimate_year',width:100,align:'center'">Est. Economic<br>(year)</th>
             <th rowspan="2" data-options="field:'estimate_month',width:100,align:'center'">Est. Economic<br>(month)</th>
-            <th rowspan="2" data-options="field:'residual',width:100,halign:'center',align:'right', formatter:priceformat">Residual Value</th>
-            <th rowspan="2" data-options="field:'expired',width:120,align:'center'">Expired Date</th>
+            <th rowspan="2" data-options="field:'expired_date',width:120,align:'center'">Expired Date</th>
             <th rowspan="2" data-options="field:'account_number',width:100,halign:'center'">Account No</th>
             <th rowspan="2" data-options="field:'account_name',width:150,halign:'center'">Account Name</th>
             <th rowspan="2" data-options="field:'debit',width:100,halign:'center',align:'right', formatter:priceformat">Debit</th>
@@ -32,10 +32,10 @@
 </table>
 
 <!-- FORM FILTER DATAGRID -->
-<div id="toolbar" style="height: 260px;">
+<div id="toolbar" style="height: 270px; padding: 10px;">
     <!-- <div style="width: 100%; display: grid; grid-template-columns: auto auto auto; grid-gap: 5px; display: flex;"> -->
     <div style="width: 100%; display: grid; grid-template-columns: auto auto auto; grid-gap: 5px; display: flex;">
-        <fieldset style="width: 30%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
+        <fieldset style="width: 40%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
             <legend><b>Form Filter Data</b></legend>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Periode</span>
@@ -55,8 +55,8 @@
                 <a href="javascript:;" class="easyui-linkbutton" onclick="filter()"><i class="fa fa-search"></i> Filter Data</a>
             </div>
         </fieldset>
-        <fieldset style="width: 25%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
-            <legend><b>Process Generate Data</b></legend>
+        <fieldset style="width: 30%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
+            <legend><b>Process Data</b></legend>
             <a href="javascript:;" style="float: left; color:green;" class="easyui-linkbutton" plain="true"><i class="fa fa-check"></i> SUCCESS : <b id="p_success">0</b></a>
             <a href="javascript:;" style="float: right; color:red;" class="easyui-linkbutton" plain="true" onclick="downloadFailed()"><i class="fa fa-times"></i> FAILED : <b id="p_failed">0</b></a>
             <div id="p_upload" class="easyui-progressbar" style="width:100%; margin-top: 10px;"></div>
@@ -67,25 +67,8 @@
                 </ul>
             </div>
         </fieldset>
-        <fieldset style="width: 43%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
-            <legend><b>Journal Lists</b></legend>
-            <a href="javascript:;" style="margin-bottom: 10px;" class="easyui-linkbutton" onclick="calculate()"><i class="fa fa-refresh"></i> Calculate Journal</a>
-            <table id="dg3" class="easyui-datagrid" style="width: 100%;">
-                <thead>
-                    <tr>
-                        <th field="ck" checkbox="true"></th>
-                        <th data-options="field:'account_number',halign:'center',width:90">Account No</th>
-                        <th data-options="field:'account_name',halign:'center',width:190">Account Name</th>
-                        <th data-options="field:'debit',width:100,halign:'center',align:'right',formatter:priceformat">Debit</th>
-                        <th data-options="field:'credit',width:100,halign:'center',align:'right',formatter:priceformat">Credit</th>
-                    </tr>
-                </thead>
-            </table>
-            <a href="javascript:;" style="margin-top: 10px; width:100%;" class="easyui-linkbutton c6" onclick="saveJournal()"><i class="fa fa-check"></i> Save Data Journal</a>
-        </fieldset>
     </div>
     <?= $button ?>
-    <a href="javascript:;" class="easyui-linkbutton c1" data-options="plain:true" onclick="posting()"><i class="fa fa-level-up"></i> Posting</a>
 </div>
 
 <!-- PDF -->
@@ -100,103 +83,90 @@
 
         $.ajax({
             type: "post",
-            url: "<?= base_url('assets/journal_entries/getData') ?>",
-            data: "month=" + filter_month + "&year=" + filter_year + "&category=" + filter_category + "&number=" + filter_asset_no,
+            url: "<?= base_url('closing/locks/checkLock') ?>",
+            data: "period=" + filter_year + "-" + filter_month + "-01" + "&menus_id=<?= $menus_id ?>",
             dataType: "json",
-            success: function(get) {
-                if (get.total > 0) {
-                    requestData(get.total, get.rows);
-                    $.ajax({
-                        type: "post",
-                        url: "<?= base_url('assets/journal_entries/uploadclearFailed') ?>",
-                    });
+            success: function (lock) {
+                if(lock.total > 0){
+                    toastr.error("This period is not active by Accounting");
+                    return false;
+                }
 
-                    function requestData(total, json, number = 1, value = 0, success = 1, failed = 1) {
-                        if (value < 100) {
-                            value = Math.floor((number / total) * 100);
-                            $('#p_upload').progressbar('setValue', value);
-                            $('#p_start').html(number);
-                            $('#p_finish').html(total);
-
-                            var i = (number - 1);
-
+                $.ajax({
+                    type: "post",
+                    url: "<?= base_url('assets/journal_entries/getData') ?>",
+                    data: "month=" + filter_month + "&year=" + filter_year + "&category=" + filter_category + "&number=" + filter_asset_no,
+                    dataType: "json",
+                    success: function(get) {
+                        if (get.total > 0) {
+                            requestData(get.total, get.rows);
                             $.ajax({
                                 type: "post",
-                                url: '<?= base_url('assets/journal_entries/create') ?>',
-                                data: {
-                                    asset_category_number: json[i].asset_category_number,
-                                    asset_no: json[i].number,
-                                    asset_name: json[i].name,
-                                    depreciation: json[i].depreciation,
-                                    periode: filter_year + "-" + filter_month,
-                                },
-                                dataType: "json",
-                                success: function(result) {
-                                    if (result.theme == "success") {
-                                        $('#p_success').html(success);
-                                        var title = "<b style='color: green;'>" + result.title + "</b> | " + result.message;
-                                        requestData(total, json, number + 1, value, success + 1, failed + 0);
-                                    } else {
-                                        $('#p_failed').html(failed);
-                                        var title = "<b style='color: red;'>" + result.title + "</b> | " + result.message;
-
-                                        //Json Failed
-                                        $.ajax({
-                                            type: "POST",
-                                            async: true,
-                                            url: "<?= base_url('assets/journal_entries/uploadcreateFailed') ?>",
-                                            data: {
-                                                data: json[number - 1],
-                                                message: result.message
-                                            },
-                                            cache: false
-                                        });
-
-                                        requestData(total, json, number + 1, value, success + 0, failed + 1);
-                                    }
-
-                                    if (value == 100) {
-                                        Swal.fire('Good job!', 'Process Add Journal Entries Completed!', 'success');
-                                        $("#dg").datagrid('reload');
-                                    }
-
-                                    $("#p_remarks").append(title + "<br>");
-                                }
+                                url: "<?= base_url('assets/journal_entries/uploadclearFailed') ?>",
                             });
+
+                            function requestData(total, json, number = 1, value = 0, success = 1, failed = 1) {
+                                if (value < 100) {
+                                    value = Math.floor((number / total) * 100);
+                                    $('#p_upload').progressbar('setValue', value);
+                                    $('#p_start').html(number);
+                                    $('#p_finish').html(total);
+
+                                    var i = (number - 1);
+
+                                    $.ajax({
+                                        type: "post",
+                                        url: '<?= base_url('assets/journal_entries/create') ?>',
+                                        data: {
+                                            asset_category_number: json[i].asset_category_number,
+                                            asset_no: json[i].number,
+                                            asset_name: json[i].name,
+                                            depreciation: json[i].depreciation,
+                                            trans_date: json[i].trans_date,
+                                            periode: filter_year + "-" + filter_month,
+                                        },
+                                        dataType: "json",
+                                        success: function(result) {
+                                            if (result.theme == "success") {
+                                                $('#p_success').html(success);
+                                                var title = "<b style='color: green;'>" + result.title + "</b> | " + result.message;
+                                                requestData(total, json, number + 1, value, success + 1, failed + 0);
+                                            } else {
+                                                $('#p_failed').html(failed);
+                                                var title = "<b style='color: red;'>" + result.title + "</b> | " + result.message;
+
+                                                //Json Failed
+                                                $.ajax({
+                                                    type: "POST",
+                                                    async: true,
+                                                    url: "<?= base_url('assets/journal_entries/uploadcreateFailed') ?>",
+                                                    data: {
+                                                        data: json[number - 1],
+                                                        message: result.message
+                                                    },
+                                                    cache: false
+                                                });
+
+                                                requestData(total, json, number + 1, value, success + 0, failed + 1);
+                                            }
+
+                                            if (value == 100) {
+                                                Swal.fire('Good job!', 'Process Add Journal Entries Completed!', 'success');
+                                                $("#dg").datagrid('reload');
+                                            }
+
+                                            $("#p_remarks").append(title + "<br>");
+                                        }
+                                    });
+                                }
+                            }
+                        } else {
+                            toastr.warning("Fixed Asset Data Not Found");
                         }
                     }
-                } else {
-                    toastr.warning("Fixed Asset Data Not Found");
-                }
+                });
             }
         });
-    }
-
-    function calculate() {
-        var filter_category = $("#filter_category").combobox('getValue');
-
-        var rows = $('#dg').datagrid('getSelections');
-        var totalrows = rows.length;
-
-        if (filter_category != "") {
-            if (totalrows > 0) {
-                var total = 0;
-                for (let i = 0; i < totalrows; i++) {
-                    if (filter_category == rows[i].asset_category_number) {
-                        total += rows[i].debit;
-                    }
-                }
-
-                $('#dg3').datagrid({
-                    url: '<?= base_url('assets/journal_entries/calculate/') ?>' + window.btoa(filter_category) + "/" + total,
-                    rownumbers: true,
-                });
-            } else {
-                toastr.info("Please Select All Data in the Table first");
-            }
-        } else {
-            toastr.info("Please Select Category First");
-        }
     }
 
     function saveJournal() {
@@ -236,25 +206,56 @@
         if (rows.length > 0) {
             $.messager.confirm('Warning', 'Are you sure you want to delete this data?', function(r) {
                 if (r) {
-                    for (var i = 0; i < rows.length; i++) {
-                        var row = rows[i];
-                        $.ajax({
-                            method: 'post',
-                            url: '<?= base_url('assets/journal_entries/delete') ?>',
-                            data: {
-                                id: row.id
-                            },
-                            success: function(result) {
-                                var result = eval('(' + result + ')');
-                            },
-                            error: function(jqXHR, textStatus, errorThrown) {
-                                toastr.error("This data is already used in other modules, You must delete it First", "Error");
-                                
-                            },
-                            complete: function(data) {
-                                $('#dg').datagrid('reload');
-                            }
-                        });
+                    requestDataDelete(rows.length, rows);
+                    function requestDataDelete(total, json, number = 1, value = 0, success = 1, failed = 1) {
+                        if (value < 100) {
+                            value = Math.floor((number / total) * 100);
+                            $('#p_upload').progressbar('setValue', value);
+                            $('#p_start').html(number);
+                            $('#p_finish').html(total);
+                            var i = (number - 1);
+
+                            $.ajax({
+                                type: "post",
+                                url: "<?= base_url('closing/locks/checkLock') ?>",
+                                data: "period=" + json[i].periode + "-01" + "&menus_id=<?= $menus_id ?>",
+                                dataType: "json",
+                                success: function (lock) {
+                                    if(lock.total > 0){
+                                        toastr.error("This period is not active by Accounting");
+                                        return false;
+                                    }
+
+                                    $.ajax({
+                                        method: 'post',
+                                        url: '<?= base_url('assets/journal_entries/delete') ?>',
+                                        data: {
+                                            id: json[i].id
+                                        },
+                                        success: function(result) {
+                                            var result = eval('(' + result + ')');
+
+                                            if (result.theme == "success") {
+                                                $('#p_success').html(success);
+                                                var title = "<b style='color: green;'>" + result.title + "</b> | " + result.message;
+                                                requestDataDelete(total, json, number + 1, value, success + 1, failed + 0);
+                                            } else {
+                                                $('#p_failed').html(failed);
+                                                var title = "<b style='color: red;'>" + result.title + "</b> | " + result.message;
+                                                requestDataDelete(total, json, number + 1, value, success + 0, failed + 1);
+                                            }
+
+                                            if (value == 100) {
+                                                Swal.fire('Good job!', 'Process Delete Journal Entries Completed!', 'success');
+                                                $("#dg").datagrid('reload');
+                                            }
+
+                                            $("#p_remarks").append(title + "<br>");
+                                        },
+                                    });
+                                }
+                            });
+                        }
                     }
                 }
             });
@@ -340,6 +341,8 @@
         //SETTING DATAGRID EASYUI
         $('#dg').datagrid({
             rownumbers: true,
+            pagination: true,
+            fit: true,
             rowStyler: function(index, row) {
                 if (row.asset_no == null) {
                     return 'background-color:#FFC9C9;';

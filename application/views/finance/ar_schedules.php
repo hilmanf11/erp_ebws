@@ -1,4 +1,4 @@
-<div id="f" class="easyui-panel" style="width:100%; background: #F4F4F4;">
+<div id="f" class="easyui-panel" style="width:99.5%; background: #F4F4F4;">
     <div style="width: 100%; display: grid; grid-template-columns: auto auto auto; grid-gar: 5px; display: flex;">
         <fieldset style="width: 40%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; margin-left: 10px; border-radius:4px;">
             <legend><b>Form Filter Data</b></legend>
@@ -21,8 +21,8 @@
         <?= $button ?>
     </div>
 </div>
-<div id="p" class="easyui-panel" title="Print Preview" style="width:100%;" data-options="fit: true">
-    <iframe id="printout" src="" style="width: 100%; height: 70%;"></iframe>
+<div id="p" class="easyui-panel" title="Print Preview" style="width:100%;">
+    <iframe id="printout" src="" style="width: 100%; height: 450px; border: 0;"></iframe>
 </div>
 <script>
     function filter() {
@@ -50,7 +50,7 @@
         if (filter_from == "" || filter_to == "") {
             toastr.warning("Please select Trans Date!");
         } else {
-            window.location.assign('<?= base_url('finance/ar_schedules/print') ?>' + url);
+            window.location.assign('<?= base_url('finance/ar_schedules/print/excel') ?>' + url);
         }
     }
 

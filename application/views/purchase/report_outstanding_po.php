@@ -30,10 +30,10 @@
                     <input style="width:60%;" id="filter_purchase_order" class="easyui-combobox">
                 </div>
                 <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Product No</span>
+                    <span style="width:35%; display:inline-block;">Part No</span>
                     <input style="width:60%;" id="filter_product_no" class="easyui-combogrid">
                 </div>
-                <div class="fitem">
+                <div class="fitem" hidden>
                     <span style="width:35%; display:inline-block;">Status</span>
                     <select style="width:60%;" id="filter_status" class="easyui-combobox" panelHeight="auto">
                         <option value="">Choose All</option>
@@ -62,6 +62,7 @@
         var filter_product_no = $("#filter_product_no").combogrid("getValue");
         var filter_purchase_order = $("#filter_purchase_order").combobox("getValue");
         var filter_status = $("#filter_status").combobox("getValue");
+
         var url = "?filter_from=" + window.btoa(filter_from) +
             "&filter_to=" + window.btoa(filter_to) +
             "&filter_display=" + filter_display +
@@ -69,6 +70,7 @@
             "&filter_product_no=" + filter_product_no +
             "&filter_status=" + filter_status +
             "&filter_purchase_order=" + window.btoa(filter_purchase_order);
+
         if (filter_from == "" || filter_to == "") {
             toastr.warning("Please select Trans Date & Supplier!");
         } else {
@@ -85,6 +87,7 @@
         var filter_product_no = $("#filter_product_no").combogrid("getValue");
         var filter_purchase_order = $("#filter_purchase_order").combobox("getValue");
         var filter_status = $("#filter_status").combobox("getValue");
+
         var url = "?filter_from=" + window.btoa(filter_from) +
             "&filter_to=" + window.btoa(filter_to) +
             "&filter_display=" + filter_display +
@@ -92,10 +95,11 @@
             "&filter_product_no=" + filter_product_no +
             "&filter_status=" + filter_status +
             "&filter_purchase_order=" + window.btoa(filter_purchase_order);
+
         if (filter_from == "" || filter_to == "") {
             toastr.warning("Please select Trans Date & Supplier!");
         } else {
-            window.location.assign('<?= base_url('purchase/report_outstanding_po/print') ?>' + url);
+            window.location.assign('<?= base_url('purchase/report_outstanding_po/print/excel') ?>' + url);
         }
     }
 
@@ -122,6 +126,7 @@
             onSelect: function(sup) {
                 var filter_from = $("#filter_from").datebox("getValue");
                 var filter_to = $("#filter_to").datebox("getValue");
+
                 $('#filter_purchase_order').combobox({
                     url: '<?php echo base_url('purchase/report_outstanding_po/readPurchaseOrder?supplier_id='); ?>' + sup.id + "&filter_from=" + window.btoa(filter_from) + "&filter_to=" + window.btoa(filter_to),
                     valueField: 'po_no',
@@ -133,46 +138,18 @@
                             $(e.data.target).combobox('clear').combobox('textbox').focus();
                         }
                     }],
-                    onSelect: function(po) {
-                        $('#filter_product_no').combogrid({
-                            url: '<?= base_url('purchase/report_outstanding_po/readPurchaseOrderItems?supplier_id=') ?>' + sup.id + "&po_no=" + po.po_no + "&filter_from=" + window.btoa(filter_from) + "&filter_to=" + window.btoa(filter_to),
-                            panelWidth: 400,
-                            idField: 'id',
-                            textField: 'number',
-                            mode: 'remote',
-                            fitColumns: true,
-                            prompt: "Select Product No",
-                            icons: [{
-                                iconCls: 'icon-clear',
-                                handler: function(e) {
-                                    $(e.data.target).combogrid('clear').combogrid('textbox').focus();
-                                }
-                            }],
-                            columns: [
-                                [{
-                                    field: 'number',
-                                    title: 'Product No',
-                                    width: 200
-                                }, {
-                                    field: 'name',
-                                    title: 'Product Name',
-                                    width: 200
-                                }]
-                            ],
-                        });
-                    },
                 });
             }
         });
 
         $('#filter_product_no').combogrid({
-            url: '<?= base_url("master/items/reads") ?>',
-            panelWidth: 400,
+            url: '<?= base_url("master/item_rm/reads") ?>',
+            panelWidth: 550,
             idField: 'id',
             textField: 'number',
             mode: 'remote',
             fitColumns: true,
-            prompt: "Select Product No",
+            prompt: "Select Part No",
             icons: [{
                 iconCls: 'icon-clear',
                 handler: function(e) {
@@ -181,12 +158,16 @@
             }],
             columns: [
                 [{
+                    field: 'id',
+                    title: 'Part No EBWS',
+                    width: 120
+                },{
                     field: 'number',
-                    title: 'Product No',
+                    title: 'Part No Supplier',
                     width: 200
                 }, {
                     field: 'name',
-                    title: 'Product Name',
+                    title: 'Description',
                     width: 200
                 }]
             ],

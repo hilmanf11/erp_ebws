@@ -10,7 +10,7 @@
         font-size: 40px !important;
     }
 </style>
-<table id="dg" class="easyui-datagrid" style="width:100%;" toolbar="#toolbar">
+<table id="dg" class="easyui-datagrid" style="width:99%;" toolbar="#toolbar">
     <thead>
         <tr>
             <th rowspan="2" field="ck" checkbox="true"></th>
@@ -22,14 +22,14 @@
             <th rowspan="2" data-options="field:'item_rm_number',width:200,halign:'center'">Part No Supplier</th>
             <th rowspan="2" data-options="field:'item_rm_name',width:200,halign:'center'">Description</th>
             <th colspan="3" data-options="field:'',width:100,halign:'center',align:'right',formatter:numberformat"> Quantity</th>
-            <th rowspan="2" data-options="field:'warehouse',width:80,align:'center',formatter:numberformat">Stock WHS</th>
+            <!-- <th rowspan="2" data-options="field:'warehouse',width:80,halign:'center', align:'right', formatter:numberformat">Stock WHS</th> -->
             <th rowspan="2" data-options="field:'uom',width:80,align:'center'">UoM</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
         </tr>
         <tr>
-            <th data-options="field:'qty',width:80,halign:'center',align:'right',formatter:numberformat">Supply</th>
-            <th data-options="field:'qty_req',width:80,halign:'center',align:'right',formatter:numberformat">Actual</th>
-            <th data-options="field:'balance',width:80,halign:'center',align:'right',formatter:numberformat,styler:numberStyle">Balance <br> WIP</th>
+            <th data-options="field:'qty',width:80,halign:'center',align:'right',formatter:numberformat">Need</th>
+            <th data-options="field:'qty_req',width:80,halign:'center',align:'right',formatter:numberformat">Issued</th>
+            <th data-options="field:'qty_bal',width:80,halign:'center',align:'right',formatter:numberformat,styler:numberStyle">Balance</th>
             <th data-options="field:'created_by',width:100,align:'center'"> By</th>
             <th data-options="field:'created_date',width:150,align:'center'"> Date</th>
         </tr>
@@ -73,56 +73,62 @@
         var serialDuplicate = document.getElementById("serialDuplicate");
         var serialSuccess = document.getElementById("serialSuccess");
         var serialNotFound = document.getElementById("serialNotFound");
+        
         //Scan Supply Sheet
         $('#request_no').focus();
         $('#request_no').keypress(function(e) {
             if (e.which == 13) {
                 var request_no = $(this).val();
-                $.ajax({
-                    type: "POST",
-                    url: "<?= base_url('warehouse/issued_materials/getSupplySheet') ?>",
-                    data: "request_no=" + request_no,
-                    dataType: "json",
-                    success: function(json) {
-                        if (json.total > 0) {
-                            var row = json.rows;
-                            for (let i = 0; i < json.total; i++) {
-                                $.ajax({
-                                    type: "POST",
-                                    url: "<?= base_url('warehouse/issued_materials/create') ?>",
-                                    data: "item_fg_id=" + row[i].item_fg_id +
-                                        "&item_rm_id=" + row[i].item_rm_id +
-                                        "&request_no=" + row[i].request_no +
-                                        "&period=" + row[i].period +
-                                        "&wp=" + row[i].wp +
-                                        "&workorder=" + row[i].workorder +
-                                        "&qty=" + row[i].qty_act,
-                                    dataType: "json",
-                                    success: function(result) {
-                                        $('#receipt_id').focus();
-                                        // if (result.theme == "success") {
-                                        //     $('#receipt_id').focus();
-                                        //     toastr.success(result.message, result.title);
-                                        // } else {
-                                        //     toastr.error(result.message, result.title);
-                                        // }
-                                    }
+
+                if(request_no != ""){
+                    $.ajax({
+                        type: "POST",
+                        url: "<?= base_url('warehouse/issued_materials/getSupplySheet') ?>",
+                        data: "request_no=" + request_no,
+                        dataType: "json",
+                        success: function(json) {
+                            if (json.total > 0) {
+                                // var row = json.rows;
+                                // for (let i = 0; i < json.total; i++) {
+                                //     $.ajax({
+                                //         type: "POST",
+                                //         url: "<?= base_url('warehouse/issued_materials/create') ?>",
+                                //         data: "item_fg_id=" + row[i].item_fg_id +
+                                //             "&item_rm_id=" + row[i].item_rm_id +
+                                //             "&request_no=" + row[i].request_no +
+                                //             "&period=" + row[i].period +
+                                //             "&wp=" + row[i].wp +
+                                //             "&workorder=" + row[i].workorder +
+                                //             "&qty=" + row[i].qty_act,
+                                //         dataType: "json",
+                                //         success: function(result) {
+                                            $('#receipt_id').focus();
+                                            // if (result.theme == "success") {
+                                            //     $('#receipt_id').focus();
+                                            //     toastr.success(result.message, result.title);
+                                            // } else {
+                                            //     toastr.error(result.message, result.title);
+                                            // }
+                                //         }
+                                //     });
+                                // }
+                                $('#dg').datagrid({
+                                    url: '<?= base_url('warehouse/issued_materials/datatables?request_no=') ?>' + window.btoa(request_no),
+                                    rownumbers: true
                                 });
+                            } else {
+                                toastr.warning("Supply Sheet not found! or Not Ready Approve");
+                                $("#request_no").val('');
                             }
-                            $('#dg').datagrid({
-                                url: '<?= base_url('warehouse/issued_materials/datatables?request_no=') ?>' + window.btoa(request_no),
-                                rownumbers: true
-                            });
-                        } else {
-                            toastr.warning("Supply Sheet not found!");
+                        },
+                        error: function(){
+                            toastr.warning("Supply Sheet not found! or Not Ready Approve");
                             $("#request_no").val('');
                         }
-                    },
-                    error: function(){
-                        toastr.warning("Supply Sheet not found!");
-                        $("#request_no").val('');
-                    }
-                });
+                    });
+                }else{
+                    toastr.warning("Please Scan Supply Sheet!!");
+                }
             }
         });
 
@@ -185,13 +191,14 @@
     });
     
     function numberformat(value, row) {
-        const formatter = new Intl.NumberFormat('id-ID', {
-            minimumFractionDigits: 2
+        const formatter = new Intl.NumberFormat('ja-JP', {
+            minimumFractionDigits: 0
         });
         return "<b>" + formatter.format(value) + "</b>";
     }
+
     function numberStyle(value, row, index) {
-        if (value <= 0) {
+        if (value < 0) {
             return 'background-color:#FFC8C8;';
         } else {
             return 'background-color:#C8FFCC;';

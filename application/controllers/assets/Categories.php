@@ -41,11 +41,16 @@ class Categories extends CI_Controller
         $filters = json_decode($this->input->post('filterRules'));
         $id = $_POST['id'];
         if ($id === "0") {
-            $this->db->select('*');
-            $this->db->from('asset_categories');
+            $this->db->select('a.*, b.name as journal_type_name');
+            $this->db->from('asset_categories a');
+            $this->db->join('journal_types b', 'a.journal_type_id = b.id', 'left');
             if (@count($filters) > 0) {
                 foreach ($filters as $filter) {
-                    $this->db->like($filter->field, $filter->value);
+                    if($filter->field == "journal_type_name"){
+                        $this->db->like("b.name", $filter->value);
+                    }else{
+                        $this->db->like("a.".$filter->field, $filter->value);
+                    }
                 }
             }
             $this->db->group_by('number');
@@ -53,18 +58,21 @@ class Categories extends CI_Controller
             foreach ($records as $record) {
                 $arr[] = array(
                     "id" => $record['number'],
+                    "journal_type_id" => $record['journal_type_id'],
                     "number" => $record['number'],
                     "name" => $record['name'],
                     "type" => $record['type'],
+                    "journal_type_name" => $record['journal_type_name'],
                     "state" => "closed",
                     "datatable" => 1
                 );
             }
         } else {
-            $this->db->select('*');
-            $this->db->from('asset_categories');
-            $this->db->like('number', $id);
-            $this->db->order_by('flag', 'asc');
+            $this->db->select('a.*, b.name as journal_type_name');
+            $this->db->from('asset_categories a');
+            $this->db->join('journal_types b', 'a.journal_type_id = b.id');
+            $this->db->where('a.number', $id);
+            $this->db->order_by('a.flag', 'asc');
             $arr = $this->db->get()->result_array();
         }
 
@@ -120,10 +128,11 @@ class Categories extends CI_Controller
         $this->db->from('config');
         $config = $this->db->get()->row();
 
-        $this->db->select('*');
-        $this->db->from('asset_categories');
-        $this->db->order_by('number', 'asc');
-        $this->db->order_by('flag', 'asc');
+        $this->db->select('a.*, b.name as journal_type_name');
+        $this->db->from('asset_categories a');
+        $this->db->join('journal_types b', 'a.journal_type_id = b.id', 'left');
+        $this->db->order_by('a.number', 'asc');
+        $this->db->order_by('a.flag', 'asc');
         $records = $this->db->get()->result_array();
 
         $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#customers {border-collapse: collapse;width: 100%;font-size: 12px;}#customers td, #customers th {border: 1px solid #ddd;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: #ddd;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: left;color: black;}</style><body>
@@ -153,6 +162,7 @@ class Categories extends CI_Controller
                 <th width="20">No</th>
                 <th>Number</th>
                 <th>Name</th>
+                <th>Journal Type</th>
                 <th>Type</th>
                 <th>Account No</th>
                 <th>Account Name</th>
@@ -164,6 +174,7 @@ class Categories extends CI_Controller
                     <td>' . $no . '</td>
                     <td>' . $data['number'] . '</td>
                     <td>' . $data['name'] . '</td>
+                    <td>' . $data['journal_type_name'] . '</td>
                     <td>' . $data['type'] . '</td>
                     <td>' . $data['account_number'] . '</td>
                     <td>' . $data['account_name'] . '</td>

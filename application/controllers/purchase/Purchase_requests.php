@@ -527,6 +527,7 @@ class Purchase_requests extends CI_Controller
         $this->db->join('item_rm c', 'a.item_rm_id = c.id');
         $this->db->join('item_familys d', 'c.item_family_id = d.id');
         $this->db->where('a.status_edit', 1);
+        $this->db->where('a.request_no !=', null);
         $this->db->group_by('a.request_no');
         $this->db->order_by('a.updated_date');
         $this->db->order_by('a.created_date');
@@ -823,6 +824,22 @@ class Purchase_requests extends CI_Controller
 
         $config = $this->db->get('config')->row();
         $config_iso = $this->db->get('config_iso')->row();
+
+        $approval = $this->crud->read("approvals", [], ["table_name" => "purchase_request_others"]);
+        $user_1 = $this->crud->read("users", [], ["username" => @$approval->user_approval_1]);
+        $user_2 = $this->crud->read("users", [], ["username" => @$approval->user_approval_2]);
+
+        if($purchase_requests->approved_by == @$approval->user_approval_1){
+            $imge_1 = '<img src="'.base_url('assets/image/approved.png').'" width="100"/>';
+            $imge_2 = "";
+        }elseif($purchase_requests->approved_by == @$approval->user_approval_2){
+            $imge_1 = '<img src="'.base_url('assets/image/approved.png').'" width="100"/>';
+            $imge_2 = '<img src="'.base_url('assets/image/approved.png').'" width="100"/>';
+        }else{
+            $imge_1 = "";
+            $imge_2 = "";
+        }
+        
         //Config Page
         $rows = 15;
         $page = ceil(count($purchase_request_total) / $rows);
@@ -960,20 +977,18 @@ class Purchase_requests extends CI_Controller
                             <div style="width:30%; float:left;">
                                 <br>
                             </div>
-                            <div style="width:50%; float:left;">
+                            <div style="width:40%; float:right;">
                                 <table id="customers" style="margin-top:20px;">
                                     <tr>
-                                        <th colspan="3" width="200" style="text-align:center;">'.$config->name.'</th>
+                                        <th colspan="2" style="text-align:center;">'.$config->name.'</th>
                                     </tr>
                                     <tr>
-                                        <th style="height:80px;"></th>
-                                        <th style="height:80px;"></th>
-                                        <th style="height:80px;"></th>
+                                        <th style="height:80px;">'.@$imge_1.'</th>
+                                        <th style="height:80px;">'.@$imge_2.'</th>
                                     </tr>
                                     <tr>
-                                        <th style="height:20px; text-align:center;">Vishal Sharma</th>
-                                        <th style="height:20px; text-align:center;">Rendhika Harsono</th>
-                                        <th style="height:20px; text-align:center;">Deddy Harsono</th>
+                                        <th style="height:20px; text-align:center;">'.@$user_1->name.'</th>
+                                        <th style="height:20px; text-align:center;">'.@$user_2->name.'</th>
                                     </tr>
                                 </table>
                             </div>';

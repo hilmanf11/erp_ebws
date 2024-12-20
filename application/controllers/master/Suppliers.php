@@ -31,9 +31,17 @@ class Suppliers extends CI_Controller
     public function reads()
     {
         $post = isset($_POST['q']) ? $_POST['q'] : "";
-        $send = $this->crud->reads('suppliers', ["name" => $post]);
+        $send = $this->crud->reads('suppliers', ["name" => $post], ["status" => 0]);
         echo json_encode($send);
     }
+
+    public function read()
+    {
+        $supplier_id = $this->input->post('supplier_id');
+        $send = $this->crud->read('suppliers', [], ["id" => $supplier_id]);
+        echo json_encode($send);
+    }
+
     //GET DATATABLES
     public function datatables()
     {
@@ -113,6 +121,17 @@ class Suppliers extends CI_Controller
             show_error("Cannot Process your request");
         }
     }
+
+    public function updateTerms()
+    {
+        if ($this->input->post()) {
+            $post = $this->input->post();
+            $send = $this->crud->update('suppliers', ["id" => $post['supplier_id']], ["terms" => $post['terms']]);
+            echo $send;
+        } else {
+            show_error("Cannot Process your request");
+        }
+    }
     //DELETE DATA
     public function delete()
     {
@@ -136,25 +155,26 @@ class Suppliers extends CI_Controller
                 //excel
                 'name' => $data->val($i, 2),
                 'number' => $data->val($i, 3),
-                'type' => $data->val($i, 4),
-                'origin' => $data->val($i, 5),
-                'state' => $data->val($i, 6),
-                'tds' => $data->val($i, 7),
-                'address' => $data->val($i, 8),
-                'contact_person' => $data->val($i, 9),
-                'telp' => $data->val($i, 10),
-                'fax' => $data->val($i, 11),
-                'email' => $data->val($i, 12),
-                'website' => $data->val($i, 13),
-                'currency' => $data->val($i, 14),
-                'payment_term' => $data->val($i, 15),
-                'incoterm' => $data->val($i, 16),
-                'gst' => $data->val($i, 17),
-                'pen' => $data->val($i, 18),
-                'ifsc' => $data->val($i, 19),
-                'bank_account' => $data->val($i, 20),
-                'bank_name' => $data->val($i, 21),
-                'status' => $data->val($i, 22)
+                'supplier_type' => $data->val($i, 4),
+                'type' => $data->val($i, 5),
+                'origin' => $data->val($i, 6),
+                'state' => $data->val($i, 7),
+                'tds' => $data->val($i, 8),
+                'address' => $data->val($i, 9),
+                'contact_person' => $data->val($i, 10),
+                'telp' => $data->val($i, 11),
+                'fax' => $data->val($i, 12),
+                'email' => $data->val($i, 13),
+                'website' => $data->val($i, 14),
+                'currency' => $data->val($i, 15),
+                'payment_term' => $data->val($i, 16),
+                'incoterm' => $data->val($i, 17),
+                'gst' => $data->val($i, 18),
+                'pen' => $data->val($i, 19),
+                'ifsc' => $data->val($i, 20),
+                'bank_account' => $data->val($i, 21),
+                'bank_name' => $data->val($i, 22),
+                'status' => $data->val($i, 23)
             );
         }
         $datas['total'] = count($datas);
@@ -213,14 +233,17 @@ class Suppliers extends CI_Controller
 
             if (!empty($suppliers->number)) {
                 echo json_encode(array("title" => "Duplicated", "message" => " Supplier Code " . $data['number'] . " is Duplicate Data", "theme" => "error"));
-            } else if(empty($tds->section)){
-                echo json_encode(array("title" => "Not Found", "message" => " TDS Section " . $data['tds'] . " is Not Found", "theme" => "error"));
+            } else if(!in_array($data['supplier_type'], array("RAW MATERIAL","CAPITAL GOODS","SERVICE","CONSUMABLE","OTHER"))){
+                echo json_encode(array("title" => "Not Found", "message" => " Supplier Type " . $data['supplier_type'] . " is Not Found", "theme" => "error"));
+            // } else if(empty($tds->section)){
+            //     echo json_encode(array("title" => "Not Found", "message" => " TDS Section " . $data['tds'] . " is Not Found", "theme" => "error"));
             } else {
                 $dataFinal = array(
                     //field
                     "id" => $autoid,
                     "name" => $data['name'],
                     "number" => $data['number'],
+                    "supplier_type" => $data['supplier_type'],
                     "type" => $data['type'],
                     "origin" => $data['origin'],
                     "state" => $data['state'],

@@ -83,17 +83,17 @@
             html: `<div style="text-align:left;">
                         <center><b style="font-size:16px !important;">MRP COMPONENT PARAMETER</b><hr></center>
                         <ul>
-                            <li><b>MPS Production Plan</b> is taken from Generate MPS</li>
-                            <li><b>OS Purchase Order</b> is taken from (Purchase Orders (Qty) - Purchase Order Receipt (Qty)) of Cut Off</li>
-                            <li><b>Balance WIP</b> is taken from (Supply Sheet (actual) - Issued Material (qty)) if results > 0 of Cut Off</li>
-                            <li><b>OS Workorder</b> is taken from Supply Sheet and Request date >= Cut Off </li>
-                            <li><b>OS Supply</b> is taken from (Supply Sheet (actual) - Issued Material (qty)) if results < 0 of Cut Off </li>
-                            <li><b>Stock Raw Material</b> is taken from (Purchase Order Receipt (qty) + Return Material (qty) - Issued Material (qty))</li>
+                            <li><b>Breakdown LTTP & BOM</b> is taken from (Generate LTTP x Bom)</li>
+                            <li><b>WHS</b> is taken from Ending Stock in Store of Cut off</li>
+                            <li><b>WIP</b> is taken from Generate MPP - Issued If result Minus</li>
+                            <li><b>OS SUPPLIER</b> is taken from Purchase Order - Gate Entry of Cut Off</li>
+                            <li><b>TOTAL STOCK</b> is taken from (WHS + WIP + OS SUPPLIER)</li>
+                            <li><b>OS SUPPLY</b> Generate MPP - Issued If result Plus</li>
                         </ul>
                         <center><b style="font-size:16px !important;">FORMULA</b><hr></center>
                         <ul>
-                            <li><b>NEED M1 to M6</b> is taken from Generate MPS (Prodplan) * BOM (Qpa) according to every month</li>
-                            <li><b>BAL M1</b> is taken from (Total Stock - OS WO + NEED M1)</li>
+                            <li><b>NEED M1 to M6</b> is taken from Generate LTTP (Prodplan) * BOM (Qpa) according to every month</li>
+                            <li><b>BAL M1</b> is taken from (TOTAL STOCK - OS WO + NEED M1)</li>
                             <li><b>BAL M2</b> is taken from (BAL M1 - NEED M2)</li>
                             <li><b>BAL M3</b> is taken from (BAL M2 - NEED M3)</li>
                             <li><b>BAL M4</b> is taken from (BAL M3 - NEED M4)</li>
@@ -242,28 +242,29 @@
 
             $.messager.prompt('Generate MRP', 'Please input Password Generate', function(r){
                 if (r == "GENERATEMRP"){
-                    if(check_bypass.checked == false){
-                        Swal.fire({
-                            title: 'Please Wait for Generating Data',
-                            showConfirmButton: false,
-                            allowOutsideClick: false,
-                            allowEscapeKey: false,
-                            didOpen: () => {
-                                Swal.showLoading();
-                            },
-                        });
+                    // $.ajax({
+                    //     type: "get",
+                    //     url: "<?= base_url('planning/generate_mrp/checkBom') ?>",
+                    //     data: "filter_month=" + window.btoa(filter_month) +
+                    //         "&filter_year=" + window.btoa(filter_year) +
+                    //         "&filter_revision=" + window.btoa(filter_revision) +
+                    //         "&filter_product_family=" + window.btoa(filter_product_family) +
+                    //         "&filter_part_no=" + window.btoa(filter_part_no),
+                    //     dataType: "json",
+                    //     success: function(check) {
+                    //         if(check.status == "OK"){
+                                if(check_bypass.checked == false){
+                                    Swal.fire({
+                                        title: 'Please Wait for Generating Data',
+                                        showConfirmButton: false,
+                                        allowOutsideClick: false,
+                                        allowEscapeKey: false,
+                                        didOpen: () => {
+                                            Swal.showLoading();
+                                        },
+                                    });
 
-                        $.ajax({
-                            type: "get",
-                            url: "<?= base_url('planning/generate_mrp/checkBom') ?>",
-                            data: "filter_month=" + window.btoa(filter_month) +
-                                "&filter_year=" + window.btoa(filter_year) +
-                                "&filter_revision=" + window.btoa(filter_revision) +
-                                "&filter_product_family=" + window.btoa(filter_product_family) +
-                                "&filter_part_no=" + window.btoa(filter_part_no),
-                            dataType: "json",
-                            success: function(check) {
-                                if(check.status == "OK"){
+                                    
                                     $.ajax({
                                         type: "get",
                                         url: "<?= base_url('planning/generate_mrp/getDataMps') ?>",
@@ -313,25 +314,26 @@
                                             }
                                         }
                                     });
+                                    
                                 }else{
-                                    Swal.close();
-                                    Swal.fire({
-                                        title: "Data in Bill of Material VS Supplier Items is not Same",
-                                        icon: "error",
-                                        confirmButtonText: 'Download',
-                                        showCancelButton: true,
-                                        allowOutsideClick: false,
-                                    }).then((result) => {
-                                        if (result.isConfirmed) {
-                                            window.location.assign('<?= base_url('planning/generate_mrp/downloadBom') ?>');
-                                        }
-                                    });
+                                    generateDataMrp(filter_month, filter_year, filter_revision, filter_product_family, filter_part_no, filter_cutoff);
                                 }
-                            }
-                        });
-                    }else{
-                        generateDataMrp(filter_month, filter_year, filter_revision, filter_product_family, filter_part_no, filter_cutoff);
-                    }
+                    //         }else{
+                    //             Swal.close();
+                    //             Swal.fire({
+                    //                 title: "Data in Bill of Material not ready in Supplier Items",
+                    //                 icon: "error",
+                    //                 confirmButtonText: 'Download',
+                    //                 showCancelButton: true,
+                    //                 allowOutsideClick: false,
+                    //             }).then((result) => {
+                    //                 if (result.isConfirmed) {
+                    //                     window.location.assign('<?= base_url('planning/generate_mrp/downloadBom') ?>');
+                    //                 }
+                    //             });
+                    //         }
+                    //     }
+                    // });
                 }
             });
         } else {

@@ -85,11 +85,11 @@
                     <center><b style="font-size:16px !important;">COMPONENT CHECK</b><hr></center>
                     <ul>
                         <li><b>Forecast</b> is taken from <b>Order Management > Forecasting > Forecast Customer</b></li>
-                        <li><b>Stock Finish Good</b> is taken from <b>Scan Receipt FG</b></li>
-                        <li><b>Stock WIP</b> is taken from <b>Advance Planning > LTTP > Upload Data WIP</b></li>
-                        <li><b>Sales Order</b> is taken from <b>Sales Orders in Current Month</b></li>
+                        <li><b>Stock Finish Good</b> is taken from <b>Stock FG Based on Cutoff</b></li>
+                        <li><b>Stock WIP</b> is taken from <b>Production Schedule - RFG</b></li>
+                        <li><b>Sales Order</b> is taken from <b>Sales Orders on Cutoff</b></li>
                         <li><b>OST Sales Order</b> is taken from <b>Sales Orders in Previous Month</b></li>
-                        <li><b>OST Workorder</b> is taken from <b>Production Schedule in Current Month</b></li>
+                        <li><b>OST Workorder</b> is taken from <b>MPP Qty - Production Schedule Based on Cutoff</b></li>
                     </ul>
                     <center><b style="font-size:16px !important;">FORMULA</b><hr></center>
                     <ul>
@@ -215,6 +215,9 @@
                                     });
                                 }
                             }
+                        },
+                        error: function(){
+                            Swal.fire('Failed!', 'Process Calculating Data is Failed, Please Try Again!', 'error');
                         }
                     });
                 }
@@ -355,6 +358,7 @@
     function filter() {
         var filter_month = $("#filter_month").combobox('getValue');
         var filter_year = $("#filter_year").textbox('getValue');
+        var filter_cutoff = $("#filter_cutoff").datebox('getValue');
         var filter_revision = $("#filter_revision").combobox('getValue');
         var filter_customer = $("#filter_customer").combobox('getValue');
         var filter_item_fg = $("#filter_item_fg").combogrid('getValue');
@@ -362,6 +366,7 @@
         var url = "?filter_month=" + window.btoa(filter_month) +
             "&filter_year=" + window.btoa(filter_year) +
             "&filter_revision=" + window.btoa(filter_revision) +
+            "&filter_cutoff=" + window.btoa(filter_cutoff) +
             "&filter_customer=" + window.btoa(filter_customer) +
             "&filter_item_fg=" + window.btoa(filter_item_fg);
 

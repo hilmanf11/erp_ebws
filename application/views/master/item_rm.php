@@ -3,7 +3,7 @@
     <thead frozen="true">
         <th field="ck" checkbox="true"></th>
         <th data-options="field:'foto',width:35,halign:'center',formatter:FormatterImage">Foto</th>
-        <th data-options="field:'id',width:150,align:'center'">Part No EBWS</th>
+        <th data-options="field:'id',width:120,halign:'center'">Part No EBWS</th>
         <th data-options="field:'number',width:200,halign:'center'">Part No Supplier</th>
     </thead>
     <thead>
@@ -46,7 +46,7 @@
 </div>
 
 <!-- DIALOG SAVE AND UPDATE -->
-<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 800px; height: 600px; padding:10px; top: 10px;">
+<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 800px; height: 550px; padding:10px; top: 10px;">
     <form id="frm_insert" method="post" enctype="multipart/form-data" novalidate>
         <div style="width: 100%; float: left;">
             <div style="width: 100%; float: left;">
@@ -164,11 +164,11 @@
                     </div>
                     <div class="fitem">
                         <span style="width:35%; display:inline-block;">COA No</span>
-                        <input style="width:60%;" name="account_number" id="account_number" class="easyui-textbox" readonly required>
+                        <input style="width:60%;" name="account_number" id="account_number" class="easyui-textbox" readonly>
                     </div>
                     <div class="fitem">
                         <span style="width:35%; display:inline-block;">COA Name</span>
-                        <input style="width:60%;" name="account_name" id="account_name" class="easyui-textbox" readonly required>
+                        <input style="width:60%;" name="account_name" id="account_name" class="easyui-textbox" readonly>
                     </div>
                     <div class="fitem">
                         <span style="width:35%; display:inline-block;">Remarks</span>
@@ -229,73 +229,60 @@
 <iframe id="printout" src="<?= base_url('master/item_rm/print') ?>" style="width: 100%;" hidden></iframe>
 <script>
     function sync() {
-        $.messager.confirm('Warning', 'Are you sure you want to push this data?', function(r) {
-            if (r) {
-                Swal.fire({
-                    title: 'Get Data from MRP Banshu',
-                    showConfirmButton: false,
-                    allowOutsideClick: false,
-                    allowEscapeKey: false,
-                    didOpen: () => {
-                        Swal.showLoading();
-                    },
-                });
+        var rows = $('#dg').datagrid('getSelections');
+        if (rows.length > 0) {
+            Swal.fire({
+                title: 'Send Data to MRP Banshu',
+                showConfirmButton: false,
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                },
+            });
 
-                $.ajax({
-                    type: "get",
-                    url: "<?= base_url('master/item_rm/getSync') ?>",
-                    dataType: "json",
-                    success: function(rows) {
-                        Swal.close();
-                        $("#dlg_sync").dialog('open');
-                        $("#sync").linkbutton("disable");
-                        requestData(rows['total'], rows);
+            requestData(rows.length, rows);
+            function requestData(total, json, number = 1, value = 0) {
+                if (value < 100) {
+                    value = Math.floor((number / total) * 100);
+                    $('#p_upload2').progressbar('setValue', value);
+                    $('#p_start2').html(number);
+                    $('#p_finish2').html(total);
 
-                        function requestData(total, json, number = 1, value = 0) {
-                            if (value < 100) {
-                                value = Math.floor((number / total) * 100);
-                                $('#p_upload2').progressbar('setValue', value);
-                                $('#p_start2').html(number);
-                                $('#p_finish2').html(total);
+                    $.post('<?= base_url('master/item_rm/createSync') ?>', {
+                        data: json[number - 1]
+                    }, function(note) {
+                        var result = eval('(' + note + ')');
+                        requestData(total, json, number + 1, value);
 
-                                $.post('<?= base_url('master/item_rm/createSync') ?>', {
-                                    data: json[number - 1]
-                                }, function(note) {
-                                    var result = eval('(' + note + ')');
-                                    requestData(total, json, number + 1, value);
+                        var title = "<b style='color: green;'>" + result.title + "</b> | " + result.message;
+                        $("#p_remarks2").append(title + "<br>");
 
-                                    var title = "<b style='color: green;'>" + result.title + "</b> | " + result.message;
-                                    $("#p_remarks2").append(title + "<br>");
-
-                                    if (value == 100) {
-                                        // Swal.fire('Good job!', 'Process Sync Data Completed!', 'success');
-                                        $("#sync").linkbutton("enable");
-                                    }
-                                }).fail(function(jqXHR, textStatus) {
-                                    if (textStatus == "error") {
-                                        Swal.fire({
-                                            title: 'Connection Time Out, Check Your Connection',
-                                            showConfirmButton: false,
-                                            allowOutsideClick: false,
-                                            allowEscapeKey: false,
-                                            didOpen: () => {
-                                                Swal.showLoading();
-                                            },
-                                        });
-
-                                        requestData(total, json, number, value);
-                                    }
-                                });
-                            }
+                        if (value == 100) {
+                            Swal.close();
+                            Swal.fire('Good job!', 'Process Send Data Completed!', 'success');
+                            $("#sync").linkbutton("enable");
                         }
-                    },
-                    error: function(){
-                        Swal.close();
-                        Swal.fire('Failed!', 'Not Connected in MRP Banshu', 'error');
-                    }
-                });
+                    }).fail(function(jqXHR, textStatus) {
+                        if (textStatus == "error") {
+                            Swal.fire({
+                                title: 'Connection Time Out, Check Your Connection',
+                                showConfirmButton: false,
+                                allowOutsideClick: false,
+                                allowEscapeKey: false,
+                                didOpen: () => {
+                                    Swal.showLoading();
+                                },
+                            });
+
+                            requestData(total, json, number, value);
+                        }
+                    });
+                }
             }
-        });
+        }else{
+            toastr.warning("Please Select data in the table first");
+        }
     }
 
     function autoid(){
@@ -309,7 +296,7 @@
         var platting = $("#platting").combogrid('getValue');
         var type = $("#type").combogrid('getValue');
 
-        if(item_family_number != ""){
+        if(item_family_number != "" || type != ""){
             $.ajax({
                 type : "post",
                 url : "<?= base_url('master/item_rm/autoid')?>",
@@ -326,7 +313,7 @@
                 },
                 dataType : "json",
                 success : function(response){
-                    if(response.code.length >= 10){
+                    if(response.code.length == 10){
                         $('#id').textbox('setValue', response.code);
                     }else{
                         toastr.info("Please complete your digital code data");
@@ -335,7 +322,7 @@
                 }
             });
         }else{
-            toastr.info("Please Choose Product Family and Other");
+            toastr.info("Please Choose Product Family and Type");
         }
     }
 
@@ -657,7 +644,7 @@
     });
 
     $('#item_category_id').combobox({
-        url:'<?= base_url('master/item_categories/readsnotfg'); ?>',
+        url:'<?= base_url('master/item_categories/reads/FG'); ?>',
         valueField:'id',
         textField:'name',
         prompt: 'Choose Category',
@@ -672,7 +659,7 @@
 
                     if(category.number == "RM"){
                         //Wire & Tape
-                        if(family.number == "1" || family.number == "4" || family.number == "6"){
+                        if(family.number == "1" || family.number == "4"){
                             $("#t_kind").show();
                             $("#t_size").show();
                             $("#t_color_1").show();
@@ -708,7 +695,7 @@
                             $("#t_waterproof").show();
                             $("#t_platting").hide();
                         //Fuse
-                        }else if(family.number == "5"){
+                        }else if(family.number == "5" || family.number == "6"){
                             $("#t_kind").show();
                             $("#t_size").show();
                             $("#t_color_1").show();

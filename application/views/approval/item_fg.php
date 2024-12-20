@@ -5,37 +5,42 @@
     clientPaging: false,
     rownumbers: true,
     fit: true">
-    <thead frozen="true">
+    <thead data-options="frozen:true">
         <tr>
             <th field="ck" checkbox="true"></th>
-            <th data-options="field:'number',width:150,halign:'center'">Product No</th>
-            <th data-options="field:'name',width:150,halign:'center'">Product Name</th>
+            <th data-options="field:'foto',width:35,halign:'center',formatter:FormatterImage">Foto</th>
+            <th data-options="field:'number',width:150,halign:'center'">Product No EBWS</th>
+            <th data-options="field:'name',width:150,halign:'center'">Description</th>
         </tr>
     </thead>
     <thead>
         <tr>
-            <th data-options="field:'alias',width:150,halign:'center'">Product Alias</th>
-            <th data-options="field:'number_customer',width:150,halign:'center'">Customer Part</th>
-            <th data-options="field:'total_mold',width:80,halign:'center'">Total Mold</th>
-            <th data-options="field:'control_id',width:80,halign:'center'">Control</th>
-            <th data-options="field:'lot',width:80,halign:'center'">Lot</th>
-            <th data-options="field:'polybag',width:80,halign:'center'">Polybag Label</th>
-            <th data-options="field:'box_label',width:80,halign:'center'">Box Label</th>
-            <th data-options="field:'ng_ration',width:80,halign:'center'">NG Ratio (%)</th>
-            <th data-options="field:'is_no',width:80,halign:'center'">IS No</th>
-            <th data-options="field:'weight',width:80,halign:'center'">Weight (gram)</th>
-            <th data-options="field:'leadtime',width:100,halign:'center'">Prod. Leadtime (day)</th>
-            <th data-options="field:'mpq',width:80,halign:'center'">MPQ</th>
-            <th data-options="field:'moq',width:80,halign:'center'">MOQ</th>
-            <th data-options="field:'uom',width:80,halign:'center'">Uom</th>
-            <th data-options="field:'qty_box',width:80,halign:'center'">Qty/Box</th>
-            <th data-options="field:'box_sub',width:80,halign:'center'">Qty/Sub Box</th>
-            <th data-options="field:'hsn_code',width:80,halign:'center'">HSN Code</th>
-            <th data-options="field:'gst_rate',width:80,halign:'center'">GST Rate</th>
-            <th data-options="field:'account_number',width:100,halign:'center'">Account No</th>
-            <th data-options="field:'account_name',width:150,halign:'center'">Account Name</th>
-            <th data-options="field:'created_by',width:120,halign:'center'">Create By</th>
-            <th data-options="field:'created_date',width:150,halign:'center'">Create Date</th>
+            <th data-options="field:'number_customer',width:150,halign:'center'">Part No Customer</th>
+            <th data-options="field:'alias',width:150,halign:'center'">Product No Invoice</th>
+            <th data-options="field:'cct',width:80,halign:'center', styler:cellStylerCct">CCT Qty</th>
+            <th data-options="field:'customer_name',width:250,halign:'center'">Customer</th>
+            <th data-options="field:'harnes_type_name',width:100,halign:'center'">Harness Type</th>
+            <th data-options="field:'control_id',width:100,halign:'center'">Control No</th>
+            <th data-options="field:'polybag',width:150,halign:'center'">Polybag Label</th>
+            <th data-options="field:'box_label',width:70,align:'center'">Box Label</th>
+            <th data-options="field:'lot',width:80,align:'center'">Lot<br>Production</th>
+            <!-- <th data-options="field:'ng_ration',width:90,align:'center'">NG Ratio (%)</th> -->
+            <!-- <th data-options="field:'is_no',width:100,halign:'center'">IS No.</th> -->
+            <th data-options="field:'weight',width:100,align:'center'">Weight (gram)</th>
+            <th data-options="field:'leadtime',width:100,align:'center'">Prod. Leadtime (day)</th>
+            <th data-options="field:'mpq',width:50,align:'center'">MPQ</th>
+            <th data-options="field:'moq',width:50,align:'center'">MOQ</th>
+            <th data-options="field:'uom',width:50,align:'center'">UoM</th>
+            <th data-options="field:'qty_box',width:80,align:'center'">QTY/Box</th>
+            <!-- <th data-options="field:'box_sub',width:80,align:'center'">QTY/Sub Box</th> -->
+            <th data-options="field:'hsn_code',width:100,halign:'center'">HSN No</th>
+            <th data-options="field:'type',width:100,align:'center'">Type</th>
+            <th data-options="field:'account_number',width:150,halign:'center'">COA No</th>
+            <th data-options="field:'account_name',width:150,halign:'center'">COA Name</th>
+            <th data-options="field:'attachment',width:100,halign:'center',formatter:cellbutton">Attachment</th>
+            <th data-options="field:'logo',width:100,align:'center', styler:cellStyler, formatter:cellFormatterLogo">Logo</th>
+            <th data-options="field:'revision',width:80,halign:'center'">Revision</th>
+            <th data-options="field:'status',width:100,align:'center', styler:cellStyler, formatter:cellFormatter">Status</th>
         </tr>
     </thead>
 </table>
@@ -212,4 +217,73 @@
 
         return "<b>" + formatter.format(value) + "</b>";
     }
+
+    //CELLSTYLE STATUS
+    function cellStyler(value, row, index) {
+        if (value == 0) {
+            return 'background: #53D636; color:white;';
+        } else {
+            return 'background: #FF5F5F; color:white;';
+        }
+    }
+
+    //CELLSTYLE CCT
+    function cellStylerCct(value, row, index) {
+        if (row.total_cct == row.cct) {
+            return 'background: #53D636; color:white;';
+        } else {
+            return 'background: #FF5F5F; color:white;';
+        }
+    }
+
+    //FORMATTER STATUS
+    function cellFormatter(value) {
+        if (value == 0) {
+            return 'Active';
+        } else {
+            return 'Not Active';
+        }
+    };
+
+     //FORMATTER LOGO
+     function cellFormatterLogo(value) {
+        if (value == 0) {
+            return 'YES';
+        } else {
+            return 'NO';
+        }
+    };
+
+    function FormatterImage(val) {
+        if (val == "" || val == null) {
+            return '<img style="width: 100%;" src="<?= base_url('assets/image/users/default.png'); ?>" />';
+        } else {
+            return '<a href="' + val + '" target="_blank"><img style="width: 100%;" src="' + val + '" /></a>';
+        }
+    };
+
+    //CELLSTYLE APPROVE
+    function styleApproved(value, row, index) {
+        if (value == "" || value === null ) {
+            return 'background: #53D636; color:white;';
+        } else {
+            return 'background: #FF5F5F; color:white;';
+        }
+    }
+    //FORMATTER APPROVE
+    function formatApproved(value) {
+        if (value == "" || value === null ) {
+            return 'Approved';
+        } else {
+            return 'Checking';
+        }
+    };
+
+    //
+    function cellbutton(value) {
+        if (value != null) {
+            return '<a target="_blank" href="' + value + '" class="btn btn-primary btn-sm" style="pointer-events: auto; opacity:1; width:100%;"><i class="fa fa-eye"></i> View</a>';
+            // alert(value);
+        }
+    };
 </script>

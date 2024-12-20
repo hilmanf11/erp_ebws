@@ -4,7 +4,7 @@
             <th rowspan="2" field="ck" checkbox="true"></th>
             <th rowspan="2" data-options="field:'details',width:90,align:'center', formatter:btnDetails">Detail</th>
             <th rowspan="2" data-options="field:'journal_date',width:100,align:'center'">Journal Date</th>
-            <th rowspan="2" data-options="field:'number',width:100,align:'center'">GL No</th>
+            <th rowspan="2" data-options="field:'number',width:140,align:'center'">GL No</th>
             <th rowspan="2" data-options="field:'journal_type_name',width:200,halign:'center'">Journal Type</th>
             <th rowspan="2" data-options="field:'modul',width:150,halign:'center'">Modul</th>
             <th colspan="3" data-options="field:'',width:200,halign:'center'">Original Currency</th>
@@ -69,7 +69,7 @@
                         <option value="FOH">FOH</option>
                         <option value="ASSET">ASSET</option>
                         <option value="CURRENCY REVALUATION">CURRENCY REVALUATION</option>
-                        <option value="ADJUSTMENT">ADJUSTMENT</option>
+                        <!-- <option value="ADJUSTMENT">JOURNAL VOUCHER</option> -->
                         <option value="CLOSING JOURNAL">CLOSING JOURNAL</option>
                     </select>
                 </div>
@@ -116,7 +116,7 @@
                         <option value="FOH">FOH</option>
                         <option value="ASSET">ASSET</option>
                         <option value="CURRENCY REVALUATION">CURRENCY REVALUATION</option>
-                        <option value="ADJUSTMENT">ADJUSTMENT</option>
+                        <!-- <option value="ADJUSTMENT">JOURNAL VOUCHER</option> -->
                         <option value="CLOSING JOURNAL">CLOSING JOURNAL</option>
                     </select>
                 </div>
@@ -169,6 +169,7 @@
                     <th rowspan="2" data-options="field:'trans_date',width:100,editor: {type: 'datebox',options: {formatter: myformatter,parser: myparser}}">Trans Date</th>
                     <th rowspan="2" data-options="field:'document_no',width:160,editor: {type: 'textbox', options: {required: true}}">Document No</th>
                     <th rowspan="2" data-options="field:'invoice_no',width:120,editor: {type: 'textbox', options: {required: true}}">Invoice No</th>
+                    <th hidden rowspan="2" data-options="field:'company_id',width:100,editor: {type: 'textbox'}">Company ID</th>
                     <th rowspan="2" data-options="field:'company_name',width:200, editor: {
                         type: 'combobox',
                         options: {
@@ -477,7 +478,9 @@
             if (endEditing()) {
                 $('#dg2').datagrid('appendRow', {
                     "flag": 1,
-                    "trans_date": journal_date
+                    "trans_date": journal_date,
+                    "currency": "INR",
+                    "rates": 1,
                 });
 
                 editIndex = $('#dg2').datagrid('getRows').length - 1;
@@ -791,122 +794,133 @@
                 text: 'Save All',
                 iconCls: 'icon-ok',
                 handler: function() {
-                    var journal_date = $("#journal_date").datebox('getValue');
-                    var modul = $("#modul").combobox('getValue');
-                    var journal_type = $("#journal_type").combogrid('getValue');
-                    var number = $("#number").textbox('getValue');
-                    var remarks = $("#remarks").textbox('getValue');
-
-                    var local_debit = $("#local_debit").numberbox('getValue');
-                    var local_credit = $("#local_credit").numberbox('getValue');
-
-                    endEditing();
-                    //var rows = $('#dg2').datagrid('getSelections');
-                    var rows = $('#dg2').datagrid('getRows');
-                    var totalrows = rows.length;
-
                     $.ajax({
                         type: "post",
-                        url: "<?= base_url('closing/locks/checkLock') ?>",
-                        data: "period=" + journal_date + "&menus_id=<?= $menus_id ?>",
-                        dataType: "json",
-                        success: function (lock) {
-                            if(lock.total > 0){
-                                toastr.error("This period is not active by Accounting");
-                                return false;
-                            }
+                        url: "<?= base_url('finance/journal_postings/number/' . $menus_id) ?>",
+                        dataType: "html",
+                        success: function(number) {
+                            if(number == ""){
+                                toastr.info("Please Check Configuration in Serial No First");
+                            }else{
+                                var journal_date = $("#journal_date").datebox('getValue');
+                                var modul = $("#modul").combobox('getValue');
+                                var journal_type = $("#journal_type").combogrid('getValue');
+                                var remarks = $("#remarks").textbox('getValue');
 
-                            if (rows.length > 0) {
-                                if(local_debit == local_credit){
-                                    $.messager.confirm('Warning', 'Are you sure you want to save this data?', function(r) {
-                                        if (r) {
-                                            Swal.fire({
-                                                title: 'Please Wait for Saving Data',
-                                                showConfirmButton: false,
-                                                allowOutsideClick: false,
-                                                allowEscapeKey: false,
-                                                didOpen: () => {
-                                                    Swal.showLoading();
-                                                },
-                                            });
+                                var local_debit = $("#local_debit").numberbox('getValue');
+                                var local_credit = $("#local_credit").numberbox('getValue');
+                                
+                                endEditing();
+                                //var rows = $('#dg2').datagrid('getSelections');
+                                var rows = $('#dg2').datagrid('getRows');
+                                var totalrows = rows.length;
 
-                                            if (totalrows > 0) {
-                                                requestData(totalrows, rows);
-                                                $('#dlg_insert').dialog('close');
-                                                $('#dlg_generate').dialog('open');
+                                $.ajax({
+                                    type: "post",
+                                    url: "<?= base_url('closing/locks/checkLock') ?>",
+                                    data: "period=" + journal_date + "&menus_id=<?= $menus_id ?>",
+                                    dataType: "json",
+                                    success: function (lock) {
+                                        if(lock.total > 0){
+                                            toastr.error("This period is not active by Accounting");
+                                            return false;
+                                        }
 
-                                                function requestData(total, json, jml = 1, value = 0) {
-                                                    if (value < 100) {
-                                                        value = Math.floor((jml / total) * 100);
-                                                        var i = (jml - 1);
-
-                                                        $('#p_upload').progressbar('setValue', value);
-                                                        $('#p_start').html(jml);
-                                                        $('#p_finish').html(totalrows);
-
-                                                        $.ajax({
-                                                            type: "post",
-                                                            url: '<?= base_url('finance/journal_postings/create') ?>',
-                                                            data: {
-                                                                journal_date: journal_date,
-                                                                modul: modul,
-                                                                journal_type_id: journal_type,
-                                                                number: number,
-                                                                remarks: remarks,
-                                                                id: json[i].id,
-                                                                trans_date: json[i].trans_date,
-                                                                document_no: json[i].document_no,
-                                                                invoice_no: json[i].invoice_no,
-                                                                company_name: json[i].company_name,
-                                                                account_number: json[i].account_number,
-                                                                account_name: json[i].account_name,
-                                                                description: json[i].description,
-                                                                currency: json[i].currency,
-                                                                original_debit: json[i].original_debit,
-                                                                original_credit: json[i].original_credit,
-                                                                rates: json[i].rates,
-                                                                local_debit: json[i].local_debit,
-                                                                local_credit: json[i].local_credit
+                                        if (rows.length > 0) {
+                                            if(local_debit == local_credit){
+                                                $.messager.confirm('Warning', 'Are you sure you want to save this data?', function(r) {
+                                                    if (r) {
+                                                        Swal.fire({
+                                                            title: 'Please Wait for Saving Data',
+                                                            showConfirmButton: false,
+                                                            allowOutsideClick: false,
+                                                            allowEscapeKey: false,
+                                                            didOpen: () => {
+                                                                Swal.showLoading();
                                                             },
-                                                            dataType: "json",
-                                                            success: function(result) {
-                                                                requestData(total, json, jml + 1, value);
+                                                        });
 
-                                                                if (result.theme == "success") {
-                                                                    var title = "<b style='color: green;'>" + result.title + "</b> | " + result.message;
-                                                                } else {
-                                                                    var title = "<b style='color: red;'>" + result.title + "</b> | " + result.message;
-                                                                }
+                                                        if (totalrows > 0) {
+                                                            requestData(totalrows, rows);
+                                                            $('#dlg_insert').dialog('close');
+                                                            $('#dlg_generate').dialog('open');
 
-                                                                $("#p_remarks").append(title + "<br>");
+                                                            function requestData(total, json, jml = 1, value = 0) {
+                                                                if (value < 100) {
+                                                                    value = Math.floor((jml / total) * 100);
+                                                                    var i = (jml - 1);
 
-                                                                if (i == (totalrows - 1)) {
-                                                                    Swal.close();
-                                                                    $('#dlg_generate').dialog('close');
+                                                                    $('#p_upload').progressbar('setValue', value);
+                                                                    $('#p_start').html(jml);
+                                                                    $('#p_finish').html(totalrows);
 
-                                                                    Swal.fire({
-                                                                        title: result.message,
-                                                                        icon: result.theme,
-                                                                        confirmButtonText: 'Ok',
-                                                                        allowOutsideClick: false,
-                                                                    }).then((result) => {
-                                                                        if (result.isConfirmed) {
-                                                                            window.location.reload();
+                                                                    $.ajax({
+                                                                        type: "post",
+                                                                        url: '<?= base_url('finance/journal_postings/create') ?>',
+                                                                        data: {
+                                                                            journal_date: journal_date,
+                                                                            modul: modul,
+                                                                            journal_type_id: journal_type,
+                                                                            number: number,
+                                                                            remarks: remarks,
+                                                                            id: json[i].id,
+                                                                            trans_date: json[i].trans_date,
+                                                                            document_no: json[i].document_no,
+                                                                            invoice_no: json[i].invoice_no,
+                                                                            company_id: json[i].company_id,
+                                                                            company_name: json[i].company_name,
+                                                                            account_number: json[i].account_number,
+                                                                            account_name: json[i].account_name,
+                                                                            description: json[i].description,
+                                                                            currency: json[i].currency,
+                                                                            original_debit: json[i].original_debit,
+                                                                            original_credit: json[i].original_credit,
+                                                                            rates: json[i].rates,
+                                                                            local_debit: json[i].local_debit,
+                                                                            local_credit: json[i].local_credit
+                                                                        },
+                                                                        dataType: "json",
+                                                                        success: function(result) {
+                                                                            requestData(total, json, jml + 1, value);
+
+                                                                            if (result.theme == "success") {
+                                                                                var title = "<b style='color: green;'>" + result.title + "</b> | " + result.message;
+                                                                            } else {
+                                                                                var title = "<b style='color: red;'>" + result.title + "</b> | " + result.message;
+                                                                            }
+
+                                                                            $("#p_remarks").append(title + "<br>");
+
+                                                                            if (i == (totalrows - 1)) {
+                                                                                Swal.close();
+                                                                                $('#dlg_generate').dialog('close');
+
+                                                                                Swal.fire({
+                                                                                    title: result.message,
+                                                                                    icon: result.theme,
+                                                                                    confirmButtonText: 'Ok',
+                                                                                    allowOutsideClick: false,
+                                                                                }).then((result) => {
+                                                                                    if (result.isConfirmed) {
+                                                                                        window.location.reload();
+                                                                                    }
+                                                                                });
+                                                                            }
                                                                         }
                                                                     });
                                                                 }
                                                             }
-                                                        });
+                                                        }
                                                     }
-                                                }
+                                                });
+                                            } else {
+                                                toastr.error("Debit & Credit Not Balance");
                                             }
+                                        } else {
+                                            toastr.info("Please Checklist Posting");
                                         }
-                                    });
-                                } else {
-                                    toastr.error("Debit & Credit Not Balance");
-                                }
-                            } else {
-                                toastr.info("Please Checklist Posting");
+                                    }
+                                });
                             }
                         }
                     });
@@ -1049,13 +1063,20 @@
                         onSelect: function(val, row) {
                             $("#company_name").combobox({
                                 url: '<?= base_url('finance/journal_postings/readCompany?modul=') ?>' + btoa(modul) + "&journal_date=" + btoa(journal_date) + "&journal_type=" + btoa(row.id),
-                                valueField: 'company_id',
+                                valueField: 'company_name',
                                 textField: 'company_name',
                                 prompt: "Choose Company Name",
                                 onSelect: function(rowcom) {
+
+                                    if(modul == "SALES INVOICING"){
+                                        var urlDoc = '<?= base_url('finance/journal_postings/readModul?modul=') ?>' + btoa(modul) + "&journal_date=" + btoa(journal_date) + "&journal_type=" + btoa(row.id) + "&company_id=" + btoa(rowcom.company_id) + "&plant=" + btoa(rowcom.plant);
+                                    }else{
+                                        var urlDoc = '<?= base_url('finance/journal_postings/readModul?modul=') ?>' + btoa(modul) + "&journal_date=" + btoa(journal_date) + "&journal_type=" + btoa(row.id) + "&company_id=" + btoa(rowcom.company_id);
+                                    }
+
                                     $("#document_no").combogrid({
-                                        url: '<?= base_url('finance/journal_postings/readModul?modul=') ?>' + btoa(modul) + "&journal_date=" + btoa(journal_date) + "&journal_type=" + btoa(row.id) + "&company_id=" + btoa(rowcom.company_id),
-                                        panelWidth: 200,
+                                        url: urlDoc,
+                                        panelWidth: 300,
                                         idField: 'number',
                                         textField: 'number',
                                         multiple: true,
@@ -1070,6 +1091,10 @@
                                                 field: 'number',
                                                 title: 'Document No',
                                                 width: 150
+                                            },{
+                                                field: 'trans_date',
+                                                title: 'Trans Date',
+                                                width: 120
                                             }]
                                         ],
                                     });
@@ -1102,6 +1127,7 @@
             pagination: false,
             rownumbers: true,
             remoteFilter: true,
+            fit: true
         }).datagrid('enableFilter');
     }
 
@@ -1127,7 +1153,7 @@
 
     function numberformatDefault(value, row) {
         if (value != null) {
-            const formatter = new Intl.NumberFormat('id-ID', {
+            const formatter = new Intl.NumberFormat('ja-JP', {
                 minimumFractionDigits: 2
             });
             return "<b>" + formatter.format(value) + "</b>";
@@ -1136,7 +1162,7 @@
 
     function numberformatDefaultIdr(value, row){
         if (value != null) {
-            const formatter = new Intl.NumberFormat('id-ID', {
+            const formatter = new Intl.NumberFormat('ja-JP', {
                 minimumFractionDigits: 2
             });
             return "<b>" + formatter.format(value) + "</b>";

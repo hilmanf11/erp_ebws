@@ -12,8 +12,9 @@ class Item_rm extends CI_Controller
         $this->load->library('session');
         $this->load->model('crud');
         //VALIDASI FORM
-        $this->form_validation->set_rules('number', 'Product No.', 'required|min_length[1]|max_length[100]|is_unique[item_rm.number]');
+        $this->form_validation->set_rules('number', 'Part No.', 'required|min_length[1]|max_length[100]|is_unique[item_rm.number]');
     }
+
     //HALAMAN UTAMA
     public function index()
     {
@@ -31,11 +32,43 @@ class Item_rm extends CI_Controller
     //GET DATA
     public function reads($item_family_id = "")
     {
+        //master/bom
+        //planning/where_used
+        $post = isset($_POST['q']) ? $_POST['q'] : "";
+        $send = $this->crud->query("SELECT a.*, b.name as item_family_name 
+            FROM item_rm a 
+            JOIN item_familys b ON a.item_family_id = b.id
+            JOIN item_categories c ON a.item_category_id = c.id 
+            WHERE b.id like '%$item_family_id%' and a.status = 0 and c.id IN ('C01')
+            and (a.id like '%$post%' or a.number like '%$post%' or a.name like '%$post%')");
+        echo json_encode($send);
+    }
+
+    public function readNotRm($item_family_id = "")
+    {
         $post = isset($_POST['q']) ? $_POST['q'] : "";
         $send = $this->crud->query("SELECT a.*, b.name as item_family_name 
             FROM item_rm a 
             JOIN item_familys b ON a.item_family_id = b.id 
-            WHERE b.id like '%$item_family_id%' and (a.number like '%$post%' or a.name like '$post')");
+            JOIN item_categories c ON a.item_category_id = c.id 
+            WHERE b.id like '%$item_family_id%' and c.id NOT IN ('C01','C08','C02') and a.status = 0 and a.approved_to = ''
+            and (a.id like '%$post%' or a.number like '%$post%' or a.name like '%$post%')");
+        echo json_encode($send);
+    }
+
+    //GET DATA
+    public function readAll($item_family_id = "")
+    {
+        //master/bom
+        //planning/where_used
+        $post = isset($_POST['q']) ? $_POST['q'] : "";
+        $send = $this->crud->query("SELECT a.*, b.name as item_family_name 
+            FROM item_rm a 
+            JOIN item_familys b ON a.item_family_id = b.id
+            JOIN item_categories c ON a.item_category_id = c.id 
+            WHERE b.id like '%$item_family_id%' and a.status = 0
+            and a.approved_to = ''
+            and (a.id like '%$post%' or a.number like '%$post%' or a.name like '%$post%')");
         echo json_encode($send);
     }
 
@@ -59,6 +92,7 @@ class Item_rm extends CI_Controller
             // $this->db->join('item_family_subs d', 'a.item_sub_family_id = d.id', 'left');
             $this->db->join('hsn d', 'a.hsn_code = d.number', 'left');
             $this->db->join('makers e', 'a.maker_id = e.id', 'left');
+            $this->db->where('b.number !=', 'FA');
             $this->db->where('a.deleted', 0);
             if (@count($filters) > 0) {
                 foreach ($filters as $filter) {
@@ -108,7 +142,7 @@ class Item_rm extends CI_Controller
             $type = 1;
         }
 
-        if($item_family_number == "1" || $item_family_number == "4" || $item_family_number == "6"){
+        if($item_family_number == "1" || $item_family_number == "4"){
             $format = $item_family_number.$kind.$size.$color_1.$color_2.$type;
         }else if(in_array($item_family_number, ["7","8","9"])){
             $codes = $item_family_number.$kind.$color_1;
@@ -152,91 +186,121 @@ class Item_rm extends CI_Controller
             $format = $codes . sprintf("%04s", $kode + 1) . $type;
         }else if($item_family_number == "5"){
             $format = $item_family_number.$kind."0".$size.$color_1."0".$type;
-        }else{
-            $codes = $item_family_number;
-            $sql = $this->db->query("SELECT max(SUBSTRING(id, 1, 8)) as kode FROM item_rm WHERE SUBSTRING(id, 1, 1) = '$item_family_number'");
+        }else if($item_family_number == "6"){
+            $codes = $item_family_number.$kind.$size.$color_1;
+            $sql = $this->db->query("SELECT max(SUBSTRING(id, 8, 2)) as kode FROM item_rm WHERE id like '%$codes%'");
             $row = $sql->row();
             if ($row->kode == "") {
                 $kode = 0;
             } else {
                 $kode = $row->kode;
             }
-            $format = $codes ."000000". ($kode + 1) . $type;
+            $format = $codes . sprintf("%02s", $kode + 1) . $type;
+        }else{
+            $codes = $item_family_number;
+            $sql = $this->db->query("SELECT max(SUBSTRING(id, 3, 7)) as kode FROM item_rm WHERE SUBSTRING(id, 1, 2) = '$codes'");
+            $row = $sql->row();
+            
+            if ($row->kode == "") {
+                $kode = 0;
+            } else {
+                $kode = $row->kode;
+            }
+
+            $format = $codes . sprintf("%07s", $kode + 1) . $type;
+            // $format = $codes ."000000". ($kode + 1) . $type;
         }
 
         echo json_encode(array("code" => $format));
     }
 
-    public function getSync()
-    {
-        error_reporting(0);
+    // public function getSync()
+    // {
+    //     error_reporting(0);
         
-        $items = $this->crud->reads('item_rm');
-        $rowItem = array();
-        foreach ($items as $item) {
-            $rowItem[] = $item->number;
-        }
+    //     $items = $this->crud->reads('item_rm');
+    //     $rowItem = array();
+    //     foreach ($items as $item) {
+    //         $rowItem[] = $item->number;
+    //     }
 
-        $this->pg = $this->load->database('dummy', TRUE);
-        $this->pg->select("trim(a.item_id) as item_id, a.item_name, b.pfm_name, a.um_id");
-        $this->pg->from("mst_item a");
-        $this->pg->join("r_prodfam b", 'a.pfm_id = b.pfm_id');
-        $this->pg->where("a.stscode_id", "01");
-        $this->pg->where("a.pfm_id !=", "06");
-        $this->pg->where_not_in("trim(a.item_id)", $rowItem);
-        $totalRows = $this->pg->count_all_results('', false);
-        $records = $this->pg->get()->result_array();
+    //     $this->pg = $this->load->database('dummy', TRUE);
+    //     $this->pg->select("trim(a.item_id) as item_id, a.item_name, b.pfm_name, a.um_id");
+    //     $this->pg->from("mst_item a");
+    //     $this->pg->join("r_prodfam b", 'a.pfm_id = b.pfm_id');
+    //     $this->pg->where("a.stscode_id", "01");
+    //     $this->pg->where("a.pfm_id !=", "06");
+    //     $this->pg->where_not_in("trim(a.item_id)", $rowItem);
+    //     $totalRows = $this->pg->count_all_results('', false);
+    //     $records = $this->pg->get()->result_array();
 
-        //Mapping Data
-        $result['total'] = $totalRows;
-        $result = array_merge($result, $records);
+    //     //Mapping Data
+    //     $result['total'] = $totalRows;
+    //     $result = array_merge($result, $records);
 
-        die(json_encode($result));
-    }
+    //     die(json_encode($result));
+    // }
 
     public function createSync()
     {
         $data = $this->input->post('data');
-        $read = $this->crud->read("item_rm", [], ["number" => $data['item_id']]);
-        $item_family = $this->crud->read("item_familys", ["name" => $data['pfm_name']]);
 
-        if($data['um_id'] == "01"){
-            $uom = "METER";
-        }elseif($data['um_id'] == "02"){
-            $uom = "PIECES";
-        }elseif($data['um_id'] == "03"){
-            $uom = "SET";
-        }elseif($data['um_id'] == "04"){
-            $uom = "GRAM";
-        }elseif($data['um_id'] == "05"){
-            $uom = "LITER";
-        }elseif($data['um_id'] == "06"){
-            $uom = "KILOGRAM";
+        $supplier_item = $this->crud->read("supplier_items", [], ["item_rm_id" => $data['id']]);
+
+        $moq = @$supplier_item->moq;
+        $mpq = @$supplier_item->mpq;
+
+        if($data['item_family_name'] == "WIRE"){
+            $pfm_id = "01";
+        }elseif($data['item_family_name'] == "TERMINAL"){
+            $pfm_id = "02";
+        }elseif($data['item_family_name'] == "NAME PLATE"){
+            $pfm_id = "05";
+        }elseif($data['item_family_name'] == "TUBE"){
+            $pfm_id = "07";
         }else{
-            $uom = "PIECES";
+            $pfm_id = "04";
         }
 
-        $dataFinal = array(
-            "item_category_id" => @$item_family->item_category_id,
-            "item_family_id" => @$item_family->id,
-            "number" => @$data['item_id'],
-            "name" => @$data['item_name'],
-            "uom" => $uom,
-            "account_number" => "2000321",
-            "account_name" => "ROW MATERIAL",
-            "hsn_code" => "85445930",
-            "gst_rate" => 18.00,
-            "description" => "SYNCHRONIZE",
-        );
+        $this->pg = $this->load->database('dummy', TRUE);
 
-        // if(empty($item_family)){}
-        if (empty($read)) {
-            $create = $this->crud->create('item_rm', $dataFinal);
-            echo $create;
-        } else {
-            echo json_encode(array("title" => "Good Job", "message" => "Data Updated Update Successfully", "theme" => "success"));
+        $this->pg->select("*");
+        $this->pg->from("mst_item");
+        $this->pg->where("item_id", $data['number']);
+        $record = $this->pg->get()->row();
+
+        if(empty($record)){
+            $dataFinal = array(
+                "item_id" => $data['number'],
+                "um_id" => "01",
+                "item_name" => $data['name'],
+                "item_cct" => 0,
+                "item_regno" => mt_rand(1000,9999),
+                "item_regdate" => date("Y-m-d"),
+                "stscode_id" => "01",
+                "type_id" => "02",
+                "pfm_id" => $pfm_id,
+                "item_manldtm" => 0,
+                "item_saftystock" => 0,
+                "item_shrink" => 0,
+                "item_minoq" => $moq,
+                "item_muloq" => $mpq,
+                "item_maxoq" => 1,
+                "item_user" => "Vishal Sharma",
+                "lotqty" => 0,
+                "quick_recalculate" => 0,
+                "ven_id" => "001",
+                "st_sparepart" => false,
+                "life_time" => "365",
+            );
+
+            $this->pg->insert("mst_item", $dataFinal);
+            echo json_encode(array("title" => "Good Job", "message" => "Save Data Completed", "theme" => "success"));
+        }else{
+            echo json_encode(array("title" => "Duplicate", "message" => "Data Cannot Save in MRP Banshu", "theme" => "error"));
         }
     }
+    
     //CREATE DATA
     public function create()
     {
@@ -304,7 +368,7 @@ class Item_rm extends CI_Controller
                 'waterproof' => $data->val($i, 12),
                 'platting' => $data->val($i, 13),
                 'hsn_code' => $data->val($i, 14),
-                'account_number' => $data->val($i, 15),
+                // 'account_number' => $data->val($i, 15),
                 'description' => $data->val($i, 16),
                 'supply' => $data->val($i, 17),
                 'type' => $data->val($i, 18),
@@ -359,14 +423,16 @@ class Item_rm extends CI_Controller
             $platting = $this->crud->read('item_platting', [], ["number" => $data['platting']]);
             $hsn = $this->crud->read('hsn', [], ["number" => $data['hsn_code']]);
             $maker = $this->crud->read('makers', [], ["number" => $data['maker_code']]);
-            $account_coa = $this->crud->read('account_coa', [], ["account_number" => $data['account_number']]);
+            $account_coa = $this->crud->read('account_coa', [], ["account_number" => @$product_family->account_number]);
 
             if (empty($category->number)) {
                 echo json_encode(array("title" => "Not Found", "message" => "Category " . $data['item_category_number'] . " Not Found", "theme" => "error"));
             } elseif (empty($product_family->number)) {
                 echo json_encode(array("title" => "Not Found", "message" => "Product Family " . $data['item_family_number'] . " Not Found", "theme" => "error"));
-            } elseif (empty($account_coa->account_number)) {
-                echo json_encode(array("title" => "Not Found", "message" => "COA No " . $data['account_number'] . " Not Found", "theme" => "error"));
+            // } elseif ($data['item_category_number'] == "FA") {
+            //     echo json_encode(array("title" => "Fixed Asset", "message" => "Category " . $data['item_category_number'] . " Cannot Create in Master RM", "theme" => "error"));
+            } elseif (empty(@$account_coa->account_number) && $product_family->number != "FA") {
+                echo json_encode(array("title" => "Not Found", "message" => "COA No " . @$data['account_number'] . " Not Found", "theme" => "error"));
             } elseif (empty($hsn->name)) {
                 echo json_encode(array("title" => "Not Found", "message" => "HSN Code " . $data['hsn_code'] . " Not Found", "theme" => "error"));
             } elseif (empty($kind->name)) {
@@ -382,7 +448,7 @@ class Item_rm extends CI_Controller
             } elseif (empty($maker->name)) {
                 echo json_encode(array("title" => "Not Found", "message" => "Maker Code " . $data['maker_code'] . " Not Found", "theme" => "error"));
             } elseif (!empty($item_rm->number)) {
-                echo json_encode(array("title" => "Duplicated", "message" => " Product No. " . $data['number'] . " is Duplicate Data", "theme" => "error"));
+                echo json_encode(array("title" => "Duplicated", "message" => " Part No. " . $data['number'] . " is Duplicate Data", "theme" => "error"));
             } else {
                 $item_family_number = $product_family->number;
                 $kind = $data['kind'];
@@ -400,7 +466,7 @@ class Item_rm extends CI_Controller
                     $type = 1;
                 }
 
-                if($item_family_number == "1" || $item_family_number == "4" || $item_family_number == "6"){
+                if($item_family_number == "1" || $item_family_number == "4"){
                     $format = $item_family_number.$kind.$size.$color_1.$color_2.$type;
                 }else if(in_array($item_family_number, ["7","8","9"])){
                     $codes = $item_family_number.$kind.$color_1;
@@ -444,16 +510,28 @@ class Item_rm extends CI_Controller
                     $format = $codes . sprintf("%04s", $kode + 1) . $type;
                 }else if($item_family_number == "5"){
                     $format = $item_family_number.$kind."0".$size.$color_1."0".$type;
-                }else{
-                    $codes = $item_family_number;
-                    $sql = $this->db->query("SELECT max(SUBSTRING(id, 1, 8)) as kode FROM item_rm WHERE SUBSTRING(id, 1, 1) = '$item_family_number'");
+                }else if($item_family_number == "6"){
+                    $codes = $item_family_number.$kind.$size.$color_1;
+                    $sql = $this->db->query("SELECT max(SUBSTRING(id, 8, 2)) as kode FROM item_rm WHERE id like '%$codes%'");
                     $row = $sql->row();
                     if ($row->kode == "") {
                         $kode = 0;
                     } else {
                         $kode = $row->kode;
                     }
-                    $format = $codes ."000000". ($kode + 1) . $type;
+                    $format = $codes . sprintf("%02s", $kode + 1) . $type;
+                }else{
+                    $codes = $item_family_number;
+                    $sql = $this->db->query("SELECT max(SUBSTRING(id, 3, 7)) as kode FROM item_rm WHERE SUBSTRING(id, 1, 2) = '$codes'");
+                    $row = $sql->row();
+                    
+                    if ($row->kode == "") {
+                        $kode = 0;
+                    } else {
+                        $kode = $row->kode;
+                    }
+
+                    $format = $codes . sprintf("%07s", $kode + 1) . $type;
                 }
 
                 $dataFinal = array(
@@ -473,8 +551,8 @@ class Item_rm extends CI_Controller
                     "waterproof" => $data['waterproof'],
                     "platting" => $data['platting'],
                     "hsn_code" => $data['hsn_code'],
-                    "account_number" => $data['account_number'],
-                    "account_name" => $account_coa->account_name,
+                    "account_number" => $product_family->account_number,
+                    "account_name" => $product_family->account_name,
                     "description" => $data['description'],
                     "supply" => $data['supply'],
                     "type" => $data['type'],
@@ -504,6 +582,7 @@ class Item_rm extends CI_Controller
         $this->db->join('item_familys c', 'a.item_family_id = c.id');
         $this->db->join('hsn d', 'a.hsn_code = d.number', 'left');
         $this->db->join('makers e', 'a.maker_id = e.id', 'left');
+        $this->db->where('b.number !=', 'FA');
         $this->db->where('a.deleted', 0);
         $this->db->order_by('a.id', 'ASC');
         $records = $this->db->get()->result_array();

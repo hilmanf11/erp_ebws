@@ -45,16 +45,21 @@ class Production_schedules extends CI_Controller
         $send = $this->crud->query("SELECT DISTINCT wp, workorder, item_fg_id FROM production_schedules WHERE `period` = '$period' and (workorder like '%$post%' or wp like '%$post%') ORDER BY workorder DESC");
         echo json_encode($send);
     }
-    public function readPeriod()
+    public function readPeriod($types = "")
     {
-        $send = $this->crud->query("SELECT DISTINCT `period` FROM production_schedules WHERE `status` in ('0','1') and precut_status = 'YES' ORDER BY `period` DESC");
-        echo json_encode($send);
+        if($types == "period"){
+            $send = $this->crud->query("SELECT DISTINCT `period` FROM production_schedules WHERE `status` in ('0','1') and precut_status = 'YES' and `period` > '202410' ORDER BY `period` DESC");
+            echo json_encode($send);
+        }else{
+            $send = $this->crud->query("SELECT DISTINCT `period` FROM production_schedules WHERE `status` in ('0','1') and precut_status = 'YES' ORDER BY `period` DESC");
+            echo json_encode($send);
+        }
     }
 
     public function readWp()
     {
         $period = base64_decode($this->input->get('period'));
-        $send = $this->crud->query("SELECT DISTINCT wp FROM production_schedules WHERE `status` in ('0','1') and precut_status = 'YES' and `period` = '$period' ORDER BY `wp` DESC");
+        $send = $this->crud->query("SELECT DISTINCT wp FROM production_schedules WHERE `status` in ('0','1') and precut_status = 'YES' and `period` = '$period' ORDER BY CAST(wp AS SIGNED) DESC");
         echo json_encode($send);
     }
 
@@ -62,35 +67,26 @@ class Production_schedules extends CI_Controller
     {
         $period = base64_decode($this->input->get('period'));
         $wp = base64_decode($this->input->get('wp'));
-        $send = $this->crud->query("SELECT DISTINCT workorder FROM production_schedules WHERE `status` in ('0','1') and precut_status = 'YES' and `period` = '$period' and wp = '$wp' ORDER BY `wp` DESC");
+        $send = $this->crud->query("SELECT a.*, b.number_customer
+            FROM production_schedules a
+            JOIN item_fg b ON a.item_fg_id = b.id
+            WHERE a.status in ('0','1') and a.precut_status = 'YES' 
+            and a.period = '$period' and wp = '$wp' 
+            ORDER BY workorder DESC");
         echo json_encode($send);
     }
 
-    public function readCustomer()
-    {
-        $period = base64_decode($this->input->get('period'));
-        $wp = base64_decode($this->input->get('wp'));
-        $workorder = base64_decode($this->input->get('workorder'));
-
-        $send = $this->crud->query("SELECT a.customer_id, b.number as customer_number, b.name as customer_name 
-            FROM production_schedules a
-            JOIN customers b on a.customer_id = b.id
-            WHERE a.status in ('0','1') and precut_status = 'YES' and a.period = '$period' and a.wp = '$wp' and a.workorder = '$workorder' ORDER BY a.workorder DESC");
+    public function filterWp($month, $year)
+    {   
+        $period = $year.$month;
+        $send = $this->crud->query("SELECT DISTINCT wp FROM production_schedules WHERE `period` = '$period' ORDER BY `wp` DESC");
         echo json_encode($send);
     }
 
-    public function readItems()
-    {
-        $period = base64_decode($this->input->get('period'));
-        $wp = base64_decode($this->input->get('wp'));
-        $customer_id = $this->input->get('customer_id');
-        $workorder = base64_decode($this->input->get('workorder'));
-
-        $send = $this->crud->query("SELECT a.workorder, b.id as item_fg_id, b.number as item_number, b.name as item_name, b.number_customer, c.name as customer_name  
-            FROM production_schedules a
-            JOIN item_fg b on a.item_fg_id = b.id
-            JOIN customers c on a.customer_id = c.id
-            WHERE a.status in ('0','1') and precut_status = 'YES' and a.period = '$period' and a.wp = '$wp' and a.customer_id = '$customer_id' and a.workorder = '$workorder' ORDER BY a.workorder DESC");
+    public function filterWo($month, $year)
+    {   
+        $period = $year.$month;
+        $send = $this->crud->query("SELECT DISTINCT workorder FROM production_schedules WHERE `period` = '$period' ORDER BY `workorder` DESC");
         echo json_encode($send);
     }
 
@@ -274,10 +270,16 @@ class Production_schedules extends CI_Controller
     public function datatables()
     {
         if ($this->input->post()) {
+            $this->dummy = $this->load->database('dummy', TRUE);
+
             $filter_month = $this->input->get('filter_month');
             $filter_year = $this->input->get('filter_year');
+            $filter_wp = $this->input->get('filter_wp');
+            $filter_workorder = $this->input->get('filter_workorder');
             $filter_customers = $this->input->get('filter_customers');
             $filter_item_fg_id = $this->input->get('filter_item_fg_id');
+            $filter_date_from = $this->input->get('filter_date_from');
+            $filter_date_to = $this->input->get('filter_date_to');
             $filter_status = $this->input->get('filter_status');
 
             $page = $this->input->post('page');
@@ -288,24 +290,29 @@ class Production_schedules extends CI_Controller
             $offset = ($page - 1) * $rows;
             $result = array();
             //Select Query
+            // $this->db->select("a.*, b.number as customer_number, b.name as customer_name, b.type as customer_type, 
+            //     c.number as item_number, c.name as item_name, c.number_customer, c.uom,
+            //     SUM(f.qty) as total_rfg,
+            //     (CASE WHEN SUM(f.qty) >= a.qty THEN 1 ELSE 0 END) as status_wip2,
+            //     (CASE WHEN SUM(f.qty) >= a.qty THEN 2 ELSE a.status END) as status_wo");
             $this->db->select("a.*, b.number as customer_number, b.name as customer_name, b.type as customer_type, 
-                c.number as item_number, c.name as item_name, c.number_customer, c.uom,
-                SUM(f.qty) as total_rfg,
-                (CASE WHEN f.id != '' THEN 2 ELSE a.status END) as status_wo");
+                c.number as item_number, c.name as item_name, c.number_customer, c.uom");
             $this->db->from('production_schedules a');
             $this->db->join('customers b', 'a.customer_id = b.id');
             $this->db->join('item_fg c', 'a.item_fg_id = c.id');
-            $this->db->join('scan_item_receipts_fg f', 'a.workorder = f.workorder', 'left');
+            // $this->db->join('scan_item_receipts_fg f', 'a.workorder = f.workorder', 'left');
             $this->db->where('a.deleted', 0);
-            if($filter_status == "0"){
-                $this->db->where("a.status", 0);
-            }elseif($filter_status == "1"){
-                $this->db->where("f.id is NULL");
-            }elseif($filter_status == "2"){
-                $this->db->where("f.id != ''");
-            }
+            // if($filter_status == "0"){
+            //     $this->db->where("a.status", 0);
+            // }elseif($filter_status == "2"){
+            //     $this->db->where("f.id != ''");
+            // }
             $this->db->like('a.month', $filter_month);
             $this->db->like('a.year', $filter_year);
+            if($filter_wp != ""){
+                $this->db->where('a.wp', $filter_wp);
+            }
+            $this->db->like('a.workorder', $filter_workorder);
             $this->db->like('a.customer_id', $filter_customers);
             $this->db->like('a.item_fg_id', $filter_item_fg_id);
             $this->db->group_by('a.workorder');
@@ -319,9 +326,56 @@ class Production_schedules extends CI_Controller
             $this->db->limit($rows, $offset);
             //Get Data Array
             $records = $this->db->get()->result_array();
+
+            $arr = array();
+            foreach ($records as $record) {
+                $assy_number = $record['number_customer'];
+                $mpp = $record['period'];
+                $wp = sprintf("%02s", $record['wp'])."/".substr($mpp, -2);
+
+                $sqlQty = $this->dummy->query("SELECT COUNT(x.serial_number) as qty FROM (
+                    SELECT DISTINCT z.serial_number FROM (
+                    SELECT DISTINCT
+                        TRIM(a.serial_number) AS serial_number,
+                        TRIM(a.assy_number) AS assy_number,
+                        TRIM(a.customer) AS customer,
+                        TRIM(a.mpp) AS mpp,
+                        TRIM(a.wp) AS wp,
+                        TRIM(a.lot) AS lot,
+                        DATE(a.tanggal_proses) AS tanggal,
+                        COALESCE(a.jam_scan,'00:00:00') AS jam,
+                        a.wds_qty
+                    FROM mst_scan_proses a
+                    WHERE kode_proses = '5' and assy_number = '$assy_number' and mpp = '$mpp' and wp = '$wp' and
+                    tanggal_proses between '$filter_date_from' and '$filter_date_to' and status_repair = 'false' 
+                    AND status_before IS NOT NULL
+                    AND status_repair = 'f'
+                    ORDER BY serial_number) z ) x");
+                $rowQty = $sqlQty->row();
+                $qty_scan = empty(@$rowQty->qty) ? 0 : @$rowQty->qty;
+
+                if($qty_scan >= $record['qty']){
+                    $status_wip2 = "1";
+                }else{
+                    $status_wip2 = "0";
+                }
+
+                if($qty_scan >= $record['qty']){
+                    $status_wo = "2";
+                }else{
+                    $status_wo = $record['status'];
+                }
+
+                $arr[] = array_merge($record, [
+                    "total_rfg" => $qty_scan,
+                    "status_wip2" => $status_wip2,
+                    "status_wo" => $status_wo,
+                ]);
+            }
+
             //Mapping Data
             $result['total'] = $totalRows;
-            $result = array_merge($result, ['rows' => $records]);
+            $result = array_merge($result, ['rows' => $arr]);
             echo json_encode($result);
         }
     }
@@ -572,27 +626,50 @@ class Production_schedules extends CI_Controller
             header("Content-type: application/vnd-ms-excel");
             header("Content-Disposition: attachment; filename=production_schedules_$format.xls");
         }
+
+        $this->dummy = $this->load->database('dummy', TRUE);
+
         $filter_month = $this->input->get('filter_month');
         $filter_year = $this->input->get('filter_year');
+        $filter_wp = $this->input->get('filter_wp');
+        $filter_workorder = $this->input->get('filter_workorder');
         $filter_customers = $this->input->get('filter_customers');
         $filter_item_fg_id = $this->input->get('filter_item_fg_id');
+        $filter_date_from = $this->input->get('filter_date_from');
+        $filter_date_to = $this->input->get('filter_date_to');
+        $filter_status = $this->input->get('filter_status');
 
         //Config
         $this->db->select('*');
         $this->db->from('config');
         $config = $this->db->get()->row();
         
-        $this->db->select("a.*, b.number as customer_number, b.name as customer_name, b.type as customer_type, c.number as item_number, c.name as item_name, c.uom, (CASE WHEN f.id != '' THEN 2 ELSE a.status END) as status_wo");
+        // $this->db->select("a.*, b.number as customer_number, b.name as customer_name, b.type as customer_type, 
+        //     c.number as item_number, c.name as item_name, c.number_customer, c.uom,
+        //     SUM(f.qty) as total_rfg,
+        //     (CASE WHEN f.id != '' THEN 2 ELSE a.status END) as status_wo");
+        $this->db->select("a.*, b.number as customer_number, b.name as customer_name, b.type as customer_type, 
+            c.number as item_number, c.name as item_name, c.number_customer, c.uom");
         $this->db->from('production_schedules a');
         $this->db->join('customers b', 'a.customer_id = b.id');
         $this->db->join('item_fg c', 'a.item_fg_id = c.id');
-        $this->db->join('scan_item_receipts_fg f', 'a.workorder = f.workorder', 'left');
+        // $this->db->join('scan_item_receipts_fg f', 'a.workorder = f.workorder', 'left');
         $this->db->where('a.deleted', 0);
+        // if($filter_status == "0"){
+        //     $this->db->where("a.status", 0);
+        // }elseif($filter_status == "2"){
+        //     $this->db->where("f.id != ''");
+        // }
         $this->db->like('a.month', $filter_month);
         $this->db->like('a.year', $filter_year);
+        if($filter_wp != ""){
+            $this->db->where('a.wp', $filter_wp);
+        }
+        $this->db->like('a.workorder', $filter_workorder);
         $this->db->like('a.customer_id', $filter_customers);
         $this->db->like('a.item_fg_id', $filter_item_fg_id);
-        $this->db->order_by('a.trans_date', 'ASC');
+        // $this->db->group_by('a.workorder');
+        $this->db->order_by('a.trans_date', 'DESC');
         $this->db->order_by('b.name', 'ASC');
         $this->db->order_by('c.number', 'ASC');
         $this->db->order_by('a.id', 'ASC');
@@ -623,6 +700,8 @@ class Production_schedules extends CI_Controller
             <table id="customers" border="1">
                 <tr>
                     <th width="20">No</th>
+                    <th>Status<br>RFG</th>
+                    <th>Production<br>Order</th>
                     <th>Period</th>
                     <th>WP</th>
                     <th>WP Date</th>
@@ -631,17 +710,58 @@ class Production_schedules extends CI_Controller
                     <th>Customer Name</th>
                     <th>Customer Type</th>
                     <th>Product No</th>
+                    <th>Product Customer</th>
                     <th>Product Name</th>
                     <th>UoM</th>
                     <th>Qty</th>
-                    <th>SO No</th>
-                    <th>SO Date</th>
-                    <th>Status</th>
+                    <th>RFG Qty</th>
+                    <th>Created By</th>
+                    <th>Created Date</th>
+                    <th>Updated By</th>
+                    <th>Updated Date</th>
                 </tr>';
         $no = 1;
         foreach ($records as $data) {
+            $assy_number = $data['number_customer'];
+            $mpp = $data['period'];
+            $wp = sprintf("%02s", $data['wp'])."/".substr($mpp, -2);
+
+            $sqlQty = $this->dummy->query("SELECT COUNT(x.serial_number) as qty FROM (
+                SELECT DISTINCT z.serial_number FROM (
+                SELECT DISTINCT
+                    TRIM(a.serial_number) AS serial_number,
+                    TRIM(a.assy_number) AS assy_number,
+                    TRIM(a.customer) AS customer,
+                    TRIM(a.mpp) AS mpp,
+                    TRIM(a.wp) AS wp,
+                    TRIM(a.lot) AS lot,
+                    DATE(a.tanggal_proses) AS tanggal,
+                    COALESCE(a.jam_scan,'00:00:00') AS jam,
+                    a.wds_qty
+                FROM mst_scan_proses a
+                WHERE kode_proses = '5' and assy_number = '$assy_number' and mpp = '$mpp' and wp = '$wp' and
+                tanggal_proses between '$filter_date_from' and '$filter_date_to' and status_repair = 'false' 
+                AND status_before IS NOT NULL
+                AND status_repair = 'f'
+                ORDER BY serial_number) z ) x");
+            $rowQty = $sqlQty->row();
+            $qty_scan = empty(@$rowQty->qty) ? 0 : @$rowQty->qty;
+
+            if($qty_scan > 0){
+                $style_wo = "style='background-color:#FFDFBD;'";
+                $status_wo = "SUPPLY";
+            }elseif(round($qty_scan) == round($data['qty'])){
+                $style_wo = "style='background-color:#FFC8C8;'";
+                $status_wo = "CLOSED";
+            }else{
+                $style_wo = "style='background-color:#C8FFCC;'";
+                $status_wo = "OPEN";
+            }
+
             $html .= '<tr>
                         <td style="text-align:center">' . $no . '</td>
+                        <td '.$style_wo.'>' . $status_wo . '</td>
+                        <td>' . $data['precut_status'] . '</td>
                         <td>' . $data['period'] . '</td>
                         <td>' . $data['wp'] . '</td>
                         <td>' . $data['trans_date'] . '</td>
@@ -650,12 +770,15 @@ class Production_schedules extends CI_Controller
                         <td>' . $data['customer_name'] . '</td>
                         <td>' . $data['customer_type'] . '</td>
                         <td>' . $data['item_number'] . '</td>
+                        <td>' . $data['number_customer'] . '</td>
                         <td>' . $data['item_name'] . '</td>
                         <td>' . $data['uom'] . '</td>
                         <td>' . number_format($data['qty'], 2) . '</td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
+                        <td>' . number_format($qty_scan, 2) . '</td>
+                        <td>' . $data['created_by'] . '</td>
+                        <td>' . $data['created_date'] . '</td>
+                        <td>' . $data['updated_by'] . '</td>
+                        <td>' . $data['updated_date'] . '</td>
                     </tr>';
             $no++;
         }

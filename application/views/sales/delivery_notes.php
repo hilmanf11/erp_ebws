@@ -6,7 +6,9 @@
             <th rowspan="2" data-options="field:'print',width:60,align:'center', formatter:btnPrint">Print</th>
             <th rowspan="2" data-options="field:'delivery_note_no',width:150,halign:'center'">Delivery Note No.</th>
             <th rowspan="2" data-options="field:'delivery_note_date',width:100,halign:'center'">Delivery Date</th>
-            <th rowspan="2" data-options="field:'customer_name',width:200,halign:'center'">Customer Name</th>
+            <th rowspan="2" data-options="field:'customer_name',width:250,halign:'center'">Customer Name</th>
+            <th rowspan="2" data-options="field:'plant',width:100,halign:'center'">Plant</th>
+            <th rowspan="2" data-options="field:'vehicle_no',width:100,halign:'center'">Vehicle No</th>
             <th rowspan="2" data-options="field:'ship_address',width:300,halign:'center'">Shipping Address</th>
             <!-- <th rowspan="2" data-options="field:'trans_type',width:100,halign:'center'">Transaction<br>Type</th> -->
             <th rowspan="2" data-options="field:'note',width:150,halign:'center'">Note</th>
@@ -25,12 +27,12 @@
 </table>
 
 <!-- TOOLBAR DATAGRID -->
-<div id="toolbar" style="height: 270px; padding:10px;">
+<div id="toolbar" style="height: 230px; padding:10px;">
     <!-- <div style="width: 100%; display: grid; grid-template-columns: auto auto auto; grid-gap: 5px; display: flex;"> -->
     <div style="width: 100%;">
-        <fieldset style="width: 80%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
+        <fieldset style="width: 100%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
             <legend><b>Form Filter Data</b></legend>
-            <div style="width: 50%; float: left;">
+            <div style="width: 33%; float: left;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Delivery Date</span>
                     <input style="width:30%;" id="filter_from" value="<?= date("Y-m-01") ?>" data-options="formatter:myformatter,parser:myparser,editable:false" class="easyui-datebox">
@@ -45,15 +47,15 @@
                     <input style="width:60%;" id="filter_delivery_note_no" class="easyui-combobox">
                 </div>
                 <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Delivery Order No</span>
-                    <input style="width:60%;" id="filter_delivery_order_no" class="easyui-combobox">
-                </div>
-                <div class="fitem">
                     <span style="width:35%; display:inline-block;"></span>
                     <a href="javascript:;" class="easyui-linkbutton" onclick="filter()"><i class="fa fa-search"></i> Filter Data</a>
                 </div>
             </div>
-            <div style="width: 50%; float: left;">
+            <div style="width: 33%; float: left;">
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Delivery Order No</span>
+                    <input style="width:60%;" id="filter_delivery_order_no" class="easyui-combobox">
+                </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Sales Order No</span>
                     <input style="width:60%;" id="filter_sales_order_no" class="easyui-combobox">
@@ -62,6 +64,8 @@
                     <span style="width:35%; display:inline-block;">Customer Order No</span>
                     <input style="width:60%;" id="filter_customer_order_no" class="easyui-combobox">
                 </div>
+            </div>
+            <div style="width: 33%; float: left;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Product No</span>
                     <input style="width:60%;" id="filter_item_fg" class="easyui-combogrid">
@@ -94,7 +98,7 @@
 </div>
 
 <!-- Insert & Update -->
-<div id="dlg_insert" class="easyui-dialog" title="Add Delivery Note" data-options="closed: true,modal:true" style="width: 1200px; height: 550px; padding:10px; top: 20px; left: 50px;">
+<div id="dlg_insert" class="easyui-dialog" title="Add Delivery Note" data-options="closed: true,modal:true" style="width: 99%; height: 580px; padding:10px;">
     <form id="frm_insert" method="post" novalidate>
         <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
             <legend><b>Form Data</b></legend>
@@ -144,6 +148,10 @@
                         <option value="AIR">AIR</option>
                         <option value="TRUCK">TRUCK</option>
                     </select>
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Vehicle No</span>
+                    <input style="width:60%;" id="vehicle_no" name="vehicle_no" required class="easyui-textbox">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Incoterm</span>
@@ -198,6 +206,7 @@
         $('#frm_insert').form('clear');
 
         $('#status').combobox('setValue', '0');
+        $("#delivery_note_date").datebox('setValue', "<?= date("Y-m-d") ?>");
 
         $("#customer_id").combobox('enable');
         $("#delivery_note_date").datebox('enable');
@@ -517,6 +526,7 @@
                     var ship_country = $("#ship_country").textbox('getValue');
                     var sailing = $("#sailing").textbox('getValue');
                     var ship_by = $("#ship_by").combobox('getValue');
+                    var vehicle_no = $("#vehicle_no").textbox('getValue');
                     var incoterm = $("#incoterm").combobox('getValue');
                     var note = $("#note").textbox('getValue');
                     var status = $("#status").combobox('getValue');
@@ -525,7 +535,7 @@
                     var rows = $('#dg_request').datagrid('getSelections');
                     var totalrows = rows.length;
                     if(totalrows){
-                        if (customer_id != "" && delivery_note_date !="" && delivery_note_no !="" && plant !="" && sailing !="" && incoterm !="") {
+                        if (customer_id != "" && delivery_note_date !="" && delivery_note_no !="" && plant !="" && sailing !="" && incoterm !="" && vehicle_no != "") {
                             $('#dlg_insert').dialog('close');
 
                             Swal.fire({
@@ -556,6 +566,7 @@
                                             origin: ship_country,
                                             sailing: sailing,
                                             ship_by: ship_by,
+                                            vehicle_no: vehicle_no,
                                             incoterm: incoterm,
                                             note: note,
                                             status: status,
@@ -743,19 +754,6 @@
             // number(delivery_note_date, customer.number);
             number("<?= $id_menu ?>");
 
-            $('#delivery_order_no').combobox({
-                url: '<?= base_url('sales/delivery_notes/readDo/') ?>' + btoa(customer.id),
-                valueField: 'delivery_order_no',
-                textField: 'delivery_order_no',
-                multiple: true,
-                prompt: 'Choose DO No.',
-                onLoadSuccess: function(data) {
-                    if (data.length === 0) {
-                        toastr.warning('Delivery Order No empty, Please Scan DO in Shipping Order', 'Required');
-                    }
-                }
-            });
-
             $('#plant').combobox({
                 url: '<?= base_url('master/customers/readAddress/') ?>' + btoa(customer.id),
                 valueField: 'plant',
@@ -763,6 +761,19 @@
                 panelHeight:'auto',
                 prompt: 'Choose Plant',
                 onSelect: function(plant) {
+                    $('#delivery_order_no').combobox({
+                        url: '<?= base_url('sales/delivery_notes/readDo/') ?>' + btoa(customer.id) + "/" + btoa(plant.plant),
+                        valueField: 'delivery_order_no',
+                        textField: 'delivery_order_no',
+                        multiple: true,
+                        prompt: 'Choose DO No.',
+                        onLoadSuccess: function(data) {
+                            if (data.length === 0) {
+                                toastr.warning('Delivery Order No empty, Please Scan DO in Shipping Order', 'Required');
+                            }
+                        }
+                    });
+
                     $("#ship_address").textbox("setValue", plant.ship_address);
                     $("#ship_country").textbox("setValue", plant.ship_country);
                 }

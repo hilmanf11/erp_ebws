@@ -32,7 +32,7 @@ class Hsn extends CI_Controller
     public function reads()
     {
         $post = isset($_POST['q']) ? $_POST['q'] : "";
-        $send = $this->crud->reads('hsn', ["number" => $post, "name" => $post]);
+        $send = $this->crud->reads('hsn', ["number" => $post]);
         echo json_encode($send);
     }
 
@@ -195,7 +195,16 @@ class Hsn extends CI_Controller
                 $send = $this->crud->create('hsn', $dataFinal);
                 die($send);
             }else{
-                die(json_encode(array("title" => "Duplicate", "message" => "HSN Code is Duplicated", "theme" => "error")));
+                $dataFinal = array(
+                    "name" => $data['name'],
+                    "description" => $data['description'],
+                    "igst" => $data['igst'],
+                    "sgst" => $data['sgst'],
+                    "cgst" => $data['cgst'],
+                );
+
+                $send = $this->crud->update('hsn', ["number" => $data['number']], $dataFinal);
+                die($send);
             }
         }
     }

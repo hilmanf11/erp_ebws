@@ -1,0 +1,784 @@
+<?php
+date_default_timezone_set("Asia/Bangkok");
+defined('BASEPATH') or exit('No direct script access allowed');
+class Journal_posting_adjustments extends CI_Controller
+{
+    public function __construct()
+    {
+        parent::__construct();
+        $this->load->helper('url');
+        $this->load->helper(array('form', 'url'));
+        $this->load->library('form_validation');
+        $this->load->library('session');
+        $this->load->library('Ciqrcode');
+        $this->load->model('crud');
+        //Validasi Form
+        $this->form_validation->set_rules('item_number', 'Product No', 'required|min_length[1]|max_length[100]');
+    }
+
+    public function index()
+    {
+        if (empty($this->session->username)) {
+            redirect('error_session');
+        } elseif ($this->checkuserAccess($this->id_menu()) > 0) {
+            $data['button'] = $this->getbutton($this->id_menu());
+            $data['approval'] = $this->crud->read('signatures');
+            $data['menus_id'] = $this->id_menu();
+
+            $this->load->view('template/header', $data);
+            $this->load->view('finance/journal_posting_adjustments');
+            //$this->load->view('maintenance');
+        } else {
+            redirect('error_access');
+        }
+    }
+    public function readCoa()
+    {
+        $post = isset($_POST['q']) ? $_POST['q'] : "";
+        $category = base64_decode($this->input->get("category"));
+        $records = array();
+
+        if($category == "GL - GL"){
+            $this->db->select("a.account_number, a.account_name, a.local_debit as debit, a.local_kredit as credit");
+            $this->db->from('account_coa a');
+            $this->db->like('a.account_number', $post);
+            $this->db->or_like('a.account_name', $post);
+            $this->db->group_by('a.account_number');
+            $records = $this->db->get()->result_array();
+        }elseif($category == "GL - SUPPLIER"){
+            $sql = $this->db->query("SELECT a.* 
+                FROM (
+                    (SELECT account_number, account_name, '-' as number, '-' as name FROM account_coa ORDER BY account_number ASC)
+                UNION 
+                    (SELECT b.account_number, b.account_name, c.id as number, c.name FROM account_balance_suppliers a JOIN account_coa b ON a.account_number = b.account_number JOIN suppliers c ON a.supplier_id = c.id ORDER BY c.name ASC)
+                ) a WHERE a.account_number like '%$post%' or a.account_name like '%$post%' or a.name like '%$post%' ORDER BY a.account_number");
+            $records = $sql->result_array();
+        }elseif($category == "GL - CUSTOMER"){
+            $sql = $this->db->query("SELECT a.* 
+                FROM (
+                    (SELECT account_number, account_name, '-' as number, '-' as name FROM account_coa ORDER BY account_number ASC)
+                UNION 
+                    (SELECT b.account_number, b.account_name, c.id as number, CONCAT('(', a.plant, ') ', c.name) FROM account_balance_customers a JOIN account_coa b ON a.account_number = b.account_number JOIN customers c ON a.customer_id = c.id ORDER BY c.name ASC)
+                ) a WHERE a.account_number like '%$post%' or a.account_name like '%$post%' or a.name like '%$post%' ORDER BY a.account_number");
+            $records = $sql->result_array();
+        }elseif($category == "GL - BANK"){
+            $sql = $this->db->query("SELECT a.* 
+                FROM (
+                    (SELECT account_number, account_name, '-' as number, '-' as name FROM account_coa ORDER BY account_number ASC)
+                UNION 
+                    (SELECT b.account_number, b.account_name, a.bank_account as number, a.bank_name as name FROM account_banks a JOIN account_coa b ON a.account_number = b.account_number ORDER BY a.bank_account ASC)
+                ) a WHERE a.account_number like '%$post%' or a.account_name like '%$post%' or a.name like '%$post%' ORDER BY a.account_number");
+            $records = $sql->result_array();
+        }
+
+        echo json_encode($records);
+    }
+
+    public function readJournalType()
+    {
+        $post = isset($_POST['q']) ? $_POST['q'] : "";
+
+        $this->db->select('*');
+        $this->db->from('journal_types');
+        $this->db->like('name', $post);
+        $this->db->order_by('name', 'asc');
+        $records = $this->db->get()->result_array();
+
+        echo json_encode($records);
+    }
+
+    public function number($id_menu)
+    {
+        $datenow = date("Y-m-d");
+        $sql_menu = $this->db->query("SELECT * FROM menus_no WHERE menus_id = '$id_menu' and `status` = '0' and `start_date` <= '$datenow' and end_date >= '$datenow'");
+        $row_menu = $sql_menu->row();
+
+        if(@$row_menu->number == ""){
+            //
+        }else{
+            $number = @$row_menu->number;
+            $yearnow = date("y", strtotime($row_menu->start_date));
+            $yearend = date("y", strtotime($row_menu->end_date));
+
+            $whereDate = $number.$yearnow.$yearend."1";
+
+            $sqlGetID	= $this->db->query("SELECT max(`number`) as kode FROM journal_postings WHERE `number` like '%$whereDate%'");
+            $rowID = $sqlGetID->row();
+            $kode = $rowID->kode;
+            
+            if ($kode == NULL) {
+                $autoID = sprintf("%0".$row_menu->sequence."s", $kode + 1);
+                $autoNo = $whereDate.$autoID;
+            } else {
+                $urutan = (int) substr($kode, -6);
+                $urutan++;
+                $autoID	= sprintf("%0".$row_menu->sequence."s", $urutan);
+                $autoNo = $whereDate.$autoID;
+            }
+
+            echo $autoNo;
+        }
+    }
+
+    public function datatables()
+    {
+        if ($this->input->post()) {
+            $filter_from = base64_decode($this->input->get('filter_from'));
+            $filter_to = base64_decode($this->input->get('filter_to'));
+            $filter_journal_type = base64_decode($this->input->get('filter_journal_type'));
+            $filter_modul = base64_decode($this->input->get('filter_modul'));
+            $filter_voucher = base64_decode($this->input->get('filter_voucher'));
+
+            $page = $this->input->post('page');
+            $rows = $this->input->post('rows');
+            //Pagination 1-10
+            $page   = isset($page) ? intval($page) : 1;
+            $rows   = isset($rows) ? intval($rows) : 10;
+            $offset = ($page - 1) * $rows;
+            $result = array();
+            //Select Query
+            $this->db->select('a.journal_date, a.number, a.journal_type_id, b.name as journal_type_name, a.modul, a.remarks, a.currency, a.rates, a.posting,
+                a.created_by, a.created_date, a.updated_by, a.updated_date, a.approved, a.approved_to, a.approved_by, a.approved_date,
+                SUM(a.original_debit) as original_debit, 
+                SUM(a.original_credit) as original_credit, 
+                SUM(a.local_debit) as local_debit, 
+                SUM(a.local_credit) as local_credit');
+            $this->db->from('journal_postings a');
+            $this->db->join('journal_types b', 'a.journal_type_id = b.id');
+            $this->db->where('a.modul', "ADJUSTMENT");
+            if ($filter_from != "" && $filter_to != "") {
+                $this->db->where("a.journal_date BETWEEN '$filter_from' and '$filter_to'");
+            }
+            $this->db->like('a.journal_type_id', $filter_journal_type);
+            $this->db->like('a.modul', $filter_modul);
+            $this->db->like('a.number', $filter_voucher);
+            $this->db->group_by('a.number');
+            $this->db->order_by('a.journal_date', 'asc');
+
+            //Total Data
+            $totalRows = $this->db->count_all_results('', false);
+            //Limit 1 - 10
+            $this->db->limit($rows, $offset);
+            //Get Data Array
+            $records = $this->db->get()->result_array();
+            //Mapping Data
+            $result['total'] = $totalRows;
+            $result = array_merge($result, ['rows' => $records]);
+            echo json_encode($result);
+        }
+    }
+
+    public function datatableDetails()
+    {
+        $number = base64_decode($this->input->get('number'));
+        $filters = json_decode($this->input->post('filterRules'));
+
+        $page = $this->input->post('page');
+        $rows = $this->input->post('rows');
+        //Pagination 1-10
+        $page   = isset($page) ? intval($page) : 1;
+        $rows   = isset($rows) ? intval($rows) : 10;
+        $offset = ($page - 1) * $rows;
+        $result = array();
+        //Select Query
+        $this->db->select('*');
+        $this->db->from('journal_postings');
+        $this->db->where('number', $number);
+        if (@count($filters) > 0) {
+            foreach ($filters as $filter) {
+                $this->db->like($filter->field, $filter->value);
+            }
+        }
+        $this->db->order_by('document_no', 'asc');
+        $this->db->order_by('journal_date', 'asc');
+        $this->db->order_by('account_number', 'asc');
+        //Total Data
+        $totalRows = $this->db->count_all_results('', false);
+        //Limit 1 - 10
+        // $this->db->limit($rows, $offset);
+        //Get Data Array
+        $records = $this->db->get()->result_array();
+
+        $data = array();
+        $grand_original_debit = 0;
+        $grand_original_credit = 0;
+        $grand_local_debit = 0;
+        $grand_local_credit = 0;
+        foreach ($records as $record) {
+            $data[] = array(
+                "trans_date" => $record['trans_date'],
+                "document_no" => $record['document_no'],
+                "invoice_no" => $record['invoice_no'],
+                "company_name" => $record['company_name'],
+                "description" => $record['description'],
+                "account_number" => $record['account_number'],
+                "account_name" => $record['account_name'],
+                "currency" => $record['currency'],
+                "original_debit" => $record['original_debit'],
+                "original_credit" => $record['original_credit'],
+                "rates" => $record['rates'],
+                "local_debit" => $record['local_debit'],
+                "local_credit" => $record['local_credit'],
+            );
+
+            $grand_original_debit += $record['original_debit'];
+            $grand_original_credit += $record['original_credit'];
+            $grand_local_debit += $record['local_debit'];
+            $grand_local_credit += $record['local_credit'];
+        }
+
+        $footer[] = array(
+            "currency" => "TOTAL",
+            // "original_debit" => $grand_original_debit,
+            // "original_credit" => $grand_original_credit,
+            "local_debit" => $grand_local_debit,
+            "local_credit" => $grand_local_credit,
+        );
+
+        //Mapping Data
+        $result['total'] = $totalRows;
+        $result = array_merge($result, ['rows' => $records, 'footer' => $footer]);
+        echo json_encode($result);
+    }
+
+    public function datatableUpdates()
+    {
+        $number = base64_decode($this->input->get('number'));
+
+        $page = $this->input->post('page');
+        $rows = $this->input->post('rows');
+        //Pagination 1-10
+        $page   = isset($page) ? intval($page) : 1;
+        $rows   = isset($rows) ? intval($rows) : 10;
+        $offset = ($page - 1) * $rows;
+        $result = array();
+        //Select Query
+        $this->db->select('*');
+        $this->db->from('journal_postings');
+        $this->db->where('number', $number);
+        //Total Data
+        $totalRows = $this->db->count_all_results('', false);
+        //Limit 1 - 10
+        // $this->db->limit($rows, $offset);
+        //Get Data Array
+        $records = $this->db->get()->result_array();
+
+        $data = array();
+        $grand_original_debit = 0;
+        $grand_original_credit = 0;
+        $grand_local_debit = 0;
+        $grand_local_credit = 0;
+        foreach ($records as $record) {
+            array_push($data, $record);
+
+            $grand_original_debit += $record['original_debit'];
+            $grand_original_credit += $record['original_credit'];
+            $grand_local_debit += $record['local_debit'];
+            $grand_local_credit += $record['local_credit'];
+        }
+
+        $footer[] = array(
+            "currency" => "TOTAL",
+            // "original_debit" => $grand_original_debit,
+            // "original_credit" => $grand_original_credit,
+            "local_debit" => $grand_local_debit,
+            "local_credit" => $grand_local_credit,
+        );
+
+        //Mapping Data
+        $result['total'] = $totalRows;
+        $result = array_merge($result, ['rows' => $records, 'footer' => $footer]);
+        echo json_encode($result);    
+    }
+
+    public function create()
+    {
+        if ($this->input->post()) {
+            $post = $this->input->post();
+
+            $dataFinal = array(
+                "journal_date" => $post['journal_date'],
+                "modul" => $post['modul'],
+                "journal_type_id" => $post['journal_type_id'],
+                "number" => $post['number'],
+                "remarks" => $post['remarks'],
+                "trans_date" => $post['document_date'],
+                "document_no" => $post['document_no'],
+                "invoice_no" => $post['document_no'],
+                "company_id" => $post['company_id'],
+                "company_name" => $post['company_name'],
+                "account_number" => $post['account_number'],
+                "account_name" => $post['account_name'],
+                "description" => $post['description'],
+                "currency" => $post['currency'],
+                "local_debit" => $post['local_debit'],
+                "local_credit" => $post['local_credit'],
+                "original_debit" => $post['local_debit'],
+                "original_credit" => $post['local_credit'],
+                "rates" => 1,
+            );
+
+            if(empty($post['id'])){
+                $send = $this->crud->create('journal_postings', $dataFinal);
+            }else{
+                $send = $this->crud->update('journal_postings', ["id" => $post['id']], $dataFinal);
+            }
+
+            echo $send;
+        } else {
+            show_error("Cannot Process your request");
+        }
+    }
+
+    public function delete()
+    {
+        $data = $this->input->post();
+        $send = $this->crud->delete('journal_postings', $data);
+        echo $send;
+    }
+
+    public function upload(){
+        error_reporting(0);
+        require_once 'assets/vendors/excel_reader2.php';
+        $target = basename($_FILES['file_upload']['name']);
+        move_uploaded_file($_FILES['file_upload']['tmp_name'], $target);
+        chmod($_FILES['file_upload']['name'], 0777);
+        $file = $_FILES['file_upload']['name'];
+        $data = new Spreadsheet_Excel_Reader($file, false);
+        $total_row = $data->rowcount($sheet_index = 0);
+
+        $datenow    = "GL" . date("ym");
+        $sqlGetID   = $this->db->query("SELECT max(`number`) as kode FROM journal_postings WHERE `number` like '%$datenow%'");
+        $rowID      = $sqlGetID->row();
+        $kode       = $rowID->kode;
+        if ($kode == NULL) {
+            $autoID = sprintf("%04s", $kode + 1);
+        } else {
+            $urutan = (int) substr($kode, -4);
+            $urutan++;
+            $autoID = sprintf("%04s", $urutan);
+        }
+        
+        $number = $datenow . $autoID;
+
+        for ($i = 4; $i <= $total_row; $i++) {
+            $datas[] = array(
+                'number' => $number,
+                'journal_date' => $data->val($i, 2),
+                'journal_type_number' => $data->val($i, 3),
+                'modul' => $data->val($i, 4),
+                'document_no' => $data->val($i, 5),
+                'invoice_no' => $data->val($i, 6),
+                'company_name' => $data->val($i, 7),
+                'trans_date' => $data->val($i, 8),
+                'description' => $data->val($i, 9),
+                'account_number' => $data->val($i, 10),
+                'account_name' => $data->val($i, 11),
+                'currency' => $data->val($i, 12),
+                'original_debit' => $data->val($i, 13),
+                'original_credit' => $data->val($i, 14),
+                'rates' => $data->val($i, 15),
+                'local_debit' => $data->val($i, 16),
+                'local_credit' => $data->val($i, 17)
+            );
+        }
+        $datas['total'] = count($datas);
+        echo json_encode($datas);
+        unlink($_FILES['file_upload']['name']);
+    }
+
+    public function uploadclearFailed(){
+        @unlink('excel/failed/journal_postings.txt');
+    }
+
+    public function uploadcreateFailed(){
+        if ($this->input->post()) {
+            $message = $this->input->post('message');
+            $textFailed = fopen('excel/failed/journal_postings.txt', 'a');
+            fwrite($textFailed, $message . "\n");
+            fclose($textFailed);
+        }
+    }
+
+    public function uploadDownloadFailed(){
+        $file = "excel/failed/journal_postings.txt";
+        header('Content-Description: File Failed');
+        header('Content-Disposition: attachment; filename=' . basename($file));
+        header('Expires: 0');
+        header('Cache-Control: must-revalidate');
+        header('Pragma: public');
+        header('Content-Length: ' . @filesize($file));
+        header("Content-Type: text/plain");
+        @readfile($file);
+    }
+
+    public function uploadcreate(){
+        if ($this->input->post()) {
+            $data = $this->input->post('data');
+            //Cek Process Number
+            $journal_types = $this->crud->read('journal_types', [], ["number" => $data['journal_type_number']]);
+
+            if (empty($journal_types->number)) {
+                echo json_encode(array("title" => "Not Found", "message" => "Journal Type Code " . $data['journal_type_number'] . " Not Found", "theme" => "error"));
+            } else {
+                $postFinal = array(
+                    'number' => $data['number'],
+                    'journal_date' => $data['journal_date'],
+                    'journal_type_id' => $journal_types->id,
+                    'modul' => $data['modul'],
+                    'document_no' => $data['document_no'],
+                    'invoice_no' => $data['invoice_no'],
+                    'company_name' => $data['company_name'],
+                    'trans_date' => $data['trans_date'],
+                    'description' => $data['description'],
+                    'account_number' => $data['account_number'],
+                    'account_name' => $data['account_name'],
+                    'currency' => $data['currency'],
+                    'original_debit' => $data['original_debit'],
+                    'original_credit' => $data['original_credit'],
+                    'rates' => $data['rates'],
+                    'local_debit' => $data['local_debit'],
+                    'local_credit' => $data['local_credit']
+                );
+
+                $send   = $this->crud->create('journal_postings', $postFinal);
+                echo $send;
+            }
+        }
+    }
+
+    public function print_voucher($number)
+    {
+        $number = base64_decode($number);
+        $journal_total = $this->crud->reads('journal_postings', [], ["number" => $number]);
+
+        $config = $this->db->get('config')->row();
+        $config_iso = $this->db->get('config_iso')->row();
+
+        //Config Page
+        $rows = 10;
+        $page = ceil(count($journal_total) / $rows);
+        //Generate QRcode
+        $this->createQrcode(@$number, "assets/image/qrcode/");
+        $html = '<html>
+                    <head>
+                        <title>' . $number . '</title>
+                        <link rel="icon" href="' . $config->favicon . '" type="image/png" sizes="16x16">
+                    </head>
+                    <style>
+                        body {
+                            font-family: Arial, Helvetica, sans-serif;
+                        }
+                        #customers {
+                            border-collapse: collapse;width: 100%;
+                            font-size: 12px;
+                        }
+                        #customers td, #customers th {
+                            border: 1px solid black;padding: 2px;
+                        }
+                        #customers th {
+                            padding-top: 2px;
+                            padding-bottom: 2px;
+                            text-align: center;color: black;
+                        }
+                        @media screen {
+                            .print {
+                                display: none !important;
+                            }
+                        }
+            
+                        @media print {
+                            .noprint {
+                                display: none !important;
+                            }
+                        }
+                    </style>
+                    <body>
+                    <div style="margin:20%;" class="noprint">
+                        <center>
+                            <h1>Press CTRL + P for Print</h1>
+                            <p>Display pages for 15 rows</p>
+                            <p>Paper Size A5, Layout Landscape</p>
+                            <p>Margin Default, Scale 80</p>
+                        </center>
+                    </div>
+                    <div class="print">';
+        $no = 1;
+        $hal = 1;
+        $subtotal = 0;
+        for ($i = 0; $i < $page; $i++) {
+            $this->db->select('a.*, b.name as journal_type_name');
+            $this->db->from('journal_postings a');
+            $this->db->join('journal_types b', 'a.journal_type_id = b.id');
+            $this->db->like('a.number', $number);
+            $this->db->order_by('a.trans_date', 'ASC');
+            $this->db->limit(10, ($i * 10));
+            $records = $this->db->get()->result_array();
+
+            $html .= '  <table style="width:100%;">
+                            <tr>
+                                <th width="10"><img src="' . $config->favicon . '" width="60" /></th>
+                                <td width="250" style="padding:10px;">
+                                    <b style="font-size:14px;">' . $config->name . '</b><br>
+                                    <span style="font-size:10px;">' . $config->address . '</span><br>
+                                </td>
+                                <td width="100" style="text-align:right;">
+                                    <table style="width:100%; font-size:10px;">
+                                        <tr>
+                                            <td width="50" rowspan="4"><img src="' . base_url('assets/image/qrcode/' . $number . '.png') . '" width="60"/></td>
+                                            <td width="60">Doc No</td>
+                                            <td width="5">:</td>
+                                            <td width="100">' . @$config_iso->doc_general_ledger . '</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Form</td>
+                                            <td>:</td>
+                                            <td>' . @$config_iso->form_general_ledger . '</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Print Date</td>
+                                            <td>:</td>
+                                            <td>' . date("Y-m-d H:i") . '</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Print By</td>
+                                            <td>:</td>
+                                            <td>' . $this->session->name . '</td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                        </table>
+                        <div style="border: 1px solid black; width:100%;">
+                            <div style="padding:10px;">
+                                <center>
+                                    <h3>GENERAL LEDGER VOUCHER</h3>
+                                </center>
+                                <div style="float:left; width:49%;"> 
+                                    <table style="width:100%; font-size:12px; margin-bottom:10px;">
+                                        <tr>
+                                            <td width="80">General Ledger No</td>
+                                            <td width="10">:</td>
+                                            <td><b>' . $number . '</b></td>
+                                        </tr>
+                                        <tr>
+                                            <td width="50">Journal Date</td>
+                                            <td width="10">:</td>
+                                            <td><b>' . @$records[0]['journal_date'] . '</b></td>
+                                        </tr>
+                                        <tr>
+                                            <td width="50">Journal Type</td>
+                                            <td width="10">:</td>
+                                            <td><b>' . @$records[0]['journal_type_name'] . '</b></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                                <div style="float:left; width:50%;"> 
+                                    <table style="width:100%; font-size:12px; margin-bottom:10px;">
+                                        <tr>
+                                            <td width="80">Company Name</td>
+                                            <td width="10">:</td>
+                                            <td><b>' . @$records[0]['company_name'] . '</b></td>
+                                        </tr>
+                                        <tr>
+                                            <td width="50">Modul</td>
+                                            <td width="10">:</td>
+                                            <td><b>' . @$records[0]['modul'] . '</b></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                                <table id="customers">
+                                    <tr>
+                                        <th rowspan="2">No</th>
+                                        <th rowspan="2">Document No</th>
+                                        <th rowspan="2">Account No</th>
+                                        <th rowspan="2">Account Name</th>
+                                        <th rowspan="2">Description</th>
+                                        <th colspan="3">Original Currency</th>
+                                        <th colspan="3">Local Currency</th>
+                                    </tr>
+                                    <tr>
+                                        <th>Currency</th>
+                                        <th>Debit</th>
+                                        <th>Credit</th>
+                                        <th>Rates</th>
+                                        <th>Debit</th>
+                                        <th>Credit</th>
+                                    </tr>';
+            $original_debit = 0;
+            $original_credit = 0;
+            $rates = 0;
+            $local_debit = 0;
+            $local_credit = 0;
+            foreach ($records as $record) {
+                $html .= '  <tr>
+                                <td style="text-align:center">' . $no . '</td>
+                                <td>' . $record['document_no'] . '</td>
+                                <td>' . $record['account_number'] . '</td>
+                                <td>' . $record['account_name'] . '</td>
+                                <td>' . $record['description'] . '</td>
+                                <td>' . $record['currency'] . '</td>
+                                <td style="text-align:right;">' . @number_format($record['original_debit'], 2) . '</td>
+                                <td style="text-align:right;">' . @number_format($record['original_credit'], 2) . '</td>
+                                <td style="text-align:right;">' . @number_format($record['rates'], 2) . '</td>
+                                <td style="text-align:right;">' . @number_format($record['local_debit'], 2) . '</td>
+                                <td style="text-align:right;">' . @number_format($record['local_credit'], 2) . '</td>
+                            </tr>';
+
+                $original_debit += $record['original_debit'];
+                $original_credit += $record['original_credit'];
+                $rates += $record['rates'];
+                $local_debit += $record['local_debit'];
+                $local_credit += $record['local_credit'];
+                $no++;
+            }
+
+            $html .= '  <tr>
+                            <th style="text-align:right" colspan="6">SUB TOTAL</th>
+                            <th style="text-align:right;">' . @number_format($original_debit, 2) . '</th>
+                            <th style="text-align:right;">' . @number_format($original_credit, 2) . '</th>
+                            <th style="text-align:right;">-</th>
+                            <th style="text-align:right;">' . @number_format($local_debit, 2) . '</th>
+                            <th style="text-align:right;">' . @number_format($local_credit, 2) . '</th>
+                        </tr>
+                    </table>';
+
+            if (($i + 1) != $page) {
+                $html .= '<div style="page-break-after:always;"></div>';
+            }
+            $hal++;
+        }
+
+        $html .= '</table>
+                <br>
+                <table style="width:100%; font-size:12px;">
+                    <tr>
+                        <td style="text-align:center;">Prepared By</td>
+                        <td style="text-align:center;">Checked By</td>
+                        <td style="text-align:center;">Approved By</td>
+                    </tr>
+                    <tr>
+                        <td style="height:60px;"></td>
+                        <td style="height:60px;"></td>
+                        <td style="height:60px;"></td>
+                    </tr>
+                    <tr>
+                        <th style="height:20px; text-align:center;">' . $this->session->name . '<hr style="width:60%;margin-left:20%;">User Entry</th>
+                        <th style="height:20px; text-align:center;"><br><hr style="width:60%;margin-left:20%;">Accounting Manager</th>
+                        <th style="height:20px; text-align:center;"><br><hr style="width:60%;margin-left:20%;">Director</th>
+                    </tr>
+                </table>
+                </div>
+            </div>';
+
+        $html .= "</div></div><script>window.print()</script></body>";
+        die($html);
+    }
+
+    public function print($option = "")
+    {
+        if ($option == "excel") {
+            $format  = date("Ymd");
+            header("Content-type: application/vnd-ms-excel");
+            header("Content-Disposition: attachment; filename=posting_journals_$format.xls");
+        }
+        //Config
+        $this->db->select('*');
+        $this->db->from('config');
+        $config = $this->db->get()->row();
+
+        $filter_from = base64_decode($this->input->get('filter_from'));
+        $filter_to = base64_decode($this->input->get('filter_to'));
+        $filter_journal_type = base64_decode($this->input->get('filter_journal_type'));
+        $filter_modul = base64_decode($this->input->get('filter_modul'));
+        $filter_voucher = base64_decode($this->input->get('filter_voucher'));
+
+        $this->db->select('a.*, b.name as journal_type_name');
+        $this->db->from('journal_postings a');
+        $this->db->join('journal_types b', 'a.journal_type_id = b.id');
+        $this->db->where('a.modul', 'ADJUSTMENT');
+        if ($filter_from != "" && $filter_to != "") {
+            $this->db->where("a.journal_date BETWEEN '$filter_from' and '$filter_to'");
+        }
+        $this->db->like('a.journal_type_id', $filter_journal_type);
+        $this->db->like('a.modul', $filter_modul);
+        $this->db->like('a.number', $filter_voucher);
+        $this->db->order_by('a.journal_date', 'asc');
+        $this->db->order_by('a.number', 'asc');
+        $this->db->order_by('a.document_no', 'asc');
+        $records = $this->db->get()->result_array();
+
+        $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#customers {border-collapse: collapse;width: 100%;font-size: 12px;}#customers td, #customers th {border: 1px solid #ddd;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: #ddd;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: left;color: black;}</style><body>
+        <center>
+            <div style="float: left; font-size: 12px; text-align: left;">
+                <table style="width: 100%;">
+                    <tr>
+                        <td width="50" style="font-size: 12px; vertical-align: top; text-align: center; vertical-align:jus margin-right:10px;">
+                            <img src="' . $config->favicon . '" width="30">
+                        </td>
+                        <td style="font-size: 14px; text-align: left; margin:2px;">
+                            <b>' . $config->name . '</b><br>
+                            <small>POSTING JOURNAL</small>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <div style="float: right; font-size: 12px; text-align: right;">
+                Print Date ' . date("d M Y H:m:s") . ' <br>
+                Print By ' . $this->session->username . '  
+            </div>
+        </center>
+        <br><br><br>
+        
+        <table id="customers" border="1">
+            <tr>
+                <th rowspan="2" width="20">No</th>
+                <th rowspan="2">Voucher No</th>
+                <th rowspan="2">Journal Date</th>
+                <th rowspan="2">Journal Type</th>
+                <th rowspan="2">Modul</th>
+                <th rowspan="2">Document No</th>
+                <th rowspan="2">Invoice No</th>
+                <th rowspan="2">Company Name</th>
+                <th rowspan="2">Trans Date</th>
+                <th rowspan="2">Description</th>
+                <th rowspan="2">Account No</th>
+                <th rowspan="2">Account Name</th>
+                <th colspan="3">Original Debit</th>
+                <th colspan="3">Local Debit</th>
+            </tr>
+            <tr>
+                <th>Currency</th>
+                <th>Debit</th>
+                <th>Credit</th>
+                <th>Rates</th>
+                <th>Debit</th>
+                <th>Credit</th>
+            </tr>';
+        $no = 1;
+        foreach ($records as $data) {
+            $html .= '<tr>
+                    <td>' . $no . '</td>
+                    <td>' . $data['number'] . '</td>
+                    <td>' . $data['journal_date'] . '</td>
+                    <td>' . $data['journal_type_name'] . '</td>
+                    <td>' . $data['modul'] . '</td>
+                    <td>' . $data['document_no'] . '</td>
+                    <td>' . $data['invoice_no'] . '</td>
+                    <td>' . $data['company_name'] . '</td>
+                    <td>' . $data['trans_date'] . '</td>
+                    <td>' . $data['description'] . '</td>
+                    <td>' . $data['account_number'] . '</td>
+                    <td>' . $data['account_name'] . '</td>
+                    <td>' . $data['currency'] . '</td>
+                    <td>' . number_format($data['original_debit'], 4) . '</td>
+                    <td>' . number_format($data['original_credit'], 4) . '</td>
+                    <td>' . number_format($data['rates'], 2) . '</td>
+                    <td>' . number_format($data['local_debit'], 4) . '</td>
+                    <td>' . number_format($data['local_credit'], 4) . '</td>';
+            $no++;
+        }
+        $html .= '</table></body></html>';
+        echo $html;
+    }
+}

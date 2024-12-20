@@ -47,6 +47,7 @@ class Report_history_transactions_fg extends CI_Controller
         $this->db->select('*');
         $this->db->from('config');
         $config = $this->db->get()->row();
+        
         $records = $this->crud->query("SELECT
             a.id,
             a.number,
@@ -54,18 +55,18 @@ class Report_history_transactions_fg extends CI_Controller
             a.name, 
             a.uom, 
             COALESCE(0,0) as begin_stock,
-            COALESCE(SUM(f.qty),0) as qty_in,
-            g.qty as qty_out,
-            (COALESCE(SUM(f.qty),0) - COALESCE(g.qty, 0)) as end_stock
+            (COALESCE(b.qty_sto, 0) + COALESCE(d.sto_qty_in,0) + COALESCE(c.qty_wip, 0)) as qty_in,
+            (g.qty + COALESCE(d.sto_qty_out, 0)) as qty_out,
+            (COALESCE((b.qty_sto + d.sto_qty_in + c.qty_wip),0) - COALESCE(g.qty, 0) - COALESCE(d.sto_qty_out, 0)) as end_stock
         FROM item_fg a 
-        LEFT JOIN production_schedules d ON a.id = d.item_fg_id
-        LEFT JOIN os_fg c ON a.id = c.item_fg_id
-        LEFT JOIN scan_item_receipts_fg f ON (d.workorder = f.workorder or c.id = f.workorder) and DATE_FORMAT(f.created_date, '%Y-%m-%d') between '$filter_from' and '$filter_to'
-        LEFT JOIN (SELECT item_fg_id, delivery_note_date, COALESCE(SUM(qty), 0) as qty FROM delivery_notes WHERE delivery_note_date between '$filter_from' and '$filter_to' GROUP BY item_fg_id) g ON a.id = g.item_fg_id
+        LEFT JOIN (select a.item_fg_id, COALESCE(SUM(b.qty), 0) as qty_sto FROM os_fg a JOIN scan_item_receipts_fg b ON a.id = b.workorder WHERE a.trans_date between '$filter_from' and '$filter_to' GROUP BY a.item_fg_id) b ON a.id = b.item_fg_id
+        LEFT JOIN (SELECT a.item_fg_id, (CASE WHEN a.type = 'IN' THEN COALESCE(SUM(a.qty), 0) ELSE 0 END) as sto_qty_in, (CASE WHEN a.type = 'OUT' THEN COALESCE(SUM(a.qty), 0) ELSE 0 END) as sto_qty_out FROM sto_fg a WHERE a.trans_date between '$filter_from' and '$filter_to' and (a.approved_to = '' or a.approved_to is null) GROUP BY item_fg_id) d ON a.id = d.item_fg_id
+        LEFT JOIN (select a.item_fg_id, COALESCE(SUM(b.qty), 0) as qty_wip FROM wip_receipts a JOIN scan_item_receipts_fg b ON a.workorder = b.workorder and a.checksheet_number = b.checksheet_number WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') between '$filter_from' and '$filter_to' GROUP BY a.item_fg_id) c ON a.id = c.item_fg_id
+        LEFT JOIN (SELECT item_fg_id, delivery_note_date, COALESCE(SUM(qty), 0) as qty FROM delivery_notes WHERE DATE_FORMAT(created_date, '%Y-%m-%d') between '$filter_from' and '$filter_to' GROUP BY item_fg_id) g ON a.id = g.item_fg_id
         WHERE a.id like '%$filter_items%'
         GROUP BY a.id
         ORDER BY a.number");
-
+        
         $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#customers {border-collapse: collapse;width: 100%;font-size: 12px;}#customers td, #customers th {border: 1px solid #ddd;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: #ddd;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: center;color: black;}</style><body>
             <center>
             <div style="float: left; font-size: 12px; text-align: left;">
@@ -110,12 +111,12 @@ class Report_history_transactions_fg extends CI_Controller
 
             $endstock = $this->crud->query("SELECT
                 a.id,
-                (COALESCE(SUM(f.qty),0) - COALESCE(g.qty, 0)) as begin_stock
+                (COALESCE(b.qty_sto, 0) + COALESCE(d.sto_qty_in, 0) + COALESCE(c.qty_wip, 0) - COALESCE(g.qty, 0) - COALESCE(d.sto_qty_out, 0)) as begin_stock
             FROM item_fg a 
-            LEFT JOIN os_fg c ON a.id = c.item_fg_id
-            LEFT JOIN production_schedules d ON a.id = d.item_fg_id
-            LEFT JOIN scan_item_receipts_fg f ON (d.workorder = f.workorder or c.id = f.workorder)  and DATE_FORMAT(f.created_date, '%Y-%m-%d') < '$filter_from'
-            LEFT JOIN (SELECT item_fg_id, delivery_note_date, COALESCE(SUM(qty), 0) as qty FROM delivery_notes WHERE delivery_note_date < '$filter_from' GROUP BY item_fg_id) g ON a.id = g.item_fg_id
+            LEFT JOIN (select a.item_fg_id, COALESCE(SUM(b.qty), 0) as qty_sto FROM os_fg a JOIN scan_item_receipts_fg b ON a.id = b.workorder WHERE a.trans_date < '$filter_from' GROUP BY a.item_fg_id) b ON a.id = b.item_fg_id
+            LEFT JOIN (select a.item_fg_id, COALESCE(SUM(b.qty), 0) as qty_wip FROM wip_receipts a JOIN scan_item_receipts_fg b ON a.workorder = b.workorder and a.checksheet_number = b.checksheet_number WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') < '$filter_from' GROUP BY a.item_fg_id) c ON a.id = c.item_fg_id
+            LEFT JOIN (SELECT a.item_fg_id, (CASE WHEN a.type = 'IN' THEN COALESCE(SUM(a.qty), 0) ELSE 0 END) as sto_qty_in, (CASE WHEN a.type = 'OUT' THEN COALESCE(SUM(a.qty), 0) ELSE 0 END) as sto_qty_out FROM sto_fg a WHERE a.trans_date < '$filter_from' and (a.approved_to = '' or a.approved_to is null) GROUP BY item_fg_id) d ON a.id = d.item_fg_id
+            LEFT JOIN (SELECT item_fg_id, delivery_note_date, COALESCE(SUM(qty), 0) as qty FROM delivery_notes WHERE DATE_FORMAT(created_date, '%Y-%m-%d') < '$filter_from' GROUP BY item_fg_id) g ON a.id = g.item_fg_id
             WHERE a.id = '$item_fg_id'
             GROUP BY a.id
             ORDER BY a.number");
@@ -123,7 +124,7 @@ class Report_history_transactions_fg extends CI_Controller
             $html .= '  <tr>
                             <td style="text-align:center">' . $no . '</td>
                             <td colspan="2">' . $record->number . '</td>
-                            <td>' . $record->number_customer . '</td>
+                            <td style="mso-number-format:\@;">' . $record->number_customer . '</td>
                             <td>' . $record->name . '</td>
                             <td>' . $record->uom . '</td>
                             <td>FINISH GOOD</td>
@@ -154,26 +155,100 @@ class Report_history_transactions_fg extends CI_Controller
                 $begin = @$endstock[0]->begin_stock;
                 $in_qty = 0;
                 $end_qty = 0;
-                $balance = 0;
+                $balance = @$endstock[0]->begin_stock;
 
                 for ($i = $start; $i <= $finish; $i += (60 * 60 * 24)) {
                     $working_date = date('Y-m-d', $i);
 
+                    //BEGIN STOCK
+                    $os_rms = $this->crud->query("SELECT
+                        a.*,
+                        SUM(b.qty) as qty,
+                        c.name as username
+                    FROM os_fg a 
+                    JOIN scan_item_receipts_fg b ON a.id = b.workorder
+                    JOIN users c ON a.created_by = c.username
+                    WHERE a.item_fg_id = '$item_fg_id' and a.trans_date = '$working_date'
+                    GROUP BY a.id");
+
+                    //STO
+                    $sto_rms = $this->crud->query("SELECT
+                        a.*,
+                        c.name as username
+                    FROM sto_fg a 
+                    JOIN users c ON a.created_by = c.username
+                    WHERE a.item_fg_id = '$item_fg_id' and a.trans_date = '$working_date'
+                    GROUP BY a.id");
+
                     //RECEIPT
                     $receipts = $this->crud->query("SELECT f.*, c.name as username
-                        FROM production_schedules d
-                        JOIN wip_receipts e ON d.workorder = e.workorder
-                        JOIN scan_item_receipts_fg f ON e.checksheet_number = f.checksheet_number and d.workorder = f.workorder
-                        JOIN users c ON f.created_by = c.username
-                        WHERE d.item_fg_id = '$item_fg_id' 
-                        and DATE_FORMAT(f.created_date, '%Y-%m-%d') between '$working_date' and '$working_date'");
+                        FROM wip_receipts e
+                        JOIN scan_item_receipts_fg f ON e.checksheet_number = f.checksheet_number and e.workorder = f.workorder
+                        JOIN users c ON e.created_by = c.username
+                        WHERE e.item_fg_id = '$item_fg_id' 
+                        and DATE_FORMAT(f.created_date, '%Y-%m-%d') = '$working_date'");
 
                     //DELIVERY
-                    $returns = $this->crud->query("SELECT a.*,
-                            d.name as username
+                    $returns = $this->crud->query("SELECT a.*, d.name as username
                         FROM delivery_notes a 
                         JOIN users d ON a.created_by = d.username
-                        WHERE a.item_fg_id = '$item_fg_id' and a.delivery_note_date between '$working_date' and '$working_date'");
+                        WHERE a.item_fg_id = '$item_fg_id' and DATE_FORMAT(a.created_date, '%Y-%m-%d') = '$working_date'");
+
+                    //BEGIN STOCK
+                    foreach ($os_rms as $os_rm) {
+                        $balance = ($begin + $os_rm->qty);
+                        $html .= '  <tr>
+                                        <td></td>
+                                        <td style="text-align:center">' . $nod . '</td>
+                                        <td>STO</td>
+                                        <td>' . $os_rm->username . '</td>
+                                        <td>' . $os_rm->trans_date . '</td>
+                                        <td>' . $os_rm->document_no . '</td>
+                                        <td>' . $os_rm->id . '</td>
+                                        <td style="text-align:right;">' . number_format($begin, 2) . '</td>
+                                        <td style="text-align:right;">' . number_format($os_rm->qty) . '</td>
+                                        <td style="text-align:right;">' . number_format(0)  . '</td>
+                                        <td style="text-align:right;">' . number_format($balance, 2)  . '</td>
+                                    </tr>';
+                        $begin += $os_rm->qty;
+                        $nod++;
+                    }
+
+                    //STO
+                    foreach ($sto_rms as $sto_rm) {
+                        if($sto_rm->type == "IN"){
+                            $type = "STO ADJUSTMENT IN";
+                            $qty_in = $sto_rm->qty;
+                            $qty_out = 0;
+                            $balance = ($begin + $sto_rm->qty);
+                        }else{
+                            $type = "STO ADJUSTMENT OUT";
+                            $qty_in = 0;
+                            $qty_out = $sto_rm->qty;
+                            $balance = ($begin - $sto_rm->qty);
+                        }
+
+                        $html .= '  <tr>
+                                        <td></td>
+                                        <td style="text-align:center">' . $nod . '</td>
+                                        <td>' . $type . '</td>
+                                        <td>' . $sto_rm->username . '</td>
+                                        <td>' . $sto_rm->trans_date . '</td>
+                                        <td>-</td>
+                                        <td>' . $sto_rm->document_no . '</td>
+                                        <td style="text-align:right;">' . number_format($begin, 2) . '</td>
+                                        <td style="text-align:right;">' . number_format($qty_in, 2) . '</td>
+                                        <td style="text-align:right;">' . number_format($qty_out)  . '</td>
+                                        <td style="text-align:right;">' . number_format($balance, 2)  . '</td>
+                                    </tr>';
+                        if($sto_rm->type == "IN"){
+                            $begin += $sto_rm->qty;
+                        }else{
+                            $begin -= $sto_rm->qty;
+                        }
+
+                        $nod++;
+                    }
 
                     //Wip Receipt
                     foreach ($receipts as $receipt) {
@@ -203,7 +278,7 @@ class Report_history_transactions_fg extends CI_Controller
                                                 <td style="text-align:center">' . $nod . '</td>
                                                 <td>DELIVERY NOTE</td>
                                                 <td>' . $return->username . '</td>
-                                                <td>' . $return->delivery_note_date . '</td>
+                                                <td>' . $return->created_date . '</td>
                                                 <td>' . $return->delivery_order_no  . '</td>
                                                 <td>' . $return->delivery_note_no . '</td>
                                                 <td style="text-align:right;">' . number_format($begin, 2) . '</td>

@@ -30,7 +30,7 @@
         </tr>
     </thead>
 </table>
-<div id="toolbar" style="height: 320px;">
+<div id="toolbar" style="height: 260px;">
     <!-- <div style="width: 100%; display: grid; grid-template-columns: auto auto auto; grid-gap: 5px; display: flex;"> -->
     <div style="width: 100%; padding: 10px;">
         <fieldset style="width: 100%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
@@ -39,10 +39,10 @@
                 <span style="display:inline-block;">Trans Date : <b><?= date("d F Y") ?></b> | Receive By : <b><?= $this->session->name ?></b></span>
             </div>
             <div class="fitem" style="padding:0 200px 0 200px;">
-                <input style="width:100%; height: 80px;" type="text" id="checksheet_number" name="checksheet_number" class="scan" placeholder="SCAN CHECKSHEET HERE">
-            </div>
-            <div class="fitem" style="padding:0 200px 0 200px;">
                 <input style="width:100%; height: 80px;" type="text" id="checksheet_label" name="checksheet_label" class="scan" placeholder="SCAN LABEL HERE">
+            </div>
+            <div class="fitem" style="padding:0 200px 10px 200px;">
+                <input class="easyui-textbox" data-options="prompt: 'Checksheet No (Auto)'" style="width: 250px;" id="checksheet_number" name="checksheet_number" readonly>
             </div>
             <div class="fitem" style="padding:0 200px 10px 200px;">
                 <a href="javascript:;" class="easyui-linkbutton" onclick="reload()"><i class="fa fa-rotate-right"></i> Reload</a>
@@ -97,29 +97,34 @@
                 });
             }
         });
+        
         //Scan Label
         $('#checksheet_label').keypress(function(e) {
             if (e.which == 13) {
                 var checksheet_label = $(this).val();
-                var checksheet_number = $("#checksheet_number").val();
+                // var checksheet_number = $("#checksheet_number").val();
                 var split = checksheet_label.split("|");
 
                 $.ajax({
                     type: "POST",
                     url: "<?= base_url('warehouse/item_receipts_fg/getChecksheetLabel') ?>",
                     // data: "checksheet_label=" + split[3] + "&checksheet_number=" + checksheet_number,
-                    data: "checksheet_label=" + checksheet_label + "&checksheet_number=" + checksheet_number,
+                    // data: "checksheet_label=" + checksheet_label + "&checksheet_number=" + checksheet_number,
+                    data: "checksheet_label=" + checksheet_label,
                     dataType: "json",
                     success: function(json) {
+
                         if (json.total > 0) {
                             var row = json.rows;
                             for (let i = 0; i < json.total; i++) {
+                                $("#checksheet_number").textbox('setValue', row[i].checksheet_number);
+
                                 $.ajax({
                                     type: "POST",
                                     url: "<?= base_url('warehouse/item_receipts_fg/create') ?>",
                                     // data: "checksheet_label=" + split[3] +
                                     data: "checksheet_label=" + checksheet_label +
-                                        "&checksheet_number=" + checksheet_number +
+                                        "&checksheet_number=" + row[i].checksheet_number +
                                         // "&so_number=" + row[i].so_number +
                                         "&workorder=" + row[i].workorder +
                                         "&qty=" + row[i].qty,
@@ -144,6 +149,7 @@
                                 });
                             }
 
+                            var checksheet_number = $("#checksheet_number").textbox('getValue');
                             $('#dg').datagrid({
                                 url: '<?= base_url('warehouse/item_receipts_fg/getChecksheets?checksheet_number=') ?>' + checksheet_number,
                                 rownumbers: true,

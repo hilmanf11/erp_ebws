@@ -175,6 +175,140 @@ class Inventory_fg extends CI_Controller
         }
     }
 
+    public function downloadTemplate(){
+        header("Content-type: application/vnd-ms-excel");
+        header("Content-Disposition: attachment; filename=tmp_inventory_fg_".time().".xls");
+
+        $this->db->select('a.*, SUM(b.qty) as qty, b.trans_date, b.document_no');
+        $this->db->from('item_fg a');
+        $this->db->join('os_fg b', 'a.id = b.item_fg_id', 'left');
+        $this->db->where('a.deleted', 0);
+        $this->db->group_by('a.id');
+        $this->db->order_by('a.id', 'ASC');
+        $records = $this->db->get()->result_array();
+
+        $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#item_rm {border-collapse: collapse;width: 100%;font-size: 12px;}#item_rm td, #item_rm th {border: 1px solid #ddd;padding: 2px;}#item_rm tr:nth-child(even){background-color: #f2f2f2;}#item_rm tr:hover {background-color: #ddd;}#item_rm th {padding-top: 2px;padding-bottom: 2px;text-align: left;color: black;}</style><body>
+        <center>
+            <div style="float: centet; font-size: 16px; text-align: center;">
+                <h3>TEMPLATE UPLOAD BALANCE INVENTORY FG</h3>
+            </div>
+        </center>
+        
+        <table id="item_rm" border="1">
+            <tr>
+                <th width="20">No</th>
+                <th>Product No Customer</th>
+                <th>Period</th>
+                <th>Trans Type</th>
+                <th>Created Name</th>
+                <th>Trans Date</th>
+                <th>Invoice No</th>
+                <th>Uom</th>
+                <th>Qty</th>
+                <th>Direct Material</th>
+                <th>Direct Labor</th>
+                <th>Direct FOH</th>
+                <th>Price</th>
+                <th>Amount</th>
+            </tr>';
+        $no = 1;
+        foreach ($records as $data) {
+            $html .= '<tr>
+                        <td>' . $no . '</td>
+                        <td style="mso-number-format:\@;">' . $data['number_customer'] . '</td>
+                        <td style="mso-number-format:\@;">' . date("Y-m", strtotime($data['trans_date'])) . '</td>
+                        <td>BEGINING</td>
+                        <td>' . $this->session->name . '</td>
+                        <td style="mso-number-format:\@;">' . $data['trans_date'] . '</td>
+                        <td>' . $data['document_no'] . '</td>
+                        <td>' . $data['uom'] . '</td>
+                        <td>' . $data['qty'] . '</td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>';
+            $no++;
+        }
+
+        $html .= '</table></body></html>';
+        echo $html;
+    }
+
+    //UPLOAD DATA
+    public function upload()
+    {
+        error_reporting(0);
+        require_once 'assets/vendors/excel_reader2.php';
+        $target = basename($_FILES['file_upload']['name']);
+        move_uploaded_file($_FILES['file_upload']['tmp_name'], $target);
+        chmod($_FILES['file_upload']['name'], 0777);
+        $file = $_FILES['file_upload']['name'];
+        $data = new Spreadsheet_Excel_Reader($file, false);
+        $total_row = $data->rowcount($sheet_index = 0);
+        $datas = array();
+        for ($i = 4; $i <= $total_row; $i++) {
+            $datas[] = array(
+                'number_customer' => $data->val($i, 2),
+                'period' => $data->val($i, 3),
+                'trans_type' => $data->val($i, 4),
+                'created_name' => $data->val($i, 5),
+                'trans_date' => $data->val($i, 6),
+                'invoice_no' => $data->val($i, 7),
+                'uom' => $data->val($i, 8),
+                'qty' => $data->val($i, 9),
+                'direct_material' => $data->val($i, 10),
+                'direct_labor' => $data->val($i, 11),
+                'direct_foh' => $data->val($i, 12),
+                'price' => $data->val($i, 13),
+                'amount' => $data->val($i, 14),
+            );
+        }
+        $datas['total'] = count($datas);
+        echo json_encode($datas);
+        unlink($_FILES['file_upload']['name']);
+    }
+
+    //UPLOAD CREATE DATA
+    public function uploadcreate()
+    {
+        if ($this->input->post()) {
+            $data = $this->input->post('data');
+            $item_fg = $this->crud->read("item_fg", [], ["number_customer" => $data['number_customer']]);
+
+            if(empty($item_fg)){
+                echo json_encode(array("title" => "Not Found", "message" => "Product No ".$data['number_customer']." Not Found", "theme" => "error"));
+            }else{
+                $inventory_fg = $this->crud->read('inventory_fg', [], ["period" => $data['period'], "item_fg_id" => @$item_fg->id]);
+
+                $dataFinal = array(
+                    "item_fg_id" => $item_fg->id,
+                    "period" => $data['period'],
+                    "trans_type" => $data['trans_type'],
+                    "created_name" => $data['created_name'],
+                    "trans_date" => $data['trans_date'],
+                    "invoice_no" => $data['invoice_no'],
+                    "uom" => $data['uom'],
+                    "qty" => $data['qty'],
+                    "direct_material" => $data['direct_material'],
+                    "direct_labor" => $data['direct_labor'],
+                    "direct_foh" => $data['direct_foh'],
+                    "price" => $data['price'],
+                    "amount" => $data['amount'],
+                );
+
+                if (!empty($inventory_fg->id)) {
+                    $send = $this->crud->update('inventory_fg', ["period" => $data['period'], "item_fg_id" => $data['item_fg_id']], $dataFinal);
+                    echo $send;
+                } else {
+                    $send = $this->crud->create('inventory_fg', $dataFinal);
+                    echo $send;
+                }
+            }
+        }
+    }
+
     public function print($option = "")
     {
         if ($option == "excel") {
@@ -228,7 +362,8 @@ class Inventory_fg extends CI_Controller
 
         $records = $this->crud->query("SELECT
             a.id,
-            a.number, 
+            a.number,
+            a.number_customer, 
             a.name, 
             a.uom,
             COALESCE(d.qty) as qty_in,
@@ -244,17 +379,18 @@ class Inventory_fg extends CI_Controller
             COALESCE(e.price) as price_out,
             COALESCE(e.amount) as amount_out
         FROM item_fg a
-        LEFT JOIN (SELECT item_fg_id, price, SUM(qty) as qty, SUM(amount) as amount, SUM(direct_material) as direct_material, SUM(direct_labor) as direct_labor, SUM(direct_foh) as direct_foh FROM inventory_fg WHERE trans_date between '$filter_from' and '$filter_to' and trans_type = 'RECEIPT FG' GROUP BY item_fg_id) d ON a.id = d.item_fg_id
+        LEFT JOIN (SELECT item_fg_id, price, SUM(qty) as qty, SUM(amount) as amount, SUM(direct_material) as direct_material, SUM(direct_labor) as direct_labor, SUM(direct_foh) as direct_foh FROM inventory_fg WHERE trans_date between '$filter_from' and '$filter_to' and trans_type IN ('RECEIPT FG','BEGINING') GROUP BY item_fg_id) d ON a.id = d.item_fg_id
         LEFT JOIN (SELECT item_fg_id, price, SUM(qty) as qty, SUM(amount) as amount, SUM(direct_material) as direct_material, SUM(direct_labor) as direct_labor, SUM(direct_foh) as direct_foh FROM inventory_fg WHERE trans_date between '$filter_from' and '$filter_to' and trans_type = 'DELIVERY NOTE' GROUP BY item_fg_id) e ON a.id = e.item_fg_id
         WHERE a.id like '%$filter_item_fg%'
         GROUP BY a.id
         ORDER BY a.number");
 
-        $html .= '<table id="customers" style="width: 250%">
+        $html .= '<table id="customers" style="width: 200%">
                     <tr>
                         <th rowspan="2" width="20">No</th>
-                        <th colspan="2" rowspan="2">Product No</th>
-                        <th colspan="3" rowspan="2">Product Name</th>
+                        <th colspan="2" rowspan="2">Product No EBWS</th>
+                        <th colspan="2" rowspan="2">Product No Customer</th>
+                        <th colspan="3" rowspan="2">Description</th>
                         <th rowspan="2">Uom</th>
                         <th style="background-color:#CACACA;" colspan="6">Begining Stock</th>
                         <th style="background-color:#B0FFA0;" colspan="6">In</th>
@@ -349,6 +485,7 @@ class Inventory_fg extends CI_Controller
             $html .= '  <tr>
                             <td style="text-align:center">' . $noh . '</td>
                             <td colspan="2">' . $record->number . '</td>
+                            <td colspan="2">' . $record->number_customer . '</td>
                             <td colspan="3">' . $record->name . '</td>
                             <td>' . $record->uom . '</td>
                             <td style="text-align:right;">' . number_format(@$begin[0]->qty, 2) . '</td>
@@ -379,7 +516,7 @@ class Inventory_fg extends CI_Controller
 
             if ($filter_display == "DETAIL") {
                 $html .= '  <tr>
-                                <td colspan="19" style="background:#D1FFC6;"><b>DETAIL OF ' . $record->number . ' - ' . $record->name . '</b></td>
+                                <td colspan="20" style="background:#D1FFC6;"><b>DETAIL OF ' . $record->number . ' - ' . $record->name . '</b></td>
                             </tr>';
                 $html .= '  <tr>
                                 <th rowspan="2" width="20"></th>
@@ -550,7 +687,7 @@ class Inventory_fg extends CI_Controller
             }
 
             $html .= '  <tr>
-                            <td colspan="7" style="text-align:right;"><b>GRAND TOTAL</b></td>
+                            <td colspan="9" style="text-align:right;"><b>GRAND TOTAL</b></td>
                             <td style="text-align:right;"><b>' . number_format($total_begin, 2) . '</b></td>
                             <td style="text-align:right;"><b>' . number_format($total_direct_material, 2) . '</b></td>
                             <td style="text-align:right;"><b>' . number_format($total_direct_labor, 2) . '</b></td>

@@ -19,8 +19,8 @@
             <th data-options="field:'moq',width:80,halign:'center'">MOQ</th>
             <th data-options="field:'qty',width:80,halign:'center',align:'right',formatter: numberformat">Qty</th>
             <th data-options="field:'currency',width:80,halign:'center'">Currency</th>
-            <th data-options="field:'price',width:100,halign:'center',align:'right',formatter: numberformat">Price</th>
-            <th data-options="field:'total',width:100,halign:'center',align:'right',formatter: numberformat">Total</th>
+            <th data-options="field:'price',width:100,halign:'center',align:'right',formatter: numberformatPrice">Price</th>
+            <th data-options="field:'total',width:100,halign:'center',align:'right',formatter: numberformatPrice">Total</th>
             <th data-options="field:'remarks',width:150,halign:'center'">Remarks</th>
             <th data-options="field:'month_1',width:80,halign:'center',align:'right',formatter: numberformat">Month 1</th>
             <th data-options="field:'month_2',width:80,halign:'center',align:'right',formatter: numberformat">Month 2</th>
@@ -191,14 +191,14 @@
 	}
 
     function numberformat(value, row) {
-		const formatter = new Intl.NumberFormat('id-ID');
+		const formatter = new Intl.NumberFormat('ja-JP');
 
 		return "<b>" + formatter.format(value) + "</b>";
 	}
 
 	function numberformatPrice(value, row){
-        const formatter = new Intl.NumberFormat('id-ID', {
-            minimumFractionDigits: 2
+        const formatter = new Intl.NumberFormat('ja-JP', {
+            minimumFractionDigits: 4
         });
 
         return "<b>" + formatter.format(value) + "</b>";

@@ -34,6 +34,25 @@ class Balance_suppliers extends CI_Controller
         echo json_encode($send);
     }
 
+    public function readCoa()
+    {
+        $post = isset($_POST['q']) ? $_POST['q'] : "";
+        $this->db->select("c.id as number, c.name, a.account_number, b.account_name, c.currency,
+            (CASE WHEN a.balance_local > 0 THEN a.balance_local ELSE 0 END) as debit,
+            (CASE WHEN a.balance_local < 0 THEN abs(a.balance_local) ELSE 0 END) as credit");
+        $this->db->from('account_balance_suppliers a');
+        $this->db->join('account_coa b', 'a.account_number = b.account_number');
+        $this->db->join('suppliers c', 'a.supplier_id = c.id');
+        $this->db->like('a.account_number', $post);
+        $this->db->or_like('b.account_name', $post);
+        $this->db->or_like('c.name', $post);
+        $this->db->or_like('c.id', $post);
+        $this->db->group_by('a.id');
+        $records = $this->db->get()->result_array();
+
+        echo json_encode($records);
+    }
+    
     //GET DATATABLES
     public function datatables()
     {
@@ -47,7 +66,7 @@ class Balance_suppliers extends CI_Controller
             $offset = ($page - 1) * $rows;
             $result = array();
             //Select Query
-            $this->db->select('a.id as supplier_ids, a.number as supplier_number, a.name as supplier_name, a.currency, b.*, c.account_name');
+            $this->db->select('a.id as supplier_ids, a.number as supplier_number, a.name as supplier_name, a.currency, a.supplier_type, b.*, c.account_name, a.currency');
             $this->db->from('suppliers a');
             $this->db->join('account_balance_suppliers b', 'a.id = b.supplier_id', 'left');
             $this->db->join('account_coa c', 'b.account_number = c.account_number', 'left');
@@ -137,7 +156,7 @@ class Balance_suppliers extends CI_Controller
         $total_row = $data->rowcount($sheet_index = 0);
         for ($i = 4; $i <= $total_row; $i++) {
             $datas[] = array(
-                'supplier_number' => $data->val($i, 2),
+                'supplier_id' => $data->val($i, 2),
                 'account_number' => $data->val($i, 3),
                 'currency' => $data->val($i, 4),
                 'balance' => $data->val($i, 5),
@@ -189,12 +208,12 @@ class Balance_suppliers extends CI_Controller
         if ($this->input->post()) {
             $data = $this->input->post('data');
             //Cek Process Number
-            $suppliers = $this->crud->read('suppliers', [], ["number" => $data['supplier_number']]);
+            $suppliers = $this->crud->read('suppliers', [], ["id" => $data['supplier_id']]);
             $account_balance_suppliers = $this->crud->reads("account_balance_suppliers", [], ["supplier_id" => @$suppliers->id]);
             $account_coa = $this->crud->reads("account_coa", [], ["account_number" => @$data['account_number']]);
 
             if (empty($suppliers->id)) {
-                echo json_encode(array("title" => "Not Found", "message" => "Supplier Code " . $data['supplier_number'] . " Not Found", "theme" => "error"));
+                echo json_encode(array("title" => "Not Found", "message" => "Supplier Code " . $data['supplier_id'] . " Not Found", "theme" => "error"));
             } else {
                 if($data['debt_limit'] > 0){
                     $status = "1";

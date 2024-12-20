@@ -37,6 +37,15 @@ class Users extends CI_Controller
         $users = $this->crud->reads('users');
         echo json_encode($users);
     }
+
+    //GET DATA
+    public function readId()
+    {
+        $id = $this->input->post("id");
+        $users = $this->crud->read('users', [], ["id" => $id]);
+        echo json_encode($users);
+    }
+
     //GET DATATABLES
     public function datatables()
     {

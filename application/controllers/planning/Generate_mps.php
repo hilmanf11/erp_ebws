@@ -67,13 +67,15 @@ class Generate_mps extends CI_Controller
 
     public function getData()
     {
+        $this->dummy = $this->load->database('dummy', TRUE);
+
         if ($this->input->get()) {
             //Filter Data
             $filter_month = base64_decode($this->input->get('filter_month'));
             $filter_year = base64_decode($this->input->get('filter_year'));
             $filter_cutoff = base64_decode($this->input->get('filter_cutoff'));
             $filter_customer = base64_decode($this->input->get('filter_customer'));
-            $filter_product_no = base64_decode($this->input->get('filter_product_no'));
+            $filter_product_no = base64_decode($this->input->get('filter_item_fg'));
             $filter_revision = base64_decode($this->input->get('filter_revision'));
 
             $monthBack = date('F Y', strtotime('-1 month', strtotime($filter_year . "-" . $filter_month . "-01")));
@@ -88,26 +90,29 @@ class Generate_mps extends CI_Controller
             $config = $this->db->get()->row();
 
             //Select Query
-            $this->db->select('a.id, a.number, a.name, a.leadtime, b.customer_id,
-                COALESCE(c.pp, 0) as pp, 
-                COALESCE(c.wc, 0) as wc, 
-                COALESCE(c.ha, 0) as ha, 
-                COALESCE(c.c, 0) as c,
-                COALESCE(c.v, 0) as v,
-                COALESCE(c.p, 0) as p,
-                COALESCE(c.rfg, 0) as rfg,
-                COALESCE(c.pp + c.wc + c.ha + c.c + c.v + c.p + c.rfg, 0) as total_wip, 
-                COALESCE(d.qty, 0) as fg, 
-                COALESCE(e.qty, 0) as os_mpp, 
+            $this->db->select('a.id, a.number, a.name, a.leadtime, b.customer_id, a.number_customer, a.safety_stock,
+                COALESCE(c.qty, 0) as total_wip,
                 COALESCE(f.outstanding, 0) as os_so');
             $this->db->from('item_fg a');
             $this->db->join('customer_items b', 'a.id = b.item_fg_id');
-            $this->db->join('stock_wip c', "a.id = c.item_fg_id and c.p_month = '" . $filter_month . "' and c.p_year = '" . $filter_year . "' and c.revision = '" . $filter_revision . "'", "left");
-            $this->db->join("(SELECT b.period, b.item_fg_id, b.customer_id, SUM(a.qty) as qty FROM scan_item_receipts_fg a JOIN production_schedules b ON a.workorder = b.workorder WHERE a.status = 0 GROUP BY b.period, b.item_fg_id) d", "a.id = d.item_fg_id and b.customer_id = d.customer_id and d.period = '$period2'", "left");
-            $this->db->join("(SELECT period, item_fg_id, customer_id, SUM(qty) as qty FROM production_schedules GROUP BY period) e", "a.id = e.item_fg_id and b.customer_id = e.customer_id and e.period = '$period2'", "left");
-            $this->db->join("(SELECT item_fg_id, customer_id, SUM(outstanding) as outstanding FROM sales_orders WHERE sales_order_date <= '$filter_cutoff' and status = 0 GROUP BY customer_id, item_fg_id) f", "a.id = f.item_fg_id and b.customer_id = f.customer_id", "left");
+            $this->db->join("(SELECT z.item_fg_id, SUM(z.qty) as qty, SUM(z.qty_scan) as qty_scan, (SUM(z.qty) - SUM(z.qty_scan)) as balance FROM (
+                SELECT a.item_fg_id, a.workorder, a.qty, COALESCE(SUM(c.qty), 0) AS qty_scan, (a.qty - COALESCE(SUM(c.qty), 0)) AS balance
+                FROM production_schedules a
+                JOIN item_fg b ON a.item_fg_id = b.id
+                LEFT JOIN scan_item_receipts_fg c ON a.workorder = c.workorder
+                WHERE a.trans_date < '$filter_cutoff'
+                GROUP BY a.item_fg_id, a.workorder) z
+                GROUP BY z.item_fg_id) c", "a.id = c.item_fg_id", "left");
+            // $this->db->join("(SELECT DATE_FORMAT(a.created_date, '%Y%m') as period, b.item_fg_id, b.customer_id, SUM(a.qty) as qty FROM scan_item_receipts_fg a JOIN wip_receipts b ON a.checksheet_number = b.checksheet_number WHERE a.status = 0 GROUP BY b.period, b.item_fg_id) d", "a.id = d.item_fg_id and b.customer_id = d.customer_id and d.period = '$period2'", "left");
+            // $this->db->join("(SELECT b.item_fg_id, SUM(a.qty) as qty FROM scan_item_receipts_fg a JOIN os_fg b ON a.workorder = b.id WHERE a.status = 0 GROUP BY b.item_fg_id) g", "a.id = g.item_fg_id", "left");
+            // $this->db->join("(SELECT DATE_FORMAT(a.trans_date_from, '%Y%m') as period, item_fg_id, customer_id, SUM(qty) as qty FROM wip_receipts a GROUP BY DATE_FORMAT(a.trans_date_from, '%Y%m')) e", "a.id = e.item_fg_id and b.customer_id = e.customer_id and e.period = '$period2'", "left");
+            $this->db->join("(SELECT a.item_fg_id, c.number_customer, COALESCE(a.qty_so, 0) as qty_so, COALESCE(b.qty_delivery, 0) as qty_delivery, (COALESCE(a.qty_so, 0) - COALESCE(b.qty_delivery, 0)) as outstanding
+                FROM (SELECT item_fg_id, SUM(qty) as qty_so FROM `sales_orders` WHERE delivery_date < '$filter_cutoff' and status = 0 GROUP BY item_fg_id) a 
+                JOIN (SELECT item_fg_id, SUM(qty) as qty_delivery FROM delivery_notes WHERE delivery_note_date < '$filter_cutoff' GROUP BY item_fg_id) b ON a.item_fg_id = b.item_fg_id 
+                JOIN item_fg c ON a.item_fg_id = c.id 
+                GROUP BY a.item_fg_id) f", "a.id = f.item_fg_id", "left");
             if ($filter_customer != "") {
-                $this->db->where('b.id', $filter_customer);
+                $this->db->where('b.customer_id', $filter_customer);
             }
             if ($filter_product_no != "") {
                 $this->db->where('a.id', $filter_product_no);
@@ -118,11 +123,61 @@ class Generate_mps extends CI_Controller
             $records = $this->db->get()->result_array();
 
             foreach ($records as $data) {
-                $totalStock = ($data['total_wip'] + $data['fg'] + $data['os_mpp']);
-                if ($data['fg'] == null) {
-                    $fg = "0";
-                } else {
-                    $fg = $data['fg'];
+
+                $filter_cutoff_start = date("Y-m-01", strtotime("-1 month", strtotime($filter_cutoff)));
+                $filter_cutoff_end = date("Y-m-t", strtotime("-1 day", strtotime($filter_cutoff)));
+                $mpp = date("Ym", strtotime("-1 month", strtotime($filter_cutoff)));
+                $item_fg_id = $data['id'];
+                $assy_number = $data['number_customer'];
+                
+                $prod = $this->crud->query("SELECT item_fg_id, SUM(qty) as qty FROM production_schedules 
+                WHERE trans_date between '$filter_cutoff_start' and '$filter_cutoff_end' and item_fg_id = '$item_fg_id'
+                GROUP BY item_fg_id");
+                $qty_prod = empty(@$prod[0]->qty) ? 0 : @$prod[0]->qty;
+
+                // $sqlQty = $this->dummy->query("SELECT COUNT(z.serial_number) as qty FROM (
+                //     SELECT DISTINCT
+                //         TRIM(a.serial_number) AS serial_number,
+                //         TRIM(a.assy_number) AS assy_number,
+                //         TRIM(a.customer) AS customer,
+                //         TRIM(a.mpp) AS mpp,
+                //         TRIM(a.wp) AS wp,
+                //         TRIM(a.lot) AS lot,
+                //         DATE(a.tanggal_proses) AS tanggal,
+                //         COALESCE(a.jam_scan,'00:00:00') AS jam,
+                //         a.wds_qty
+                //     FROM mst_scan_proses a
+                //     WHERE kode_proses = '5' and assy_number = '$assy_number' and mpp = '$mpp' and 
+                //     tanggal_proses between '$filter_cutoff_start' and '$filter_cutoff_end' and status_repair = 'false' 
+                //     AND status_before IS NOT NULL
+                //     AND status_repair = 'f'
+                //     ORDER BY serial_number) z");
+                // $rowQty = $sqlQty->row();
+                $sqlQty = $this->dummy->query("SELECT COUNT(x.serial_number) as qty FROM (
+                    SELECT DISTINCT z.serial_number FROM (
+                    SELECT DISTINCT
+                        TRIM(a.serial_number) AS serial_number,
+                        TRIM(a.assy_number) AS assy_number,
+                        TRIM(a.customer) AS customer,
+                        TRIM(a.mpp) AS mpp,
+                        TRIM(a.wp) AS wp,
+                        TRIM(a.lot) AS lot,
+                        DATE(a.tanggal_proses) AS tanggal,
+                        COALESCE(a.jam_scan,'00:00:00') AS jam,
+                        a.wds_qty
+                    FROM mst_scan_proses a
+                    WHERE kode_proses = '5' and assy_number = '$assy_number' and mpp = '$mpp' and 
+                    tanggal_proses between '$filter_cutoff_start' and '$filter_cutoff_end' and status_repair = 'false' 
+                    AND status_before IS NOT NULL
+                    AND status_repair = 'f'
+                    ORDER BY serial_number) z ) x");
+                $rowQty = $sqlQty->row();
+                $qty_scan = empty(@$rowQty->qty) ? 0 : @$rowQty->qty;
+
+                if(($qty_prod - $qty_scan) > 0){
+                    $balance_wip = ($prod[0]->qty - $qty_scan);
+                }else{
+                    $balance_wip = 0;
                 }
 
                 $i = 1;
@@ -139,11 +194,50 @@ class Generate_mps extends CI_Controller
                 $monthEnd =  strtotime(date('Y-m-d', strtotime('+5 month', strtotime($varBackYear . "-" . $varBackMonth . "-01"))));
 
                 //Cek Forecasts
-                // $item_fg_id = $data['id'];
-                // $customer_id = $data['customer_id'];
-                // $qForecast = $this->db->query("SELECT *, SUM(month_1) as month_1 FROM forecasts WHERE item_fg_id = '$item_fg_id' and customer_id = '$customer_id' and p_year = '$filter_year' and revision = '$filter_revision'");
-                // $forecast = $qForecast->row();
-                $forecast = $this->crud->read('forecasts', [], ["item_fg_id" => $data['id'], "customer_id" => $data['customer_id'], "p_month" => $filter_month, "p_year" => $filter_year, "revision" => $filter_revision]);
+                $item_fg_id = $data['id'];
+                $customer_id = $data['customer_id'];
+                $qForecast = $this->db->query("SELECT SUM(month_1) as month_1, SUM(month_2) as month_2, SUM(month_3) as month_3, SUM(month_4) as month_4, SUM(month_5) as month_5, SUM(month_6) as month_6 FROM forecasts WHERE item_fg_id = '$item_fg_id' and customer_id = '$customer_id' and p_year = '$filter_year' and p_month = '$filter_month' and revision = '$filter_revision'");
+                $forecast = $qForecast->row();
+                // $forecast = $this->crud->read('forecasts', [], ["item_fg_id" => $data['id'], "customer_id" => $data['customer_id'], "p_month" => $filter_month, "p_year" => $filter_year, "revision" => $filter_revision]);
+
+                $stockFg = $this->crud->query("SELECT
+                    a.id,
+                    (COALESCE(b.qty_sto, 0) + COALESCE(d.sto_qty_in, 0) + COALESCE(c.qty_wip, 0) - COALESCE(g.qty, 0) - COALESCE(d.sto_qty_out, 0)) as end_stock
+                FROM item_fg a 
+                LEFT JOIN (select a.item_fg_id, COALESCE(SUM(b.qty), 0) as qty_sto FROM os_fg a JOIN scan_item_receipts_fg b ON a.id = b.workorder WHERE a.trans_date < '$filter_cutoff' GROUP BY a.item_fg_id) b ON a.id = b.item_fg_id
+                LEFT JOIN (select a.item_fg_id, COALESCE(SUM(b.qty), 0) as qty_wip FROM wip_receipts a JOIN scan_item_receipts_fg b ON a.workorder = b.workorder and a.checksheet_number = b.checksheet_number WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') < '$filter_cutoff' GROUP BY a.item_fg_id) c ON a.id = c.item_fg_id
+                LEFT JOIN (SELECT a.item_fg_id, (CASE WHEN a.type = 'IN' THEN COALESCE(SUM(a.qty), 0) ELSE 0 END) as sto_qty_in, (CASE WHEN a.type = 'OUT' THEN COALESCE(SUM(a.qty), 0) ELSE 0 END) as sto_qty_out FROM sto_fg a WHERE a.trans_date < '$filter_cutoff' and (a.approved_to = '' or a.approved_to is null) GROUP BY item_fg_id) d ON a.id = d.item_fg_id
+                LEFT JOIN (SELECT item_fg_id, delivery_note_date, COALESCE(SUM(qty), 0) as qty FROM delivery_notes WHERE DATE_FORMAT(created_date, '%Y-%m-%d') < '$filter_cutoff' GROUP BY item_fg_id) g ON a.id = g.item_fg_id
+                WHERE a.id = '$item_fg_id'
+                GROUP BY a.id
+                ORDER BY a.number");
+
+                $p_month = date("m", strtotime("-1 month", strtotime($filter_cutoff)));
+                $p_year = date("Y", strtotime("-1 month", strtotime($filter_cutoff)));
+                $osMpp = $this->crud->query("SELECT
+                    a.id,
+                    ((c.date_1 + c.date_2 + c.date_3 + c.date_4 + c.date_5 + c.date_6 + c.date_7 + c.date_8 + c.date_9 + c.date_10 + c.date_11 + c.date_12 + c.date_13 + c.date_14 + c.date_15 + c.date_16 + c.date_17 + c.date_18 + c.date_19 + c.date_20 + c.date_21 + c.date_22 + c.date_23 + c.date_24 + c.date_25 + c.date_26 + c.date_27 + c.date_28 + c.date_29 + c.date_30 + c.date_31) - SUM(b.qty)) as os_mpp
+                FROM item_fg a 
+                JOIN production_schedules b ON a.id = b.item_fg_id and b.trans_date < '$filter_cutoff'
+                JOIN generate_mpp c ON a.id = c.item_fg_id and c.p_month = '$p_month' and c.p_year = '$p_year'
+                WHERE a.id = '$item_fg_id'
+                GROUP BY a.id");
+
+                if(@$osMpp[0]->os_mpp > 0){
+                    $os_mpp = @$osMpp[0]->os_mpp;
+                }else{
+                    $os_mpp = 0;
+                }
+
+                $stock_fg = (@$stockFg[0]->end_stock);
+
+                // $totalStock = ($data['total_wip'] + @$stock_fg + $os_mpp);
+                $totalStock = ($balance_wip + @$stock_fg + $os_mpp);
+                if (@$stock_fg == null) {
+                    $fg = "0";
+                } else {
+                    $fg = @$stock_fg;
+                }
 
                 while ($monthStart < $monthEnd) {
                     $monthName = date('F Y', $monthStart);
@@ -158,7 +252,7 @@ class Generate_mps extends CI_Controller
                     $finish2 = strtotime(date('Y-m-t', strtotime('+1 month', $monthStart)));
 
                     //Sales Order
-                    $sales_order = $this->crud->query("SELECT SUM(qty) as qty FROM sales_orders WHERE item_fg_id = '$data[id]' and customer_id = '$data[customer_id]' and sales_order_date between '$monthName2' and '$filter_cutoff'");
+                    $sales_order = $this->crud->query("SELECT SUM(qty) as qty FROM sales_orders WHERE item_fg_id = '$data[id]' and customer_id = '$data[customer_id]' and sales_order_date like '%$monthName3%'");
 
                     //HKW 1
                     $hkw = 0;
@@ -210,7 +304,8 @@ class Generate_mps extends CI_Controller
                         if($soData > $forecastData){ $qtySoFc = $soData; }else{ $qtySoFc = $forecastData; }
                         $deliveryRate = @round($qtySoFc / $hkw);
                         $ito = @round($beginBalance / $deliveryRate);
-                        $safetyStock = @round(((@$data['leadtime'] + $config->fg_ss) / $hkw2) * $forecast->month_2);
+                        // $safetyStock = @round(((@$data['leadtime'] + $config->fg_ss) / $hkw2) * $forecast->month_2);
+                        $safetyStock = @round($forecast->month_2 * (@$data['safety_stock'] / 100));
                         $prodPlan = @round(($qtySoFc + $safetyStock) - $beginBalance);
                     } else if ($i == 2) {
                         $beginBalance = (($prodPlan + $beginBalance) - $forecastData - $safetyStock);
@@ -219,7 +314,8 @@ class Generate_mps extends CI_Controller
                         if($soData > $forecastData){ $qtySoFc = $soData; }else{ $qtySoFc = $forecastData; }
                         $deliveryRate = @round($qtySoFc / $hkw);
                         $ito = @round($beginBalance / $deliveryRate);
-                        $safetyStock = @round(((@$data['leadtime'] + $config->fg_ss) / $hkw2) * $forecast->month_3);
+                        // $safetyStock = @round(((@$data['leadtime'] + $config->fg_ss) / $hkw2) * $forecast->month_3);
+                        $safetyStock = @round($forecast->month_3 * (@$data['safety_stock'] / 100));
                         $prodPlan = @round(($qtySoFc + $safetyStock) - $beginBalance);
                     } elseif ($i == 3) {
                         $beginBalance = (($prodPlan + $beginBalance) - $forecastData - $safetyStock);
@@ -228,7 +324,8 @@ class Generate_mps extends CI_Controller
                         if($soData > $forecastData){ $qtySoFc = $soData; }else{ $qtySoFc = $forecastData; }
                         $deliveryRate = @round($qtySoFc / $hkw);
                         $ito = @round($beginBalance / $deliveryRate);
-                        $safetyStock = @round(((@$data['leadtime'] + $config->fg_ss) / $hkw2) * $forecast->month_4);
+                        // $safetyStock = @round(((@$data['leadtime'] + $config->fg_ss) / $hkw2) * $forecast->month_4);
+                        $safetyStock = @round($forecast->month_4 * (@$data['safety_stock'] / 100));
                         $prodPlan = @round(($qtySoFc + $safetyStock) - $beginBalance);
                     } elseif ($i == 4) {
                         $beginBalance = (($prodPlan + $beginBalance) - $forecastData - $safetyStock);
@@ -237,7 +334,8 @@ class Generate_mps extends CI_Controller
                         if($soData > $forecastData){ $qtySoFc = $soData; }else{ $qtySoFc = $forecastData; }
                         $deliveryRate = @round($qtySoFc / $hkw);
                         $ito = @round($beginBalance / $deliveryRate);
-                        $safetyStock = @round(((@$data['leadtime'] + $config->fg_ss) / $hkw2) * $forecast->month_5);
+                        // $safetyStock = @round(((@$data['leadtime'] + $config->fg_ss) / $hkw2) * $forecast->month_5);
+                        $safetyStock = @round($forecast->month_5 * (@$data['safety_stock'] / 100));
                         $prodPlan = @round(($qtySoFc + $safetyStock) - $beginBalance);
                     } elseif ($i == 5) {
                         $beginBalance = (($prodPlan + $beginBalance) - $forecastData - $safetyStock);
@@ -246,7 +344,8 @@ class Generate_mps extends CI_Controller
                         if($soData > $forecastData){ $qtySoFc = $soData; }else{ $qtySoFc = $forecastData; }
                         $deliveryRate = @round($qtySoFc / $hkw);
                         $ito = @round($beginBalance / $deliveryRate);
-                        $safetyStock = @round(((@$data['leadtime'] + $config->fg_ss) / $hkw2) * $forecast->month_6);
+                        // $safetyStock = @round(((@$data['leadtime'] + $config->fg_ss) / $hkw2) * $forecast->month_6);
+                        $safetyStock = @round($forecast->month_6 * (@$data['safety_stock'] / 100));
                         $prodPlan = @round(($qtySoFc + $safetyStock) - $beginBalance);
                     } elseif ($i == 6) {
                         $beginBalance = (($prodPlan + $beginBalance) - $forecastData - $safetyStock);
@@ -255,7 +354,8 @@ class Generate_mps extends CI_Controller
                         if($soData > $forecastData){ $qtySoFc = $soData; }else{ $qtySoFc = $forecastData; }
                         $deliveryRate = @round($qtySoFc / $hkw);
                         $ito = @round($beginBalance / $deliveryRate);
-                        $safetyStock = @round(((@$data['leadtime'] + $config->fg_ss) / $hkw2) * $forecast->month_6);
+                        // $safetyStock = @round(((@$data['leadtime'] + $config->fg_ss) / $hkw2) * $forecast->month_6);
+                        $safetyStock = @round($forecast->month_6 * (@$data['safety_stock'] / 100));
                         $prodPlan = @round(($qtySoFc + $safetyStock) - $beginBalance);
                     }
 
@@ -299,18 +399,14 @@ class Generate_mps extends CI_Controller
                     "p_month" => $filter_month,
                     "p_year" => $filter_year,
                     "revision" => $filter_revision,
+                    "cutoff" => date("Y-m-d H:i:s", strtotime($filter_cutoff)),
                     "customer_id" => $data['customer_id'],
                     "item_fg_id" => $data['id'],
                     "wip_month" => strtoupper($monthBack),
-                    "pp" => $data['pp'],
-                    "wc" => $data['wc'],
-                    "ha" => $data['ha'],
-                    "c" => $data['c'],
-                    "v" => $data['v'],
-                    "p" => $data['p'],
-                    "rfg" => $data['rfg'],
+                    // "pp" => $data['total_wip'],
+                    "pp" => $balance_wip,
                     "fg" => $fg,
-                    "os_mpp" => $data['os_mpp'],
+                    "os_mpp" => $os_mpp,
                     "total_stock" => "$totalStock",
                     "os_so" => $data['os_so'],
                     "balance" => "$balance",
@@ -436,26 +532,26 @@ class Generate_mps extends CI_Controller
 
     public function checkStockWip()
     {
-        $filter_month = base64_decode($this->input->get('filter_month'));
-        $filter_year = base64_decode($this->input->get('filter_year'));
-        $filter_revision = base64_decode($this->input->get('filter_revision'));
+        // $filter_month = base64_decode($this->input->get('filter_month'));
+        // $filter_year = base64_decode($this->input->get('filter_year'));
+        // $filter_revision = base64_decode($this->input->get('filter_revision'));
 
         //Select Query
-        $this->db->select('*');
-        $this->db->from('stock_wip');
-        $this->db->where("approved_to = ''");
-        if ($filter_month != "" or $filter_year != "") {
-            $this->db->where('p_month', $filter_month);
-            $this->db->where('p_year', $filter_year);
-        }
-        $this->db->like('revision', $filter_revision);
-        $records = $this->db->get()->result_array();
+        // $this->db->select('*');
+        // $this->db->from('stock_wip');
+        // $this->db->where("approved_to = ''");
+        // if ($filter_month != "" or $filter_year != "") {
+        //     $this->db->where('p_month', $filter_month);
+        //     $this->db->where('p_year', $filter_year);
+        // }
+        // $this->db->like('revision', $filter_revision);
+        // $records = $this->db->get()->result_array();
 
-        if (count($records) > 0) {
+        // if (count($records) > 0) {
             echo json_encode(array("theme" => "success"));
-        } else {
-            echo json_encode(array("theme" => "error"));
-        }
+        // } else {
+        //     echo json_encode(array("theme" => "error"));
+        // }
     }
 
     public function checkOstMpp()
@@ -533,7 +629,7 @@ class Generate_mps extends CI_Controller
     }
 
     public function create()
-    {
+    {   
         if ($this->input->post()) {
             $post = $this->input->post('data');
             $postDetails = $post['details'];
@@ -594,16 +690,11 @@ class Generate_mps extends CI_Controller
                 "p_month" => $post['p_month'],
                 "p_year" => $post['p_year'],
                 "revision" => $post['revision'],
+                "cutoff" => $post['cutoff'],
                 "customer_id" => $post['customer_id'],
                 "item_fg_id" => $post['item_fg_id'],
                 "wip_month" => $post['wip_month'],
                 "pp" => $post['pp'],
-                "wc" => $post['wc'],
-                "ha" => $post['ha'],
-                "c" => $post['c'],
-                "v" => $post['v'],
-                "p" => $post['p'],
-                "rfg" => $post['rfg'],
                 "fg" => $post['fg'],
                 "os_mpp" => $post['os_mpp'],
                 "os_so" => $post['os_so'],
@@ -832,7 +923,7 @@ class Generate_mps extends CI_Controller
                 $this->db->where('a.p_month', $filter_month);
                 $this->db->where('a.p_year', $filter_year);
             }
-            $this->db->where("(a.pp > 0 or a.wc > 0 or a.ha > 0 or a.c > 0 or a.v > 0 or a.p > 0 or a.fg > 0 or a.os_mpp > 0 or a.os_so > 0)");
+            // $this->db->where("(a.pp > 0 or a.wc > 0 or a.ha > 0 or a.c > 0 or a.v > 0 or a.p > 0 or a.fg > 0 or a.os_mpp > 0 or a.os_so > 0)");
             $this->db->where('a.deleted', 0);
             $this->db->like('a.customer_id', $filter_customer);
             $this->db->like('a.revision', $filter_revision);
@@ -1216,7 +1307,8 @@ class Generate_mps extends CI_Controller
         $filter_month = base64_decode($this->input->get('filter_month'));
         $filter_year = base64_decode($this->input->get('filter_year'));
         $filter_customer = base64_decode($this->input->get('filter_customer'));
-        $filter_product_no = base64_decode($this->input->get('filter_product_no'));
+        $filter_cutoff = base64_decode($this->input->get('filter_cutoff'));
+        $filter_product_no = base64_decode($this->input->get('filter_item_fg'));
         $filter_revision = base64_decode($this->input->get('filter_revision'));
         $period = $filter_year . "-" . $filter_month;
 
@@ -1250,7 +1342,7 @@ class Generate_mps extends CI_Controller
             $monthName = date('F Y', $monthStart);
 
             // if ($no == 1) {
-                $xbar = '<th style="text-align:center;" rowspan="2">SO</th>';
+                $xbar = '<th style="text-align:center;">SO</th>';
                 $colspan = '6';
             // } else {
             //     $xbar = "";
@@ -1258,12 +1350,12 @@ class Generate_mps extends CI_Controller
             // }
 
             $header .= '<th style="text-align:center;" colspan="' . $colspan . '" width="50">' . strtoupper($monthName) . '</th>';
-            $headerDetails .= ' <th style="text-align:center;" rowspan="2">BEGIN <br> BALANCE</th>
+            $headerDetails .= ' <th style="text-align:center;">BEGIN <br> BALANCE</th>
                                     ' . $xbar . '
-                                    <th style="text-align:center;" rowspan="2">FC</th>
-                                    <th style="text-align:center;" rowspan="2">SAFETY <br> STOCK</th>
-                                    <th style="text-align:center;" rowspan="2">NEED</th>
-                                    <th style="text-align:center;" rowspan="2">PROD <br> PLAN</th>';
+                                    <th style="text-align:center;">FC</th>
+                                    <th style="text-align:center;">SAFETY <br> STOCK</th>
+                                    <th style="text-align:center;">NEED</th>
+                                    <th style="text-align:center;">PROD <br> PLAN</th>';
             $no++;
             $monthStart = strtotime("+1 month", $monthStart);
         }
@@ -1284,37 +1376,28 @@ class Generate_mps extends CI_Controller
         </center>
         <p style="font-size:12px; margin:0;">PERIOD ' . $this->monthName($filter_month) . ' ' . $filter_year . '</p>
         <p style="font-size:12px; margin:0;">REVISION ' . $filter_revision . '</p>
+        <p style="font-size:12px; margin:0;">CUTOFF ' . @$customers[0]['cutoff'] . '</p>
         <p style="font-size:12px; margin:0;">PRINT DATE ' . date("d M Y H:m:s") . '</p>
         <p style="font-size:12px; margin:0;">PRINT BY ' . $this->session->username . '</p>
         <br>
         <table id="customers" border="1">';
         $html .= '<tr>
-                <th style="text-align:center;" rowspan="3" width="50">No</th>
-                <th style="text-align:center;" rowspan="3" width="150">PRODUCT EBWS</th>
-                <th style="text-align:center;" rowspan="3" width="150">PRODUCT CUSTOMER</th>
-                <th style="text-align:center;" rowspan="3" width="150">DESCRIPTION</th>
-                <th style="text-align:center;" colspan="7">' . strtoupper($monthNameStart) . '</th>
-                <th style="text-align:center;" rowspan="3" width="50">FG</th>
-                <th style="text-align:center;" rowspan="3" width="50">OST<br>MPP</th>
-                <th style="text-align:center;" rowspan="3" width="50">TOTAL<br>STOCK</th>
-                <th style="text-align:center;" rowspan="3" width="50">OST<br>SO</th>';
+                <th style="text-align:center;" rowspan="2" width="20">No</th>
+                <th style="text-align:center;" rowspan="2" width="100">PRODUCT EBWS</th>
+                <th style="text-align:center;" rowspan="2" width="150">PRODUCT CUSTOMER</th>
+                <th style="text-align:center;" rowspan="2" width="100">DESCRIPTION</th>
+                <th style="text-align:center;" rowspan="2" width="50">WIP</th>
+                <th style="text-align:center;" rowspan="2" width="50">FG</th>
+                <th style="text-align:center;" rowspan="2" width="50">OST<br>MPP</th>
+                <th style="text-align:center;" rowspan="2" width="50">TOTAL<br>STOCK</th>
+                <th style="text-align:center;" rowspan="2" width="50">OST<br>SO</th>';
         $html .= $header;
         $html .= '
-                <th style="text-align:center;" rowspan="3" width="50">BAL</th>
+                <th style="text-align:center;" rowspan="2" width="50">BAL</th>
             </tr>
-            <tr>
-                <th style="text-align:center;" colspan="7">STOCK WIP</th>';
+            <tr>';
         $html .= $headerDetails;
-        $html .= '</tr>
-            <tr>
-                <th style="text-align:center;" width="50">PP</th>
-                <th style="text-align:center;" width="50">WC</th>
-                <th style="text-align:center;" width="50">HA</th>
-                <th style="text-align:center;" width="50">C</th>
-                <th style="text-align:center;" width="50">V</th>
-                <th style="text-align:center;" width="50">P</th>
-                <th style="text-align:center;" width="50">RFG</th>
-            </tr>';
+        $html .= '</tr>';
 
         foreach ($customers as $customer) {
             if ($customer['customer_name'] == "") {
@@ -1352,17 +1435,11 @@ class Generate_mps extends CI_Controller
                             <td style="mso-number-format:\@;">' . $data['item_fg_number'] . '</td>
                             <td style="mso-number-format:\@;">' . $data['number_customer'] . '</td>
                             <td>' . $data['item_fg_name'] . '</td>
-                            <td style="text-align:center;">' . $data['pp'] . '</td>
-                            <td style="text-align:center;">' . $data['wc'] . '</td>
-                            <td style="text-align:center;">' . $data['ha'] . '</td>
-                            <td style="text-align:center;">' . $data['c'] . '</td>
-                            <td style="text-align:center;">' . $data['v'] . '</td>
-                            <td style="text-align:center;">' . $data['p'] . '</td>
-                            <td style="text-align:center;">' . $data['rfg'] . '</td>
-                            <td style="text-align:center;">' . $data['fg'] . '</td>
-                            <td style="text-align:center;">' . $data['os_mpp'] . '</td>
-                            <td style="text-align:center;">' . $data['total_stock'] . '</td>
-                            <td style="text-align:center;">' . $data['os_so'] . '</td>';
+                            <td style="text-align:right;">' . $data['pp'] . '</td>
+                            <td style="text-align:right;">' . $data['fg'] . '</td>
+                            <td style="text-align:right;">' . $data['os_mpp'] . '</td>
+                            <td style="text-align:right;">' . $data['total_stock'] . '</td>
+                            <td style="text-align:right;">' . $data['os_so'] . '</td>';
 
                 $this->db->select('a.*');
                 $this->db->from('generate_mps_details a');
@@ -1385,20 +1462,20 @@ class Generate_mps extends CI_Controller
                         //     $xbarQty = $detail2['qty'];
                         // }
 
-                        // $xbar2 = '<td style="text-align:center;">' . $xbarQty . '</td>';
+                        // $xbar2 = '<td style="text-align:right;">' . $xbarQty . '</td>';
                     // } else {
                     //     $xbar2 = "";
                     // }
 
-                    $html .= '  <td style="text-align:center;">' . $detail2['begin_balance'] . '</td>
-                                <td style="text-align:center;">' . $detail2['so'] . '</td>
-                                <td style="text-align:center;">' . $detail2['forecast'] . '</td>
-                                <td style="text-align:center;">' . $detail2['safety_stock'] . '</td>
-                                <td style="text-align:center;">' . $detail2['need'] . '</td>
-                                <td style="text-align:center;">' . $detail2['prod_plan'] . '</td>';
+                    $html .= '  <td style="text-align:right;">' . $detail2['begin_balance'] . '</td>
+                                <td style="text-align:right;">' . $detail2['so'] . '</td>
+                                <td style="text-align:right;">' . $detail2['forecast'] . '</td>
+                                <td style="text-align:right;">' . $detail2['safety_stock'] . '</td>
+                                <td style="text-align:right;">' . $detail2['need'] . '</td>
+                                <td style="text-align:right;">' . $detail2['prod_plan'] . '</td>';
                     $nodetail++;
                 }
-                $html .= '<td style="text-align:center;">' . $data['balance'] . '</td>
+                $html .= '<td style="text-align:right;">' . $data['balance'] . '</td>
             </tr>';
                 $no++;
             }

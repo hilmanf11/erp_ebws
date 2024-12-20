@@ -8,8 +8,10 @@
             <th rowspan="2" data-options="field:'name',width:150,halign:'center'">Name</th>
             <th rowspan="2" data-options="field:'item_category_name',width:150,halign:'center'">Category</th>
             <th rowspan="2" data-options="field:'account_number',width:100,halign:'center'">COA No</th>
-            <th rowspan="2" data-options="field:'account_name',width:100,halign:'center'">COA Name</th>
+            <th rowspan="2" data-options="field:'account_name',width:150,halign:'center'">COA Name</th>
             <th rowspan="2" data-options="field:'description',width:150,halign:'center'">Description</th>
+            <th rowspan="2" data-options="field:'usefull',width:150,halign:'center'">Usefull Life of Asset</th>
+            <th rowspan="2" data-options="field:'shift',width:100,halign:'center'">Shift Factor</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
         </tr>
@@ -57,6 +59,14 @@
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Description</span>
                 <input style="width:60%;" name="description" id="description" class="easyui-textbox">
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Usefull Life of Asset</span>
+                <input style="width:60%;" name="usefull" id="usefull" class="easyui-numberbox">
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Shift Factor</span>
+                <input style="width:60%;" name="shift" id="shift" class="easyui-numberbox">
             </div>
         </fieldset>
     </form>

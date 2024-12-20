@@ -8,8 +8,9 @@
     <thead>
         <tr>
             <th field="ck" checkbox="true"></th>
-            <th data-options="field:'number',width:150,halign:'center'">Part No</th>
-            <th data-options="field:'name',width:150,halign:'center'">Part Name</th>
+            <th data-options="field:'id',width:150,halign:'center'">Part No EBWS</th>
+            <th data-options="field:'number',width:200,halign:'center'">Part No Supplier</th>
+            <th data-options="field:'name',width:200,halign:'center'">Description</th>
             <th data-options="field:'uom',width:80,halign:'center'">Uom</th>
             <th data-options="field:'item_category_name',width:150,halign:'center'">Category</th>
             <th data-options="field:'item_family_name',width:150,halign:'center'">Product Family</th>
@@ -162,7 +163,18 @@
                                             }
                                         },
                                         error: function(jqXHR, textStatus, errorThrown) {
-                                            toastr.error(jqXHR.statusText);
+                                            toastr.error("Cannot Disapprove, Because Data already Relation for another module");
+                                            requestApprove(total, json, number + 1, value);
+
+                                            if (number == total) {
+                                                $('#dg').datagrid('reload');
+                                                Swal.close();
+                                                Swal.fire(
+                                                    'Dispprove Completed',
+                                                    'Dispprove Data has been completed, You cannot restore data that has been Dispproved',
+                                                    'success'
+                                                );
+                                            }
                                         },
                                     });
                                 }

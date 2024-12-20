@@ -53,7 +53,7 @@
 						$avatar = $user->avatar;
 					}
 
-					$chats = $this->crud->reads("chats", [], ["from_users_id" => $user->id, "status" => 0]);
+					$chats = $this->crud->reads("chats", [], ["from_users_id" => $user->id, "to_users_id" =>  $this->session->id, "status" => 0]);
 					if (count($chats) > 0) {
 						$totalChats = '<div style="border-radius:50%;background:red; color:white; text-align:center;">' . count($chats) . '</div>';
 					} else {
@@ -181,13 +181,6 @@
 		</ul>
 	</div>
 
-	<!-- APPROVAL DETAIL -->
-	<div id="toolbar_approval">
-		<a href="javascript:void(0)" id="approveall" class="easyui-linkbutton" data-options="plain:true" onclick="approveall()"><i class="fa fa-check"></i> Approve ALL</a>
-		<a href="javascript:void(0)" id="disapproveall" class="easyui-linkbutton" data-options="plain:true" onclick="disapproveall()"><i class="fa fa-times"></i> Disapprove ALL</a>
-		<a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="export_excel()"><i class="fa fa-file"></i> Export Excel</a>
-	</div>
-
 	<div id="dlg_approval_detail" class="easyui-window" title="Approval Data" data-options="closed: true,minimizable:false,collapsible:false" style="width: 1000px; height: 400px; top: 60px;">
 		<!-- <table id="dg_approval" class="easyui-datagrid" style="width:100%;" toolbar="#toolbar_approval" data-options="fitColumns: false, rownumbers: true"></table> -->
 		<center><h2 style="margin: 10px; font-size: 20px !important;" id="header_approval"></h2></center>
@@ -195,10 +188,16 @@
 	</div>
 
 	<!-- NOTIFICATIONS -->
-	<div id="dlg_notif" class="easyui-dialog" title="Notifications" data-options="closed: true" style="width: 400px; height: 400px; top: 20px;">
+	<div id="dlg_notif" class="easyui-dialog" title="Notifications" data-options="closed: true" style="width: 500px; height: 400px; top: 20px;">
 		<ul class="list-header" id="notificationList">
 
 		</ul>
+	</div>
+
+	<div id="dlg_notification_detail" class="easyui-window" title="Notification Data" data-options="closed: true,minimizable:false,collapsible:false" style="width: 800px; height: 550px; top: 60px;">
+		<!-- <table id="dg_approval" class="easyui-datagrid" style="width:100%;" toolbar="#toolbar_approval" data-options="fitColumns: false, rownumbers: true"></table> -->
+		<center><h2 style="margin: 10px; font-size: 20px !important;" id="header_notification"></h2></center>
+		<iframe src="" scrolling="yes" id="pageNotification" style="border: 0; width: 100%; height: 93%; margin:0;"></iframe>
 	</div>
 
 	<!-- CHATS -->
@@ -490,8 +489,14 @@
 		$('#dlg_approval').dialog('open');
 	}
 
+	function notification() {
+		$('#dlg_notif').dialog('open');
+	}
+
 	approvalList();
 	approvalCount();
+	notificationList();
+	notificationCount();
 	setInterval(approvalList, 10000);
 	setInterval(approvalCount, 10000);
 
@@ -502,6 +507,17 @@
 			dataType: "html",
 			success: function(response) {
 				$('#approvalList').html(response);
+			}
+		});
+	}
+
+	function notificationList() {
+		$.ajax({
+			type: "post",
+			url: "<?= base_url('notifications/notificationList') ?>",
+			dataType: "html",
+			success: function(response) {
+				$('#notificationList').html(response);
 			}
 		});
 	}
@@ -517,6 +533,17 @@
 		});
 	}
 
+	function notificationCount() {
+		$.ajax({
+			type: "post",
+			url: "<?= base_url('notifications/notificationCount') ?>",
+			dataType: "html",
+			success: function(response) {
+				$('#notificationCount').html(response);
+			}
+		});
+	}
+
 	function approvalDetail(table = "", approved_to = "", approved_by = "", title = "") {
 		if (table == "" || approved_to == "") {
 			toastr.error("Approval Cannot get Data", "Error");
@@ -527,6 +554,19 @@
 
 			$('#dlg_approval_detail').window('open');
 			$('#pageApproval').attr('src', '<?= base_url("approvals/") ?>' + table + "/" + btoa(approved_to) + "/" + btoa(approved_by));
+		}
+	}
+
+	function notificationDetail(name = "", user_from = "", user_to = "", table = "") {
+		if (user_from == "" || user_to == "") {
+			toastr.error("Notification Cannot get Data", "Error");
+		} else {
+			var outputString = table.replace(/_/g, ' ');
+			var header_notification = outputString.toUpperCase();
+			$("#header_notification").html("NOTIFICATION " + header_notification);
+
+			$('#dlg_notification_detail').window('open');
+			$('#pageNotification').attr('src', '<?= base_url("notifications/getData/") ?>' + btoa(name) + "/" + btoa(user_from) + "/" + btoa(user_to));
 		}
 	}
 	

@@ -31,8 +31,8 @@ class Makers extends CI_Controller
     //GET DATA
     public function reads()
     {
+        //master/item_rm
         $post = isset($_POST['q']) ? $_POST['q'] : "";
-        // $send = $this->crud->query("SELECT * FROM makers WHERE name LIKE '%$post%'AND number != 'FG'");
         $send = $this->crud->reads('makers', ["name" => $post]);
         echo json_encode($send);
     }
@@ -41,7 +41,6 @@ class Makers extends CI_Controller
     {
         $post = isset($_POST['q']) ? $_POST['q'] : "";
         $send = $this->crud->query("SELECT * FROM makers WHERE name LIKE '%$post%'AND number != 'FG'");
-        // $send = $this->crud->reads('makers', ["name" => $post]);
         echo json_encode($send);
     }
 

@@ -28,11 +28,21 @@ class Bom extends CI_Controller
             redirect('error_access');
         }
     }
+    
     //GET DATA
     public function reads()
     {
         $post = isset($_POST['q']) ? $_POST['q'] : "";
         $send = $this->crud->reads('bom', ["item_fg_id" => $post]);
+        echo json_encode($send);
+    }
+
+    //GET DATA
+    public function readBom($item_fg_id)
+    {
+        $item_fg_id = base64_decode($item_fg_id);
+        $post = isset($_POST['q']) ? $_POST['q'] : "";
+        $send = $this->crud->query("SELECT a.*, b.number as item_rm_number, b.name as item_rm_name, b.uom FROM bom a JOIN item_rm b ON a.item_rm_id = b.id WHERE a.item_fg_id = '$item_fg_id' and b.number like '%$post%' ORDER BY b.number asc");
         echo json_encode($send);
     }
 
@@ -266,7 +276,7 @@ class Bom extends CI_Controller
             $item_rm = $this->crud->read('item_rm', [], ["id" => $data['item_rm_number']]);
             $process_main = $this->crud->read('process_main', [], ["name" => $data['main_process']]);
         
-            $bom = $this->crud->read('bom', [], ["item_fg_id" => @$item_fg->id, "item_rm_id" => @$item_rm->item_rm]);
+            $bom = $this->crud->read('bom', [], ["item_fg_id" => @$item_fg->id, "item_rm_id" => @$item_rm->id]);
 
             if (empty($item_fg->id)) {
                 echo json_encode(array("title" => "Not Found", "message" => "Product No EBWS " . $data['item_fg_number'] ." Not Found", "theme" => "error"));
@@ -292,6 +302,34 @@ class Bom extends CI_Controller
         }
     }
 
+    // public function deleteBom(){
+    //     $query = $this->db->query("SELECT a.item_fg_id, c.number_customer as item_fg_number, a.item_rm_id, b.number as item_rm_number, COUNT(a.id) as total 
+    //         FROM bom a JOIN item_rm b ON a.item_rm_id = b.id 
+    //         JOIN item_fg c ON a.item_fg_id = c.id
+    //         GROUP BY a.item_fg_id, a.item_rm_id 
+    //         HAVING COUNT(a.id) > 1
+    //         LIMIT 1");
+    //     $querys = $query->result_array();
+        
+    //     foreach ($querys as $query) {
+    //         $item_fg_id = $query['item_fg_id'];
+    //         $item_rm_id = $query['item_rm_id'];
+
+    //         $bom = $this->db->query("SELECT a.id, a.item_fg_id, c.number_customer as item_fg_number, a.item_rm_id, b.number as item_rm_number
+    //             FROM bom a JOIN item_rm b ON a.item_rm_id = b.id 
+    //             JOIN item_fg c ON a.item_fg_id = c.id 
+    //             WHERE item_fg_id = '$item_fg_id' and a.item_rm_id = '$item_rm_id'
+    //             ORDER BY a.created_date desc");
+    //         $boms = $bom->result_array();
+
+    //         for ($i=1; $i < $query['total']; $i++) {
+    //             echo "<p>".$boms[$i]['id']."</p>";
+
+    //             $this->db->delete('bom', ["id" => $boms[$i]['id']]);
+    //         }
+    //     }
+    // }
+
     //PRINT & EXCEL DATA
     public function print($option = "")
     {
@@ -310,13 +348,13 @@ class Bom extends CI_Controller
         $this->db->from('config');
         $config = $this->db->get()->row();
 
-        $this->db->select('a.*, b.number as item_fg_number, b.number_customer, b.name as item_fg_name, c.number as item_rm_number, c.name as item_rm_name, e.name as supplier_name, c.item_family_id as product_family, c.uom as uom, , d.name as product_family_name, g.name as maker_name');
+        $this->db->select('a.*, b.number as item_fg_number, b.number_customer, b.name as item_fg_name, c.number as item_rm_number, c.name as item_rm_name, c.item_family_id as product_family, c.uom as uom, , d.name as product_family_name, g.name as maker_name');
         $this->db->from('bom a');
         $this->db->join('item_fg b', 'a.item_fg_id = b.id');
         $this->db->join('item_rm c', 'a.item_rm_id = c.id');
         $this->db->join('item_familys d', 'c.item_family_id = d.id');
-        $this->db->join('supplier_items f', 'a.item_rm_id = f.item_rm_id', 'left');
-        $this->db->join('suppliers e', 'f.supplier_id = e.id', 'left');
+        // $this->db->join('supplier_items f', 'a.item_rm_id = f.item_rm_id and f.share_order > 0', 'left');
+        // $this->db->join('suppliers e', 'f.supplier_id = e.id', 'left');
         $this->db->join('makers g', 'c.maker_id = g.id', 'left');
         $this->db->like('a.item_fg_id', $filter_item_fg_id);
         $this->db->like('a.item_rm_id', $filter_item_rm_id);
@@ -355,7 +393,6 @@ class Bom extends CI_Controller
                 <th>Part No EBWS</th>
                 <th>Part No Supplier</th>
                 <th>Description</th>
-                <th>Supplier</th>
                 <th>Maker</th>
                 <th>Process Main</th>
                 <th>Product Family</th>
@@ -373,7 +410,6 @@ class Bom extends CI_Controller
                     <td>' . $data['item_rm_id'] . '</td>
                     <td style="mso-number-format:\@;">' . $data['item_rm_number'] . '</td>
                     <td>' . $data['item_rm_name'] . '</td>
-                    <td>' . $data['supplier_name'] . '</td>
                     <td>' . $data['maker_name'] . '</td>
                     <td>' . $data['main_process'] . '</td>
                     <td>' . $data['product_family_name'] . '</td>

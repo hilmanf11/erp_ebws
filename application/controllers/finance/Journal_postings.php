@@ -225,7 +225,7 @@ class Journal_postings extends CI_Controller
 
             echo json_encode($records);
         } elseif ($modul == "SALES INVOICING") {
-            $this->db->select('c.id as company_id, c.name as company_name');
+            $this->db->select("c.id as company_id, CONCAT(c.name, ' | ', a.plant) as company_name, a.plant");
             $this->db->from('sales_invoices a');
             $this->db->join('journal_postings b', 'a.number = b.document_no', 'left');
             $this->db->join('customers c', 'a.customer_id = c.id');
@@ -235,16 +235,19 @@ class Journal_postings extends CI_Controller
             $this->db->where('a.journal_type_id', $journal_type);
             $this->db->where('b.document_no', NULL);
             // $this->db->where('a.status', 1);
-            $this->db->group_by('c.id');
+            $this->db->group_by('a.customer_id');
+            $this->db->group_by('a.plant');
             $this->db->order_by('c.name', 'asc');
             $records = $this->db->get()->result_array();
 
             echo json_encode($records);
         } elseif ($modul == "AP PAYMENT") {
-            $this->db->select('c.id as company_id, c.name as company_name');
+            $this->db->select("c.id as company_id, (CASE WHEN d.account_name is not null THEN CONCAT(c.name, ' | ', d.account_name) WHEN e.name is not null THEN CONCAT(c.name, ' | ', e.name) ELSE c.name END) as company_name");
             $this->db->from('ap_payments a');
             $this->db->join('journal_postings b', 'a.payment_no = b.document_no', 'left');
             $this->db->join('suppliers c', 'a.supplier_id = c.id');
+            $this->db->join('account_coa d', 'a.other_account = d.account_number', 'left');
+            $this->db->join('account_imprests e', 'a.imprest_account = e.number', 'left');
             $this->db->where('b.document_no', NULL);
             $this->db->where('a.payment_date >=', $transaction_from);
             $this->db->where('a.payment_date <=', $transaction_to);
@@ -256,10 +259,11 @@ class Journal_postings extends CI_Controller
 
             echo json_encode($records);
         } elseif ($modul == "AR RECEIPT") {
-            $this->db->select('c.id as company_id, c.name as company_name');
+            $this->db->select("c.id as company_id, (CASE WHEN d.account_name is null THEN c.name ELSE CONCAT(c.name, ' | ', d.account_name) END) as company_name");
             $this->db->from('ar_receipts a');
             $this->db->join('journal_postings b', 'a.receipt_no = b.document_no', 'left');
             $this->db->join('customers c', 'a.customer_id = c.id');
+            $this->db->join('account_coa d', 'a.other_account = d.account_number', 'left');
             $this->db->where('b.document_no', NULL);
             $this->db->where('a.receipt_date >=', $transaction_from);
             $this->db->where('a.receipt_date <=', $transaction_to);
@@ -385,7 +389,7 @@ class Journal_postings extends CI_Controller
         $company_id = base64_decode($get['company_id']);
 
         if ($modul == "PURCHASE INVOICING") {
-            $this->db->select('a.number');
+            $this->db->select('a.number, a.trans_date');
             $this->db->from('purchase_invoices a');
             $this->db->join('journal_postings b', 'a.number = b.document_no', 'left');
             $this->db->where('a.trans_date >=', $transaction_from);
@@ -400,13 +404,16 @@ class Journal_postings extends CI_Controller
 
             echo json_encode($records);
         } elseif ($modul == "SALES INVOICING") {
-            $this->db->select('a.number');
+            $plant = base64_decode($get['plant']);
+
+            $this->db->select('a.number, a.trans_date');
             $this->db->from('sales_invoices a');
             $this->db->join('journal_postings b', 'a.number = b.document_no', 'left');
             $this->db->where('a.trans_date >=', $transaction_from);
             $this->db->where('a.trans_date <=', $transaction_to);
             $this->db->where('a.journal_type_id', $journal_type);
             $this->db->where('a.customer_id', $company_id);
+            $this->db->where('a.plant', $plant);
             $this->db->where('b.document_no', NULL);
             // $this->db->where('a.status', 1);
             $this->db->group_by('a.number');
@@ -415,7 +422,7 @@ class Journal_postings extends CI_Controller
 
             echo json_encode($records);
         } elseif ($modul == "AP PAYMENT") {
-            $this->db->select('a.payment_no as number');
+            $this->db->select('a.payment_no as number, a.payment_date as trans_date');
             $this->db->from('ap_payments a');
             $this->db->join('journal_postings b', 'a.payment_no = b.document_no', 'left');
             $this->db->where('a.payment_date >=', $transaction_from);
@@ -430,7 +437,7 @@ class Journal_postings extends CI_Controller
 
             echo json_encode($records);
         } elseif ($modul == "AR RECEIPT") {
-            $this->db->select('a.receipt_no as number');
+            $this->db->select('a.receipt_no as number, a.receipt_date as trans_date');
             $this->db->from('ar_receipts a');
             $this->db->join('journal_postings b', 'a.receipt_no = b.document_no', 'left');
             $this->db->where('a.receipt_date >=', $transaction_from);
@@ -445,7 +452,7 @@ class Journal_postings extends CI_Controller
 
             echo json_encode($records);
         } elseif ($modul == "ASSET") {
-            $this->db->select('a.asset_no as number');
+            $this->db->select('a.asset_no as number, asset_date');
             $this->db->from('asset_journals a');
             $this->db->join('journal_postings b', "a.asset_no = b.document_no and a.periode = DATE_FORMAT(b.journal_date, '%Y-%m')", 'left');
             $this->db->join('asset_categories d', 'd.number = a.asset_category_number');
@@ -576,7 +583,7 @@ class Journal_postings extends CI_Controller
         $finish = strtotime($transaction_to);
 
         if ($modul == "PURCHASE INVOICING") {
-            $this->db->select('a.number, b.trans_date, b.invoice_no, c.name as supplier_name, b.currency, b.item_no, b.item_name, a.account_number, a.account_name, a.debit, a.credit, a.flag');
+            $this->db->select('a.number, b.trans_date, b.invoice_no, c.id as supplier_id, c.name as supplier_name, b.currency, b.item_no, b.item_name, a.account_number, a.account_name, a.debit, a.credit, b.rate, a.flag');
             $this->db->from('purchase_invoice_journals a');
             $this->db->join("(SELECT * FROM purchase_invoices GROUP BY number) b", "b.number = a.number");
             $this->db->join("suppliers c", "b.supplier_id = c.id");
@@ -606,8 +613,9 @@ class Journal_postings extends CI_Controller
                 $account_name = $journal['account_name'];
                 $debit = $journal['debit'];
                 $credit = $journal['credit'];
+                $rate = $journal['rate'];
 
-                $this->db->select('a.trans_date, a.invoice_no, b.name as supplier_name, a.po_no, a.item_no, a.item_name, a.currency, a.account_number, c.account_name, a.account_type, a.total');
+                $this->db->select('a.trans_date, a.invoice_no, b.id as supplier_id, b.name as supplier_name, a.po_no, a.item_no, a.item_name, a.currency, a.account_number, c.account_name, a.account_type, a.rate, a.total');
                 $this->db->from('purchase_invoices a');
                 $this->db->join('suppliers b', 'a.supplier_id = b.id');
                 $this->db->join('account_coa c', 'a.account_number = c.account_number');
@@ -626,11 +634,12 @@ class Journal_postings extends CI_Controller
 
                         foreach ($purchase_invoices as $purchase_invoice) {
                             $currency = $purchase_invoice['currency'];
+                            $supplier_id = $purchase_invoice['supplier_id'];
                             $supplier_name = $purchase_invoice['supplier_name'];
                             $trans_date = $purchase_invoice['trans_date'];
 
-                            $transmonth = date('Y-m-01', strtotime('-1 month', strtotime($purchase_invoice['trans_date'])));
-                            $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $transmonth, "currency_from" => $currency, "currency_to" => "INR"]);
+                            // $transmonth = date('Y-m-01', strtotime($purchase_invoice['trans_date']));
+                            // $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $transmonth, "currency_from" => $currency, "currency_to" => "INR"]);
 
                             if ($currency != "INR") {
                                 if ($purchase_invoice['account_type'] == "DEBIT") {
@@ -642,14 +651,17 @@ class Journal_postings extends CI_Controller
                                 }
 
                                 if ($purchase_invoice['account_type'] == "DEBIT") {
-                                    $local_debit = round($purchase_invoice['total'] * @$exchange->middle, 2);
+                                    // $local_debit = round($purchase_invoice['total'] * @$exchange->middle, 2);
+                                    $local_debit = round($purchase_invoice['total'] * @$purchase_invoice['rate'], 2);
                                     $local_credit = 0;
                                 } else {
                                     $local_debit = 0;
-                                    $local_credit = round($purchase_invoice['total'] * @$exchange->middle, 2);
+                                    // $local_credit = round($purchase_invoice['total'] * @$exchange->middle, 2);
+                                    $local_credit = round($purchase_invoice['total'] * @$purchase_invoice['rate'], 2);
                                 }
 
-                                $rates = @$exchange->middle;
+                                // $rates = @$exchange->middle;
+                                $rates = @$purchase_invoice['rate'];
                             } else {
                                 if ($purchase_invoice['account_type'] == "DEBIT") {
                                     $original_debit = $purchase_invoice['total'];
@@ -670,6 +682,7 @@ class Journal_postings extends CI_Controller
                                 "trans_date" => $purchase_invoice['trans_date'],
                                 "document_no" => $number,
                                 "invoice_no" => $purchase_invoice['invoice_no'],
+                                "company_id" => $supplier_id,
                                 "company_name" => $supplier_name,
                                 "modul" => $modul,
                                 "account_number" => $purchase_invoice['account_number'],
@@ -696,16 +709,16 @@ class Journal_postings extends CI_Controller
                             $grand_local_credit += $local_credit;
                         }
                     } else {
-                        $transmonth = date('Y-m-01', strtotime('-1 month', strtotime($trans_date)));
-                        $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $transmonth, "currency_from" => $currency, "currency_to" => "INR"]);
+                        // $transmonth = date('Y-m-01', strtotime($trans_date));
+                        // $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $transmonth, "currency_from" => $currency, "currency_to" => "INR"]);
 
                         if ($currency != "INR") {
                             $original_debit = $debit;
                             $original_credit = $credit;
-                            $local_debit = round($debit * @$exchange->middle, 2);
-                            $local_credit = round($credit * @$exchange->middle, 2);
+                            $local_debit = round($debit * @$rate, 2);
+                            $local_credit = round($credit * @$rate, 2);
 
-                            $rates = @$exchange->middle;
+                            $rates = @$rate;
                         } else {
                             $original_debit = $debit;
                             $original_credit = $credit;
@@ -719,6 +732,7 @@ class Journal_postings extends CI_Controller
                             "trans_date" => $journal['trans_date'],
                             "document_no" => $number,
                             "invoice_no" => $journal['invoice_no'],
+                            "company_id" => $journal['supplier_id'],
                             "company_name" => $journal['supplier_name'],
                             "modul" => $modul,
                             "account_number" => $account_number,
@@ -753,7 +767,7 @@ class Journal_postings extends CI_Controller
             $result = array_merge($result, ['rows' => $data], ["footer" => $footer]);
             echo json_encode($result);
         } elseif ($modul == "SALES INVOICING") {
-            $this->db->select('a.number, b.trans_date, b.so_number, b.customer_po, c.name as customer_name, b.currency, b.item_no, b.item_name, a.account_number, a.account_name, a.debit, a.credit, a.flag');
+            $this->db->select("a.number, b.trans_date, b.so_number, b.customer_po, c.id as customer_id, CONCAT(c.name, ' | ', b.plant) as customer_name, b.currency, b.item_no, b.item_name, a.account_number, a.account_name, a.debit, a.credit, b.rate, a.flag");
             $this->db->from('sales_invoice_journals a');
             $this->db->join("(SELECT * FROM sales_invoices GROUP BY number) b", "b.number = a.number");
             $this->db->join("customers c", "b.customer_id = c.id");
@@ -783,8 +797,9 @@ class Journal_postings extends CI_Controller
                 $account_name = $journal['account_name'];
                 $debit = $journal['debit'];
                 $credit = $journal['credit'];
+                $rate = $journal['rate'];
 
-                $this->db->select('a.trans_date, a.customer_po, b.name as customer_name, a.item_no, a.item_name, a.currency, a.account_number, c.account_name, a.account_type, a.total');
+                $this->db->select("a.trans_date, a.customer_po, b.id as customer_id, CONCAT(b.name, ' | ', a.plant) as customer_name, a.item_no, a.item_name, a.currency, a.account_number, c.account_name, a.account_type, a.rate, a.total");
                 $this->db->from('sales_invoices a');
                 $this->db->join('customers b', 'a.customer_id = b.id');
                 $this->db->join('account_coa c', 'a.account_number = c.account_number');
@@ -801,8 +816,8 @@ class Journal_postings extends CI_Controller
                             $customer_name = $sales_invoice['customer_name'];
                             $trans_date = $sales_invoice['trans_date'];
 
-                            $transmonth = date('Y-m-01', strtotime('-1 month', strtotime($sales_invoice['trans_date'])));
-                            $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $transmonth, "currency_from" => $currency, "currency_to" => "INR"]);
+                            // $transmonth = date('Y-m-01', strtotime($sales_invoice['trans_date']));
+                            // $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $transmonth, "currency_from" => $currency, "currency_to" => "INR"]);
 
                             if ($currency != "INR") {
                                 if ($sales_invoice['account_type'] == "DEBIT") {
@@ -814,14 +829,14 @@ class Journal_postings extends CI_Controller
                                 }
 
                                 if ($sales_invoice['account_type'] == "DEBIT") {
-                                    $local_debit = round($sales_invoice['total'] * @$exchange->middle, 2);
+                                    $local_debit = round($sales_invoice['total'] * @$sales_invoice['rate'], 2);
                                     $local_credit = 0;
                                 } else {
                                     $local_debit = 0;
-                                    $local_credit = round($sales_invoice['total'] * @$exchange->middle, 2);
+                                    $local_credit = round($sales_invoice['total'] * @$sales_invoice['rate'], 2);
                                 }
 
-                                $rates = @$exchange->middle;
+                                $rates = @$sales_invoice['rate'];
                             } else {
                                 if ($sales_invoice['account_type'] == "DEBIT") {
                                     $original_debit = $sales_invoice['total'];
@@ -842,6 +857,7 @@ class Journal_postings extends CI_Controller
                                 "trans_date" => $sales_invoice['trans_date'],
                                 "document_no" => $number,
                                 "invoice_no" => $sales_invoice['customer_po'],
+                                "company_id" => $journal['customer_id'],
                                 "company_name" => $customer_name,
                                 "modul" => $modul,
                                 "account_number" => $sales_invoice['account_number'],
@@ -863,16 +879,16 @@ class Journal_postings extends CI_Controller
                             $grand_local_credit += $local_credit;
                         }
                     } else {
-                        $transmonth = date('Y-m-01', strtotime('-1 month', strtotime($journal['trans_date'])));
-                        $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $transmonth, "currency_from" => $journal['currency'], "currency_to" => "INR"]);
+                        // $transmonth = date('Y-m-01', strtotime($journal['trans_date']));
+                        // $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $transmonth, "currency_from" => $journal['currency'], "currency_to" => "INR"]);
 
                         if ($journal['currency'] != "INR") {
                             $original_debit = $debit;
                             $original_credit = $credit;
-                            $local_debit = round($debit * @$exchange->middle, 2);
-                            $local_credit = round($credit * @$exchange->middle, 2);
+                            $local_debit = round($debit * @$rate, 2);
+                            $local_credit = round($credit * @$rate, 2);
 
-                            $rates = @$exchange->middle;
+                            $rates = @$rate;
                         } else {
                             $original_debit = $debit;
                             $original_credit = $credit;
@@ -886,6 +902,7 @@ class Journal_postings extends CI_Controller
                             "trans_date" => $journal['trans_date'],
                             "document_no" => $number,
                             "invoice_no" => $journal['customer_po'],
+                            "company_id" => $journal['customer_id'],
                             "company_name" => $journal['customer_name'],
                             "modul" => $modul,
                             "account_number" => $account_number,
@@ -919,11 +936,16 @@ class Journal_postings extends CI_Controller
             $result['total'] = count($data);
             $result = array_merge($result, ['rows' => $data], ["footer" => $footer]);
             echo json_encode($result);
+
         } elseif ($modul == "AP PAYMENT") {
-            $this->db->select('a.payment_no, b.payment_date, b.purchase_invoice, b.supplier_invoice, c.name as supplier_name, b.currency, a.description, a.account_number, a.account_name, a.debit, a.credit, a.flag, a.local_debit, a.local_credit');
+            $this->db->select("a.payment_no, b.payment_date, b.purchase_invoice, b.supplier_invoice, c.id as supplier_id, c.name as supplier_name, 
+                b.currency, a.description, a.account_number, a.account_name, a.debit, a.credit, a.flag, a.local_debit, a.local_credit, 
+                (CASE WHEN e.name is null THEN d.account_name ELSE e.name END) as other_account");
             $this->db->from('ap_payment_journals a');
             $this->db->join("(SELECT * FROM ap_payments GROUP BY payment_no) b", "b.payment_no = a.payment_no");
             $this->db->join("suppliers c", "b.supplier_id = c.id");
+            $this->db->join('account_coa d', 'b.other_account = d.account_number', 'left');
+            $this->db->join('account_imprests e', 'b.imprest_account = e.number', 'left');
             $this->db->where_in('a.payment_no', $document_no);
             $this->db->order_by('a.payment_no', 'asc');
             $this->db->order_by('a.flag', 'asc');
@@ -947,8 +969,9 @@ class Journal_postings extends CI_Controller
                 $debit = $journal['debit'];
                 $credit = $journal['credit'];
 
-                $transmonth = date('Y-m-01', strtotime('-1 month', strtotime($journal['payment_date'])));
-                $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $transmonth, "currency_from" => $journal['currency'], "currency_to" => "INR"]);
+                // $transmonth = date('Y-m-01', strtotime($journal['payment_date']));
+                // $transmonth = $journal['payment_date'];
+                // $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $transmonth, "currency_from" => $journal['currency'], "currency_to" => "INR"]);
 
                 if ($journal['currency'] != "INR") {
                     $original_debit = $debit;
@@ -956,7 +979,8 @@ class Journal_postings extends CI_Controller
                     $local_debit = $journal['local_debit'];
                     $local_credit = $journal['local_credit'];
 
-                    $rates = @$exchange->middle;
+                    // $rates = @$exchange->middle;
+                    $rates = (abs($journal['local_debit'] + $journal['local_credit']) / abs($journal['debit'] + $journal['credit']));
                 } else {
                     $original_debit = $debit;
                     $original_credit = $credit;
@@ -970,11 +994,12 @@ class Journal_postings extends CI_Controller
                     "trans_date" => $journal['payment_date'],
                     "document_no" => $number,
                     "invoice_no" => $journal['purchase_invoice'],
-                    "company_name" => $journal['supplier_name'],
+                    "company_id" => $journal['supplier_id'],
+                    "company_name" => $journal['supplier_name'] . " (" . $journal['other_account'] . ")",
                     "modul" => $modul,
                     "account_number" => $account_number,
                     "account_name" => $account_name,
-                    "description" => $journal['supplier_name'] . " | " . $number . " | " . $journal['purchase_invoice'] . " | " . $journal['supplier_invoice'],
+                    "description" => $journal['supplier_name'] . " (" . $journal['other_account'] . ") | " . $number . " | " . $journal['purchase_invoice'] . " | " . $journal['supplier_invoice'],
                     "currency" => $journal['currency'],
                     "original_debit" => $original_debit,
                     "original_credit" => $original_credit,
@@ -1000,10 +1025,11 @@ class Journal_postings extends CI_Controller
             $result = array_merge($result, ['rows' => $data], ["footer" => $footer]);
             echo json_encode($result);
         } elseif ($modul == "AR RECEIPT") {
-            $this->db->select('a.receipt_no, b.receipt_date, b.sales_invoice, b.description, c.name as customer_name, b.currency, a.description, a.account_number, a.account_name, a.debit, a.credit, a.flag');
+            $this->db->select('a.receipt_no, b.receipt_date, b.sales_invoice, b.description, c.id as customer_id, c.name as customer_name, b.currency, a.description, a.account_number, a.account_name, a.local_debit, a.local_credit, a.debit, a.credit, a.flag, d.account_name as other_account');
             $this->db->from('ar_receipt_journals a');
             $this->db->join("(SELECT * FROM ar_receipts GROUP BY receipt_no) b", "b.receipt_no = a.receipt_no");
             $this->db->join("customers c", "b.customer_id = c.id");
+            $this->db->join('account_coa d', 'b.other_account = d.account_number', 'left');
             $this->db->where_in('a.receipt_no', $document_no);
             $this->db->order_by('a.receipt_no', 'asc');
             $this->db->order_by('a.flag', 'asc');
@@ -1024,19 +1050,20 @@ class Journal_postings extends CI_Controller
                 $number = $journal['receipt_no'];
                 $account_number = $journal['account_number'];
                 $account_name = $journal['account_name'];
-                $debit = $journal['debit'];
-                $credit = $journal['credit'];
+                $debit = $journal['local_debit'];
+                $credit = $journal['local_credit'];
 
-                $transmonth = date('Y-m-01', strtotime('-1 month', strtotime($journal['receipt_date'])));
-                $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $transmonth, "currency_from" => $journal['currency'], "currency_to" => "INR"]);
+                // $transmonth = date('Y-m-01', strtotime($journal['receipt_date']));
+                // $transmonth = $journal['receipt_date'];
+                // $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $transmonth, "currency_from" => $journal['currency'], "currency_to" => "INR"]);
 
                 if ($journal['currency'] != "INR") {
                     $original_debit = $debit;
                     $original_credit = $credit;
-                    $local_debit = round($debit * @$exchange->middle, 2);
-                    $local_credit = round($credit * @$exchange->middle, 2);
+                    $local_debit = round($debit, 2);
+                    $local_credit = round($credit, 2);
 
-                    $rates = @$exchange->middle;
+                    $rates = (abs($journal['local_debit'] + $journal['local_credit']) / abs($journal['debit'] + $journal['credit']));
                 } else {
                     $original_debit = $debit;
                     $original_credit = $credit;
@@ -1050,11 +1077,12 @@ class Journal_postings extends CI_Controller
                     "trans_date" => $journal['receipt_date'],
                     "document_no" => $number,
                     "invoice_no" => $journal['sales_invoice'],
-                    "company_name" => $journal['customer_name'],
+                    "company_id" => $journal['customer_id'],
+                    "company_name" => $journal['customer_name'] . " (" . $journal['other_account'] . ")",
                     "modul" => $modul,
                     "account_number" => $account_number,
                     "account_name" => $account_name,
-                    "description" => $journal['customer_name'] . " | " . $number . " | " . $journal['sales_invoice'] . " | " . $journal['description'],
+                    "description" => $journal['customer_name'] . " (" . $journal['other_account'] . ") | " . $number . " | " . $journal['sales_invoice'] . " | " . $journal['description'],
                     "currency" => $journal['currency'],
                     "original_debit" => $original_debit,
                     "original_credit" => $original_credit,
@@ -1107,24 +1135,25 @@ class Journal_postings extends CI_Controller
                 $debit = $journal['debit'];
                 $credit = $journal['credit'];
 
-                $transmonth = date('Y-m-01', strtotime('-1 month', strtotime($journal['trans_date'])));
-                $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $transmonth, "currency_from" => $journal['currency'], "currency_to" => "INR"]);
+                // $transmonth = date('Y-m-01', strtotime($journal['trans_date']));
+                // $transmonth = $journal['trans_date'];
+                // $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $transmonth, "currency_from" => $journal['currency'], "currency_to" => "INR"]);
 
-                if ($journal['currency'] != "INR") {
-                    $original_debit = $debit;
-                    $original_credit = $credit;
-                    $local_debit = round($debit * @$exchange->middle, 2);
-                    $local_credit = round($credit * @$exchange->middle, 2);
+                // if ($journal['currency'] != "INR") {
+                //     $original_debit = $debit;
+                //     $original_credit = $credit;
+                //     $local_debit = round($debit * @$exchange->middle, 2);
+                //     $local_credit = round($credit * @$exchange->middle, 2);
 
-                    $rates = @$exchange->middle;
-                } else {
+                //     $rates = @$exchange->middle;
+                // } else {
                     $original_debit = $debit;
                     $original_credit = $credit;
                     $local_debit = $debit;
                     $local_credit = $credit;
 
                     $rates = 1;
-                }
+                // }
 
                 $data[] = array(
                     "trans_date" => $journal['trans_date'],
@@ -1161,6 +1190,7 @@ class Journal_postings extends CI_Controller
             echo json_encode($result);
         } elseif ($modul == "CURRENCY REVALUATION") {
             $this->db->select('a.number, a.trans_date, a.document_no, a.account_number, a.account_name, a.debit, a.credit,
+                (CASE WHEN d.id IS NULL THEN e.id ELSE d.id END) as company_id, 
                 (CASE WHEN d.name IS NULL THEN e.name ELSE d.name END) as company_name');
             $this->db->from('journal_revaluations a');
             $this->db->join("purchase_invoices b", "a.document_no = b.number", "left");
@@ -1200,6 +1230,7 @@ class Journal_postings extends CI_Controller
                     "trans_date" => $journal['trans_date'],
                     "document_no" => $number,
                     "invoice_no" => $journal['document_no'],
+                    "company_id" => $journal['company_id'],
                     "company_name" => $journal['company_name'],
                     "modul" => $modul,
                     "account_number" => $account_number,
@@ -1715,7 +1746,6 @@ class Journal_postings extends CI_Controller
             $result = array_merge($result, ['rows' => $data], ["footer" => $footer]);
             echo json_encode($result);
         }
-
     }
 
     public function datatables()
@@ -1743,6 +1773,7 @@ class Journal_postings extends CI_Controller
                 SUM(a.local_credit) as local_credit');
             $this->db->from('journal_postings a');
             $this->db->join('journal_types b', 'a.journal_type_id = b.id');
+            $this->db->where("a.modul != 'ADJUSTMENT'");
             if ($filter_from != "" && $filter_to != "") {
                 $this->db->where("a.journal_date BETWEEN '$filter_from' and '$filter_to'");
             }
@@ -2249,7 +2280,7 @@ class Journal_postings extends CI_Controller
                                 <td>' . $record['document_no'] . '</td>
                                 <td>' . $record['account_number'] . '</td>
                                 <td>' . $record['account_name'] . '</td>
-                                <td>' . $record['description'] . '</td>
+                                <td style="font-size:10px;">' . $record['description'] . '</td>
                                 <td>' . $record['currency'] . '</td>
                                 <td style="text-align:right;">' . @number_format($record['original_debit'], 2) . '</td>
                                 <td style="text-align:right;">' . @number_format($record['original_credit'], 2) . '</td>
@@ -2274,7 +2305,9 @@ class Journal_postings extends CI_Controller
                             <th style="text-align:right;">' . @number_format($local_debit, 2) . '</th>
                             <th style="text-align:right;">' . @number_format($local_credit, 2) . '</th>
                         </tr>
-                    </table>';
+                    </table>
+                </div>
+            </div>';
 
             if (($i + 1) != $page) {
                 $html .= '<div style="page-break-after:always;"></div>';
@@ -2300,9 +2333,7 @@ class Journal_postings extends CI_Controller
                         <th style="height:20px; text-align:center;"><br><hr style="width:60%;margin-left:20%;">Accounting Manager</th>
                         <th style="height:20px; text-align:center;"><br><hr style="width:60%;margin-left:20%;">Director</th>
                     </tr>
-                </table>
-                </div>
-            </div>';
+                </table>';
 
         $html .= "</div></div><script>window.print()</script></body>";
         die($html);
@@ -2329,6 +2360,7 @@ class Journal_postings extends CI_Controller
         $this->db->select('a.*, b.name as journal_type_name');
         $this->db->from('journal_postings a');
         $this->db->join('journal_types b', 'a.journal_type_id = b.id');
+        $this->db->where("a.modul != 'ADJUSTMENT'");
         if ($filter_from != "" && $filter_to != "") {
             $this->db->where("a.journal_date BETWEEN '$filter_from' and '$filter_to'");
         }

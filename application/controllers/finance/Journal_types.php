@@ -30,11 +30,50 @@ class Journal_types extends CI_Controller
     }
 
     //GET DATA
-    public function reads($module = "")
+    public function reads($module = "", $module_type = "")
     {
         $post = isset($_POST['q']) ? $_POST['q'] : "";
-        $send = $this->crud->reads('journal_types', ["name" => $post], [], "", "name", "asc");
-        echo json_encode($send);
+        $module = base64_decode($module);
+
+        if($module_type != ""){
+            $module_type = base64_decode($module_type);
+
+            if($module == "AR RECEIPT"){
+                $send = $this->crud->query("SELECT a.id, a.name, c.account_number, c.account_name 
+                    FROM journal_types a 
+                    LEFT JOIN journal_setups b ON a.id = b.journal_type_id and b.ar_receipt = 'YES'
+                    LEFT JOIN account_coa c ON b.account_number = c.account_number 
+                    WHERE a.name like '%$post%' and a.module like '%$module%' and a.module_type like '%$module_type%' ORDER BY a.name ASC");
+            }elseif($module == "AP PAYMENT"){
+                $send = $this->crud->query("SELECT a.id, a.name, c.account_number, c.account_name 
+                    FROM journal_types a 
+                    LEFT JOIN journal_setups b ON a.id = b.journal_type_id and b.ap_payment = 'YES'
+                    LEFT JOIN account_coa c ON b.account_number = c.account_number 
+                    WHERE a.name like '%$post%' and a.module like '%$module%' and a.module_type like '%$module_type%' ORDER BY a.name ASC");
+            }else{
+                $send = $this->crud->reads('journal_types', ["name" => $post, "module" => $module, "module_type" => $module_type], [], "", "name", "asc");
+            }
+
+            echo json_encode($send);
+        }else{
+            if($module == "AR RECEIPT"){
+                $send = $this->crud->query("SELECT a.id, a.name, c.account_number, c.account_name 
+                    FROM journal_types a 
+                    LEFT JOIN journal_setups b ON a.id = b.journal_type_id and b.ar_receipt = 'YES'
+                    LEFT JOIN account_coa c ON b.account_number = c.account_number 
+                    WHERE a.name like '%$post%' and a.module like '%$module%' ORDER BY a.name ASC");
+            }elseif($module == "AP PAYMENT"){
+                $send = $this->crud->query("SELECT a.id, a.name, c.account_number, c.account_name 
+                    FROM journal_types a 
+                    LEFT JOIN journal_setups b ON a.id = b.journal_type_id and b.ap_payment = 'YES'
+                    LEFT JOIN account_coa c ON b.account_number = c.account_number 
+                    WHERE a.name like '%$post%' and a.module like '%$module%' ORDER BY a.name ASC");
+            }else{
+                $send = $this->crud->reads('journal_types', ["name" => $post, "module" => $module], [], "", "name", "asc");
+            }
+            
+            echo json_encode($send);
+        }
     }
 
     //GET DATATABLES
@@ -75,8 +114,8 @@ class Journal_types extends CI_Controller
     {
         if ($this->input->post()) {
             if ($this->form_validation->run() == TRUE) {
-                $post   = $this->input->post();
-                $send   = $this->crud->create('journal_types', $post);
+                $post = $this->input->post();
+                $send = $this->crud->create('journal_types', $post);
                 echo $send;
             } else {
                 show_error(validation_errors());

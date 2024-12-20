@@ -50,7 +50,7 @@ class Notifications extends CI_Controller
                     $avatar = $record->avatar;
                 }
 
-                $link = "notificationDetail('" . $record->table_name . "')";
+                $link = "notificationDetail('" . $record->name . "','" . $record->users_id_from . "','" . $record->users_id_to . "','" . $record->table_name . "')";
                 echo '<li class="list-isi">
                     <a onclick="' . $link . '">
                         <table style="width: 100%;">
@@ -75,5 +75,69 @@ class Notifications extends CI_Controller
                         Notification Not Found
                     </div>';
         }
+    }
+
+    public function getData($name, $user_id_from, $user_id_to){
+        if (empty($this->session->username)) {
+            redirect('error_session');
+        } else {
+            $data['user_id_from'] = base64_decode($user_id_from);
+            $data['user_id_to'] = base64_decode($user_id_to);
+            $data['name'] = base64_decode($name);
+            $data['table'] = "Notification $name Data";
+            $this->load->view('template/header', $data);
+            $this->load->view('approval/notifications');
+        }
+    }
+
+    public function datatables($name, $user_id_from, $user_id_to){
+        $name = base64_decode($name);
+        $user_id_from = base64_decode($user_id_from);
+        $user_id_to = base64_decode($user_id_to);
+        
+        $this->db->select('*');
+        $this->db->from('notifications');
+        $this->db->where('name', $name);
+        $this->db->where('users_id_from', $user_id_from);
+        $this->db->where('users_id_to', $user_id_to);
+        $this->db->order_by('id', 'ASC');
+        $records = $this->db->get()->result_array();
+
+        die(json_encode($records));
+    }
+
+    public function datatableDetails(){
+        $id = $this->input->post('id');
+
+        $this->db->select('*');
+        $this->db->from('notifications');
+        $this->db->where("id", $id);
+        $record = $this->db->get()->row();
+        $descriptions = json_decode($record->logs);
+
+        $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#customers {border-collapse: collapse;width: 100%;font-size: 12px;}#customers td, #customers th {border: 1px solid #ddd;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: #ddd;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: left;color: black;}</style><body>
+                <table id="customers" border="1" style="width: 100%;">
+                <tr>
+                    <th>Title</th>
+                    <th>Description</th>
+                </tr>';
+        foreach ($descriptions as $description => $value) {
+            if(!in_array($description, ["approved_data","approved","approved_to","approved_by","approved_date"])){
+                $html .= '  <tr>
+                                <th>' . strtoupper(str_replace("_", " ", $description)) . '</th>
+                                <th>' . $value . '</th>
+                            </tr>';
+            }
+        }
+        $html .= '</table>';
+
+        die($html);
+    }
+
+    public function delete()
+    {
+        $data = $this->input->post();
+        $logs = $this->db->delete('notifications', $data);
+        echo $logs;
     }
 }
