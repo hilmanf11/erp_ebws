@@ -188,7 +188,7 @@ class Report_ar extends CI_Controller
                     UNION 
                         (SELECT a.journal_date as trans_date, '-' as due_date, a.invoice_no as sales_invoice, a.document_no, a.account_number, a.number as voucher_no, a.currency, a.original_debit, a.original_credit, a.local_debit, a.local_credit, a.rates
                         FROM journal_postings a
-                        WHERE a.journal_date between '$filter_from' and '$filter_to' and a.description like '%$customer_name%' and a.modul in ('CURRENCY REVALUATION','ADJUSTMENT') and a.account_number IN ('27000001','28000004','28000007')
+                        WHERE a.journal_date between '$filter_from' and '$filter_to' and a.company_id = '$customer_id' and a.company_name like '%$plant%' and a.modul in ('CURRENCY REVALUATION','ADJUSTMENT') and a.account_number IN ('27000001','28000004','28000007')
                         )
                     ) a GROUP BY a.voucher_no, a.document_no ORDER BY a.trans_date ASC");
                 $sales_invoices = $query->result_array();
@@ -211,9 +211,10 @@ class Report_ar extends CI_Controller
                 $this->db->select('COALESCE(SUM(a.local_credit) - SUM(a.local_debit), 0) as local_re, COALESCE(SUM(a.original_credit) - SUM(a.original_debit), 0) as original_re');
                 $this->db->from('journal_postings a');
                 $this->db->where("a.journal_date <", $filter_from);
-                $this->db->where_in("a.modul", array('CURRENCY REVALUATION'));
+                $this->db->where_in("a.modul", array('CURRENCY REVALUATION','ADJUSTMENT'));
                 $this->db->where_in("a.account_number", array('27000001'));
-                $this->db->like("a.description", $customer_name);
+                $this->db->like("a.company_id", $customer_id);
+                $this->db->like("a.company_name", $plant);
                 $revaluation_begin = $this->db->get()->row();
                 
                 $this->db->select('COALESCE(SUM(local_debit) + SUM(local_credit), 0) as local_ap, COALESCE(SUM(original_debit) + SUM(original_credit), 0) as original_ap');

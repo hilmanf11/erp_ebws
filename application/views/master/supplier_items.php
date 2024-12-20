@@ -188,7 +188,7 @@
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Attachment</span>
-                    <input style="width:60%;" name="attachment" id="attachment" class="easyui-filebox" accept=".jpg, .png, .jpeg, .pdf, .xls, .docx">
+                    <input style="width:60%;" name="attachment" id="attachment" class="easyui-filebox" accept=".jpg, .png, .jpeg, .pdf, .xls, .xlsx, .docx">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Remarks</span>

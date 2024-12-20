@@ -4,7 +4,7 @@
         <tr>
             <th rowspan="2" field="ck" checkbox="true"></th>
             <th rowspan="2" data-options="field:'customer_name',width:300,halign:'center'">Customer Name</th>
-            <th rowspan="2" data-options="field:'plant',width:100,align:'center'">Plant</th>
+            <th rowspan="2" data-options="field:'plant',width:100,halign:'center'">Plant</th>
             <th rowspan="2" data-options="field:'type',width:100,align:'center'">Type</th>
             <th rowspan="2" data-options="field:'status',width:100,halign:'center', styler:cellStyler, formatter:cellFormatter">Status</th>
             <th colspan="3" data-options="field:'',width:100,align:'center'">Approved</th>

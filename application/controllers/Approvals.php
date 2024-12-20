@@ -143,9 +143,11 @@ class Approvals extends CI_Controller
         $item_mpq = $this->crud->reads('item_mpq', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
         $sto_rm = $this->crud->reads('sto_rm', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
         $sto_fg = $this->crud->reads('sto_fg', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
+        $sales_orders = $this->crud->reads('sales_orders', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
 
         $totalRows = (count($users) + 
             count($purchase_orders) + 
+            count($sales_orders) + 
             count($purchase_order_others) + 
             count($bom) + 
             count($customer_items) + 
@@ -202,6 +204,7 @@ class Approvals extends CI_Controller
         $item_mpq = $this->crud->reads('item_mpq', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
         $sto_rms = $this->crud->reads('sto_rm', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
         $sto_fgs = $this->crud->reads('sto_fg', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
+        $sales_orders = $this->crud->reads('sales_orders', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
 
         foreach ($users as $user) {
             $this->approvalMessage($user->approved_by, $user->approved_to, $user->created_by, "users");
@@ -281,6 +284,10 @@ class Approvals extends CI_Controller
 
         foreach ($sto_fgs as $sto_fg) {
             $this->approvalMessage($sto_fg->approved_by, $sto_fg->approved_to, $sto_fg->created_by, "sto_fg");
+        }
+
+        foreach ($sales_orders as $sales_order) {
+            $this->approvalMessage($sales_order->approved_by, $sales_order->approved_to, $sales_order->created_by, "sales_orders");
         }
     }
 
@@ -377,17 +384,17 @@ class Approvals extends CI_Controller
     //     }
     // }
 
-    // public function os_mpp($approved_to, $approved_by){
-    //     if (empty($this->session->username)) {
-    //         redirect('error_session');
-    //     } else {
-    //         $data['approved_to'] = base64_decode($approved_to);
-    //         $data['approved_by'] = base64_decode($approved_by);
-    //         $data['table'] = "os_mpp";
-    //         $this->load->view('template/header', $data);
-    //         $this->load->view('approval/os_mpp');
-    //     }
-    // }
+    public function sales_orders($approved_to, $approved_by){
+        if (empty($this->session->username)) {
+            redirect('error_session');
+        } else {
+            $data['approved_to'] = base64_decode($approved_to);
+            $data['approved_by'] = base64_decode($approved_by);
+            $data['table'] = "sales_orders";
+            $this->load->view('template/header', $data);
+            $this->load->view('approval/sales_orders');
+        }
+    }
 
     public function forecasts($approved_to, $approved_by){
         if (empty($this->session->username)) {
@@ -1104,6 +1111,23 @@ class Approvals extends CI_Controller
         
         $this->db->select('a.*, c.number_customer as item_fg_number, c.name as item_fg_name, c.uom');
         $this->db->from('sto_fg a');
+        $this->db->join('item_fg c', 'a.item_fg_id = c.id');
+        $this->db->where('a.approved_to', $approved_to);
+        $this->db->where('a.approved_by', $approved_by);
+        $this->db->group_by('a.id');
+        $this->db->order_by('a.id', 'ASC');
+        $records = $this->db->get()->result_array();
+
+        die(json_encode($records));
+    }
+
+    public function approvalSalesOrders($approved_to, $approved_by){
+        $approved_to = base64_decode($approved_to);
+        $approved_by = base64_decode($approved_by);
+        
+        $this->db->select('a.*, b.name as customer_name, c.number as item_fg_number, c.number_customer, c.name as item_fg_name, c.uom');
+        $this->db->from('sales_orders a');
+        $this->db->join('customers b', 'a.customer_id = b.id');
         $this->db->join('item_fg c', 'a.item_fg_id = c.id');
         $this->db->where('a.approved_to', $approved_to);
         $this->db->where('a.approved_by', $approved_by);

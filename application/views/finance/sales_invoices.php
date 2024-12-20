@@ -92,7 +92,8 @@
     <?= $button ?>
     <!-- <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="excelDetail()"><i class="fa fa-file"></i> Sales Register Report</a> -->
     <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="excelJournal()"><i class="fa fa-file"></i> Export Excel Journal</a>
-    <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="irnSync()"><i class="fa fa-database"></i> IRN Sync</a>
+    <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="irnSync()"><i class="fa fa-database"></i> Generate IRN</a>
+    <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="irnCancel()"><i class="fa fa-times"></i> Cancel IRN</a>
 </div>
 
 <div id="toolbar2">
@@ -891,12 +892,23 @@
         var row = $('#dg').datagrid('getSelected');
         if (row) {
             if(row.barcode == "" || row.barcode == null){
+                Swal.fire({
+                    title: 'Please Wait for Sending Data',
+                    showConfirmButton: false,
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    },
+                });
+
                 $.ajax({
                     type: "post",
                     url: "<?= base_url("api/onyx/login") ?>",
                     data: row,
                     dataType: "json",
                     success: function (j) {
+                        Swal.fire('close');
                         Swal.fire({
                             title: 'Are Your Sure ?',
                             text: "Hai " + j.response.username + " in " + j.response.companyname + " You want Generate IRN Barcode ? with User Mail " + j.response.email,
@@ -933,14 +945,21 @@
                                                 dataType: "json",
                                                 success: function (si) {
                                                     $('#dg').datagrid('reload');
+
+                                                    Swal.fire(
+                                                        msg.status,
+                                                        msg.message + "\n" + results,
+                                                        "success"
+                                                    );
                                                 }
                                             });
+                                        }else{
+                                            Swal.fire(
+                                                msg.status,
+                                                msg.message + "\n" + results,
+                                                "error"
+                                            );
                                         }
-                                        
-                                        Swal.fire(
-                                            msg.status,
-                                            msg.message + "\n" + results,
-                                        );
                                     }
                                 });
                             }
@@ -949,6 +968,92 @@
                 });
             }else{
                 toastr.warning("IRN Already Posted");
+            }
+        } else {
+            toastr.warning("Please select one of the data in the table first!", "Information");
+        }
+    }
+
+    function irnCancel(){
+        var row = $('#dg').datagrid('getSelected');
+        if (row) {
+            if(row.barcode != "" || row.barcode != null){
+                Swal.fire({
+                    title: 'Please Wait for Sending Data',
+                    showConfirmButton: false,
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    },
+                });
+
+                $.ajax({
+                    type: "post",
+                    url: "<?= base_url("api/onyx/login") ?>",
+                    data: row,
+                    dataType: "json",
+                    success: function (j) {
+                        Swal.fire('close');
+                        Swal.fire({
+                            title: 'Are Your Sure ?',
+                            text: "Hai " + j.response.username + " in " + j.response.companyname + " You want Cancel IRN Barcode ? with User Mail " + j.response.email,
+                            icon: 'warning',
+                            showCancelButton: true,
+                            allowOutsideClick: false,
+                            allowEscapeKey: false,
+                            confirmButtonText: 'Yes, Do it!'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                $.ajax({
+                                    type: "post",
+                                    url: "<?= base_url("api/onyx/cancelInvoice") ?>",
+                                    data: {
+                                        q: row, 
+                                        token: j.response.token, 
+                                        companyId: j.response.companyid
+                                    },
+                                    dataType: "json",
+                                    success: function (msg) {
+                                        var i;
+                                        var results = "";
+                                        if(msg.errors != undefined){
+                                            for (i = 0; i < msg.errors.length; ++i) {
+                                                results += " | " + msg.errors[i].msg + " | ";
+                                            }
+                                        }
+
+                                        if(msg.status == "SUCCESS"){
+                                            $.ajax({
+                                                type: "post",
+                                                url: '<?= base_url('finance/sales_invoices/updateIrn') ?>',
+                                                data: {irn: '', barcode: '', number: row.number},
+                                                dataType: "json",
+                                                success: function (si) {
+                                                    $('#dg').datagrid('reload');
+
+                                                    Swal.fire(
+                                                        msg.status,
+                                                        msg.message + "\n" + results,
+                                                        "success"
+                                                    );
+                                                }
+                                            });
+                                        }else{
+                                            Swal.fire(
+                                                msg.status,
+                                                msg.message + "\n" + results,
+                                                "error"
+                                            );
+                                        }
+                                    }
+                                });
+                            }
+                        });
+                    }
+                });
+            }else{
+                toastr.warning("IRN Not Posted");
             }
         } else {
             toastr.warning("Please select one of the data in the table first!", "Information");

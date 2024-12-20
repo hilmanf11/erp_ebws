@@ -17,6 +17,7 @@
             <th rowspan="2" data-options="field:'currency',width:80,align:'center'">Currency</th>
             <th rowspan="2" data-options="field:'delivery_date',width:100,align:'center'">Delivery Date</th>
             <th rowspan="2" data-options="field:'revision',width:80,align:'center'">Revision</th>
+            <th rowspan="2" data-options="field:'asset_code',width:120,halign:'center'">Asset Code</th>
             <th rowspan="2" data-options="field:'remarks',width:100,halign:'center'">Remarks</th>
             <th rowspan="2" data-options="field:'terms',width:100,halign:'center',formatter:btnTerms">Terms<br>Condition</th>
             <th colspan="3" data-options="field:'',width:100,halign:'center'">Approved</th>
@@ -517,6 +518,17 @@
                                 }
                             }
                         }, {
+                            field: 'asset_code',
+                            width: 120,
+                            halign: 'center',
+                            title: "Asset Code",
+                            editor: {
+                                type: 'textbox',
+                                options: {
+                                    readonly: true
+                                }
+                            }
+                        }, {
                             field: 'remarks',
                             width: 150,
                             halign: 'center',
@@ -871,6 +883,7 @@
                                                     qty: row.qty,
                                                     price: row.price,
                                                     total: row.total,
+                                                    asset_code: row.asset_code,
                                                     remarks: row.remarks,
                                                 },
                                                 dataType: "json",

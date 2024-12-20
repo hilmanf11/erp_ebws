@@ -43,6 +43,9 @@ class Item_categories extends CI_Controller
             //master/item_sizes
             //master/item_rm
             $send = $this->crud->query("SELECT * FROM item_categories WHERE name LIKE '%$post%' AND number != 'FG'");
+        }elseif($type == "RM"){
+            //purchase/purchase_request_others
+            $send = $this->crud->query("SELECT * FROM item_categories WHERE name LIKE '%$post%' AND number not in ('FG','RM')");
         }
 
         echo json_encode($send);

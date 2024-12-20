@@ -58,6 +58,12 @@ class Purchase_order_others extends CI_Controller
         echo json_encode($records);
     }
 
+    public function readSupplier(){
+        $post = isset($_POST['q']) ? $_POST['q'] : "";
+        $data = $this->crud->query("SELECT DISTINCT b.id, b.number, b.name FROM purchase_order_others a JOIN suppliers b ON a.supplier_id = b.id WHERE a.status = 0 and b.name like '%$post%' ORDER BY b.name asc");
+        echo json_encode($data);
+    }
+
     public function po_no($supplier_number = "")
     {
         $datenow    = date("ymd");

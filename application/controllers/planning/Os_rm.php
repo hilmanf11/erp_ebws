@@ -366,7 +366,7 @@ class Os_rm extends CI_Controller
                     $padding = "padding:2mm 3mm 3mm 2mm;";
                 }
                 //Generate QRcode
-                $this->createQrcode($record->label_no, "assets/image/qrcode/");
+                $this->createQrcode(strtoupper($record->label_no), "assets/image/qrcode/");
                 $html .= '  <div style="width: 44mm; max-height:40mm; float:left; ' . $padding . '">
                                 <table id="customers" border="1" style="margin-bottom:20px;">
                                     <tr>
@@ -408,7 +408,7 @@ class Os_rm extends CI_Controller
                                             </div>
                                         </th>
                                         <th style="text-align:center;">
-                                            <img src="' . base_url('assets/image/qrcode/' . $record->label_no . '.png') . '" width="50"/>
+                                            <img src="' . base_url('assets/image/qrcode/' . strtoupper($record->label_no) . '.png') . '" width="50"/>
                                         </th>
                                     </tr>
                                 </table>

@@ -92,13 +92,14 @@
                             $("#balance").numberbox('setValue', 0);
                             toastr.success("Serial Found");
                         } else {
-                            toastr.warning("Label not found or Label has been Divided!");
+                            toastr.warning("Label not found or Label Already Scan Out or Label has been Divided!");
                             $("#label_no").val('');
                         }
                     }
                 });
             }
         });
+
         $('#supply').numberbox({
             onChange: function(value) {
                 var qty = $("#qty").numberbox("getValue");

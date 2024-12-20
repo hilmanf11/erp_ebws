@@ -448,23 +448,20 @@
                     $(e.data.target).combobox('clear').combobox('textbox').focus();
                 }
             }],
-            onSelect: function(month){
-                var month = $("#filter_month").combobox('getValue');
+        });
 
-                $("#filter_wp").combobox({
-                    url: '<?= base_url('planning/production_schedules/filterWp/') ?>' + month + "/" + year.number,
-                    valueField: 'wp',
-                    textField: 'wp',
-                    prompt: "Choose WP"
-                });
+        $("#filter_wp").combobox({
+            url: '<?= base_url('planning/production_schedules/filterWp/'.date('m').'/'.date('Y')) ?>',
+            valueField: 'wp',
+            textField: 'wp',
+            prompt: "Choose WP"
+        });
 
-                $("#filter_workorder").combobox({
-                    url: '<?= base_url('planning/production_schedules/filterWo/') ?>' + month + "/" + year.number,
-                    valueField: 'workorder',
-                    textField: 'workorder',
-                    prompt: "Choose Workorder"
-                });
-            }
+        $("#filter_workorder").combobox({
+            uurl: '<?= base_url('planning/production_schedules/filterWo/'.date('m').'/'.date('Y')) ?>',
+            valueField: 'workorder',
+            textField: 'workorder',
+            prompt: "Choose Workorder"
         });
 
         $("#filter_month").combobox("setValue", "<?= date("m") ?>");

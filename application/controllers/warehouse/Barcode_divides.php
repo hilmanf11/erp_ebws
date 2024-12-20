@@ -33,36 +33,33 @@ class Barcode_divides extends CI_Controller
         if ($this->input->post()) {
             $label_no = $this->input->post('label_no');
 
-            $this->db->select('a.*, b.trans_date as receipt_date, c.number, c.name');
-            $this->db->from('scan_item_receipts a');
-            $this->db->join('os_rm b', 'b.id = a.receipt_id');
-            $this->db->join('item_rm c', 'b.item_rm_id = c.id');
-            $this->db->where('a.deleted', 0);
-            $this->db->where('a.label_no', $label_no);
+            $this->db->select('*');
+            $this->db->from('issued_material_details');
+            $this->db->where('status', 0);
+            $this->db->where('label_no', $label_no);
             $records = $this->db->get()->result_array();
-            if (!$records) {
-                $this->db->select('a.*, b.receipt_date, c.number, c.name');
-                $this->db->from('purchase_order_labels a');
-                $this->db->join('purchase_order_receipts b', 'a.receipt_id = b.receipt_id');
+
+            if(empty($records)){
+                $this->db->select('a.*, b.trans_date as receipt_date, c.number, c.name');
+                $this->db->from('scan_item_receipts a');
+                $this->db->join('os_rm b', 'b.id = a.receipt_id');
                 $this->db->join('item_rm c', 'b.item_rm_id = c.id');
-                $this->db->where('a.deleted', 0);
+                $this->db->where('a.status', 0);
                 $this->db->where('a.label_no', $label_no);
                 $records = $this->db->get()->result_array();
                 if (!$records) {
-                    $this->db->select('a.*, c.receipt_date, d.number, d.name');
-                    $this->db->from('barcode_divides a');
-                    $this->db->join('purchase_order_labels b', 'a.reff = b.receipt_id');
-                    $this->db->join('purchase_order_receipts c', 'b.receipt_id = c.receipt_id');
-                    $this->db->join('item_rm d', 'c.item_rm_id = d.id');
-                    $this->db->where('a.deleted', 0);
-                    $this->db->where('a.status', 0);
-                    $this->db->where('a.label_divided', $label_no);
-                    $this->db->group_by('a.label_divided');
+                    $this->db->select('a.*, b.receipt_date, c.number, c.name');
+                    $this->db->from('purchase_order_labels a');
+                    $this->db->join('purchase_order_receipts b', 'a.receipt_id = b.receipt_id');
+                    $this->db->join('item_rm c', 'b.item_rm_id = c.id');
+                    $this->db->where('a.status', 1);
+                    $this->db->where('a.label_no', $label_no);
                     $records = $this->db->get()->result_array();
                     if (!$records) {
-                        $this->db->select('a.*, c.trans_date as receipt_date, d.number, d.name');
+                        $this->db->select('a.*, c.receipt_date, d.number, d.name');
                         $this->db->from('barcode_divides a');
-                        $this->db->join('os_rm c', 'a.reff = c.id');
+                        $this->db->join('purchase_order_labels b', 'a.reff = b.receipt_id');
+                        $this->db->join('purchase_order_receipts c', 'b.receipt_id = c.receipt_id');
                         $this->db->join('item_rm d', 'c.item_rm_id = d.id');
                         $this->db->where('a.deleted', 0);
                         $this->db->where('a.status', 0);
@@ -70,23 +67,40 @@ class Barcode_divides extends CI_Controller
                         $this->db->group_by('a.label_divided');
                         $records = $this->db->get()->result_array();
                         if (!$records) {
-                            $this->db->select('a.return_date as receipt_date, b.label_no, b.qty, c.number, c.name');
-                            $this->db->from('return_materials a');
-                            $this->db->join('return_material_labels b', 'a.return_id = b.return_id');
-                            $this->db->join('item_rm c', 'a.item_rm_id = c.id');
+                            $this->db->select('a.*, c.trans_date as receipt_date, d.number, d.name');
+                            $this->db->from('barcode_divides a');
+                            $this->db->join('os_rm c', 'a.reff = c.id');
+                            $this->db->join('item_rm d', 'c.item_rm_id = d.id');
                             $this->db->where('a.deleted', 0);
                             $this->db->where('a.status', 0);
-                            $this->db->where('b.label_no', $label_no);
-                            $this->db->group_by('b.label_no');
+                            $this->db->where('a.label_divided', $label_no);
+                            $this->db->group_by('a.label_divided');
                             $records = $this->db->get()->result_array();
+                            if (!$records) {
+                                $this->db->select('a.return_date as receipt_date, b.label_no, b.qty, c.number, c.name');
+                                $this->db->from('return_materials a');
+                                $this->db->join('return_material_labels b', 'a.return_id = b.return_id');
+                                $this->db->join('item_rm c', 'a.item_rm_id = c.id');
+                                $this->db->where('a.deleted', 0);
+                                $this->db->where('a.status', 0);
+                                $this->db->where('b.label_no', $label_no);
+                                $this->db->group_by('b.label_no');
+                                $records = $this->db->get()->result_array();
+                            }
                         }
                     }
                 }
+
+                //Mapping Data
+                $result['total'] = count($records);
+                $result = array_merge($result, ['rows' => $records]);
+                echo json_encode($result);
+            }else{
+                //Mapping Data
+                $result['total'] = 0;
+                $result = array_merge($result, ['rows' => []]);
+                echo json_encode($result);
             }
-            //Mapping Data
-            $result['total'] = count($records);
-            $result = array_merge($result, ['rows' => $records]);
-            echo json_encode($result);
         }
     }
 

@@ -20,10 +20,14 @@
             <!-- <th rowspan="2" data-options="field:'total_grand2',width:100,halign:'center',align:'right',formatter: numberFormat">Grand Total</th> -->
             <th rowspan="2" data-options="field:'remarks',width:150,halign:'center'">Remarks</th>
             <th rowspan="2" data-options="field:'attachment',width:80,align:'center',formatter: btnDetails">Attachment</th>
+            <th colspan="3" data-options="field:'',width:100,halign:'center'">Approved</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
         </tr>
         <tr>
+            <th data-options="field:'approved_to',width:80,align:'center', styler:cellStylerApproval, formatter:cellFormatterApproval">Status</th>
+            <th data-options="field:'approved_by',width:120,align:'center'">By</th>
+            <th data-options="field:'approved_date',width:120,align:'center'">Date</th>
             <th data-options="field:'created_by',width:120,align:'center'"> By</th>
             <th data-options="field:'created_date',width:150,align:'center'"> Date</th>
             <th data-options="field:'updated_by',width:120,align:'center'"> By</th>
@@ -1033,7 +1037,7 @@
         //SAVE DATA
         $('#dlg_insert').dialog({
             buttons: [{
-                text: 'Save All',
+                text: 'Send To Approval',
                 iconCls: 'icon-ok',
                 handler: function() {
                     var customer_id = $("#customer_id").combobox('getValue');
@@ -1244,6 +1248,26 @@
             return '-';
         }
     }
+
+    function cellStylerApproval(value, row, index) {
+        if (row.approved_to == null) {
+            return 'background: #FF5F5F; color:white;';
+        } else if(row.approved_to == ""){
+            return 'background: #53D636; color:white;';
+        } else {
+            return 'background: #FF5F5F; color:white;';
+        }
+    }
+
+    function cellFormatterApproval(val, row) {
+        if (row.approved_to == null) {
+            return 'Not Setting';
+        } else if(row.approved_to == ""){
+            return 'Approved';
+        } else {
+            return 'Checking';
+        }
+    };
 
     $('#attachment_upload').filebox({
         buttonText: 'Browse File',

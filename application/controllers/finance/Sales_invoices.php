@@ -476,8 +476,7 @@ class Sales_invoices extends CI_Controller
             $this->db->like('a.customer_id', $filter_customer);
             $this->db->like('a.plant', $filter_plant);
             $this->db->like('a.status', $filter_status);
-            $this->db->order_by('a.status', 'ASC');
-            $this->db->order_by('a.trans_date', 'DESC');
+            $this->db->order_by('a.number', 'DESC');
             $this->db->group_by('a.number');
             //Total Data
             $totalRows = $this->db->count_all_results('', false);
@@ -491,8 +490,8 @@ class Sales_invoices extends CI_Controller
             $this->db->join('customers b', 'a.customer_id = b.id');
             $this->db->join('item_fg c', 'a.item_fg_id = c.id');
             $this->db->where('a.number', $number);
-            $this->db->order_by('a.status', 'ASC');
             $this->db->order_by('a.trans_date', 'DESC');
+            $this->db->order_by('a.number', 'ASC');
             //Total Data
             $totalRows = $this->db->count_all_results('', false);
         }
@@ -617,7 +616,7 @@ class Sales_invoices extends CI_Controller
         $imgIrn = "";
         if($sales_invoice->barcode != ""){
             $this->createQrcodeIrn($sales_invoice->barcode, "assets/image/qrcode/", $sales_invoice->number);
-            $imgIrn = '<img style="margin-left:20px;" src="' . base_url('assets/image/qrcode/' . $sales_invoice->number . '.png?'.time()) . '" width="200"/>';
+            $imgIrn = '<img src="' . base_url('assets/image/qrcode/' . $sales_invoice->number . '.png?'.time()) . '" width="150"/>';
         }
         //Header Print
         $html = '<html><head><title>' . $sales_invoice->number . '</title><link rel="icon" href="' . $config->favicon . '" type="image/png" sizes="16x16"></head>';
@@ -704,9 +703,6 @@ class Sales_invoices extends CI_Controller
                                     </td>
                                 </tr>
                             </table>
-                            <div style="padding:10px; text-align: right;">
-                                <b style="font-size:12px;">IRN :-</b> '.$sales_invoice->irn.'<br>
-                            </div>
                             <hr>
                             <div style="padding:10px;">
                                 <table style="width:100%; font-size: 12px;">
@@ -747,11 +743,14 @@ class Sales_invoices extends CI_Controller
                                                 </tr>
                                             </table>
                                         </td>
-                                        <td width="200">
+                                        <td width="200" style="text-align:right;">
                                             '.$imgIrn.'
                                         </td>
                                     </tr>
                                 </table>
+                                <div style="text-align: left; font-size:12px;">
+                                    IRN NO : '.$sales_invoice->irn.'
+                                </div>
                             </div>
                             <hr>
                             <div style="width:100%; float: left; padding: 10px;">

@@ -840,6 +840,7 @@ class Purchase_order_receipts extends CI_Controller
             header("Content-type: application/vnd-ms-excel");
             header("Content-Disposition: attachment; filename=purchase_order_receipts_$format.xls");
         }
+
         $filter_from = $this->input->get('filter_from');
         $filter_to = $this->input->get('filter_to');
         $filter_supplier = $this->input->get('filter_supplier');
@@ -921,6 +922,7 @@ class Purchase_order_receipts extends CI_Controller
             <table id="customers" border="1">
             <tr>
                 <th rowspan="2" width="20">No</th>
+                <th rowspan="2" width="80">Status<br>POR</th>
                 <th rowspan="2" width="80">Status<br>Invoice</th>
                 <th rowspan="2">MRN No</th>
                 <th rowspan="2">GRN No</th>
@@ -957,13 +959,19 @@ class Purchase_order_receipts extends CI_Controller
                 $style = "style='background: red; color:white;'";
             }
 
-            $grn_no = "";
             if($data['total_scan'] == $data['qty_label']){
                 $grn_no = "GRN".substr(@$data['receipt_no'], 3);
+                $status2 = "CLOSED";
+                $style2 = "style='background: red; color:white;'";
+            }else{
+                $grn_no = "";
+                $status2 = "OPEN";
+                $style2 = "style='background: green; color:white;'";
             }
 
             $html .= '<tr>
                         <td style="text-align:center">' . $no . '</td>
+                        <td '.$style2.'>' . $status2 . '</td>
                         <td '.$style.'>' . $status . '</td>
                         <td>' . $data['receipt_no'] . '</td>
                         <td>' . $grn_no . '</td>

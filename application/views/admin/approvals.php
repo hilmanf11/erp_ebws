@@ -58,6 +58,7 @@
                     <option value="sto_fg">STO Finish Good</option>
                     <option value="scraps">Scraps</option>
                     <option value="item_mpq">Item MPQ</option>
+                    <option value="sales_orders">Sales Orders</option>
                 </select>
             </div>
             <div class="fitem">

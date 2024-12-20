@@ -38,7 +38,7 @@ class Assets extends CI_Controller
         $item_family_number = $post['item_family_number'];
 
         $codes = $item_family_number."-".date("y");
-        $sql = $this->db->query("SELECT max(id) as kode FROM assets WHERE id like '%$codes%'");
+        $sql = $this->db->query("SELECT max(`number`) as kode FROM assets WHERE `number` like '%$codes%'");
         $row = $sql->row();
         
         if ($row->kode == "") {
@@ -66,12 +66,14 @@ class Assets extends CI_Controller
         //Select Query
         $id = $_POST['id'];
         if ($id === "0") {
-            $this->db->select('*');
-            $this->db->from('assets');
-            $this->db->like('item_family_id', $filter_item_familys);
-            $this->db->like('item_rm_id', $filter_item_rm);
-            $this->db->group_by('number');
-            $this->db->order_by('number', 'DESC');
+            $this->db->select('b.id as number, b.number as name, b.name as description, c.name as product_family, a.item_rm_id');
+            $this->db->from('assets a');
+            $this->db->join('item_rm b', 'a.item_rm_id = b.id');
+            $this->db->join('item_familys c', 'b.item_family_id = c.id');
+            $this->db->like('b.item_family_id', $filter_item_familys);
+            $this->db->like('b.id', $filter_item_rm);
+            $this->db->group_by('b.number');
+            $this->db->order_by('b.number', 'ASC');
             //Total Data
             $totalRows = $this->db->count_all_results('', false);
             //Limit 1 - 10
@@ -80,11 +82,11 @@ class Assets extends CI_Controller
             $records = $this->db->get()->result_array();
             foreach ($records as $record) {
                 $arr[] = array(
-                    "id" => $record['number'],
+                    "id" => $record['item_rm_id'],
+                    "product_family" => $record['product_family'],
                     "number" => $record['number'],
                     "name" => $record['name'],
                     "description" => $record['description'],
-                    "item_family_id" => $record['item_family_id'],
                     "state" => "closed",
                     "datatable" => 1
                 );
@@ -94,27 +96,14 @@ class Assets extends CI_Controller
             $result = array_merge($result, ['rows' => @$arr]);
             echo json_encode($result);
         } else {
-            $this->db->select('a.id, b.id as number, b.number as name, b.name as description, a.created_by, a.created_date, a.updated_by, a.updated_date');
+            $this->db->select('a.*, b.request_no');
             $this->db->from('assets a');
-            $this->db->join('item_rm b', 'a.item_rm_id = b.id');
-            $this->db->where('a.number', $id);
-            $this->db->like('a.item_family_id', $filter_item_familys);
-            $this->db->like('a.item_rm_id', $filter_item_rm);
-            $this->db->order_by('b.number', 'ASC');
+            $this->db->join('purchase_request_others b', 'a.number = b.asset_code', 'left');
+            $this->db->where('a.item_rm_id', $id);
+            $this->db->order_by('a.number', 'ASC');
             $records = $this->db->get()->result_array();
             echo json_encode($records);
         }
-    }
-
-    public function datatable_updates(){
-        $number = base64_decode($this->input->get('number'));
-        
-        $records = $this->crud->query("SELECT a.*, c.number as item_rm_number, c.name as item_rm_name
-            FROM assets a
-            JOIN item_rm c on a.item_rm_id = c.id
-            WHERE a.status = '0' and a.number = '$number'
-            GROUP BY c.number");
-        echo json_encode($records);
     }
 
     public function create()
@@ -123,7 +112,7 @@ class Assets extends CI_Controller
             if ($this->form_validation->run() == TRUE) {
                 $post = $this->input->post();
 
-                $assets = $this->crud->read('assets', [], ["item_rm_id" => $post['item_rm_id']]);
+                $assets = $this->crud->read('assets', [], ["item_rm_id" => $post['item_rm_id'], "number" => $post['number']]);
                 if (empty($assets)) {
                     $send = $this->crud->create('assets', $post);
                     echo $send;
@@ -140,7 +129,7 @@ class Assets extends CI_Controller
     public function update()
     {
         if ($this->input->post()) {
-            $id   = $this->input->post('id');
+            $id = $this->input->post('id');
             $post = $this->input->post();
             $send = $this->crud->update('assets', ["id" => $id], $post);
             echo $send;

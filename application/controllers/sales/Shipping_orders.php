@@ -103,6 +103,7 @@ class Shipping_orders extends CI_Controller
                 $item_fg_id = $post['item_fg_id'];
                 $checksheet_number = $post['checksheet_number'];
                 $shipping_orders = $this->crud->read("shipping_orders", [], ["delivery_order_no" => $post['delivery_order_no'], "checksheet_label" => $post['checksheet_label']]);
+                $delivery_orders = $this->crud->read("delivery_orders", [], ["delivery_order_no" => $delivery_order_no, "item_fg_id" => $item_fg_id]);
 
                 $shipping = $this->db->query("SELECT a.item_fg_id, a.qty_do, SUM(b.qty) AS qty_shipping, (a.qty_do - SUM(b.qty)) as balance FROM delivery_orders a 
                     JOIN shipping_orders b ON a.delivery_order_no = b.delivery_order_no AND a.item_fg_id = b.item_fg_id
@@ -110,21 +111,25 @@ class Shipping_orders extends CI_Controller
                     GROUP BY a.item_fg_id");
                 $record = $shipping->row();
                 
-                if(@$record->qty_do >= $post['qty'] || empty(@$record->item_fg_id)){
-                    // die(@$record->qty_do."-".@$record->shipping."-".$post['qty']);
-                    if (!$shipping_orders) {
-                        if ((@$record->balance - $post['qty']) >= 0 || empty(@$record->item_fg_id)) {
-                            $send = $this->crud->create('shipping_orders', $post);
-                            $this->crud->update('scan_item_receipts_fg', ["checksheet_label" => $post['checksheet_label']], ["status" => "1"]);
-                            echo $send;
+                if(!empty($delivery_orders)){
+                    if(@$record->qty_do >= $post['qty'] || empty(@$record->item_fg_id)){
+                        // die(@$record->qty_do."-".@$record->shipping."-".$post['qty']);
+                        if (!$shipping_orders) {
+                            if ((@$record->balance - $post['qty']) >= 0 || empty(@$record->item_fg_id)) {
+                                $send = $this->crud->create('shipping_orders', $post);
+                                $this->crud->update('scan_item_receipts_fg', ["checksheet_label" => $post['checksheet_label']], ["status" => "1"]);
+                                echo $send;
+                            } else {
+                                echo json_encode(array("title" => "Not Match", "message" => "Qty DO and Shipping already Done", "theme" => "error"));
+                            }
                         } else {
-                            echo json_encode(array("title" => "Not Match", "message" => "Qty DO and Shipping already Done", "theme" => "error"));
+                            echo json_encode(array("title" => "Available", "message" => "Data Shipping Orders has been Scanning", "theme" => "error"));
                         }
-                    } else {
-                        echo json_encode(array("title" => "Available", "message" => "Data Shipping Orders has been Scanning", "theme" => "error"));
+                    }else{
+                        echo json_encode(array("title" => "Not Match", "message" => "Qty DO must bigger when Shipping Qty", "theme" => "error"));
                     }
                 }else{
-                    echo json_encode(array("title" => "Not Match", "message" => "Qty DO must bigger when Shipping Qty", "theme" => "error"));
+                    echo json_encode(array("title" => "Not Match", "message" => "The Label Not Match in Delivery Order No", "theme" => "error"));
                 }
             } else {
                 show_error(validation_errors());

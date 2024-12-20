@@ -44,6 +44,20 @@ class Item_rm extends CI_Controller
         echo json_encode($send);
     }
 
+    public function readItemCategory($item_category = "")
+    {
+        //master/bom
+        //planning/where_used
+        $post = isset($_POST['q']) ? $_POST['q'] : "";
+        $send = $this->crud->query("SELECT a.*, b.name as item_family_name 
+            FROM item_rm a 
+            JOIN item_familys b ON a.item_family_id = b.id
+            JOIN item_categories c ON a.item_category_id = c.id 
+            WHERE a.status = 0 and c.id = '$item_category'
+            and (a.id like '%$post%' or a.number like '%$post%' or a.name like '%$post%')");
+        echo json_encode($send);
+    }
+
     public function readNotRm($item_family_id = "")
     {
         $post = isset($_POST['q']) ? $_POST['q'] : "";
@@ -92,7 +106,7 @@ class Item_rm extends CI_Controller
             // $this->db->join('item_family_subs d', 'a.item_sub_family_id = d.id', 'left');
             $this->db->join('hsn d', 'a.hsn_code = d.number', 'left');
             $this->db->join('makers e', 'a.maker_id = e.id', 'left');
-            $this->db->where('b.number !=', 'FA');
+            // $this->db->where('b.number !=', 'FA');
             $this->db->where('a.deleted', 0);
             if (@count($filters) > 0) {
                 foreach ($filters as $filter) {
@@ -582,7 +596,7 @@ class Item_rm extends CI_Controller
         $this->db->join('item_familys c', 'a.item_family_id = c.id');
         $this->db->join('hsn d', 'a.hsn_code = d.number', 'left');
         $this->db->join('makers e', 'a.maker_id = e.id', 'left');
-        $this->db->where('b.number !=', 'FA');
+        // $this->db->where('b.number !=', 'FA');
         $this->db->where('a.deleted', 0);
         $this->db->order_by('a.id', 'ASC');
         $records = $this->db->get()->result_array();

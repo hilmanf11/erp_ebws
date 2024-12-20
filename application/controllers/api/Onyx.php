@@ -49,6 +49,43 @@ class Onyx extends CI_Controller
         curl_close($ch);
     }
 
+    public function cancelInvoice(){
+        // $url = 'https://stage-api.irisgst.com/irisgst/onyx/irn/cancel';
+        $url = 'https://api.irisgst.com/irisgst/onyx/irn/cancel';
+
+        $post = $this->input->post('q');
+        $token = $this->input->post('token');
+        $companyId = $this->input->post('companyId');
+        $config = $this->crud->read("config");
+
+        $headers = [
+            'Content-type: application/json',
+            'companyId: ' . $companyId,
+            'X-Auth-Token: '. $token,
+            'product: ONYX',
+        ];
+
+        $data = array(
+            "irn" => $post['irn'],
+            "cnlRsn" => "1",
+            "cnlRem" => "Wrong entry",
+            "userGstin" => $config->gst_no,
+        );
+
+        $ch = curl_init($url);
+        $payload = json_encode($data);
+
+        // die($payload);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "PUT");
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+        $response = curl_exec($ch);
+
+        die($response);
+        curl_close($ch);
+    }
+
     public function addInvoice(){
         // $url = 'https://stage-api.irisgst.com/irisgst/onyx/irn/addInvoice';
         $url = 'https://api.irisgst.com/irisgst/onyx/irn/addInvoice';
@@ -98,7 +135,7 @@ class Onyx extends CI_Controller
                     $total_igst += $sales_invoice->igst;
                     $total_cgst += 0;
                     $total_sgst += 0;
-                    $ntr = "INTRA";
+                    $ntr = "INTER";
                 }else{
                     $igst = 0;
                     $cgst = 0;
@@ -187,7 +224,7 @@ class Onyx extends CI_Controller
             "dt" => date("d-m-Y", strtotime($post['trans_date'])), 
             "refinum" => null,
             "refidt" => null,
-            "pos" => $state2->irn_code,
+            "pos" => $state->irn_code,
             // "pos" => "01",
             "diffprcnt" => null,
             "etin" => null,
@@ -198,7 +235,8 @@ class Onyx extends CI_Controller
             "slglNm" => @$config->name,
             "sbnm" => @$config->address2,
             "sflno" => null,
-            "sloc" => @$config->state,
+            // "sloc" => @$config->state,
+            "sloc" => "BHIWADI",
             "sdst" => @$config->state,
             // "sdst" => "BENGALURU",
             // "sstcd" => "01",

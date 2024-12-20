@@ -15,6 +15,7 @@
             <th rowspan="2" data-options="field:'uom',width:80,align:'center'">UoM</th>
             <th rowspan="2" data-options="field:'qty',width:80,halign:'center',align:'right',formatter:numberformat">Qty</th>
             <th rowspan="2" data-options="field:'remarks',width:200,halign:'center'">Remarks</th>
+            <th rowspan="2" data-options="field:'asset_code',width:120,align:'center'">Asset Code</th>
             <th rowspan="2" data-options="field:'po_no',width:120,align:'center'">Po No</th>
             <th colspan="3" data-options="field:'',width:100,halign:'center'">Approved</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
@@ -73,11 +74,17 @@
 </div>
 
 <!-- Insert & Update -->
-<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 1000px; height: 550px; padding:10px; left: 10px; top: 20px;">
+<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 1200px; height: 550px; padding:10px; left: 10px; top: 20px;">
     <form id="frm_insert" method="post" novalidate>
         <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
             <legend><b>Form Data</b></legend>
-            <div style="width: 50%; float: left;">
+            <div style="width: 30%; float: left;">
+                <div class="fitem">
+                    <span style="width:30%; display:inline-block;">Category</span>
+                    <input style="width:60%;" name="item_category_id" id="item_category_id" class="easyui-combobox" required>
+                </div>
+            </div>
+            <div style="width: 35%; float: left;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Request No</span>
                     <input style="width:60%;" name="request_no" id="request_no" readonly class="easyui-textbox" data-options="prompt: 'Automatic'" required>
@@ -87,7 +94,7 @@
                     <input style="width:60%;" name="request_date" id="request_date" value="<?= date("Y-m-d") ?>" required="" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
                 </div>
             </div>
-            <div style="width: 50%; float: left;">
+            <div style="width: 35%; float: left;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Request Name</span>
                     <input style="width:60%;" name="request_name" id="request_name" value="<?= $this->session->name ?>" readonly class="easyui-textbox">
@@ -130,9 +137,10 @@
         $('#dlg_insert').dialog('open');
         $('#dg2').datagrid('loadData', []);
         $('#request_no').textbox('clear');
+
+        flag = "add";
         
         request_no();
-        addTable();
     }
 
     function request_no(){
@@ -146,7 +154,7 @@
         });
     }
 
-    function addTable(link = "") {
+    function addTable(item_category_id = "", link = "") {
         var lastIndex;
         var dg = $('#dg2').datagrid({
             url: link,
@@ -160,7 +168,7 @@
                     editor: {
                         type: 'combogrid',
                         options: {
-                            url: '<?= base_url('master/item_rm/readNotRm') ?>',
+                            url: '<?= base_url('master/item_rm/readItemCategory/') ?>' + item_category_id,
                             required: true,
                             panelWidth: 550,
                             idField: 'id',
@@ -214,7 +222,7 @@
 
                                 var ed3 = dg.datagrid('getEditor', {
                                     index: rowIndex,
-                                    field: 'stock'
+                                    field: 'asset_code'
                                 });
 
                                 var ed4 = dg.datagrid('getEditor', {
@@ -228,19 +236,25 @@
                                 $(ed6.target).textbox('setValue', rows.item_family_name);
                                 $(ed7.target).textbox('setValue', rows.item_family_id);
                                 
-                                // $.ajax({
-                                //     type: "post",
-                                //     url: "<?= base_url('warehouse/report_history_transactions/readEndingStock') ?>",
-                                //     data: "item_rm_id=" + btoa(rows.id),
-                                //     dataType: "json",
-                                //     success: function(json) {
-                                //         if (json != null) {
-                                //             $(ed3.target).numberbox('setValue', json[0].end_stock);
-                                //         } else {
-                                //             $(ed3.target).numberbox('setValue', 0);
-                                //         }
-                                //     }
-                                // });
+
+                                if(item_category_id == "C06"){
+                                    $.ajax({
+                                        type: "post",
+                                        url: "<?= base_url('purchase/purchase_request_others/readAssets') ?>",
+                                        data: "item_rm_id=" + btoa(rows.id),
+                                        dataType: "json",
+                                        success: function(json) {
+                                            if (json != null) {
+                                                $(ed3.target).textbox('setValue', json.number);
+                                            } else {
+                                                $(ed3.target).textbox('setValue', '');
+                                                toastr.warning("Asset Code Not Register, Please Contact Finance Departement for Request Asset Code");
+                                            }
+                                        }
+                                    });
+                                }else{
+                                    $(ed3.target).textbox('setValue', '-');
+                                }
 
                                 // $.ajax({
                                 //     type: "post",
@@ -334,6 +348,18 @@
                         }
                     }
                 },{
+                    field: 'asset_code',
+                    width: 120,
+                    halign: 'center',
+                    title: "Asset Code",
+                    editor: {
+                        type: 'textbox',
+                        options: {
+                            readonly: true,
+                            required: true
+                        }
+                    }
+                }, {
                     field: 'remarks',
                     width: 200,
                     halign: 'center',
@@ -372,8 +398,8 @@
     }
 
     function append() {
-        // var item_family_id = $("#item_family_id").combobox('getValue');
-        // if (item_family_id != "") {
+        var item_category_id = $("#item_category_id").combobox('getValue');
+        if (item_category_id != "") {
             if (endEditing()) {
                 $('#dg2').datagrid('appendRow', {
                     qty: '0',
@@ -383,9 +409,9 @@
                 editIndex = $('#dg2').datagrid('getRows').length - 1;
                 $('#dg2').datagrid('selectRow', editIndex).datagrid('beginEdit', editIndex);
             }
-        // } else {
-        //     toastr.error("Please Choose Product Family first");
-        // }
+        } else {
+            toastr.error("Please Choose Category first");
+        }
     }
 
     function removeit() {
@@ -406,11 +432,13 @@
                     $('#frm_insert').form('load', row);
                     // $("#item_family_id").combobox('disable');
 
+                    flag = "update";
+
                     setTimeout(function() {
                         $('#request_no').textbox('setValue', row.request_no);
-                    }, 3000);
+                    }, 2000);
 
-                    addTable('<?= base_url('purchase/purchase_request_others/datatable_updates?request_no=') ?>' + window.btoa(row.request_no));
+                    addTable(row.item_category_id, '<?= base_url('purchase/purchase_request_others/datatable_updates?request_no=') ?>' + window.btoa(row.request_no));
                 } else {
                     toastr.error("You cannot update this data, because status Purchase Request is CONVERTED");
                 }
@@ -588,12 +616,16 @@
                         dataType: "json",
                         success: function (response) {
                             // $("#request_no").textbox('setValue', response.code);
-                            // var request_no = $("#request_no").textbox('getValue');
-                            var request_no = response.code;
+                            if(flag == "add"){
+                                var request_no = response.code;
+                            }else{
+                                var request_no = $("#request_no").textbox('getValue');
+                            }
+
                             var request_date = $("#request_date").datebox('getValue');
                             var request_name = $("#request_name").textbox('getValue');
                             var expected_date = $("#expected_date").datebox('getValue');
-                            // var item_family_id = $("#item_family_id").combobox('getValue');
+                            var item_category_id = $("#item_category_id").combobox('getValue');
 
                             $("#dg2").datagrid('acceptChanges');
                             var rows = $('#dg2').datagrid('getRows');
@@ -606,9 +638,11 @@
                                         type: "post",
                                         url: '<?= base_url('purchase/purchase_request_others/create') ?>',
                                         data: {
+                                            item_category_id: item_category_id,
                                             request_no: request_no,
                                             request_date: request_date,
                                             request_name: request_name,
+                                            asset_code: rows[i].asset_code,
                                             item_family_id: rows[i].item_family_id,
                                             item_rm_id: rows[i].item_rm_id,
                                             qty: rows[i].qty,
@@ -710,6 +744,7 @@
                                                     },
                                                     cache: false
                                                 });
+
                                                 requestData(total, json, number + 1, value, success + 0, failed + 1);
                                             }
                                             $("#p_remarks").append(title + "<br>");
@@ -723,17 +758,15 @@
             }]
         });
 
-        // $('#item_family_id').combobox({
-        //     url: '<?php echo base_url('purchase/purchase_request_others/readprodfam'); ?>',
-        //     valueField: 'id',
-        //     textField: 'name',
-        //     prompt: 'Select Product Family',
-        //     onSelect: function(prodfam){
-                
-                
-                
-        //     }
-        // });
+        $('#item_category_id').combobox({
+            url: '<?php echo base_url('master/item_categories/reads/RM'); ?>',
+            valueField: 'id',
+            textField: 'name',
+            prompt: 'Select Categories',
+            onSelect: function(category){
+                addTable(category.id);
+            }
+        });
 
         //Get Customer
         $('#filter_item_familys').combogrid({

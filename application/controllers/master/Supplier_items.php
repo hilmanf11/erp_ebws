@@ -241,7 +241,7 @@ class Supplier_items extends CI_Controller
             if((@$rowSupItm->share_order + $post['share_order']) <= 100){
                 if($post['mpq'] > 0 && $post['moq'] > 0){
                     if (!$supplier_items) {
-                        $attachment = $this->crud->upload('attachment', ["jpg", "png", "jpeg", "pdf", "xls", "docx"], 'assets/documents/supplier_items/', [], "supplier_items", "attachment");
+                        $attachment = $this->crud->upload('attachment', ["jpg", "png", "jpeg", "pdf", "xls", "xlsx", "docx"], 'assets/documents/supplier_items/', [], "supplier_items", "attachment");
                         $postFinal = array_merge($post, ["attachment" => $attachment]);
 
                         $send = $this->crud->create('supplier_items', $postFinal);

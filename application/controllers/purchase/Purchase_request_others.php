@@ -114,6 +114,14 @@ class Purchase_request_others extends CI_Controller
         echo json_encode($records);
     }
 
+    public function readAssets(){
+        $item_rm_id = base64_decode($this->input->post('item_rm_id'));
+        $query = $this->db->query("SELECT * FROM assets WHERE status = 0 and item_rm_id = '$item_rm_id'");
+        $records = $query->row();
+
+        echo json_encode($records);
+    }
+
     public function request_no($id_menu, $add = ""){
         $datenow = date("Y-m-d");
         $sql_menu = $this->db->query("SELECT * FROM menus_no WHERE menus_id = '$id_menu' and `status` = '0' and `start_date` <= '$datenow' and end_date >= '$datenow'");
@@ -259,6 +267,7 @@ class Purchase_request_others extends CI_Controller
                     $send = $this->crud->update('purchase_request_others', ["request_no" => $post['request_no'], "item_rm_id" => $post['item_rm_id']], $post);
                 } else {
                     $send = $this->crud->create('purchase_request_others', array_merge($post, ["request_type" => "OTHER", "p_month" => $p_month, "p_year" => $p_year]));
+                    $this->db->update('assets', ["status" => 1], ["number" => $post['asset_code']]);
                 }
 
                 echo $send;
@@ -315,6 +324,7 @@ class Purchase_request_others extends CI_Controller
                 'remarks' => $data->val($i, 7)
             );
         }
+        
         $datas['total'] = count($datas);
         echo json_encode($datas);
         unlink($_FILES['file_upload']['name']);

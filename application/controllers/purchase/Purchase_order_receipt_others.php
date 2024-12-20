@@ -38,12 +38,14 @@ class Purchase_order_receipt_others extends CI_Controller
         $item_rm_number = base64_decode($this->input->get('item_rm_number'));
 
         //Select Query
-        $this->db->select('a.*, b.number, b.name, b.uom, c.name as item_family_name, e.name as supplier_name, d.mpq, d.moq, d.price');
+        $this->db->select('a.*, b.number, b.name, b.uom, c.name as item_family_name, f.mpq');
         $this->db->from('purchase_order_receipt_others a');
         $this->db->join('item_rm b', 'a.item_rm_id = b.id');
         $this->db->join('item_familys c', 'b.item_family_id = c.id');
-        $this->db->join('supplier_items d', 'a.item_rm_id = d.item_rm_id');
-        $this->db->join('suppliers e', 'd.supplier_id = e.id');
+        // $this->db->join('supplier_items d', 'a.item_rm_id = d.item_rm_id');
+        // $this->db->join('suppliers e', 'd.supplier_id = e.id');
+        $this->db->join('supplier_items f', 'a.item_rm_id = f.item_rm_id and a.supplier_id = f.supplier_id');
+        // $this->db->join("(select distinct receipt_id FROM purchase_order_labels) f", 'f.receipt_id != a.receipt_id', 'left');
         $this->db->where('a.deleted', 0);
         $this->db->where('a.status', 0);
         if($receipt_no != ""){
@@ -82,7 +84,7 @@ class Purchase_order_receipt_others extends CI_Controller
 
     public function readReceiptNo()
     {
-        $records = $this->crud->query("SELECT receipt_no FROM purchase_order_receipt_others WHERE status = '0' and store = '1' GROUP BY receipt_no ORDER BY created_date desc");
+        $records = $this->crud->query("SELECT receipt_no FROM purchase_order_receipt_others WHERE status = '0' GROUP BY receipt_no ORDER BY created_date desc");
         echo json_encode($records);
     }
 
@@ -141,15 +143,6 @@ class Purchase_order_receipt_others extends CI_Controller
         return $receipt_no . "-" . $autoID;
     }
 
-    public function checkData(){
-        $receipt_no = $this->input->post('receipt_no');
-
-        $sqlLabel = $this->db->query("SELECT * FROM purchase_order_receipt_others WHERE receipt_no ='$receipt_no'");
-        $rowLabel = $sqlLabel->row();
-
-        die(json_encode($rowLabel));
-    }
-
     public function datatables()
     {
         if ($this->input->post()) {
@@ -171,8 +164,8 @@ class Purchase_order_receipt_others extends CI_Controller
 
             $id = $_POST['id'];
             if ($id === "0") {
-                $this->db->select('a.po_no, a.stored as store, a.receipt_no, a.receipt_date, a.awb_no, a.awb_date, a.bc_kind, a.bc_document, a.bc_aju, a.bc_date, b.id as supplier_id, b.name as supplier_name, a.total_receipt as qty_receipt, a.total_label as qty_label, a.status');
-                $this->db->from('(SELECT *, SUM(store) as stored, sum(qty_label) as total_label, sum(qty_receipt) as total_receipt FROM purchase_order_receipt_others GROUP BY receipt_no ORDER BY status asc) a');
+                $this->db->select('a.po_no, a.receipt_no, a.receipt_date, a.awb_no, a.awb_date, a.bc_kind, a.bc_document, a.bc_aju, a.bc_date, b.id as supplier_id, b.name as supplier_name, a.total_receipt as qty_receipt, a.total_label as qty_label, a.status');
+                $this->db->from('(SELECT *, sum(qty_label) as total_label, sum(qty_receipt) as total_receipt FROM purchase_order_receipt_others GROUP BY receipt_no ORDER BY status asc) a');
                 $this->db->join('suppliers b', 'a.supplier_id = b.id');
                 $this->db->join('purchase_order_others c', 'a.po_no = c.po_no and a.item_rm_id = c.item_rm_id');
                 $this->db->where('a.deleted', 0);
@@ -205,17 +198,12 @@ class Purchase_order_receipt_others extends CI_Controller
                 //Get Data Array
                 $records = $this->db->get()->result_array();
                 foreach ($records as $record) {
-                    $receipt_no = $record['receipt_no'];
-
-                    // $grn_no = "";
-                    // if($purchase_order_label[0]->total_scan == $record['qty_label']){
-                    //     $grn_no = "GRN".substr(@$record['receipt_no'], 3);
-                    // }
+                    // $receipt_no = $record['receipt_no'];
+                    // $purchase_order_label = $this->crud->query("SELECT receipt_id, count(id) as total_scan FROM scan_item_receipts WHERE receipt_id like '%$receipt_no%'");
 
                     $arr[] = array(
                         "id" => $record['receipt_no'],
                         // "grn_no" => $grn_no,
-                        "store" => $record['store'],
                         "po_no" => $record['po_no'],
                         "bc_kind" => $record['bc_kind'],
                         "bc_document" => $record['bc_document'],
@@ -228,6 +216,7 @@ class Purchase_order_receipt_others extends CI_Controller
                         "supplier_id" => $record['supplier_id'],
                         "supplier_name" => $record['supplier_name'],
                         "qty_label" => $record['qty_label'],
+                        // "total_scan" => $purchase_order_label[0]->total_scan,
                         "status" => $record['status'],
                         "state" => "closed",
                     );
@@ -240,21 +229,20 @@ class Purchase_order_receipt_others extends CI_Controller
                 $this->db->select('a.*, 
                     a.id as purchase_order_receipt_others_id, 
                     a.receipt_id as id, 
-                    b.number as supplier_id, 
                     b.name as supplier_name, 
                     c.number as item_rm_number, 
                     c.name as item_rm_name, 
                     d.name as item_family_name, 
                     b.currency, 
                     c.uom,
-                    e.mpq,
-                    sum(g.status) as total_scan');
+                    f.mpq');
                 $this->db->from('purchase_order_receipt_others a');
                 $this->db->join('suppliers b', 'a.supplier_id = b.id');
                 $this->db->join('item_rm c', 'a.item_rm_id = c.id');
                 $this->db->join('item_familys d', 'c.item_family_id = d.id');
-                $this->db->join('supplier_items e', 'b.id = e.supplier_id and c.id = e.item_rm_id');
-                $this->db->join('purchase_order_labels g', 'g.receipt_id = a.receipt_id', 'left');
+                // $this->db->join('supplier_items e', 'b.id = e.supplier_id and c.id = e.item_rm_id');
+                $this->db->join('supplier_items f', 'b.id = f.supplier_id and c.id = f.item_rm_id');
+                // $this->db->join('scan_item_receipts g', 'g.receipt_id = a.receipt_id', 'left');
                 $this->db->where('a.deleted', 0);
                 if ($filter_from != "" and $filter_to != "") {
                     $this->db->where('a.receipt_date >=', $filter_from);
@@ -275,49 +263,33 @@ class Purchase_order_receipt_others extends CI_Controller
     public function datatablesTemp()
     {
         $po_no = $this->input->get('po_no');
+        $bc_document = base64_decode($this->input->get('bc_document'));
         
         //Select Query
         $this->db->select('a.po_no, 
             b.id as item_rm_id, 
             b.number as item_rm_number, 
             b.name as item_rm_name, 
-            round(a.qty) as qty_po,
-            c.mpq, 
-            a.supplier_id, 
+            round(e.qty) as qty_po,
+            f.mpq, 
+            a.supplier_id,
+            e.asset_code,
             b.uom,
-            round(a.qty - COALESCE(d.qty_os, 0)) as qty_delivery,
-            round(a.qty - COALESCE(d.qty_os, 0)) as qty_receipt,
-            CEIL(((a.qty - COALESCE(d.qty_os, 0)) / c.mpq)) as qty_label');
-        $this->db->from('purchase_order_others a');
+            round(a.delivery - COALESCE(d.qty_os, 0)) as qty_delivery,
+            round(a.delivery - COALESCE(d.qty_os, 0)) as qty_receipt,
+            CEIL(((a.delivery - COALESCE(d.qty_os, 0)) / f.mpq)) as qty_label');
+        $this->db->from('purchase_confirm_others a');
         $this->db->join('item_rm b', 'a.item_rm_id = b.id');
         $this->db->join('supplier_items c', 'a.item_rm_id = c.item_rm_id and a.supplier_id = c.supplier_id');
-        $this->db->join('(SELECT sum(qty_receipt) as qty_os, item_rm_id, supplier_id, po_no, bc_document FROM purchase_order_receipt_others GROUP BY item_rm_id, supplier_id, po_no, bc_document) d', 'a.item_rm_id = d.item_rm_id and a.supplier_id = d.supplier_id and a.po_no = d.po_no', 'left');
+        $this->db->join('supplier_items f', 'a.item_rm_id = f.item_rm_id and a.supplier_id = f.supplier_id');
+        $this->db->join('(SELECT sum(qty_receipt) as qty_os, item_rm_id, supplier_id, po_no, bc_document FROM purchase_order_receipt_others WHERE status = 0 GROUP BY item_rm_id, supplier_id, po_no, bc_document) d', 'a.item_rm_id = d.item_rm_id and a.supplier_id = d.supplier_id and a.po_no = d.po_no and a.invoice_no = d.bc_document', 'left');
+        $this->db->join('purchase_order_others e', 'a.item_rm_id = e.item_rm_id and a.po_no = e.po_no');
         $this->db->where('a.deleted', 0);
         $this->db->where('a.status', 0);
-        $this->db->where('a.po_no', $po_no);
-        // $this->db->where('a.invoice_no', $bc_document);
+        $this->db->where('a.invoice_no', $bc_document);
+        $this->db->like('a.po_no', $po_no);
         $this->db->group_by('a.po_no');
         $this->db->group_by('a.item_rm_id');
-        $records = $this->db->get()->result_array();
-        echo json_encode($records);
-    }
-
-    public function datatablesUpdate()
-    {
-        $receipt_no = base64_decode($this->input->get('receipt_no'));
-        
-        //Select Query
-        $this->db->select('a.*, 
-            b.id as item_rm_id, 
-            b.number as item_rm_number, 
-            b.name as item_rm_name,
-            b.uom,
-            a.qty_mpq as mpq');
-        $this->db->from('purchase_order_receipt_others a');
-        $this->db->join('item_rm b', 'a.item_rm_id = b.id');
-        $this->db->where('a.receipt_no', $receipt_no);
-        $this->db->order_by('a.id', 'asc');
-        
         $records = $this->db->get()->result_array();
         echo json_encode($records);
     }
@@ -326,42 +298,47 @@ class Purchase_order_receipt_others extends CI_Controller
     {
         if ($this->input->post()) {
             if ($this->form_validation->run() == TRUE) {
-                $post = $this->input->post();
 
-                if(empty($post['id'])){
-                    $send   = $this->crud->create('purchase_order_receipt_others', array_merge($post, ["receipt_id" => $this->receipt_id($post['receipt_no'])]));
-                    if ($post['qty_delivery'] > $post['qty_receipt']) {
-                        $status = 0;
-                    } else {
-                        $status = 1;
-                    }
-    
-                    $this->db->where('po_no', $post['po_no']);
-                    $this->db->where('item_rm_id', $post['item_rm_id']);
-                    $this->db->update("purchase_order_others", ["status" => $status]);
-    
-                    echo $send;
+                $post = $this->input->post();
+                if(empty($post['asset_code']) || $post['asset_code'] == "-"){
+                    $asset_code = "-";
+                    $asset_code_subs = "-";
                 }else{
-                    $send = $this->db->update('purchase_order_receipt_others', array_merge($post, [
-                        "store" => 1,
-                        "store_by" => $this->session->username,
-                        "store_date" => date("Y-m-d")
-                    ], ["id" => $post['id']]));
-                    echo $send;
+                    $asset_code = $post['asset_code'];
+                    
+                    $codes = $asset_code;
+                    $sql = $this->db->query("SELECT max(`asset_code_subs`) as kode FROM purchase_order_receipt_others WHERE `asset_code` like '%$asset_code%'");
+                    $row = $sql->row();
+                    
+                    if ($row->kode == "") {
+                        $kode = 00;
+                    } else {
+                        $kode = sprintf("%02s", (substr($row->kode, -2) + 1));
+                    }
+                    
+                    $asset_code_subs = $codes . "-" . $kode;
                 }
+
+                $send = $this->crud->create('purchase_order_receipt_others', array_merge($post, ["receipt_id" => $this->receipt_id($post['receipt_no']), "asset_code" => $asset_code, "asset_code_subs" => $asset_code_subs]));
+
+                if ($post['qty_delivery'] > $post['qty_receipt']) {
+                    $status = 0;
+                } else {
+                    $status = 1;
+                }
+
+                $this->db->where('invoice_no', $post['bc_document']);
+                $this->db->where('po_no', $post['po_no']);
+                $this->db->where('item_rm_id', $post['item_rm_id']);
+                $this->db->update("purchase_confirm_others", ["status" => $status]);
+
+                echo $send;
             } else {
                 show_error(validation_errors());
             }
         } else {
             show_error("Cannot Process your request");
         }
-    }
-
-    public function create_check_label()
-    {
-        $post = $this->input->post();
-        $po_receipt = $this->crud->reads('purchase_order_labels', [], ["receipt_id" => $post['receipt_id']]);
-        die(json_encode(array("total" => count($po_receipt))));
     }
 
     public function uploadAttachment($file_bf = ""){
@@ -391,8 +368,26 @@ class Purchase_order_receipt_others extends CI_Controller
     {
         $data = $this->input->post();
         $deletePurchaseOrderReceipts = $this->crud->delete('purchase_order_receipt_others', ["receipt_id" => $data['id']]);
-        $updatePurchaseOrders = $this->db->update('purchase_order_others', ["status" => 0], ["po_no" => $data['po_no'], "item_rm_id" => $data['item_rm_id']]);
+        $updatePurchaseOrders = $this->crud->update('purchase_confirm_others', ["po_no" => $data['po_no'], "invoice_no" => $data['bc_document'], "item_rm_id" => $data['item_rm_id']], ["status" => 0]);
         echo $deletePurchaseOrderReceipts;
+    }
+
+    public function cancelLabel()
+    {
+        $data = $this->input->post();
+        $por = $this->crud->read("purchase_order_receipt_others", [], ["receipt_id" => $data['receipt_id']]);
+
+        if($por->status == 0){
+            $this->db->update('purchase_order_receipt_others', ["status" => 2], ["receipt_id" => $data['receipt_id']]);
+            $this->db->update('purchase_confirm_others', ["status" => 0], ["po_no" => $por->po_no, "item_rm_id" => $por->item_rm_id]);
+            echo $deleteScanItemReceipts;
+        }else if($por->status == 2){
+            $this->db->update('purchase_order_receipt_others', ["status" => 0], ["receipt_id" => $data['receipt_id']]);
+            $this->db->update('purchase_confirm_others', ["status" => 1], ["po_no" => $por->po_no, "item_rm_id" => $por->item_rm_id]);
+            echo json_encode(array("theme" => "success"));
+        }else{
+            echo json_encode(array("theme" => "error"));
+        }
     }
 
     public function print_receiving($receipt_no, $type = "")
@@ -406,8 +401,13 @@ class Purchase_order_receipt_others extends CI_Controller
         $rows = 8;
         $page = ceil(count($purchase_order_receipt_total) / $rows);
 
-        $type_name = "GOOD";
-        $grn_no = "GRN".substr(@$po_receipt->receipt_no, 3);
+        if($type == "QAS"){
+            $type_name = "MATERIAL";
+            $grn_no = "-";
+        }else{
+            $type_name = "GOOD";
+            $grn_no = "GRN".substr(@$po_receipt->receipt_no, 3);
+        }
 
         //Generate QRcode
         $this->createQrcode($po_receipt->receipt_no, "assets/image/qrcode/");
@@ -417,10 +417,7 @@ class Purchase_order_receipt_others extends CI_Controller
         $this->db->join('item_rm c', 'a.item_rm_id = c.id');
         $this->db->join('item_familys d', 'c.item_family_id = d.id');
         $this->db->join('supplier_items e', 'b.id = e.supplier_id and c.id = e.item_rm_id');
-        // $this->db->join('warehouse_location_items g', 'a.item_rm_id = g.item_rm_id', 'left');
         $this->db->where('a.deleted', 0);
-        $this->db->where('a.status', 0);
-        $this->db->where('a.store', 1);
         $this->db->where('a.receipt_no', base64_decode($receipt_no));
         $this->db->group_by('a.po_no');
         $this->db->group_by('a.supplier_id');
@@ -475,7 +472,6 @@ class Purchase_order_receipt_others extends CI_Controller
             $hal = 1;
             $subtotal = 0;
             for ($i = 0; $i < $page; $i++) {
-
                 $this->db->select('a.*, b.id as supplier_id, b.name as supplier_name, c.name as item_rm_name, c.number as item_rm_number, c.uom, d.name as item_familys_name, e.mpq, b.currency');
                 $this->db->from('purchase_order_receipt_others a');
                 $this->db->join('suppliers b', 'a.supplier_id = b.id');
@@ -483,7 +479,6 @@ class Purchase_order_receipt_others extends CI_Controller
                 $this->db->join('item_familys d', 'c.item_family_id = d.id');
                 $this->db->join('supplier_items e', 'b.id = e.supplier_id and c.id = e.item_rm_id');
                 $this->db->where('a.deleted', 0);
-                // $this->db->where('a.status', 0);
                 $this->db->where('a.receipt_no', base64_decode($receipt_no));
                 $this->db->group_by('a.po_no');
                 $this->db->group_by('a.supplier_id');
@@ -569,25 +564,25 @@ class Purchase_order_receipt_others extends CI_Controller
                                                 <th>Part No Supplier</th>
                                                 <th>Description</th>
                                                 <th>Category</th>
+                                                <th>Location</th>
                                                 <th>MPQ</th>
-                                                <th>PO</th>
-                                                <th>Receipt</th>
+                                                <th>Quantity</th>
                                                 <th>Uom</th>
                                             </tr>';
                 $no = 1;
                 foreach ($records as $record) {
                     $html .= '  <tr>
-                    <td style="text-align:center">' . $no . '</td>
-                    <td>' . $record['po_no'] . '</td>
-                    <td>' . $record['item_rm_id'] . '</td>
-                    <td>' . $record['item_rm_number'] . '</td>
-                    <td>' . $record['item_rm_name'] . '</td>
-                    <td>' . $record['item_familys_name'] . '</td>
-                    <td style="text-align:right">' . number_format($record['mpq'], 2) . '</td>
-                    <td>' . $record['qty_po'] . '</td>
-                    <td style="text-align:right">' . number_format($record['qty_receipt'], 2) . '</td>
-                    <td>' . $record['uom'] . '</td>
-                </tr>';
+                        <td style="text-align:center">' . $no . '</td>
+                        <td>' . $record['po_no'] . '</td>
+                        <td>' . $record['item_rm_id'] . '</td>
+                        <td>' . $record['item_rm_number'] . '</td>
+                        <td>' . $record['item_rm_name'] . '</td>
+                        <td>' . $record['item_familys_name'] . '</td>
+                        <td>' . $record['location'] . '</td>
+                        <td style="text-align:right">' . number_format($record['mpq'], 2) . '</td>
+                        <td style="text-align:right">' . number_format($record['qty_receipt'], 2) . '</td>
+                        <td>' . $record['uom'] . '</td>
+                    </tr>';
                     $no++;
                 }
                 $html .= '  </table>
@@ -616,8 +611,6 @@ class Purchase_order_receipt_others extends CI_Controller
             }
             $html .= "</div></div><script>window.print()</script>";
             die($html);
-        }else{
-            echo "<h1>Cannot Print GRN, Please Check First In Store Departement</h1>";
         }
     }
 
@@ -628,6 +621,7 @@ class Purchase_order_receipt_others extends CI_Controller
             header("Content-type: application/vnd-ms-excel");
             header("Content-Disposition: attachment; filename=purchase_order_receipt_others_$format.xls");
         }
+
         $filter_from = $this->input->get('filter_from');
         $filter_to = $this->input->get('filter_to');
         $filter_supplier = $this->input->get('filter_supplier');
@@ -652,14 +646,13 @@ class Purchase_order_receipt_others extends CI_Controller
             d.name as item_family_name, 
             b.currency, 
             c.uom,
-            e.mpq,
-            sum(g.status) as total_scan');
+            e.mpq');
         $this->db->from('purchase_order_receipt_others a');
         $this->db->join('suppliers b', 'a.supplier_id = b.id');
         $this->db->join('item_rm c', 'a.item_rm_id = c.id');
         $this->db->join('item_familys d', 'c.item_family_id = d.id');
         $this->db->join('supplier_items e', 'b.id = e.supplier_id and c.id = e.item_rm_id');
-        $this->db->join('purchase_order_labels g', 'g.receipt_id = a.receipt_id', 'left');
+        // $this->db->join('scan_item_receipts g', 'g.receipt_id = a.receipt_id', 'left');
         $this->db->where('a.deleted', 0);
         if ($filter_from != "" and $filter_to != "") {
             $this->db->where('a.receipt_date >=', $filter_from);
@@ -709,6 +702,7 @@ class Purchase_order_receipt_others extends CI_Controller
             <table id="customers" border="1">
             <tr>
                 <th rowspan="2" width="20">No</th>
+                <th rowspan="2" width="80">Status<br>POR</th>
                 <th rowspan="2" width="80">Status<br>Invoice</th>
                 <th rowspan="2">MRN No</th>
                 <th rowspan="2">GRN No</th>
@@ -745,13 +739,19 @@ class Purchase_order_receipt_others extends CI_Controller
                 $style = "style='background: red; color:white;'";
             }
 
-            $grn_no = "";
             if($data['total_scan'] == $data['qty_label']){
                 $grn_no = "GRN".substr(@$data['receipt_no'], 3);
+                $status2 = "CLOSED";
+                $style2 = "style='background: red; color:white;'";
+            }else{
+                $grn_no = "";
+                $status2 = "OPEN";
+                $style2 = "style='background: green; color:white;'";
             }
 
             $html .= '<tr>
                         <td style="text-align:center">' . $no . '</td>
+                        <td '.$style2.'>' . $status2 . '</td>
                         <td '.$style.'>' . $status . '</td>
                         <td>' . $data['receipt_no'] . '</td>
                         <td>' . $grn_no . '</td>
