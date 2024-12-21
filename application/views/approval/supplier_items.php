@@ -5,45 +5,64 @@
     clientPaging: false,
     rownumbers: true,
     fit: true">
-    <thead frozen="true">
-        <tr>
-            <th field="ck" checkbox="true"></th>
-            <th data-options="field:'item_rm_number',width:150,halign:'center'">Part No</th>
-            <th data-options="field:'item_rm_name',width:150,halign:'center'">Part Name</th>
-        </tr>
-    </thead>
     <thead>
         <tr>
-            <th data-options="field:'item_family_name',width:150,halign:'center'">Product Family</th>
-            <th data-options="field:'supplier_number',width:100,halign:'center'">Supplier Code</th>
-            <th data-options="field:'supplier_name',width:250,halign:'center'">Supplier Name</th>
-            <th data-options="field:'maker',width:150,halign:'center'">Maker</th>
-            <th data-options="field:'mpq',width:80,halign:'center'">MPQ</th>
-            <th data-options="field:'moq',width:80,halign:'center'">MOQ</th>
-            <th data-options="field:'share_order',width:80,halign:'center'">Share Order</th>
-            <th data-options="field:'leadtime',width:80,halign:'center'">Leadtime</th>
-            <th data-options="field:'uom',width:80,align:'center'">Uom</th>
-            <th data-options="field:'supplier_currency',width:80,align:'center'">Currency</th>
-            <th data-options="field:'price_before',width:80,halign:'center',align:'right',formatter: numberformatPrice">Price Before</th>
-            <th data-options="field:'price',width:80,halign:'center',align:'right',formatter: numberformatPrice">Price Now</th>
-            <th data-options="field:'valid_date',width:100,halign:'center'">Valid Date</th>
-            <th data-options="field:'attachment',width:100,halign:'center',formatter:BtnAttachment">Attachment</th>
-            <th data-options="field:'remarks',width:200,halign:'center'">Remarks</th>
+            <th data-options="field:'detail',width:80,halign:'center',formatter:BtnDetail">Details</th>
+            <th data-options="field:'supplier_id',width:100,halign:'center'">Supplier ID</th>
+            <th data-options="field:'supplier_name',width:300,halign:'center'">Supplier Name</th>
+            <th data-options="field:'type',width:120,halign:'center'">Supplier Type</th>
+            <th data-options="field:'state',width:120,halign:'center'">State</th>
+            <th data-options="field:'currency',width:80,align:'center'">Currency</th>
             <th data-options="field:'remarks1',width:200,halign:'center'">Remarks Approval 1</th>
             <th data-options="field:'remarks2',width:200,halign:'center'">Remarks Approval 2</th>
             <th data-options="field:'remarks3',width:200,halign:'center'">Remarks Approval 3</th>
-            <th data-options="field:'created_by',width:120,halign:'center'">Create By</th>
-            <th data-options="field:'created_date',width:150,halign:'center'">Create Date</th>
         </tr>
     </thead>
 </table>
 
 <!-- TOOLBAR DATAGRID -->
 <div id="toolbar" style="height: 35px;">
-	<a href="javascript:void(0)" id="approveacheck" class="easyui-linkbutton" data-options="plain:true" onclick="approve()"><i class="fa fa-check"></i> Approve</a>
+    <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="reload()"><i class="fa fa-refresh"></i> Reload</a>
+</div>
+
+<!-- TOOLBAR DATAGRID -->
+<div id="toolbar2" style="height: 35px;">
+    <a href="javascript:void(0)" id="approveacheck" class="easyui-linkbutton" data-options="plain:true" onclick="approve()"><i class="fa fa-check"></i> Approve</a>
 	<a href="javascript:void(0)" id="approveacheck" class="easyui-linkbutton" data-options="plain:true" onclick="disapprove()"><i class="fa fa-times"></i> Disapprove</a>
     <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="export_excel()"><i class="fa fa-file"></i> Export Excel</a>
-    <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="reload()"><i class="fa fa-refresh"></i> Reload</a>
+</div>
+
+<div id="dlg_details" class="easyui-window" title="Detail Data" data-options="closed: true, modal:true, closed: true, minimizable:false, collapsible:false" style="width: 800px; height: 500px; top: 50px;">
+    <table id="dg_details" class="easyui-datagrid" style="width:100%;" toolbar="#toolbar2">
+        <thead frozen="true">
+            <tr>
+                <th field="ck" checkbox="true"></th>
+                <th data-options="field:'item_rm_number',width:150,halign:'center'">Part No</th>
+                <th data-options="field:'item_rm_name',width:250,halign:'center'">Part Name</th>
+            </tr>
+        </thead>
+        <thead>
+            <tr>
+                <th data-options="field:'item_family_name',width:150,halign:'center'">Product Family</th>
+                <!-- <th data-options="field:'maker',width:150,halign:'center'">Maker</th> -->
+                <th data-options="field:'mpq',width:80,halign:'center'">MPQ</th>
+                <th data-options="field:'moq',width:80,halign:'center'">MOQ</th>
+                <th data-options="field:'share_order',width:80,halign:'center'">Share Order</th>
+                <th data-options="field:'leadtime',width:80,halign:'center'">Leadtime</th>
+                <th data-options="field:'uom',width:80,align:'center'">Uom</th>
+                <th data-options="field:'supplier_currency',width:80,align:'center'">Currency</th>
+                <th data-options="field:'price_before',width:80,halign:'center',align:'right',formatter: numberformatPrice">Price Before</th>
+                <th data-options="field:'price',width:80,halign:'center',align:'right',formatter: numberformatPrice">Price Now</th>
+                <th data-options="field:'valid_date',width:100,halign:'center'">Valid Date</th>
+                <th data-options="field:'attachment',width:100,halign:'center',formatter:BtnAttachment">Attachment</th>
+                <th data-options="field:'remarks',width:200,halign:'center'">Remarks</th>
+                <th data-options="field:'created_by',width:120,halign:'center'">Created By</th>
+                <th data-options="field:'created_date',width:150,halign:'center'">Created Date</th>
+                <th data-options="field:'updated_by',width:120,halign:'center'">Updated By</th>
+                <th data-options="field:'updated_date',width:150,halign:'center'">Updated Date</th>
+            </tr>
+        </thead>
+    </table>
 </div>
 
 <script>
@@ -57,12 +76,14 @@
     }
 
     function export_excel() {
-		$('#dg').datagrid('toExcel', "approval_<?= $table ?>.xls");
+		$('#dg_details').datagrid('toExcel', "approval_<?= $table ?>.xls");
 	}
 
 	function approve() {
-		var rows = $('#dg').datagrid('getSelections');
+		var rows = $('#dg_details').datagrid('getSelections');
         if (rows.length > 0) {
+            $("#dlg_details").window('close');
+
             $.messager.prompt('Remarks', 'Please input your Remarks!!', function(message){
                 if (message){
                     Swal.fire({
@@ -94,6 +115,7 @@
                                     requestApprove(total, json, number + 1, value);
 
                                     if (number == total) {
+                                        $('#dg_details').datagrid('reload');
                                         $('#dg').datagrid('reload');
                                         Swal.close();
                                         Swal.fire(
@@ -117,8 +139,10 @@
 	}
 
 	function disapprove() {
-		var rows = $('#dg').datagrid('getSelections');
+		var rows = $('#dg_details').datagrid('getSelections');
         if (rows.length > 0) {
+            $("#dlg_details").window('close');
+
             Swal.fire({
                 title: 'Dispprove Data',
                 text: "Are you sure? You want to Dispprove this data!",
@@ -160,6 +184,7 @@
                                             requestApprove(total, json, number + 1, value);
 
                                             if (number == total) {
+                                                $('#dg_details').datagrid('reload');
                                                 $('#dg').datagrid('reload');
                                                 Swal.close();
                                                 Swal.fire(
@@ -208,7 +233,26 @@
         if(val == "" || val == null){
             return '-';
         }else{
-            return '<a class="btn btn-primary w-100" style="pointer-events: visible; opacity:1;" target="_blank" href="' + val + '"><i class="fa fa-print"></i> Print</a>';
+            return '<a class="btn btn-primary w-100" style="pointer-events: visible; opacity:1;" target="_blank" href="' + val + '"><i class="fa fa-paperclip"></i> View</a>';
         }
+    }
+
+    function BtnDetail(val, row) {
+        var details = "details('"+row.supplier_id+"','"+row.supplier_name+"')";
+        return '<a class="btn btn-primary w-100" style="pointer-events: visible; opacity:1;" onClick="'+details+'"><i class="fa fa-eye"></i> View</a>';
+    }
+
+    function details(supplier_id, supplier_name) {
+        $("#dlg_details").window('open');
+        $('#dlg_details').window('setTitle', 'Detail of ' + supplier_name);
+
+        $('#dg_details').datagrid({
+            url: '<?= base_url('approvals/approvalSupplierItemDetails/'.base64_encode($approved_to).'/'.base64_encode($approved_by)) ?>?supplier_id=' + btoa(supplier_id),
+            clientPaging: false,
+            remoteFilter: true,
+            rownumbers: true,
+            singleSelect: false,
+            fit:true,
+        });
     }
 </script>

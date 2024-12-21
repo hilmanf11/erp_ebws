@@ -81,7 +81,11 @@
             <div style="width: 30%; float: left;">
                 <div class="fitem">
                     <span style="width:30%; display:inline-block;">Category</span>
-                    <input style="width:60%;" name="item_category_id" id="item_category_id" class="easyui-combobox" required>
+                    <select style="width:60%;" name="item_category_id" id="item_category_id" class="easyui-combobox" panelHeight="auto" required>
+                        <option value="SERVICE">SERVICE</option>
+                        <option value="ASSET">FIXED ASSET</option>
+                        <option value="OTHER">OTHER</option>
+                    </select>
                 </div>
             </div>
             <div style="width: 35%; float: left;">
@@ -137,6 +141,7 @@
         $('#dlg_insert').dialog('open');
         $('#dg2').datagrid('loadData', []);
         $('#request_no').textbox('clear');
+        $('#item_category_id').combobox('clear');
 
         flag = "add";
         
@@ -759,12 +764,8 @@
         });
 
         $('#item_category_id').combobox({
-            url: '<?php echo base_url('master/item_categories/reads/RM'); ?>',
-            valueField: 'id',
-            textField: 'name',
-            prompt: 'Select Categories',
-            onSelect: function(category){
-                addTable(category.id);
+            onChange: function(value){
+                addTable(value);
             }
         });
 

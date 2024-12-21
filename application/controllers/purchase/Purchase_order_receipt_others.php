@@ -143,6 +143,15 @@ class Purchase_order_receipt_others extends CI_Controller
         return $receipt_no . "-" . $autoID;
     }
 
+    public function checkData(){
+        $receipt_no = $this->input->post('receipt_no');
+
+        $sqlLabel = $this->db->query("SELECT * FROM purchase_order_receipt_others WHERE receipt_no ='$receipt_no'");
+        $rowLabel = $sqlLabel->row();
+
+        die(json_encode($rowLabel));
+    }
+
     public function datatables()
     {
         if ($this->input->post()) {
@@ -164,8 +173,8 @@ class Purchase_order_receipt_others extends CI_Controller
 
             $id = $_POST['id'];
             if ($id === "0") {
-                $this->db->select('a.po_no, a.receipt_no, a.receipt_date, a.awb_no, a.awb_date, a.bc_kind, a.bc_document, a.bc_aju, a.bc_date, b.id as supplier_id, b.name as supplier_name, a.total_receipt as qty_receipt, a.total_label as qty_label, a.status');
-                $this->db->from('(SELECT *, sum(qty_label) as total_label, sum(qty_receipt) as total_receipt FROM purchase_order_receipt_others GROUP BY receipt_no ORDER BY status asc) a');
+                $this->db->select('a.po_no, a.stored as store, a.receipt_no, a.receipt_date, a.awb_no, a.awb_date, a.bc_kind, a.bc_document, a.bc_aju, a.bc_date, b.id as supplier_id, b.name as supplier_name, a.total_receipt as qty_receipt, a.total_label as qty_label, a.status');
+                $this->db->from('(SELECT *, SUM(store) as stored, sum(qty_label) as total_label, sum(qty_receipt) as total_receipt FROM purchase_order_receipt_others GROUP BY receipt_no ORDER BY status asc) a');
                 $this->db->join('suppliers b', 'a.supplier_id = b.id');
                 $this->db->join('purchase_order_others c', 'a.po_no = c.po_no and a.item_rm_id = c.item_rm_id');
                 $this->db->where('a.deleted', 0);
@@ -204,6 +213,7 @@ class Purchase_order_receipt_others extends CI_Controller
                     $arr[] = array(
                         "id" => $record['receipt_no'],
                         // "grn_no" => $grn_no,
+                        "store" => $record['store'],
                         "po_no" => $record['po_no'],
                         "bc_kind" => $record['bc_kind'],
                         "bc_document" => $record['bc_document'],
@@ -294,45 +304,74 @@ class Purchase_order_receipt_others extends CI_Controller
         echo json_encode($records);
     }
 
+    public function datatablesUpdate()
+    {
+        $receipt_no = base64_decode($this->input->get('receipt_no'));
+        
+        //Select Query
+        $this->db->select('a.*, 
+            b.id as item_rm_id, 
+            b.number as item_rm_number, 
+            b.name as item_rm_name,
+            b.uom,
+            a.qty_mpq as mpq');
+        $this->db->from('purchase_order_receipt_others a');
+        $this->db->join('item_rm b', 'a.item_rm_id = b.id');
+        $this->db->where('a.receipt_no', $receipt_no);
+        $this->db->order_by('a.id', 'asc');
+        
+        $records = $this->db->get()->result_array();
+        echo json_encode($records);
+    }
+
     public function create()
     {
         if ($this->input->post()) {
             if ($this->form_validation->run() == TRUE) {
 
                 $post = $this->input->post();
-                if(empty($post['asset_code']) || $post['asset_code'] == "-"){
-                    $asset_code = "-";
-                    $asset_code_subs = "-";
-                }else{
-                    $asset_code = $post['asset_code'];
-                    
-                    $codes = $asset_code;
-                    $sql = $this->db->query("SELECT max(`asset_code_subs`) as kode FROM purchase_order_receipt_others WHERE `asset_code` like '%$asset_code%'");
-                    $row = $sql->row();
-                    
-                    if ($row->kode == "") {
-                        $kode = 00;
-                    } else {
-                        $kode = sprintf("%02s", (substr($row->kode, -2) + 1));
+                if(empty($post['id'])){
+                    if(empty($post['asset_code']) || $post['asset_code'] == "-"){
+                        $asset_code = "-";
+                        $asset_code_subs = "-";
+                    }else{
+                        $asset_code = $post['asset_code'];
+                        
+                        $codes = $asset_code;
+                        $sql = $this->db->query("SELECT max(`asset_code_subs`) as kode FROM purchase_order_receipt_others WHERE `asset_code` like '%$asset_code%'");
+                        $row = $sql->row();
+                        
+                        if ($row->kode == "") {
+                            $kode = 00;
+                        } else {
+                            $kode = sprintf("%02s", (substr($row->kode, -2) + 1));
+                        }
+                        
+                        $asset_code_subs = $codes . "-" . $kode;
                     }
-                    
-                    $asset_code_subs = $codes . "-" . $kode;
+
+                    $send = $this->crud->create('purchase_order_receipt_others', array_merge($post, ["receipt_id" => $this->receipt_id($post['receipt_no']), "asset_code" => $asset_code, "asset_code_subs" => $asset_code_subs]));
+
+                    if ($post['qty_delivery'] > $post['qty_receipt']) {
+                        $status = 0;
+                    } else {
+                        $status = 1;
+                    }
+
+                    $this->db->where('invoice_no', $post['bc_document']);
+                    $this->db->where('po_no', $post['po_no']);
+                    $this->db->where('item_rm_id', $post['item_rm_id']);
+                    $this->db->update("purchase_confirm_others", ["status" => $status]);
+
+                    echo $send;
+                }else{
+                    $send = $this->db->update('purchase_order_receipt_others', array_merge($post, [
+                        "store" => 1,
+                        "store_by" => $this->session->username,
+                        "store_date" => date("Y-m-d")
+                    ], ["id" => $post['id']]));
+                    echo $send;
                 }
-
-                $send = $this->crud->create('purchase_order_receipt_others', array_merge($post, ["receipt_id" => $this->receipt_id($post['receipt_no']), "asset_code" => $asset_code, "asset_code_subs" => $asset_code_subs]));
-
-                if ($post['qty_delivery'] > $post['qty_receipt']) {
-                    $status = 0;
-                } else {
-                    $status = 1;
-                }
-
-                $this->db->where('invoice_no', $post['bc_document']);
-                $this->db->where('po_no', $post['po_no']);
-                $this->db->where('item_rm_id', $post['item_rm_id']);
-                $this->db->update("purchase_confirm_others", ["status" => $status]);
-
-                echo $send;
             } else {
                 show_error(validation_errors());
             }

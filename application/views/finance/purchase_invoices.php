@@ -745,8 +745,8 @@
                 }
 
                 if (rows2[z].account_number == "40000002") {
-                    var debit = 0;
-                    var credit = total_freight;
+                    var debit = total_freight;
+                    var credit = 0;
                 }
 
                 if (jQuery.inArray(rows2[z].account_number, arr_tds) >= 0) {

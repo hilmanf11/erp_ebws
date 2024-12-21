@@ -5,53 +5,73 @@
     clientPaging: false,
     rownumbers: true,
     fit: true">
-    <thead frozen="true">
-        <tr>
-            <th field="ck" checkbox="true"></th>
-            <th data-options="field:'period',width:80,halign:'center'">Period</th>
-            <th data-options="field:'item_rm_id',width:100,halign:'center'">Part No EBWS</th>
-            <th data-options="field:'item_rm_number',width:200,halign:'center'">Part No Supplier</th>
-        </tr>
-    </thead>
     <thead>
         <tr>
-            <th data-options="field:'item_rm_name',width:150,halign:'center'">Description</th>
-            <th data-options="field:'product_family',width:120,halign:'center'">Product Family</th>
-            <th data-options="field:'supplier_number',width:100,halign:'center'">Supplier ID</th>
-            <th data-options="field:'supplier_name',width:200,halign:'center'">Supplier Name</th>
-            <th data-options="field:'class',width:80,halign:'center'">ABC <br> Class</th>
-            <th data-options="field:'leadtime',width:80,halign:'center'">Leadtime</th>
-            <th data-options="field:'mpq',width:80,halign:'center'">MPQ</th>
-            <th data-options="field:'moq',width:80,halign:'center'">MOQ</th>
-            <th data-options="field:'qty_rm',width:80,halign:'center',align:'right',formatter: numberformat">WHS</th>
-            <th data-options="field:'qty_wip',width:80,halign:'center',align:'right',formatter: numberformat">WIP</th>
-            <th data-options="field:'qty_vendor',width:80,halign:'center',align:'right',formatter: numberformat">OS PO</th>
-            <th data-options="field:'qty_supply',width:80,halign:'center',align:'right',formatter: numberformat">OS Supply</th>
-            <th data-options="field:'qty_wo',width:80,halign:'center',align:'right',formatter: numberformat">OS WO</th>
-            <th data-options="field:'balance_1',width:80,halign:'center',align:'right',formatter: numberformat">NEED 1</th>
-            <th data-options="field:'balance_2',width:80,halign:'center',align:'right',formatter: numberformat">NEED 2</th>
-            <th data-options="field:'balance_3',width:80,halign:'center',align:'right',formatter: numberformat">NEED 3</th>
-            <th data-options="field:'balance_4',width:80,halign:'center',align:'right',formatter: numberformat">NEED 4</th>
-            <th data-options="field:'balance_5',width:80,halign:'center',align:'right',formatter: numberformat">NEED 5</th>
-            <th data-options="field:'balance_6',width:80,halign:'center',align:'right',formatter: numberformat">NEED 6</th>
-            <th data-options="field:'share_order',width:80,halign:'center',align:'right',formatter: numberformat">Share Order<br>(%)</th>
-            <th data-options="field:'safety_stock_persen',width:80,halign:'center',align:'right',formatter: numberformat">Safety Stock<br>(%)</th>
-            <th data-options="field:'safety_stock',width:80,halign:'center',align:'right',formatter: numberformat">Safety Stock</th>
-            <th data-options="field:'share_order_qty',width:80,halign:'center',align:'right',formatter: numberformat">Share Order</th>
-            <th data-options="field:'total_need',width:80,halign:'center',align:'right',formatter: numberformat">Total Need</th>
-            <th data-options="field:'mrp_result',width:80,halign:'center',align:'right',formatter: numberformatFinal">MRP Result</th>
-            <th data-options="field:'created_by',width:120,halign:'center'">Create By</th>
-            <th data-options="field:'created_date',width:150,halign:'center'">Create Date</th>
+            <th data-options="field:'detail',width:80,halign:'center',formatter:BtnDetail">Details</th>
+            <th data-options="field:'supplier_id',width:100,halign:'center'">Supplier ID</th>
+            <th data-options="field:'supplier_name',width:300,halign:'center'">Supplier Name</th>
+            <th data-options="field:'type',width:120,halign:'center'">Supplier Type</th>
+            <th data-options="field:'state',width:120,halign:'center'">State</th>
+            <th data-options="field:'currency',width:80,align:'center'">Currency</th>
+            <!-- <th data-options="field:'remarks1',width:200,halign:'center'">Remarks Approval 1</th>
+            <th data-options="field:'remarks2',width:200,halign:'center'">Remarks Approval 2</th>
+            <th data-options="field:'remarks3',width:200,halign:'center'">Remarks Approval 3</th> -->
         </tr>
     </thead>
 </table>
 
 <!-- TOOLBAR DATAGRID -->
 <div id="toolbar" style="height: 35px;">
-	<a href="javascript:void(0)" id="approveacheck" class="easyui-linkbutton" data-options="plain:true" onclick="approve()"><i class="fa fa-check"></i> Approve</a>
+    <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="reload()"><i class="fa fa-refresh"></i> Reload</a>
+</div>
+
+<!-- TOOLBAR DATAGRID -->
+<div id="toolbar2" style="height: 35px;">
+    <a href="javascript:void(0)" id="approveacheck" class="easyui-linkbutton" data-options="plain:true" onclick="approve()"><i class="fa fa-check"></i> Approve</a>
 	<a href="javascript:void(0)" id="approveacheck" class="easyui-linkbutton" data-options="plain:true" onclick="disapprove()"><i class="fa fa-times"></i> Disapprove</a>
     <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="export_excel()"><i class="fa fa-file"></i> Export Excel</a>
-    <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="reload()"><i class="fa fa-refresh"></i> Reload</a>
+</div>
+
+<div id="dlg_details" class="easyui-window" title="Detail Data" data-options="closed: true, modal:true, closed: true, minimizable:false, collapsible:false" style="width: 800px; height: 500px; top: 50px;">
+    <table id="dg_details" class="easyui-datagrid" style="width:100%;" toolbar="#toolbar2">
+        <thead frozen="true">
+            <tr>
+                <th field="ck" checkbox="true"></th>
+                <th data-options="field:'period',width:80,halign:'center'">Period</th>
+                <th data-options="field:'item_rm_id',width:100,halign:'center'">Part No EBWS</th>
+                <th data-options="field:'item_rm_number',width:200,halign:'center'">Part No Supplier</th>
+            </tr>
+        </thead>
+        <thead>
+            <tr>
+                <th data-options="field:'item_rm_name',width:250,halign:'center'">Description</th>
+                <th data-options="field:'product_family',width:120,halign:'center'">Product Family</th>
+                <th data-options="field:'class',width:80,halign:'center'">ABC <br> Class</th>
+                <th data-options="field:'leadtime',width:80,halign:'center'">Leadtime</th>
+                <th data-options="field:'mpq',width:80,halign:'center'">MPQ</th>
+                <th data-options="field:'moq',width:80,halign:'center'">MOQ</th>
+                <th data-options="field:'qty_rm',width:80,halign:'center',align:'right',formatter: numberformat">WHS</th>
+                <th data-options="field:'qty_wip',width:80,halign:'center',align:'right',formatter: numberformat">WIP</th>
+                <th data-options="field:'qty_vendor',width:80,halign:'center',align:'right',formatter: numberformat">OS PO</th>
+                <th data-options="field:'qty_supply',width:80,halign:'center',align:'right',formatter: numberformat">OS Supply</th>
+                <th data-options="field:'qty_wo',width:80,halign:'center',align:'right',formatter: numberformat">OS WO</th>
+                <th data-options="field:'balance_1',width:120,halign:'center',align:'right',formatter: numberformat">NEED 1</th>
+                <th data-options="field:'balance_2',width:120,halign:'center',align:'right',formatter: numberformat">NEED 2</th>
+                <th data-options="field:'balance_3',width:120,halign:'center',align:'right',formatter: numberformat">NEED 3</th>
+                <th data-options="field:'balance_4',width:120,halign:'center',align:'right',formatter: numberformat">NEED 4</th>
+                <th data-options="field:'balance_5',width:120,halign:'center',align:'right',formatter: numberformat">NEED 5</th>
+                <th data-options="field:'balance_6',width:120,halign:'center',align:'right',formatter: numberformat">NEED 6</th>
+                <th data-options="field:'share_order',width:80,halign:'center',align:'right',formatter: numberformat">Share Order<br>(%)</th>
+                <th data-options="field:'safety_stock_persen',width:80,halign:'center',align:'right',formatter: numberformat">Safety Stock<br>(%)</th>
+                <th data-options="field:'safety_stock',width:80,halign:'center',align:'right',formatter: numberformat">Safety Stock</th>
+                <th data-options="field:'share_order_qty',width:120,halign:'center',align:'right',formatter: numberformat">Share Order</th>
+                <th data-options="field:'total_need',width:120,halign:'center',align:'right',formatter: numberformat">Total Need</th>
+                <th data-options="field:'mrp_result',width:120,halign:'center',align:'right',formatter: numberformat">MRP Result</th>
+                <th data-options="field:'created_by',width:120,halign:'center'">Create By</th>
+                <th data-options="field:'created_date',width:150,halign:'center'">Create Date</th>
+            </tr>
+        </thead>
+    </table>
 </div>
 
 <script>
@@ -65,22 +85,16 @@
     }
 
     function export_excel() {
-		$('#dg').datagrid('toExcel', "approval_<?= $table ?>.xls");
+		$('#dg_details').datagrid('toExcel', "approval_<?= $table ?>.xls");
 	}
 
 	function approve() {
-		var rows = $('#dg').datagrid('getSelections');
+		var rows = $('#dg_details').datagrid('getSelections');
         if (rows.length > 0) {
-            Swal.fire({
-                title: 'Approve Data',
-                text: "Are you sure? You want to approve this data!",
-                icon: 'warning',
-                showCancelButton: true,
-                allowOutsideClick: false,
-                allowEscapeKey: false,
-                confirmButtonText: 'Yes, Approve it!'
-            }).then((result) => {
-                if (result.isConfirmed) {
+            $("#dlg_details").window('close');
+
+            $.messager.prompt('Remarks', 'Please input your Remarks!!', function(message){
+                if (message){
                     Swal.fire({
                         title: 'Please Wait...',
                         showConfirmButton: false,
@@ -102,13 +116,15 @@
                                 url: '<?= base_url('approvals/approve') ?>',
                                 data: {
                                     id: row.id,
-									tablename: "<?= $table ?>"
+                                    tablename: "<?= $table ?>",
+                                    message: message
                                 },
                                 success: function(result) {
                                     var result = eval('(' + result + ')');
                                     requestApprove(total, json, number + 1, value);
 
                                     if (number == total) {
+                                        $('#dg_details').datagrid('reload');
                                         $('#dg').datagrid('reload');
                                         Swal.close();
                                         Swal.fire(
@@ -132,8 +148,10 @@
 	}
 
 	function disapprove() {
-		var rows = $('#dg').datagrid('getSelections');
+		var rows = $('#dg_details').datagrid('getSelections');
         if (rows.length > 0) {
+            $("#dlg_details").window('close');
+
             Swal.fire({
                 title: 'Dispprove Data',
                 text: "Are you sure? You want to Dispprove this data!",
@@ -175,6 +193,7 @@
                                             requestApprove(total, json, number + 1, value);
 
                                             if (number == total) {
+                                                $('#dg_details').datagrid('reload');
                                                 $('#dg').datagrid('reload');
                                                 Swal.close();
                                                 Swal.fire(
@@ -208,20 +227,41 @@
     function numberformat(value, row) {
 		const formatter = new Intl.NumberFormat('ja-JP');
 
-		return "<b>" + formatter.format(value) + "</b>";
-	}
-
-    function numberformatFinal(value, row) {
-		const formatter = new Intl.NumberFormat('ja-JP');
-
-		return "<b style='color:green;'>" + formatter.format(value) + "</b>";
+		return formatter.format(value);
 	}
 
 	function numberformatPrice(value, row){
         const formatter = new Intl.NumberFormat('ja-JP', {
-            minimumFractionDigits: 2
+            minimumFractionDigits: 4
         });
 
-        return "<b>" + formatter.format(value) + "</b>";
+        return formatter.format(value);
+    }
+
+    function BtnAttachment(val, row) {
+        if(val == "" || val == null){
+            return '-';
+        }else{
+            return '<a class="btn btn-primary w-100" style="pointer-events: visible; opacity:1;" target="_blank" href="' + val + '"><i class="fa fa-paperclip"></i> View</a>';
+        }
+    }
+
+    function BtnDetail(val, row) {
+        var details = "details('"+row.supplier_id+"','"+row.supplier_name+"')";
+        return '<a class="btn btn-primary w-100" style="pointer-events: visible; opacity:1;" onClick="'+details+'"><i class="fa fa-eye"></i> View</a>';
+    }
+
+    function details(supplier_id = "", supplier_name = "") {
+        $("#dlg_details").window('open');
+        $('#dlg_details').window('setTitle', 'Detail of ' + supplier_name);
+
+        $('#dg_details').datagrid({
+            url: '<?= base_url('approvals/approvalGenerateMrpFinalDetails/'.base64_encode($approved_to).'/'.base64_encode($approved_by)) ?>?supplier_id=' + btoa(supplier_id),
+            clientPaging: false,
+            remoteFilter: true,
+            rownumbers: true,
+            singleSelect: false,
+            fit:true,
+        });
     }
 </script>

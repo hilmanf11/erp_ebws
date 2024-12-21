@@ -60,6 +60,7 @@ class Os_fg extends CI_Controller
             $this->db->select('a.*, b.uom, b.number as item_fg_number, b.qty_box, b.number_customer, b.name as item_fg_name');
             $this->db->from('os_fg a');
             $this->db->join('item_fg b', 'a.item_fg_id = b.id');
+            $this->db->where('a.type', "BEGIN");
             if($filter_from != "" && $filter_to != ""){
                 $this->db->where('a.trans_date >=', $filter_from);
                 $this->db->where('a.trans_date <=', $filter_to);
@@ -389,6 +390,7 @@ class Os_fg extends CI_Controller
         $this->db->select('a.*, b.uom, b.number as item_fg_number, b.number_customer, b.name as item_fg_name');
         $this->db->from('os_fg a');
         $this->db->join('item_fg b', 'a.item_fg_id = b.id');
+        $this->db->where('a.type', "BEGIN");
         if($filter_from != "" && $filter_to != ""){
             $this->db->where('a.trans_date >=', $filter_from);
             $this->db->where('a.trans_date <=', $filter_to);

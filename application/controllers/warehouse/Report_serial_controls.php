@@ -86,7 +86,7 @@ class Report_serial_controls extends CI_Controller
         $this->db->from('item_fg h');
         $this->db->join('wip_receipts a', 'h.id = a.item_fg_id', 'left');
         $this->db->join('os_fg i', 'h.id = i.item_fg_id', 'left');
-        $this->db->join('scan_item_receipts_fg b', '(a.checksheet_number = b.checksheet_number or b.workorder = i.id)');
+        $this->db->join('scan_item_receipts_fg b', '((a.checksheet_number = b.checksheet_number and a.workorder = b.workorder) or b.workorder = i.id)');
         $this->db->join('shipping_orders c', 'b.checksheet_label = c.checksheet_label', 'left');
         $this->db->join('delivery_orders d', 'c.delivery_order_no = d.delivery_order_no', 'left');
         $this->db->join('customers e', 'a.customer_id = e.id', 'left');

@@ -69,13 +69,13 @@ class Report_check_serialno extends CI_Controller
                 f.qty as scan_out,
                 f.created_date as scan_out_date,
                 f.created_by as scan_out_by,
-                (CASE WHEN f.request_no is null THEN 0 ELSE 1 END) as status 
+                (CASE WHEN e.id is not null THEN 2 WHEN f.request_no is null THEN 0 ELSE 1 END) as status 
             ");
             $this->db->from('scan_item_receipts a');
             // $this->db->join('purchase_order_labels b', 'a.label_no = b.label_no');
             $this->db->join('os_rm c', 'a.receipt_id = c.id');
             $this->db->join('item_rm d', 'c.item_rm_id = d.id');
-            // $this->db->join('suppliers e', 'c.supplier_id = e.id');
+            $this->db->join('scan_item_rejections e', 'a.label_no = e.label_no', 'left');
             $this->db->join('issued_material_details f', 'a.label_no = f.label_no', 'left');
             $this->db->where("DATE_FORMAT(a.created_date, '%Y-%m-%d') between '$filter_from' and '$filter_to'");
             $this->db->like('a.label_no', $filter_serial_no);
@@ -110,7 +110,7 @@ class Report_check_serialno extends CI_Controller
                 f.qty as scan_out,
                 f.created_date as scan_out_date,
                 f.created_by as scan_out_by,
-                (CASE WHEN f.request_no is null THEN 0 ELSE 1 END) as status 
+                (CASE WHEN g.id is not null THEN 2 WHEN f.request_no is null THEN 0 ELSE 1 END) as status 
             ');
             $this->db->from('scan_item_receipts a');
             $this->db->join('purchase_order_labels b', 'a.label_no = b.label_no');
@@ -118,6 +118,7 @@ class Report_check_serialno extends CI_Controller
             $this->db->join('item_rm d', 'c.item_rm_id = d.id');
             $this->db->join('suppliers e', 'c.supplier_id = e.id');
             $this->db->join('issued_material_details f', 'a.label_no = f.label_no', 'left');
+            $this->db->join('scan_item_rejections g', 'a.label_no = g.label_no', 'left');
             $this->db->where("DATE_FORMAT(a.created_date, '%Y-%m-%d') between '$filter_from' and '$filter_to'");
             $this->db->like('a.label_no', $filter_serial_no);
             $this->db->like('c.supplier_id', $filter_supplier);
@@ -150,7 +151,7 @@ class Report_check_serialno extends CI_Controller
                 f.qty as scan_out,
                 f.created_date as scan_out_date,
                 f.created_by as scan_out_by,
-                (CASE WHEN f.request_no is null THEN 0 ELSE 1 END) as status 
+                (CASE WHEN g.id is not null THEN 2 WHEN f.request_no is null THEN 0 ELSE 1 END) as status 
             ");
             $this->db->from('barcode_divides a');
             $this->db->join('purchase_order_labels b', 'a.reff = b.receipt_id', 'left');
@@ -159,6 +160,7 @@ class Report_check_serialno extends CI_Controller
             $this->db->join('item_rm d', '(ba.item_rm_id = d.id or c.item_rm_id = d.id)');
             $this->db->join('suppliers e', 'ba.supplier_id = e.id', 'left');
             $this->db->join('issued_material_details f', 'a.label_divided = f.label_no', 'left');
+            $this->db->join('scan_item_rejections g', 'a.label_no = g.label_no', 'left');
             $this->db->where("DATE_FORMAT(a.created_date, '%Y-%m-%d') between '$filter_from' and '$filter_to'");
             // $this->db->where('a.type', "SUPPLY");
             $this->db->like('a.label_divided', $filter_serial_no);
@@ -262,6 +264,8 @@ class Report_check_serialno extends CI_Controller
                 }else{
                     $status = "<b style='color:green;'>OPEN</b>";
                 }
+            } else if ($data['status'] == 2) {
+                $status = "<b style='color:red;'>CLOSE<br>REJECTION</br>";
             } else {
                 $status = "<b style='color:red;'>CLOSE</b>";
             }

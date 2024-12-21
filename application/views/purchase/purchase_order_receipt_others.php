@@ -2,6 +2,7 @@
     <thead frozen="true">
         <th field="ck" checkbox="true"></th>
         <th data-options="field:'id',width:230,halign:'center'">Receipt No</th>
+        <th data-options="field:'store',width:110,halign:'center',formatter:btnStore">Store</th>
         <!-- <th data-options="field:'total_scan',width:80,align:'center',formatter:statusformat,styler:statusStyle">Status<br>POR</th> -->
         <th data-options="field:'status',width:80,align:'center',formatter:statusformatFinance,styler:statusStyleFinance">Status<br>Invoice</th>
     </thead>
@@ -163,6 +164,7 @@
             <thead>
                 <tr>
                     <!-- <th field="ck" checkbox="true"></th> -->
+                    <th hidden data-options="field:'id',width:100,editor:{type:'numberbox', options:{readonly:true}}">ID</th>
                     <th data-options="field:'po_no',width:120">PO No</th>
                     <th data-options="field:'item_rm_id',width:120">Part No EBWS</th>
                     <th data-options="field:'item_rm_number',width:200">Part No Supplier</th>
@@ -209,6 +211,14 @@
         $('#dg_request').datagrid('loadData', []);
         $('#frm_insert').form('clear');
         $('#receipt_date').datebox('setValue', '<?= date("Y-m-d") ?>');
+        $("#bc_document").textbox('enable');
+        $("#bc_date").datebox('enable');
+        $("#awb_no").textbox('enable');
+        $("#awb_date").datebox('enable');
+        $("#receipt_date").datebox('enable');
+        $("#po_no").combobox('enable');
+        // $("#supplier_id").combogrid('disable');
+
         receipt_no("<?= $id_menu ?>");
 
         $("#supplier_id").combogrid({
@@ -593,6 +603,7 @@
                                             '&receipt_date=' + receipt_date +
                                             '&receipt_no=' + receipt_no +
                                             '&po_no=' + json[i].po_no +
+                                            '&id=' + json[i].id +
                                             // '&bc_kind=' + bc_kind +
                                             // '&bc_aju=' + bc_aju +
                                             '&attachment=' + attachment +
@@ -855,6 +866,152 @@
         }else{
             return val;
         }
+    }
+
+    function btnStore(val, row){
+        if (row.state == "closed") {
+            if(val > 0){
+                return "<a class='btn btn-success btn-sm' style='pointer-events: auto; opacity:1; width:100%;'><i class='fa fa-check'></i> Confirmed</a>";
+            }else{
+                var onClick = 'viewDetail("'+row.receipt_no+'")';
+                return "<a class='btn btn-danger btn-sm' style='pointer-events: auto; opacity:1; width:100%;' onClick='"+onClick+"'><i class='fa fa-edit'></i> Unconfirm</a>";
+            }
+        }
+    }
+
+    function viewDetail(receipt_no){
+        $.messager.prompt('Store Key', 'Please Input Password for Confirm the Gate Entry Data', function(r){
+            if (r == "STOREGATE"){
+                $('#dlg_insert').dialog('open');
+
+                $("#bc_document").textbox('disable');
+                $("#bc_date").datebox('disable');
+                $("#awb_no").textbox('disable');
+                $("#awb_date").datebox('disable');
+                $("#receipt_date").datebox('disable');
+                $("#po_no").combobox('disable');
+                // $("#supplier_id").combogrid('disable');
+
+                $.ajax({
+                    type: "post",
+                    url: "<?= base_url("purchase/purchase_order_receipt_others/checkData"); ?>",
+                    data: "receipt_no=" + receipt_no,
+                    dataType: "json",
+                    success: function (json) {
+                        var lastIndex;
+                        var dg = $('#dg_request').datagrid({
+                            url: '<?= base_url('purchase/purchase_order_receipt_others/datatablesUpdate') ?>?receipt_no=' + btoa(receipt_no),
+                            fitColumns: true,
+                            singleSelect: true,
+                            onClickRow: function(rowIndex) {
+                                if (lastIndex != rowIndex) {
+                                    $(this).datagrid('endEdit', lastIndex);
+                                    $(this).datagrid('beginEdit', rowIndex);
+                                }
+                                lastIndex = rowIndex;
+                            },
+                            onBeginEdit: function(rowIndex, row) {
+                                var editors = $('#dg_request').datagrid('getEditors', rowIndex);
+                                var qty_mpq = $(editors[1].target);
+                                var qty_po = $(editors[2].target);
+                                var qty_delivery = $(editors[3].target);
+                                var qty_receipt = $(editors[4].target);
+                                var qty_label = $(editors[5].target);
+                                var location = $(editors[6].target);
+                                // var capacity = $(editors[6].target);
+                                // var warehouse = $(editors[5].target);
+
+                                location.combogrid({
+                                    url: '<?= base_url('master/locations/readNotRm/RM') ?>',
+                                    panelWidth: 750,
+                                    idField: 'number',
+                                    textField: 'number',
+                                    mode: 'remote',
+                                    fitColumns: true,
+                                    prompt: "Choose Warehouse",
+                                    columns: [
+                                        [{
+                                            field: 'number',
+                                            title: 'Code',
+                                            width: 80
+                                        }, {
+                                            field: 'location',
+                                            title: 'Location',
+                                            width: 120
+                                        }, {
+                                            field: 'product_family_name',
+                                            title: 'Product Family',
+                                            width: 150
+                                        }, {
+                                            field: 'area',
+                                            title: 'Area',
+                                            width: 100
+                                        }, {
+                                            field: 'rack',
+                                            title: 'Rack',
+                                            width: 80
+                                        }, {
+                                            field: 'level',
+                                            title: 'Level',
+                                            width: 80
+                                        }, {
+                                            field: 'level_sub',
+                                            title: 'Level Sub',
+                                            width: 80
+                                        }]
+                                    ],
+                                });
+
+                                qty_receipt.add(qty_mpq).numberbox({
+                                    onChange: function() {
+                                        var f_qty_po = qty_po.numberbox('getValue');
+                                        var f_qty_delivery = qty_delivery.numberbox('getValue');
+                                        var f_qty_receipt = qty_receipt.numberbox('getValue');
+                                        var f_qty_mpq = qty_mpq.numberbox('getValue');
+
+                                        if (parseInt(f_qty_delivery) == 0) {
+                                            if (parseInt(f_qty_po) >= parseInt(f_qty_receipt)) {
+                                                var cost = Math.ceil(f_qty_receipt / f_qty_mpq);
+                                                qty_label.numberbox('setValue', cost);
+                                                // warehouse.numberbox('setValue', (qty_whs - f_qty_receipt));
+                                            } else {
+                                                qty_receipt.numberbox('setValue', 0);
+                                                toastr.warning("Qty Receipt > Qty PO", "Information");
+                                                // warehouse.numberbox('setValue', (qty_whs - 0));
+                                            }
+                                        } else {
+                                            if (parseInt(f_qty_delivery) >= parseInt(f_qty_receipt)) {
+                                                var cost = Math.ceil(f_qty_receipt / f_qty_mpq);
+                                                qty_label.numberbox('setValue', cost);
+                                                // warehouse.numberbox('setValue', (qty_whs - f_qty_receipt));
+                                            } else {
+                                                qty_receipt.numberbox('setValue', 0);
+                                                toastr.warning("Qty Receipt > Qty OS PO", "Information");
+                                                // warehouse.numberbox('setValue', (qty_whs - 0));
+                                            }
+                                        }
+                                    }
+                                })
+                            }
+                        });
+
+                        $("#bc_document").textbox('setValue', json.bc_document);
+                        $("#bc_date").datebox('setValue', json.bc_date);
+                        $("#awb_no").textbox('setValue', json.awb_no);
+                        $("#awb_date").datebox('setValue', json.awb_date);
+                        $("#receipt_date").datebox('setValue', json.receipt_date);
+                        $("#po_no").combobox('setValue', json.po_no);
+                        $("#supplier_id").combogrid('setValue', json.supplier_id);
+                    }
+                });
+
+                setTimeout(function() {
+                    $('#receipt_no').textbox('setValue', receipt_no);
+                }, 2000);
+            }else{
+                toastr.error("Access Denied!!");
+            }
+        });
     }
 
     function cancelLabel(receipt_id){

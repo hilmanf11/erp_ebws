@@ -548,9 +548,9 @@
 		if (table == "" || approved_to == "") {
 			toastr.error("Approval Cannot get Data", "Error");
 		} else {
-			var outputString = table.replace(/_/g, ' ');
+			var outputString = title.replace(/_/g, ' ');
 			var header_approval = outputString.toUpperCase();
-			$("#header_approval").html("APPROVAL " + header_approval);
+			$("#header_approval").html(header_approval);
 
 			$('#dlg_approval_detail').window('open');
 			$('#pageApproval').attr('src', '<?= base_url("approvals/") ?>' + table + "/" + btoa(approved_to) + "/" + btoa(approved_by));

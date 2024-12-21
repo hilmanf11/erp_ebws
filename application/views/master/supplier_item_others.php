@@ -50,7 +50,7 @@
 </table>
 
 <!-- TOOLBAR DATAGRID -->
-<div id="toolbar" style="height: 190px;">
+<div id="toolbar" style="height: 200px; padding: 10px;">
     <div style="width: 100%;">
         <fieldset style="width: 100%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
             <legend><b>Form Filter Data</b></legend>
@@ -133,19 +133,19 @@
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">MPQ</span>
-                    <input style="width:60%;" name="mpq" class="easyui-numberbox" data-options="precision:2">
+                    <input style="width:60%;" name="mpq" id="mpq" class="easyui-numberbox" data-options="precision:2">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">MOQ</span>
-                    <input style="width:60%;" name="moq" class="easyui-numberbox" data-options="precision:2">
+                    <input style="width:60%;" name="moq" id="moq" class="easyui-numberbox" data-options="precision:2">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Mfg L/T (Days)</span>
-                    <input style="width:60%;" name="leadtime" required="" class="easyui-numberbox">
+                    <input style="width:60%;" name="leadtime" id="leadtime" required="" class="easyui-numberbox">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Transit (Days)</span>
-                    <input style="width:60%;" name="transit" required="" class="easyui-numberbox">
+                    <input style="width:60%;" name="transit" id="transit" required="" class="easyui-numberbox">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Currency</span>
@@ -156,11 +156,11 @@
             <div style="width: 49%; float: left;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Price</span>
-                    <input style="width:60%;" name="price" class="easyui-numberbox" required data-options="precision:4">
+                    <input style="width:60%;" name="price" id="price" class="easyui-numberbox" required data-options="precision:4">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Valid Date</span>
-                    <input style="width:60%;" name="valid_date" id="valid_date" required class="easyui-datebox" required data-options="formatter:myformatter,parser:myparser, editable:false">
+                    <input style="width:60%;" name="valid_date" id="valid_date" class="easyui-datebox" required data-options="formatter:myformatter,parser:myparser, editable:false">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Share Order %</span>
@@ -535,6 +535,18 @@
                         url: url_save,
                         onSubmit: function() {
                             if($(this).form('validate') === true){
+                                var valid_date = $("#valid_date").datebox('getValue');
+                                var mpq = $("#mpq").numberbox('getValue');
+                                var moq = $("#moq").numberbox('getValue');
+                                var price = $("#moq").numberbox('getValue');
+                                var leadtime = $("#leadtime").numberbox('getValue');
+                                var transit = $("#transit").numberbox('getValue');
+
+                                if(mpq <= 0 || moq <= 0 || price <= 0 || leadtime <= 0 || transit <= 0){
+                                    toastr.error("MPQ, MOQ, Price, Leadtime / Transit Cannot be 0");
+                                    return false;
+                                }
+
                                 $('#dlg_insert').dialog('close');
                                 
                                 Swal.fire({

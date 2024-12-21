@@ -48,14 +48,15 @@ class Report_history_transactions extends CI_Controller
                 a.uom, 
                 COALESCE(0,0) as begin_stock,
                 (COALESCE(SUM(c.qty_sto),0) + COALESCE(d.sto_qty_in, 0) + COALESCE(e.qty_receipt, 0)) as qty_in,
-                (f.qty + COALESCE(d.sto_qty_out, 0)) as qty_out,
-                ((COALESCE(SUM(c.qty_sto),0) + COALESCE(e.qty_receipt, 0)  + COALESCE(d.sto_qty_in, 0) + COALESCE(g.return_qty, 0)) - COALESCE(f.qty, 0) - COALESCE(d.sto_qty_out, 0)) as end_stock
+                (f.qty + COALESCE(d.sto_qty_out, 0) + COALESCE(h.qty_reject, 0)) as qty_out,
+                ((COALESCE(SUM(c.qty_sto),0) + COALESCE(e.qty_receipt, 0)  + COALESCE(d.sto_qty_in, 0) + COALESCE(g.return_qty, 0)) - COALESCE(f.qty, 0) - COALESCE(d.sto_qty_out, 0) - COALESCE(h.qty_reject, 0)) as end_stock
             FROM item_rm a 
             JOIN item_familys b ON a.item_family_id = b.id and b.number != '006'
             LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) as qty_sto FROM os_rm a JOIN scan_item_receipts b ON a.id  = b.receipt_id WHERE a.trans_date <= '$date' GROUP BY item_rm_id) c ON a.id = c.item_rm_id
             LEFT JOIN (SELECT a.item_rm_id, (CASE WHEN a.type = 'IN' THEN COALESCE(SUM(a.qty), 0) ELSE 0 END) as sto_qty_in, (CASE WHEN a.type = 'OUT' THEN COALESCE(SUM(a.qty), 0) ELSE 0 END) as sto_qty_out FROM sto_rm a WHERE a.trans_date < '$date' and a.approved_to = '' GROUP BY item_rm_id) d ON a.id = d.item_rm_id
             LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) as qty_receipt FROM purchase_order_receipts a JOIN scan_item_receipts b ON a.receipt_id  = b.receipt_id WHERE a.receipt_date <= '$date' GROUP BY item_rm_id) e ON a.id = e.item_rm_id
             LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as qty FROM issued_material_details WHERE DATE_FORMAT(created_date, '%Y-%m-%d') <= '$date' GROUP BY item_rm_id) f ON a.id = f.item_rm_id
+            LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) as qty_reject FROM purchase_order_receipts a JOIN scan_item_rejections b ON a.receipt_id  = b.receipt_id WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') between '$filter_from' and '$filter_to' GROUP BY item_rm_id) h ON a.id = h.item_rm_id
             LEFT JOIN (SELECT a.item_rm_id, SUM(c.qty) as return_qty
                 FROM return_materials a 
                 JOIN return_material_labels b ON a.return_id = b.return_id
@@ -128,14 +129,15 @@ class Report_history_transactions extends CI_Controller
             a.uom, 
             COALESCE(h.begin_stock,0) AS begin_stock,
             (COALESCE(SUM(c.qty_sto),0) + COALESCE(SUM(d.sto_qty_in),0) + COALESCE(e.qty_receipt, 0)) AS qty_in,
-            (f.qty + COALESCE(d.sto_qty_out, 0)) AS qty_out,
-            ((COALESCE(h.begin_stock,0) + COALESCE(SUM(c.qty_sto),0) + COALESCE(SUM(d.sto_qty_in),0) + COALESCE(e.qty_receipt, 0) + COALESCE(g.return_qty, 0)) - COALESCE(f.qty, 0) - COALESCE(d.sto_qty_out, 0)) AS end_stock
+            (f.qty + COALESCE(d.sto_qty_out, 0) + COALESCE(i.qty_reject, 0)) AS qty_out,
+            ((COALESCE(h.begin_stock,0) + COALESCE(SUM(c.qty_sto),0) + COALESCE(SUM(d.sto_qty_in),0) + COALESCE(e.qty_receipt, 0) + COALESCE(g.return_qty, 0)) - COALESCE(f.qty, 0) - COALESCE(d.sto_qty_out, 0) - COALESCE(i.qty_reject, 0)) AS end_stock
         FROM item_rm a 
         JOIN item_familys b ON a.item_family_id = b.id and b.item_category_id = 'C01'
         LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) as qty_sto FROM os_rm a JOIN scan_item_receipts b ON a.id  = b.receipt_id WHERE a.trans_date between '$filter_from' and '$filter_to' GROUP BY item_rm_id) c ON a.id = c.item_rm_id
         LEFT JOIN (SELECT a.item_rm_id, (CASE WHEN a.type = 'IN' THEN COALESCE(SUM(a.qty), 0) ELSE 0 END) as sto_qty_in, (CASE WHEN a.type = 'OUT' THEN COALESCE(SUM(a.qty), 0) ELSE 0 END) as sto_qty_out FROM sto_rm a WHERE a.trans_date between '$filter_from' and '$filter_to' and a.approved_to = '' GROUP BY item_rm_id) d ON a.id = d.item_rm_id
         LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) as qty_receipt FROM purchase_order_receipts a JOIN scan_item_receipts b ON a.receipt_id  = b.receipt_id WHERE a.receipt_date between '$filter_from' and '$filter_to' GROUP BY item_rm_id) e ON a.id = e.item_rm_id
         LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as qty FROM issued_material_details WHERE DATE_FORMAT(created_date, '%Y-%m-%d') between '$filter_from' and '$filter_to' GROUP BY item_rm_id) f ON a.id = f.item_rm_id
+        LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) as qty_reject FROM purchase_order_receipts a JOIN scan_item_rejections b ON a.receipt_id  = b.receipt_id WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') between '$filter_from' and '$filter_to' GROUP BY item_rm_id) i ON a.id = i.item_rm_id
         LEFT JOIN (SELECT a.item_rm_id, SUM(c.qty) as return_qty
             FROM return_materials a 
             JOIN return_material_labels b ON a.return_id = b.return_id
@@ -144,13 +146,14 @@ class Report_history_transactions extends CI_Controller
             GROUP BY a.item_rm_id) g ON a.id = g.item_rm_id
         LEFT JOIN (SELECT
             a.id,
-            ((COALESCE(SUM(c.qty_sto),0) + COALESCE(d.sto_qty_in, 0) + COALESCE(e.qty_receipt, 0) + COALESCE(g.return_qty, 0)) - COALESCE(f.qty, 0) - COALESCE(d.sto_qty_out, 0)) AS begin_stock
+            ((COALESCE(SUM(c.qty_sto),0) + COALESCE(d.sto_qty_in, 0) + COALESCE(e.qty_receipt, 0) + COALESCE(g.return_qty, 0)) - COALESCE(f.qty, 0) - COALESCE(d.sto_qty_out, 0) - COALESCE(h.qty_reject, 0)) AS begin_stock
             FROM item_rm a 
             JOIN item_familys b ON a.item_family_id = b.id AND b.number != '006'
             LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) AS qty_sto FROM os_rm a JOIN scan_item_receipts b ON a.id  = b.receipt_id WHERE a.trans_date < '$filter_from' GROUP BY item_rm_id) c ON a.id = c.item_rm_id
             LEFT JOIN (SELECT a.item_rm_id, (CASE WHEN a.type = 'IN' THEN COALESCE(SUM(a.qty), 0) ELSE 0 END) as sto_qty_in, (CASE WHEN a.type = 'OUT' THEN COALESCE(SUM(a.qty), 0) ELSE 0 END) as sto_qty_out FROM sto_rm a WHERE a.trans_date < '$filter_from' and a.approved_to = '' GROUP BY item_rm_id) d ON a.id = d.item_rm_id
             LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) AS qty_receipt FROM purchase_order_receipts a JOIN scan_item_receipts b ON a.receipt_id  = b.receipt_id WHERE a.receipt_date < '$filter_from' GROUP BY item_rm_id) e ON a.id = e.item_rm_id
             LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) AS qty FROM issued_material_details WHERE DATE_FORMAT(created_date, '%Y-%m-%d') < '$filter_from' GROUP BY item_rm_id) f ON a.id = f.item_rm_id
+            LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) AS qty_reject FROM purchase_order_receipts a JOIN scan_item_rejections b ON a.receipt_id  = b.receipt_id WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') < '$filter_from' GROUP BY item_rm_id) h ON a.id = h.item_rm_id
             LEFT JOIN (SELECT a.item_rm_id, SUM(c.qty) AS return_qty
             FROM return_materials a 
             JOIN return_material_labels b ON a.return_id = b.return_id
@@ -282,6 +285,22 @@ class Report_history_transactions extends CI_Controller
                     WHERE a.item_rm_id = '$item_rm_id' and a.receipt_date between '$working_date' and '$working_date'
                     GROUP BY a.receipt_no, a.bc_document");
 
+                    //REJECTION
+                    $rejections = $this->crud->query("SELECT
+                        b.created_date, 
+                        a.bc_document, 
+                        b.label_no, 
+                        SUM(b.qty) as qty,
+                        c.name as username,
+                        d.id as supplier_id,
+                        d.name as supplier_name
+                    FROM purchase_order_receipts a 
+                    JOIN scan_item_rejections b ON a.receipt_id = b.receipt_id
+                    JOIN users c ON b.created_by = c.username
+                    JOIN suppliers d ON a.supplier_id = d.id
+                    WHERE a.item_rm_id = '$item_rm_id' and DATE_FORMAT(b.created_date, '%Y-%m-%d') = '$working_date'
+                    GROUP BY b.id");
+
                     //ISSUED
                     $issueds = $this->crud->query("SELECT * FROM issued_material_details WHERE item_rm_id = '$item_rm_id' and DATE_FORMAT(created_date, '%Y-%m-%d') between '$working_date' and '$working_date'");
 
@@ -383,6 +402,28 @@ class Report_history_transactions extends CI_Controller
                         $nod++;
                     }
 
+                    //Rejections
+                    foreach ($rejections as $rejection) {
+                        $balance = ($begin - $rejection->qty);
+                        $html .= '  <tr>
+                                        <td></td>
+                                        <td style="text-align:center">' . $nod . '</td>
+                                        <td>REJECTION</td>
+                                        <td>' . $rejection->username . '</td>
+                                        <td>' . $rejection->created_date . '</td>
+                                        <td>' . $rejection->supplier_id . '</td>
+                                        <td>' . $rejection->supplier_name . '</td>
+                                        <td>' . $rejection->label_no . '</td>
+                                        <td>' . $rejection->bc_document . '</td>
+                                        <td style="text-align:right;">' . number_format($begin, 2) . '</td>
+                                        <td style="text-align:right;">' . number_format(0) . '</td>
+                                        <td style="text-align:right;">' . number_format($rejection->qty, 2)  . '</td>
+                                        <td style="text-align:right;">' . number_format($balance, 2)  . '</td>
+                                    </tr>';
+                        $begin -= $rejection->qty;
+                        $nod++;
+                    }
+                    
                     //Issued Material
                     foreach ($issueds as $issued) {
                         $user = $this->crud->read("users", [], ["username" => $issued->created_by]);

@@ -301,14 +301,22 @@ class Approvals extends CI_Controller
             $avatar = $user->avatar;
         }
 
-        $title = "APPROVAL ". strtoupper(str_replace('_', ' ', $table));
+        if($table == "supplier_items"){
+            $tablename = "supplier_contracts";
+        }elseif($table == "item_rm"){
+            $tablename = "master_items";
+        }else{
+            $tablename = $table;
+        }
+
+        $title = "APPROVAL ". strtoupper(str_replace('_', ' ', $tablename));
 
         $link = "approvalDetail('$table', '$approved_to', '$approved_by', '$title')";
         echo '  <li class="list-isi">
                     <a onclick="' . $link . '">
                         <table style="width: 100%;">
                             <tr>
-                                <td>
+                                <td width="40">
                                     <div class="icon-container">
                                         <img src="' . $avatar . '" class="user-online" />
                                         <div class="status-circle"></div>
@@ -316,7 +324,7 @@ class Approvals extends CI_Controller
                                 </td>
                                 <td style="padding-left: 10px;">
                                     <b>' . $user->name . '</b><br>
-                                    <small>Sent a request to approve data <b>' . strtoupper(str_replace("_", " ", $table)) . '</b></small>
+                                    <small>Sent a request to approve data <b>' . strtoupper(str_replace("_", " ", $tablename)) . '</b></small>
                                 </td>
                             </tr>
                         </table>
@@ -732,22 +740,42 @@ class Approvals extends CI_Controller
         $approved_to = base64_decode($approved_to);
         $approved_by = base64_decode($approved_by);
 
+        $this->db->select('a.supplier_id, e.number as supplier_number, e.name as supplier_name, e.type, e.state, e.currency');
+        $this->db->from('generate_mrp_finals a');
+        $this->db->join('suppliers e', 'a.supplier_id = e.id');
+        $this->db->where('a.approved_to', $approved_to);
+        $this->db->where('a.approved_by', $approved_by);
+        $this->db->group_by('e.id');
+        $this->db->order_by('e.name', 'asc');
+        $records = $this->db->get()->result_array();
+
+        die(json_encode($records));
+    }
+
+    public function approvalGenerateMrpFinalDetails($approved_to, $approved_by)
+    {
+        $approved_to = base64_decode($approved_to);
+        $approved_by = base64_decode($approved_by);
+        $supplier_id = base64_decode($this->input->get("supplier_id"));
+
         $this->db->select('a.*, b.number as item_rm_number, b.name as item_rm_name, e.id as supplier_number, e.name as supplier_name, f.leadtime as leadtime2, f.transit, c.name as product_family, d.class, d.composition, d.safety');
         $this->db->from('generate_mrp_finals a');
         $this->db->join('item_rm b', 'a.item_rm_id = b.id');
         $this->db->join('item_familys c', 'b.item_family_id = c.id');
         $this->db->join('generate_mrp_abcclass d', 'a.item_rm_id = d.item_rm_id and a.p_month = d.p_month and a.p_year = d.p_year and a.revision = d.revision', 'left');
         $this->db->join('suppliers e', 'a.supplier_id = e.id');
-        $this->db->join('supplier_items f', 'a.supplier_id = f.supplier_id and a.item_rm_id = f.item_rm_id');
+        $this->db->join('supplier_items f', 'a.supplier_id = f.supplier_id and a.item_rm_id = f.item_rm_id', 'left');
         $this->db->where('a.approved_to', $approved_to);
         $this->db->where('a.approved_by', $approved_by);
+        $this->db->where('a.supplier_id', $supplier_id);
         $this->db->group_by('a.item_rm_id');
         $this->db->group_by('a.supplier_id');
         $this->db->order_by('c.name', 'asc');
         $this->db->order_by('d.class', 'asc');
         $this->db->order_by('b.number', 'asc');
         $records = $this->db->get()->result_array();
-
+        
+        $arr = [];
         foreach ($records as $record) {
             if(round($record['total_need']) > 0 && $record['moq'] > 0){
                 $final = ($record['total_need']);
@@ -838,6 +866,24 @@ class Approvals extends CI_Controller
         $approved_to = base64_decode($approved_to);
         $approved_by = base64_decode($approved_by);
 
+        $this->db->select('a.po_no, a.po_date, a.supplier_id, b.number as supplier_number, b.name as supplier_name, b.type, b.state, b.currency, a.note, SUM(a.total) as grandtotal');
+        $this->db->from('purchase_orders a');
+        $this->db->join('suppliers b', 'a.supplier_id = b.id');
+        $this->db->where('a.approved_to', $approved_to);
+        $this->db->where('a.approved_by', $approved_by);
+        $this->db->group_by('a.po_no');
+        $this->db->order_by('a.created_date', 'DESC');
+        $records = $this->db->get()->result_array();
+
+        die(json_encode($records));
+    }
+
+    public function approvalPODetails($approved_to, $approved_by)
+    {
+        $approved_to = base64_decode($approved_to);
+        $approved_by = base64_decode($approved_by);
+        $po_no = base64_decode($this->input->get('po_no'));
+
         $this->db->select('a.id,a.po_no, a.request_no, a.total_dp,
                     a.po_date,
                     a.remarks,
@@ -856,15 +902,17 @@ class Approvals extends CI_Controller
                     a.qty as qty, 
                     a.price as price, 
                     a.total as total,
-                    a.total_sub');
-                $this->db->from('purchase_orders a');
-                $this->db->join('item_rm b', 'a.item_rm_id = b.id');
-                $this->db->join('item_familys c', 'b.item_family_id = c.id');
-                $this->db->join('suppliers d', 'a.supplier_id = d.id');
-                $this->db->join('supplier_items e', 'a.item_rm_id = e.item_rm_id and a.supplier_id = e.supplier_id');
-                // $this->db->join('(SELECT po_no, COUNT(status) as total_status_close FROM purchase_orders WHERE status = 1 GROUP BY po_no) g', 'a.po_no = g.po_no', 'left');
+                    a.total_sub,
+                    a.created_by,
+                    a.created_date');
+        $this->db->from('purchase_orders a');
+        $this->db->join('item_rm b', 'a.item_rm_id = b.id');
+        $this->db->join('item_familys c', 'b.item_family_id = c.id');
+        $this->db->join('suppliers d', 'a.supplier_id = d.id');
+        $this->db->join('supplier_items e', 'a.item_rm_id = e.item_rm_id and a.supplier_id = e.supplier_id');
         $this->db->where('a.approved_to', $approved_to);
         $this->db->where('a.approved_by', $approved_by);
+        $this->db->where('a.po_no', $po_no);
         $this->db->order_by('a.created_date', 'DESC');
         $records = $this->db->get()->result_array();
 
@@ -876,30 +924,50 @@ class Approvals extends CI_Controller
         $approved_to = base64_decode($approved_to);
         $approved_by = base64_decode($approved_by);
 
-        $this->db->select('a.id,a.po_no, a.request_no, a.total_dp,
-                    a.po_date,
-                    a.remarks,
-                    b.number as item_number,
-                    b.name as item_name,
-                    c.name as item_family_name, 
-                    d.name as supplier_name, 
-                    d.currency, e.mpq, 
-                    e.moq,
-                    b.uom,
-                    a.discount,
-                    d.currency, 
-                    a.qty as qty, 
-                    a.price as price, 
-                    a.total as total,
-                    a.total');
-                $this->db->from('purchase_order_others a');
-                $this->db->join('item_rm b', 'a.item_rm_id = b.id');
-                $this->db->join('item_familys c', 'b.item_family_id = c.id');
-                $this->db->join('suppliers d', 'a.supplier_id = d.id');
-                $this->db->join('supplier_items e', 'a.item_rm_id = e.item_rm_id and a.supplier_id = e.supplier_id');
-                // $this->db->join('(SELECT po_no, COUNT(status) as total_status_close FROM purchase_order_others WHERE status = 1 GROUP BY po_no) g', 'a.po_no = g.po_no', 'left');
+        $this->db->select('a.po_no, a.po_date, a.supplier_id, b.number as supplier_number, b.name as supplier_name, b.type, b.state, b.currency, a.remarks, SUM(a.total) as grandtotal');
+        $this->db->from('purchase_order_others a');
+        $this->db->join('suppliers b', 'a.supplier_id = b.id');
         $this->db->where('a.approved_to', $approved_to);
         $this->db->where('a.approved_by', $approved_by);
+        $this->db->group_by('a.po_no');
+        $this->db->order_by('a.created_date', 'DESC');
+        $records = $this->db->get()->result_array();
+
+        die(json_encode($records));
+    }
+
+    public function approvalPOtherDetails($approved_to, $approved_by)
+    {
+        $approved_to = base64_decode($approved_to);
+        $approved_by = base64_decode($approved_by);
+        $po_no = base64_decode($this->input->get('po_no'));
+
+        $this->db->select('a.id,a.po_no, a.request_no, a.total_dp,
+            a.po_date,
+            b.number as item_number,
+            b.name as item_name,
+            c.name as item_family_name, 
+            d.name as supplier_name, 
+            d.currency, e.mpq, 
+            e.moq,
+            b.uom,
+            a.discount,
+            d.currency, 
+            a.qty as qty, 
+            a.price as price, 
+            a.total as total,
+            a.total,
+            a.created_by,
+            a.created_date');
+        $this->db->from('purchase_order_others a');
+        $this->db->join('item_rm b', 'a.item_rm_id = b.id');
+        $this->db->join('item_familys c', 'b.item_family_id = c.id');
+        $this->db->join('suppliers d', 'a.supplier_id = d.id');
+        $this->db->join('supplier_items e', 'a.item_rm_id = e.item_rm_id and a.supplier_id = e.supplier_id');
+        // $this->db->join('(SELECT po_no, COUNT(status) as total_status_close FROM purchase_order_others WHERE status = 1 GROUP BY po_no) g', 'a.po_no = g.po_no', 'left');
+        $this->db->where('a.approved_to', $approved_to);
+        $this->db->where('a.approved_by', $approved_by);
+        $this->db->where('a.po_no', $po_no);
         $this->db->order_by('a.created_date', 'DESC');
         $records = $this->db->get()->result_array();
 
@@ -948,6 +1016,24 @@ class Approvals extends CI_Controller
         $approved_to = base64_decode($approved_to);
         $approved_by = base64_decode($approved_by);
 
+        $this->db->select('a.supplier_id, b.number as supplier_number, b.name as supplier_name, b.type, b.state, b.currency, a.remarks1, a.remarks2, a.remarks3, a.remarks4');
+        $this->db->from('supplier_items a');
+        $this->db->join('suppliers b', 'a.supplier_id = b.id');
+        $this->db->where('a.approved_to', $approved_to);
+        $this->db->where('a.approved_by', $approved_by);
+        $this->db->group_by('b.id');
+        $this->db->order_by('b.name', 'ASC');
+        $records = $this->db->get()->result_array();
+
+        die(json_encode($records));
+    }
+
+    public function approvalSupplierItemDetails($approved_to, $approved_by)
+    {
+        $approved_to = base64_decode($approved_to);
+        $approved_by = base64_decode($approved_by);
+        $supplier_id = base64_decode($this->input->get("supplier_id"));
+
         $this->db->select('a.*, b.number as supplier_number, b.name as supplier_name, b.currency as supplier_currency, c.number as item_rm_number, c.name as item_rm_name, c.item_family_id as item_rm_family, c.uom, d.name as item_family_name, e.price as price_before');
         $this->db->from('supplier_items a');
         $this->db->join('suppliers b', 'a.supplier_id = b.id');
@@ -956,6 +1042,7 @@ class Approvals extends CI_Controller
         $this->db->join("(SELECT * FROM supplier_item_histories ORDER BY id DESC LIMIT 1) e", "a.supplier_id = e.supplier_id and a.item_rm_id = e.item_rm_id", "left");
         $this->db->where('a.approved_to', $approved_to);
         $this->db->where('a.approved_by', $approved_by);
+        $this->db->where('a.supplier_id', $supplier_id);
         $this->db->order_by('a.id', 'ASC');
         $records = $this->db->get()->result_array();
 

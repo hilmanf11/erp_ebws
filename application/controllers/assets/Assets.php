@@ -155,15 +155,13 @@ class Assets extends CI_Controller
         $file = $_FILES['file_upload']['name'];
         $data = new Spreadsheet_Excel_Reader($file, false);
         $total_row = $data->rowcount($sheet_index = 0);
-        $category = $data->val(2, 3);
         
         for ($i = 3; $i <= $total_row; $i++) {
             $datas[] = array(
-                'item_family_id' => $data->val($i, 2),
-                'item_rm_id' => $data->val($i, 3),
-                'number' => $data->val($i, 4),
-                'name' => $data->val($i, 5),
-                'description' => $data->val($i, 6)
+                'item_rm_id' => $data->val($i, 2),
+                'number' => $data->val($i, 3),
+                'name' => $data->val($i, 4),
+                'description' => $data->val($i, 5)
             );
         }
         $datas['total'] = count($datas);
@@ -205,14 +203,14 @@ class Assets extends CI_Controller
             $data = $this->input->post('data');
             //Cek Process Number
             $item = $this->crud->read('item_rm', [], ["id" => $data['item_rm_id']]);
-            $assets = $this->crud->read('assets', [], ["number" => $data['number'], "item_rm_id" => $data['item_rm_id']]);
+            $assets = $this->crud->read('assets', [], ["number" => $data['number']]);
 
             if (empty($item->id)) {
                 echo json_encode(array("title" => "Not Found", "message" => "Part No " . $data['item_rm_id'] . " Not Found", "theme" => "error"));
             } elseif (!empty($assets->id)) {
-                echo json_encode(array("title" => "Duplicated", "message" => "Part No " . $data['item_rm_id'] . " Duplicate Data", "theme" => "error"));
+                echo json_encode(array("title" => "Duplicated", "message" => "Asset Code " . $data['number'] . " Duplicate Data", "theme" => "error"));
             } else {
-                $send = $this->crud->create('assets', $data);
+                $send = $this->crud->create('assets', array_merge($data, array("item_family_id" => @$item->item_family_id)));
                 echo $send;
             }
         }

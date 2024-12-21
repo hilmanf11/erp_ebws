@@ -184,7 +184,7 @@ class Report_history_transactions_fg extends CI_Controller
                     $receipts = $this->crud->query("SELECT f.*, c.name as username
                         FROM wip_receipts e
                         JOIN scan_item_receipts_fg f ON e.checksheet_number = f.checksheet_number and e.workorder = f.workorder
-                        JOIN users c ON e.created_by = c.username
+                        LEFT JOIN users c ON e.created_by = c.username
                         WHERE e.item_fg_id = '$item_fg_id' 
                         and DATE_FORMAT(f.created_date, '%Y-%m-%d') = '$working_date'");
 

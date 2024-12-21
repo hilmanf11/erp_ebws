@@ -478,7 +478,7 @@
         } else if (value == 1) {
             return "<b style='color:red;'>CLOSE</b>";
         } else if (value == 2) {
-            return "<b style='color:red;'>CANCEL</b>";
+            return "<b style='color:white;'>CANCEL</b>";
         }
     }
 

@@ -53,7 +53,7 @@ class Item_rm extends CI_Controller
             FROM item_rm a 
             JOIN item_familys b ON a.item_family_id = b.id
             JOIN item_categories c ON a.item_category_id = c.id 
-            WHERE a.status = 0 and c.id = '$item_category'
+            WHERE a.status = 0 and c.type = '$item_category'
             and (a.id like '%$post%' or a.number like '%$post%' or a.name like '%$post%')");
         echo json_encode($send);
     }

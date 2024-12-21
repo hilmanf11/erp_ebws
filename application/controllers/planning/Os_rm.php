@@ -84,6 +84,7 @@ class Os_rm extends CI_Controller
             $this->db->join('item_categories c', 'b.item_category_id = c.id');
             $this->db->join('item_familys d', 'b.item_family_id = d.id');
             $this->db->join('item_mpq e', 'a.item_rm_id = e.item_rm_id', 'left');
+            $this->db->where('a.type', "BEGIN");
             if($filter_from != "" && $filter_to != ""){
                 $this->db->where('a.trans_date >=', $filter_from);
                 $this->db->where('a.trans_date <=', $filter_to);
@@ -449,7 +450,7 @@ class Os_rm extends CI_Controller
         $this->db->join('item_rm b', 'a.item_rm_id = b.id');
         $this->db->join('item_categories c', 'b.item_category_id = c.id');
         $this->db->join('item_familys d', 'b.item_family_id = d.id');
-        // $this->db->join('item_family_subs e', 'b.item_sub_family_id = e.id');
+        $this->db->where('a.type', "BEGIN");
         if($filter_from != "" && $filter_to != ""){
             $this->db->where('a.trans_date >=', $filter_from);
             $this->db->where('a.trans_date <=', $filter_to);

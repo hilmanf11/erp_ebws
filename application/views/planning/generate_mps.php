@@ -98,7 +98,7 @@
                         <li>BEGIN BALANCE NEXT MONTH = <b>((PRODPLAN + BEGIN BALANCE) - (FC or SO))</b></li>
                         <li>ITO = <b>(BEGIN BALANCE / DELIVERY RATE)</b></li>
                         <li>DELIVERY RATE = <b>((FC or SO) / HKW)</b></li>
-                        <li>SAFETY STOCK = <b>((LEADTIME + FG SS) / HKW(next month) x (FC or SO)(next month))</b></li>
+                        <li>SAFETY STOCK = taken from Item Finish Good <b>% Safety Stock</b></li>
                         <li>PROD PLAN = <b>((FC or SO) + SAFETY STOCK - BEGIN BALANCE)</b></li>
                     </ul>
 

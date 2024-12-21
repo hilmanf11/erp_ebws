@@ -53,15 +53,15 @@
                 <input style="width:60%;" name="item_family_id" id="item_family_id" class="easyui-combogrid" required>
             </div>
             <div class="fitem">
-                <span style="width:35%; display:inline-block;">Part No</span>
-                <input style="width:60%;" name="item_rm_id" id="item_rm_id" class="easyui-combogrid" required>
-            </div>
-            <div class="fitem">
-                <span style="width:35%; display:inline-block;">Code</span>
+                <span style="width:35%; display:inline-block;">Asset Code</span>
                 <input style="width:60%;" name="number" id="number" readonly required="" class="easyui-textbox">
             </div>
             <div class="fitem">
-                <span style="width:35%; display:inline-block;">Remarks</span>
+                <span style="width:35%; display:inline-block;">Asset Name</span>
+                <input style="width:60%;" name="item_rm_id" id="item_rm_id" class="easyui-combogrid" required>
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Description</span>
                 <input style="width:60%;" name="description" class="easyui-textbox">
             </div>
         </fieldset>

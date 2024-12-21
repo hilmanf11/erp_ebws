@@ -25,6 +25,7 @@
             <th rowspan="2" data-options="field:'incoterm',width:80,align:'center'">Incoterm</th>
             <th rowspan="2" data-options="field:'vat_status',align:'center',width:80">Vat Status</th>
             <th rowspan="2" data-options="field:'vat',halign:'center',width:80,align:'right'">Vat</th>
+            <th rowspan="2" data-options="field:'commodity',width:80,align:'center'">Commodity</th>
             <th rowspan="2" data-options="field:'tds',halign:'center',width:120">TDS</th>
             <th rowspan="2" data-options="field:'tax',halign:'center',width:120">Tax No</th>
             <th rowspan="2" data-options="field:'gst',halign:'center',width:120">GST No</th>
@@ -116,6 +117,13 @@
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Country of Origin</span>
                     <input style="width:60%;" name="origin" id="origin" class="easyui-combobox">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Commodity</span>
+                    <select style="width:60%;" name="commodity" id="commodity" class="easyui-combobox" required panelHeight="auto">
+                        <option value="YES">YES</option>
+                        <option value="NO">NO</option>
+                    </select>
                 </div>
             </div>
             <div style="float:left; width:50%;">

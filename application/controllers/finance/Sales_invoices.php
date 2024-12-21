@@ -618,6 +618,7 @@ class Sales_invoices extends CI_Controller
             $this->createQrcodeIrn($sales_invoice->barcode, "assets/image/qrcode/", $sales_invoice->number);
             $imgIrn = '<img src="' . base_url('assets/image/qrcode/' . $sales_invoice->number . '.png?'.time()) . '" width="150"/>';
         }
+
         //Header Print
         $html = '<html><head><title>' . $sales_invoice->number . '</title><link rel="icon" href="' . $config->favicon . '" type="image/png" sizes="16x16"></head>';
         $html .= '<style>body {font-family: Arial, Helvetica, sans-serif;}';
@@ -797,7 +798,7 @@ class Sales_invoices extends CI_Controller
             $cgst = 0;
             $sgst = 0;
             $igst = 0;
-
+            $dataQr2 = "";
             for ($a=0; $a < 10; $a++) {
                 if(!empty($records[$a]['qty'])){
                     $html .= '  <tr>
@@ -816,7 +817,8 @@ class Sales_invoices extends CI_Controller
                                     <td style="text-align:right; border-top: 0; border-bottom: 0;">' . number_format($records[$a]['igst'], 2) . '</td>
                                     <td style="text-align:right; border-top: 0; border-bottom: 0;">' . number_format((($records[$a]['price'] * $records[$a]['qty']) + $records[$a]['cgst'] + $records[$a]['igst'] + $records[$a]['sgst']), 2) . '</td>
                                 </tr>';
-
+                    $urutan = sprintf("%02s", $no - 1);
+                    $dataQr2 .= " $urutan ".$records[$a]['number_customer']." ".$records[$a]['hsn_code']." ".$records[$a]['price'];
                     $sub_qty += ($records[$a]['qty']);
                     $sub_total += ($records[$a]['price'] * $records[$a]['qty']);
                     $cgst += $records[$a]['cgst'];
@@ -843,6 +845,9 @@ class Sales_invoices extends CI_Controller
 
                 $no++;
             }
+
+            $dataQr = @$records[0]['customer_po']." ".@$records[0]['number']." ".date("d.m.Y", strtotime(@$records[0]['trans_date']))." ".$config->gst_no." ".($sub_total + ($cgst + $sgst + $igst))." ".$sub_total. " " .$dataQr2;
+            $this->createQrcode($dataQr, "assets/image/qrcode/", $sales_invoice->number."-00");
 
             $html .= '<tr>
                         <td colspan="3" style="text-align:right"><b>Sub Total</b></td>
@@ -893,7 +898,12 @@ class Sales_invoices extends CI_Controller
                     </tr>
                     <tr>
                         <td colspan="9" style="height:100px; vertical-align:top; padding: 10px;">
-                            <b>Terms and Condition :</b>
+                            <div style="float:left; width: 80%;">
+                                <b>Terms and Condition :</b>
+                            </div>
+                            <div style="float:right; width: 20%;">
+                                <img src="' . base_url('assets/image/qrcode/' . $sales_invoice->number . '-00.png?'.time()) . '" width="100"/>
+                            </div>
                         </td>
                     </tr>
                 </table>';
