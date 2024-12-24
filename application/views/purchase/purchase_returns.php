@@ -2,16 +2,20 @@
     <thead>
         <tr>
             <th rowspan="2" field="ck" checkbox="true"></th>
+            <th rowspan="2" data-options="field:'print_po',width:80,halign:'center',formatter:BtnPrint">Print PO</th>
             <th rowspan="2" data-options="field:'return_no',width:200,halign:'center'">Return No</th>
             <th rowspan="2" data-options="field:'return_date',width:100,halign:'center'">Return Date</th>
             <th rowspan="2" data-options="field:'return_name',width:150,halign:'center'">Return Name</th>
             <th rowspan="2" data-options="field:'supplier_name',width:200,halign:'center'">Supplier</th>
-            <th rowspan="2" data-options="field:'item_number',width:150,halign:'center'">Product No</th>
-            <th rowspan="2" data-options="field:'item_name',width:150,halign:'center'">Product Name</th>
+            <th rowspan="2" data-options="field:'po_no',width:120,halign:'center'">Purchase Order</th>
+            <th rowspan="2" data-options="field:'receipt_id',width:150,halign:'center'">Receipt ID</th>
+            <th rowspan="2" data-options="field:'item_rm_id',width:120,halign:'center'">Part No EBWS</th>
+            <th rowspan="2" data-options="field:'item_rm_number',width:200,halign:'center'">Part No Supplier</th>
+            <th rowspan="2" data-options="field:'item_rm_name',width:200,halign:'center'">Description</th>
             <!-- <th rowspan="2" data-options="field:'description',width:400,halign:'center'">Product Specification</th> -->
             <th rowspan="2" data-options="field:'uom',width:80,align:'center'">UoM</th>
             <th rowspan="2" data-options="field:'mpq',width:80,halign:'center',align:'right',formatter:numberformat">MPQ</th>
-            <th rowspan="2" data-options="field:'qty',width:80,halign:'center',align:'right'">Qty</th>
+            <th rowspan="2" data-options="field:'qty',width:80,halign:'center',align:'right',formatter:numberformat">Qty</th>
             <th rowspan="2" data-options="field:'remarks',width:150,halign:'center'">Remarks</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
@@ -41,7 +45,6 @@
             <div class="fitem">
                 <span style="width:35%; display:inline-block;"></span>
                 <a href="javascript:;" class="easyui-linkbutton" onclick="filter()"><i class="fa fa-search"></i> Filter Data</a>
-                <a href="javascript:;" class="easyui-linkbutton" onclick="print_return()"><i class="fa fa-print"></i> Return No</a>
             </div>
         </fieldset>
         <?= $button ?>
@@ -52,7 +55,7 @@
     <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="removeit()"><i class="fa fa-times"></i> Remove</a>
 </div>
 <!-- Insert & Update -->
-<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 900px; height: 550px; padding:10px; top: 0px;">
+<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 1200px; height: 550px; padding:10px; top: 0px;">
     <form id="frm_insert" method="post" novalidate>
         <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
             <legend><b>Form Data</b></legend>
@@ -72,8 +75,8 @@
                     <input style="width:60%;" name="return_name" id="return_name" value="<?= $this->session->name ?>" readonly class="easyui-textbox">
                 </div>
                 <div class="fitem">
-                    <span style="width:35%; display:inline-block;">PO No</span>
-                    <input style="width:60%;" name="po_no" id="po_no" required class="easyui-combobox">
+                    <span style="width:35%; display:inline-block;">Supplier</span>
+                    <input style="width:60%;" name="supplier_id" id="supplier_id" required class="easyui-combogrid">
                 </div>
             </div>
         </fieldset>
@@ -91,12 +94,12 @@
                 <input style="width:60%;" name="id" id="id" required class="easyui-textbox">
             </div>
             <div class="fitem">
-                <span style="width:35%; display:inline-block;">Product No</span>
-                <input style="width:60%;" name="item_number" id="item_number" disabled class="easyui-textbox">
+                <span style="width:35%; display:inline-block;">Part No</span>
+                <input style="width:60%;" name="item_rm_number" id="item_rm_number" disabled class="easyui-textbox">
             </div>
             <div class="fitem">
-                <span style="width:35%; display:inline-block;">Product Name</span>
-                <input style="width:60%;" name="item_name" id="item_name" disabled class="easyui-textbox">
+                <span style="width:35%; display:inline-block;">Part Name</span>
+                <input style="width:60%;" name="item_rm_name" id="item_rm_name" disabled class="easyui-textbox">
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Qty</span>
@@ -125,85 +128,106 @@
     //EDIT DATA
     function update() {
         var row = $('#dg').treegrid('getSelected');
+
         if (row) {
-            if (row.status == "0") {
+            if (row.datatable != 1) {
                 $('#dlg_update').dialog('open');
                 $('#frm_update').form('load', row);
             } else {
-                toastr.error("You cannot update this data, because status Return is closed");
+                toastr.error("Please Select Detail in the Table");
             }
         } else {
             toastr.warning("Please select one of the data in the table first!", "Information");
         }
     }
 
-    function addTable(po_no) {
+    function addTable(supplier_id) {
         var lastIndex;
         var dg = $('#dg2').datagrid({
             singleSelect: true,
             columns: [
                 [{
+                    field: 'po_no',
+                    width: 200,
+                    halign: 'center',
+                    title: "PO No",
+                    editor: {
+                        type: 'combobox',
+                        options: {
+                            url: '<?= base_url('purchase/purchase_returns/readPono?supplier_id='); ?>' + btoa(supplier_id),
+                            valueField: 'po_no',
+                            textField: 'po_no',
+                            prompt: 'Choose Purchase Order',
+                            required: true,
+                            onSelect: function (po) {
+                                var dg = $('#dg2');
+                                var row = dg.datagrid('getSelected');
+                                var rowIndex = dg.datagrid('getRowIndex', row);
+
+                                var ed = dg.datagrid('getEditor', {index: rowIndex, field: 'item_rm_id'});
+                                var ed2 = dg.datagrid('getEditor', {index: rowIndex, field: 'item_rm_number'});
+                                var ed3 = dg.datagrid('getEditor', {index: rowIndex, field: 'receipt_id'});
+                                var ed4 = dg.datagrid('getEditor', {index: rowIndex, field: 'qty_receipt'});
+                                var ed5 = dg.datagrid('getEditor', {index: rowIndex, field: 'qty'});
+
+                                $(ed.target).combogrid({
+                                    url: '<?= base_url('purchase/purchase_returns/readProducts/'); ?>' + btoa(po.po_no),
+                                    required: true,
+                                    panelWidth: 800,
+                                    idField: 'id',
+                                    textField: 'number',
+                                    mode: 'remote',
+                                    fitColumns: true,
+                                    prompt: 'Choose Part No EBWS',
+                                    columns: [
+                                        [{
+                                            field: 'id',
+                                            title: 'Part No EBWS',
+                                            width: 150
+                                        },{
+                                            field: 'number',
+                                            title: 'Part No Supplier',
+                                            width: 150
+                                        }, {
+                                            field: 'name',
+                                            title: 'Description',
+                                            width: 200
+                                        }, {
+                                            field: 'receipt_id',
+                                            title: 'Receipt ID',
+                                            width: 150
+                                        }, {
+                                            field: 'qty_receipt',
+                                            title: 'Receipt',
+                                            width: 80
+                                        }]
+                                    ],
+                                    onSelect: function (value, item) {
+                                        $(ed2.target).textbox('setValue', item.number);
+                                        $(ed3.target).textbox('setValue', item.receipt_id);
+                                        $(ed4.target).textbox('setValue', item.qty_receipt);
+                                        $(ed5.target).numberbox({
+                                            onChange: function(val){
+                                                if((parseInt(item.qty_receipt) - val) < 0){
+                                                    toastr.info("You cannot exceed qty Receipt");
+                                                    $(ed5.target).numberbox('setValue', 0);
+                                                }
+                                            }
+                                        });
+                                    }
+                                });
+                            }
+                        }
+                    }
+                }, {
                     field: 'item_rm_id',
-                    width: 120,
+                    width: 150,
                     halign: 'center',
                     title: "Part No EBWS",
                     editor: {
                         type: 'combogrid',
                         options: {
-                            url: '<?= base_url('purchase/purchase_returns/readItems?po_no=') ?>' + po_no,
-                            required: true,
-                            panelWidth: 400,
-                            idField: 'item_rm_id',
-                            textField: 'item_rm_id',
-                            mode: 'remote',
-                            fitColumns: true,
-                            prompt: 'Choose Product',
-                            columns: [
-                                [{
-                                    field: 'item_rm_id',
-                                    title: 'Part No EBWS',
-                                    width: 150
-                                }, {
-                                    field: 'item_rm_number',
-                                    title: 'Part No Supplier',
-                                    width: 150
-                                }, {
-                                    field: 'qty',
-                                    title: 'Qty',
-                                    width: 80
-                                }]
-                            ],
-                            onSelect: function(value, rows) {
-                                var dg = $('#dg2');
-                                var row = dg.datagrid('getSelected');
-                                var rowIndex = dg.datagrid('getRowIndex', row);
-                                var ed = dg.datagrid('getEditor', {
-                                    index: rowIndex,
-                                    field: 'item_rm_id'
-                                });
-                                var ed2 = dg.datagrid('getEditor', {
-                                    index: rowIndex,
-                                    field: 'item_rm_number'
-                                });
-                                var ed3 = dg.datagrid('getEditor', {
-                                    index: rowIndex,
-                                    field: 'receipt_id'
-                                });
-                                var ed4 = dg.datagrid('getEditor', {
-                                    index: rowIndex,
-                                    field: 'supplier_id'
-                                });
-                                var ed5 = dg.datagrid('getEditor', {
-                                    index: rowIndex,
-                                    field: 'qty'
-                                });
-
-                                $(ed.target).textbox('setValue', rows.item_rm_id);
-                                $(ed2.target).textbox('setValue', rows.item_rm_number);
-                                $(ed3.target).textbox('setValue', rows.receipt_id);
-                                $(ed4.target).textbox('setValue', rows.supplier_id);
-                                $(ed5.target).numberbox('setValue', rows.qty);
-                            }
+                            required: true
                         }
                     }
                 }, {
@@ -219,8 +243,7 @@
                     }
                 }, {
                     field: 'receipt_id',
-                    width: 120,
-                    hidden: true,
+                    width: 150,
                     halign: 'center',
                     title: "Receipt ID",
                     editor: {
@@ -230,23 +253,25 @@
                         }
                     }
                 }, {
-                    field: 'supplier_id',
+                    field: 'qty_receipt',
                     width: 100,
-                    hidden: true,
                     halign: 'center',
-                    title: "Supplier ID",
-                    editor: {
-                        type: 'textbox'
-                    }
-                }, {
-                    field: 'qty',
-                    width: 80,
-                    halign: 'center',
-                    title: "Qty",
+                    title: "Qty Receipt",
                     editor: {
                         type: 'numberbox',
                         options: {
                             readonly: true
+                        }
+                    }
+                }, {
+                    field: 'qty',
+                    width: 100,
+                    halign: 'center',
+                    title: "Qty Return",
+                    editor: {
+                        type: 'numberbox',
+                        options: {
+                            required: true
                         }
                     }
                 }, {
@@ -288,8 +313,8 @@
     }
 
     function append() {
-        var po_no = $("#po_no").combobox('getValue');
-        if (po_no != "") {
+        var supplier_id = $("#supplier_id").combogrid('getValue');
+        if (supplier_id != "") {
             if (endEditing()) {
                 $('#dg2').datagrid('appendRow', {
                     qty: '0'
@@ -318,7 +343,7 @@
                     for (var i = 0; i < rows.length; i++) {
                         var row = rows[i];
 
-                        if(row.receipt_id != ""){
+                        if(row.receipt_id != null){
                             $.ajax({
                                 method: 'post',
                                 url: '<?= base_url('purchase/purchase_returns/delete') ?>',
@@ -348,6 +373,12 @@
         }
     }
 
+    function BtnPrint(val, row) {
+        if(row.datatable == 1){
+            return '<a class="btn btn-primary w-100" target="_blank" href="<?= base_url('purchase/purchase_returns/print_return/') ?>'+btoa(row.return_no)+'" style="pointer-events: visible; opacity:1;"><i class="fa fa-print"></i> Print</a>';
+        }
+    }
+
     function filter() {
         var filter_from = $("#filter_from").datebox('getValue');
         var filter_to = $("#filter_to").datebox('getValue');
@@ -372,16 +403,6 @@
 
         url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_return_no=" + filter_return_no;
         window.location.assign('<?= base_url('purchase/purchase_returns/print/excel') ?>' + url);
-    }
-
-    function print_return() {
-        var rows = $('#dg').treegrid('getSelected');
-        if (rows) {
-            alert(rows.return_no);
-            window.open("<?= base_url('purchase/purchase_returns/print_return/') ?>" + window.btoa(rows.return_no), "_blank");
-        } else {
-            toastr.warning("Please select data in the table first", "Information");
-        }
     }
 
     function reload() {
@@ -418,14 +439,14 @@
                     var return_no = $("#return_no").textbox('getValue');
                     var return_date = $("#return_date").datebox('getValue');
                     var return_name = $("#return_name").textbox('getValue');
-                    var po_no = $("#po_no").combobox('getValue');
+                    var supplier_id = $("#supplier_id").combogrid('getValue');
 
                     $('#dg2').datagrid('acceptChanges');
                     var rows = $('#dg2').datagrid('getRows');
                     var totalrows = rows.length;
                     endEditing();
                     for (let i = 0; i < totalrows; i++) {
-                        if (rows[i].item_rm_id) {
+                        if (rows[i].qty > 0) {
                             $.ajax({
                                 type: "post",
                                 url: '<?= base_url('purchase/purchase_returns/create') ?>',
@@ -433,10 +454,10 @@
                                     return_no: return_no,
                                     return_date: return_date,
                                     return_name: return_name,
-                                    po_no: po_no,
+                                    supplier_id: supplier_id,
+                                    po_no: rows[i].po_no,
                                     receipt_id: rows[i].receipt_id,
                                     item_rm_id: rows[i].item_rm_id,
-                                    supplier_id: rows[i].supplier_id,
                                     qty: rows[i].qty,
                                     remarks: rows[i].remarks
                                 },
@@ -454,6 +475,8 @@
                                     });
                                 }
                             });
+                        }else{
+                            toastr.error("Qty Cannot 0");
                         }
                     }
 
@@ -489,19 +512,6 @@
             }]
         });
 
-        $("#po_no").combobox({
-            url: '<?= base_url('purchase/purchase_returns/readPono') ?>',
-            valueField: 'po_no',
-            textField: 'po_no',
-            prompt: "Select Purchase Order",
-            // formatter: function(row){
-            //     return row.po_no + " | " + row.receipt_id;
-            // },
-            onSelect: function(row, val) {
-                addTable(row.po_no);
-            }
-        });
-
         $("#filter_return_no").combobox({
             url: '<?= base_url('purchase/purchase_returns/readReturnNo') ?>',
             valueField: 'return_no',
@@ -513,6 +523,30 @@
                     $(e.data.target).combobox('clear').combobox('textbox').focus();
                 }
             }],
+        });
+
+        $("#supplier_id").combogrid({
+            url: '<?php echo base_url('purchase/purchase_orders/readSupplier'); ?>',
+            panelWidth: 400,
+            idField: 'id',
+            textField: 'name',
+            mode: 'remote',
+            fitColumns: true,
+            prompt: "Choose Supplier",
+            columns: [
+                [{
+                    field: 'id',
+                    title: 'Supplier ID',
+                    width: 100
+                }, {
+                    field: 'name',
+                    title: 'Supplier Name',
+                    width: 300
+                }]
+            ],
+            onSelect: function(val, supp){
+                addTable(supp.id);
+            }
         });
     });
     //Format Datepicker

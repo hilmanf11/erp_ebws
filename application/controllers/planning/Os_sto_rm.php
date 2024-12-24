@@ -430,7 +430,7 @@ class Os_sto_rm extends CI_Controller
         if ($option == "excel") {
             $format  = date("Ymd");
             header("Content-type: application/vnd-ms-excel");
-            header("Content-Disposition: attachment; filename=os_rm_$format.xls");
+            header("Content-Disposition: attachment; filename=sto_rm_$format.xls");
         }
 
         $get = $this->input->get();

@@ -15,6 +15,7 @@
                         <option value="STO">STO</option>
                         <option value="POR">GATE ENTRY</option>
                         <option value="DIV">BARCODE DIVIDED</option>
+                        <option value="REJ">REJECTION</option>
                     </select>
                 </div>
                 <div class="fitem">
@@ -41,6 +42,8 @@
                         <option value="-">Select ALL</option>
                         <option value="0">OPEN</option>
                         <option value="1">CLOSE</option>
+                        <option value="2">REJECT</option>
+                        <option value="3">DIVIDED</option>
                     </select>
                 </div>
             </div>

@@ -155,7 +155,8 @@ class purchase_orders_2 extends CI_Controller
                     a.po_date, 
                     d.currency, 
                     b.uom,
-                    d.name as supplier_name, 
+                    d.name as supplier_name,
+                    d.supplier_po,
                     SUM(a.qty) as qty, 
                     SUM(a.price) as price, 
                     SUM(a.total) as total_price,
@@ -199,6 +200,7 @@ class purchase_orders_2 extends CI_Controller
                         "uom" => $record['uom'],
                         "currency" => $record['currency'],
                         "supplier_name" => $record['supplier_name'],
+                        "supplier_po" => $record['supplier_po'],
                         "status" => $status,
                         "qty" => $record['qty'],
                         "price" => $record['price'],
@@ -452,7 +454,7 @@ class purchase_orders_2 extends CI_Controller
                             <div style="padding:10px;">
                                 <center>
                                     <br>
-                                    <h3 style="margin:0;">PURCHASE ORDER</h3>
+                                    <h3 style="margin:0;">DELIVERY CONFIRMATION</h3>
                                 </center>
                                 <br>
                                 <div style="width:45%; float:left;">
@@ -470,7 +472,8 @@ class purchase_orders_2 extends CI_Controller
                                         <tr>
                                             <td width="50" style="vertical-align: top;"></td>
                                             <td width="30" style="vertical-align: top;"></td>
-                                            <td>PO NO : ' . $purchase_order_others->po_no . '<br>
+                                            <td>Open PO No : ' . $supplier->supplier_po . '<br>
+                                                Del. Sch No : ' . $purchase_order_others->po_no . '<br>
                                                 Date : ' . $purchase_order_others->po_date . '<br>
                                                 Revision : ' . $purchase_order_others->revision . '<br>
                                                 Office Address : <br>
@@ -656,6 +659,7 @@ class purchase_orders_2 extends CI_Controller
             b.uom,
             c.name as item_family_name, 
             d.name as supplier_name, 
+            d.supplier_po,
             d.currency');
         $this->db->from('purchase_order_others a');
         $this->db->join('item_rm b', 'a.item_rm_id = b.id');
@@ -699,8 +703,9 @@ class purchase_orders_2 extends CI_Controller
                     <th>Approved</th>
                     <th>Approved By</th>
                     <th>Approved Date</th>
+                    <th>Del. Sch No</th>
+                    <th>Del. Sch Period</th>
                     <th>PO No</th>
-                    <th>PO Period</th>
                     <th>Supplier</th>
                     <th>Part No EBWS</th>
                     <th>Part No Supplier</th>
@@ -737,6 +742,7 @@ class purchase_orders_2 extends CI_Controller
                         <td>' . $data['approved_date'] . '</td>
                         <td>' . $data['po_no'] . '</td>
                         <td>' . $data['po_date'] . '</td>
+                        <td>' . $data['supplier_po'] . '</td>
                         <td>' . $data['supplier_name'] . '</td>
                         <td>' . $data['item_rm_id'] . '</td>
                         <td>' . $data['item_rm_number'] . '</td>

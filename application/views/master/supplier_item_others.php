@@ -6,6 +6,7 @@
             <th rowspan="2" data-options="field:'detail',width:80,halign:'center',formatter:BtnDetail">History</th>
             <th colspan="4" data-options="field:'',width:100,halign:'center'">Approved</th>
             <th rowspan="2" data-options="field:'supplier_id',width:120,halign:'center'">Supplier ID</th>
+            <th rowspan="2" data-options="field:'supplier_po',width:150,halign:'center'">Supplier PO</th>
             <th rowspan="2" data-options="field:'supplier_name',width:250,halign:'center'">Supplier Name</th>
             <th rowspan="2" data-options="field:'item_rm_id',width:150,halign:'center'">Part No EBWS</th>
             <th rowspan="2" data-options="field:'item_rm_number',width:200,halign:'center'">Part No Supplier</th>
@@ -115,6 +116,10 @@
                     <span style="width:35%; display:inline-block;">Supplier</span>
                     <input style="width:60%;" name="supplier_id" id="supplier_id" required="" class="easyui-combogrid">
                 </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">PO No</span>
+                    <input style="width:60%;" name="supplier_po" id="supplier_po" disabled class="easyui-textbox">
+                </div>
                 <div class="fitem" hidden>
                     <span style="width:35%; display:inline-block;">Category</span>
                     <input style="width:60%;" id="item_family" class="easyui-combobox">
@@ -190,23 +195,23 @@
     </form>
 </div>
 
-<div id="dlg_history" class="easyui-dialog" title="History Supplier Contract" data-options="closed: true,modal:true" style="width: 100%; height: 500px; top: 0px; left: 0px;">
+<div id="dlg_history" class="easyui-dialog" title="History Supplier Contract" data-options="closed: true,modal:true" style="width: 90%; height: 500px; top: 0px; left: 0px;">
     <table id="dg_history" class="easyui-datagrid" style="width:100%;">
         <thead>
             <tr>
                 <!-- <th data-options="field:'plant',width:80,halign:'center'">Plant</th> -->
                 <th data-options="field:'created_date',width:150,halign:'center'">Created Date</th>
                 <th data-options="field:'created_by',width:150,halign:'center'">Created By</th>
-                <th data-options="field:'supplier_name',width:250,halign:'center'">Supplier Name</th>
+                <!-- <th data-options="field:'supplier_name',width:250,halign:'center'">Supplier Name</th> -->
                 <!-- <th data-options="field:'type',width:100,align:'center'">Supplier Type</th> -->
                 <!-- <th data-options="field:'origin',width:120,halign:'center'">Supplier Origin</th> -->
                 <th data-options="field:'item_rm_number',width:200,halign:'center'">Part No</th>
-                <th data-options="field:'item_rm_name',width:100,halign:'center'">Part Name</th>
-                <th data-options="field:'item_supplier',width:150,halign:'center'">Part Supplier</th>
+                <!-- <th data-options="field:'item_rm_name',width:100,halign:'center'">Part Name</th> -->
+                <!-- <th data-options="field:'item_supplier',width:150,halign:'center'">Part Supplier</th> -->
                 <!-- <th data-options="field:'item_supplier',width:150,halign:'center'">Item Supplier</th>
                 <th data-options="field:'pfm_name',width:120,halign:'center'">Product Family</th> -->
-                <th data-options="field:'maker_name',width:150,halign:'center'">Maker</th>
-                <th data-options="field:'maker_type',width:100,halign:'center'">Maker Type</th>
+                <!-- <th data-options="field:'maker_name',width:150,halign:'center'">Maker</th> -->
+                <!-- <th data-options="field:'maker_type',width:100,halign:'center'">Maker Type</th> -->
                 <!-- <th data-options="field:'landed_cost',width:100,halign:'center'">Landed Cost</th>
                 <th data-options="field:'import_duty',width:100,halign:'center'">Import Duty</th> -->
                 <th data-options="field:'mpq',width:80,halign:'center',align:'right',formatter:numberformatComa">MPQ</th>
@@ -273,6 +278,7 @@
         url_save = '<?= base_url('master/supplier_item_others/create') ?>';
         $('#frm_insert').form('clear');
 
+        valid_date = "";
         $("#supplier_id").combogrid('enable');
         $("#item_rm_id").combogrid('enable');
         $("#item_family").combobox('enable');
@@ -289,7 +295,8 @@
             $("#supplier_id").combogrid('disable');
             $("#item_rm_id").combogrid('disable');
             $("#item_family").combobox('disable');
-
+            
+            valid_date = row.valid_date;
             url_save = '<?= base_url('master/supplier_item_others/update') ?>?id=' + btoa(row.id);
         } else {
             toastr.warning("Please select one of the data in the table first!", "Information");
@@ -531,55 +538,61 @@
                 text: 'Send to Approval',
                 iconCls: 'icon-ok',
                 handler: function() {
-                    $('#frm_insert').form('submit', {
-                        url: url_save,
-                        onSubmit: function() {
-                            if($(this).form('validate') === true){
-                                var valid_date = $("#valid_date").datebox('getValue');
-                                var mpq = $("#mpq").numberbox('getValue');
-                                var moq = $("#moq").numberbox('getValue');
-                                var price = $("#moq").numberbox('getValue');
-                                var leadtime = $("#leadtime").numberbox('getValue');
-                                var transit = $("#transit").numberbox('getValue');
+                    var valid_date2 = $("#valid_date").datebox('getValue');
+                    
+                    if(valid_date <= valid_date2 || valid_date == ""){
+                        $('#frm_insert').form('submit', {
+                            url: url_save,
+                            onSubmit: function() {
+                                if($(this).form('validate') === true){
+                                    var valid_date = $("#valid_date").datebox('getValue');
+                                    var mpq = $("#mpq").numberbox('getValue');
+                                    var moq = $("#moq").numberbox('getValue');
+                                    var price = $("#moq").numberbox('getValue');
+                                    var leadtime = $("#leadtime").numberbox('getValue');
+                                    var transit = $("#transit").numberbox('getValue');
 
-                                if(mpq <= 0 || moq <= 0 || price <= 0 || leadtime <= 0 || transit <= 0){
-                                    toastr.error("MPQ, MOQ, Price, Leadtime / Transit Cannot be 0");
-                                    return false;
+                                    if(mpq <= 0 || moq <= 0 || price <= 0 || leadtime <= 0 || transit <= 0){
+                                        toastr.error("MPQ, MOQ, Price, Leadtime / Transit Cannot be 0");
+                                        return false;
+                                    }
+
+                                    $('#dlg_insert').dialog('close');
+                                    
+                                    Swal.fire({
+                                        title: 'Please Wait...',
+                                        showConfirmButton: false,
+                                        allowOutsideClick: false,
+                                        allowEscapeKey: false,
+                                        didOpen: () => {
+                                            Swal.showLoading();
+                                        },
+                                    });
+                                }else{
+                                    return $(this).form('validate');
+                                }
+                            },
+                            success: function(result) {
+                                var result = eval('(' + result + ')');
+
+                                if (result.theme == "success") {
+                                    toastr.success(result.message, result.title);
+                                } else {
+                                    toastr.error(result.message, result.title);
                                 }
 
-                                $('#dlg_insert').dialog('close');
-                                
-                                Swal.fire({
-                                    title: 'Please Wait...',
-                                    showConfirmButton: false,
-                                    allowOutsideClick: false,
-                                    allowEscapeKey: false,
-                                    didOpen: () => {
-                                        Swal.showLoading();
-                                    },
-                                });
-                            }else{
-                                return $(this).form('validate');
+                                $('#dg').datagrid('reload');
+                                Swal.close();
+                            },
+                            error: function(){
+                                toastr.error("Failed to save data, please check your data requirements again", "error");
+                                $('#dg').datagrid('reload');
+                                Swal.close();
                             }
-                        },
-                        success: function(result) {
-                            var result = eval('(' + result + ')');
-
-                            if (result.theme == "success") {
-                                toastr.success(result.message, result.title);
-                            } else {
-                                toastr.error(result.message, result.title);
-                            }
-
-                            $('#dg').datagrid('reload');
-                            Swal.close();
-                        },
-                        error: function(){
-                            toastr.error("Failed to save data, please check your data requirements again", "error");
-                            $('#dg').datagrid('reload');
-                            Swal.close();
-                        }
-                    });
+                        });
+                    }else{
+                        toastr.error("Valid Date Cannot <= Valid Date Before");
+                    }
                 }
             }]
         });
@@ -845,7 +858,13 @@
                 }, ]
             ],
             onSelect: function(val, row) {
+                $("#supplier_po").textbox("setValue", row.supplier_po);
                 $("#currency").textbox("setValue", row.currency);
+                if(row.commodity == "NO"){
+                    $("#valid_date").datebox("disable");
+                }else{
+                    $("#valid_date").datebox("enable");
+                }
             }
         });
 

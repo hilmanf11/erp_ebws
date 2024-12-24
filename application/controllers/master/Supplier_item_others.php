@@ -134,7 +134,7 @@ class Supplier_item_others extends CI_Controller
 
         $this->db->select('a.*, c.number as item_rm_number, 
             c.name as item_rm_name, a.item_supplier, b.number as supplier_number, b.origin, b.name as supplier_name,
-            d.name as item_family_name, b.type, c.uom, e.name as maker_name, e.type as maker_type,
+            d.name as item_family_name, b.type, b.supplier_po, c.uom, e.name as maker_name, e.type as maker_type,
             f.number as hsn_number, f.name as hsn_name, f.igst, f.sgst, f.cgst');
         $this->db->from('supplier_items a');
         $this->db->join('suppliers b', 'b.id = a.supplier_id');

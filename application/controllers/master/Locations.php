@@ -52,13 +52,13 @@ class Locations extends CI_Controller
         $post = isset($_POST['q']) ? $_POST['q'] : "";
         $type = $this->input->get('type');
         
-        $send = $this->crud->query("SELECT a.*, COALESCE(SUM(b.qty), 0) as qty_receipt, COALESCE(SUM(c.qty), 0) as qty_issued, (a.capacity - COALESCE(SUM(b.qty), 0) + COALESCE(SUM(c.qty), 0)) as available
+        $send = $this->crud->query("SELECT a.*, COALESCE(SUM(b.qty), 0) as qty_receipt, (a.capacity - COALESCE(SUM(b.qty), 0)) as available
             FROM warehouse_locations a 
             LEFT JOIN scan_item_receipts b ON a.number = b.warehouse and b.status = 0
-            LEFT JOIN scan_item_receipts c ON a.number = c.number and b.status = 1
+            -- LEFT JOIN scan_item_receipts c ON a.number = c.warehouse and b.status = 1
             WHERE a.type = '$type' and (a.number like '%$post%' or a.location like '%$post%' or a.area like '%$post%' or a.rack like '%$post%') 
             GROUP BY a.number 
-            -- HAVING (a.capacity - COALESCE(SUM(b.qty_receipt), 0) + COALESCE(SUM(d.qty), 0)) > 0
+            -- HAVING (a.capacity - COALESCE(SUM(b.qty), 0) + COALESCE(SUM(c.qty), 0)) > 0
             ORDER BY a.number ASC");
         echo json_encode($send);
     }

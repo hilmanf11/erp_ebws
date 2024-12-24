@@ -69,23 +69,28 @@ class Report_check_serialno extends CI_Controller
                 f.qty as scan_out,
                 f.created_date as scan_out_date,
                 f.created_by as scan_out_by,
-                (CASE WHEN e.id is not null THEN 2 WHEN f.request_no is null THEN 0 ELSE 1 END) as status 
+                (CASE WHEN g.id is not null THEN 3 WHEN e.id is not null THEN 2 WHEN f.request_no is null THEN 0 ELSE 1 END) as status 
             ");
             $this->db->from('scan_item_receipts a');
-            // $this->db->join('purchase_order_labels b', 'a.label_no = b.label_no');
             $this->db->join('os_rm c', 'a.receipt_id = c.id');
             $this->db->join('item_rm d', 'c.item_rm_id = d.id');
             $this->db->join('scan_item_rejections e', 'a.label_no = e.label_no', 'left');
             $this->db->join('issued_material_details f', 'a.label_no = f.label_no', 'left');
+            $this->db->join('barcode_divides g', 'a.label_no = g.label_no', 'left');
             $this->db->where("DATE_FORMAT(a.created_date, '%Y-%m-%d') between '$filter_from' and '$filter_to'");
             $this->db->like('a.label_no', $filter_serial_no);
-            // $this->db->like('c.supplier_id', $filter_supplier);
             $this->db->like('c.id', $filter_receipt);
             $this->db->like('c.item_rm_id', $filter_product_no);
             if ($filter_status == "0") {
                 $this->db->where('f.request_no is null');
+                $this->db->where('e.id is null');
+                $this->db->where('g.id is null');
             }elseif($filter_status == "1"){
                 $this->db->where('f.request_no is not null');
+            }elseif($filter_status == "2"){
+                $this->db->where('e.id is not null');
+            }elseif($filter_status == "3"){
+                $this->db->where('g.id is not null');
             }
             $this->db->group_by('a.label_no');
             $this->db->order_by('a.id', 'ASC');
@@ -110,7 +115,7 @@ class Report_check_serialno extends CI_Controller
                 f.qty as scan_out,
                 f.created_date as scan_out_date,
                 f.created_by as scan_out_by,
-                (CASE WHEN g.id is not null THEN 2 WHEN f.request_no is null THEN 0 ELSE 1 END) as status 
+                (CASE WHEN h.id is not null THEN 3 WHEN g.id is not null THEN 2 WHEN f.request_no is null THEN 0 ELSE 1 END) as status
             ');
             $this->db->from('scan_item_receipts a');
             $this->db->join('purchase_order_labels b', 'a.label_no = b.label_no');
@@ -119,6 +124,7 @@ class Report_check_serialno extends CI_Controller
             $this->db->join('suppliers e', 'c.supplier_id = e.id');
             $this->db->join('issued_material_details f', 'a.label_no = f.label_no', 'left');
             $this->db->join('scan_item_rejections g', 'a.label_no = g.label_no', 'left');
+            $this->db->join('barcode_divides h', 'a.label_no = h.label_no', 'left');
             $this->db->where("DATE_FORMAT(a.created_date, '%Y-%m-%d') between '$filter_from' and '$filter_to'");
             $this->db->like('a.label_no', $filter_serial_no);
             $this->db->like('c.supplier_id', $filter_supplier);
@@ -126,8 +132,14 @@ class Report_check_serialno extends CI_Controller
             $this->db->like('c.item_rm_id', $filter_product_no);
             if ($filter_status == "0") {
                 $this->db->where('f.request_no is null');
+                $this->db->where('g.id is null');
+                $this->db->where('h.id is null');
             }elseif($filter_status == "1"){
                 $this->db->where('f.request_no is not null');
+            }elseif($filter_status == "2"){
+                $this->db->where('g.id is not null');
+            }elseif($filter_status == "3"){
+                $this->db->where('h.id is not null');
             }
             $this->db->group_by('a.label_no');
             $this->db->order_by('a.id', 'ASC');
@@ -151,7 +163,7 @@ class Report_check_serialno extends CI_Controller
                 f.qty as scan_out,
                 f.created_date as scan_out_date,
                 f.created_by as scan_out_by,
-                (CASE WHEN g.id is not null THEN 2 WHEN f.request_no is null THEN 0 ELSE 1 END) as status 
+                (CASE WHEN h.id is not null THEN 3 WHEN g.id is not null THEN 2 WHEN f.request_no is null THEN 0 ELSE 1 END) as status
             ");
             $this->db->from('barcode_divides a');
             $this->db->join('purchase_order_labels b', 'a.reff = b.receipt_id', 'left');
@@ -161,10 +173,11 @@ class Report_check_serialno extends CI_Controller
             $this->db->join('suppliers e', 'ba.supplier_id = e.id', 'left');
             $this->db->join('issued_material_details f', 'a.label_divided = f.label_no', 'left');
             $this->db->join('scan_item_rejections g', 'a.label_no = g.label_no', 'left');
+            $this->db->join('barcode_divides h', 'a.label_divided = h.label_no', 'left');
             $this->db->where("DATE_FORMAT(a.created_date, '%Y-%m-%d') between '$filter_from' and '$filter_to'");
             // $this->db->where('a.type', "SUPPLY");
             $this->db->like('a.label_divided', $filter_serial_no);
-            $this->db->or_like('a.label_no', $filter_serial_no);
+            $this->db->like('a.label_no', $filter_serial_no);
             // $this->db->like('e.id', $filter_supplier);
             if($filter_receipt != ""){
                 $this->db->where('c.id', $filter_receipt);
@@ -174,12 +187,59 @@ class Report_check_serialno extends CI_Controller
             }
             if ($filter_status == "0") {
                 $this->db->where('f.request_no is null');
+                $this->db->where('g.id is null');
+                $this->db->where('h.id is null');
             }elseif($filter_status == "1"){
                 $this->db->where('f.request_no is not null');
+            }elseif($filter_status == "2"){
+                $this->db->where('g.id is not null');
+            }elseif($filter_status == "3"){
+                $this->db->where('h.id is not null');
             }
             $this->db->group_by('a.label_divided');
             $this->db->order_by('a.id', 'ASC');
             // $this->db->order_by('a.created_date', 'ASC');
+            $records = $this->db->get()->result_array();
+        }else if($filter_type == "REJ"){
+            //Details
+            $this->db->select("a.label_no,
+                d.name as supplier_name,
+                b.item_rm_id,
+                c.number as item_rm_number,
+                c.name as item_rm_name,
+                b.receipt_id,
+                b.receipt_date,
+                b.qty_receipt,
+                '-' as warehouse,
+                a.qty as scan_in, 
+                a.created_date as scan_in_date,
+                a.created_by as scan_in_by, 
+                e.return_no as request_no,
+                a.qty as scan_out,
+                e.return_date as scan_out_date,
+                e.return_name scan_out_by,
+                a.status
+            ");
+            $this->db->from('scan_item_rejections a');
+            $this->db->join('purchase_order_receipts b', 'a.receipt_id = b.receipt_id', 'left');
+            $this->db->join('item_rm c', 'b.item_rm_id = c.id');
+            $this->db->join('suppliers d', 'b.supplier_id = d.id', 'left');
+            $this->db->join('purchase_returns e', 'b.receipt_id = e.receipt_id', 'left');
+            $this->db->where("DATE_FORMAT(a.created_date, '%Y-%m-%d') between '$filter_from' and '$filter_to'");
+            $this->db->like('a.label_no', $filter_serial_no);
+            if($filter_receipt != ""){
+                $this->db->where('b.receipt_id', $filter_receipt);
+            }
+            if($filter_product_no != ""){
+                $this->db->where('b.item_rm_id', $filter_product_no);
+            }
+            if($filter_status == "0"){
+                $this->db->where('a.status', 0);
+            }elseif($filter_status == "1"){
+                $this->db->where('a.status', 1);
+            }
+            $this->db->group_by('a.label_no');
+            $this->db->order_by('a.id', 'ASC');
             $records = $this->db->get()->result_array();
         }
         
@@ -234,54 +294,17 @@ class Report_check_serialno extends CI_Controller
             </tr>';
         $no = 1;
         foreach ($records as $data) {
-            // $label_no = $data['label_no'];
-            // $receipt_id = $data['receipt_id'];
-
-            $barcodeDivided = $this->crud->reads("barcode_divides", [], ["label_no" => $data['label_no']]);
-
-            // $this->db->select('a.*, c.number as item_rm_number, c.name as item_rm_name, d.name as supplier_nme');
-            // $this->db->from('purchase_order_receipts a');
-            // $this->db->join('purchase_order_labels b', 'a.receipt_id = b.receipt_id');
-            // $this->db->join('item_rm c', 'a.item_rm_id = c.id');
-            // $this->db->join('suppliers d', 'a.supplier_id = d.id');
-            // $this->db->where('b.label_no', $label_no);
-            // $receipt = $this->db->get()->row();
-
-            // $this->db->select('a.*, c.number as item_rm_number, c.name as item_rm_name');
-            // $this->db->from('os_rm a');
-            // $this->db->join('item_rm c', 'a.item_rm_id = c.id');
-            // $this->db->where('a.label_no', $receipt_id);
-            // $sto = $this->db->get()->row();
-
-            // $this->db->select('a.*');
-            // $this->db->from('issued_material_details a');
-            // $this->db->where('a.label_no', $label_no);
-            // $issued = $this->db->get()->row();
+            // $barcodeDivided = $this->crud->reads("barcode_divides", [], ["label_no" => $data['label_no']]);
             
             if ($data['status'] == 0) {
-                if(count($barcodeDivided) > 0){
-                    $status = "<b style='color:red;'>CLOSE <br> DIVIDED</br>";
-                }else{
-                    $status = "<b style='color:green;'>OPEN</b>";
-                }
+                $status = "<b style='color:green;'>OPEN</b>";
+            } else if ($data['status'] == 1) {
+                $status = "<b style='color:red;'>CLOSE</b>";
             } else if ($data['status'] == 2) {
                 $status = "<b style='color:red;'>CLOSE<br>REJECTION</br>";
-            } else {
-                $status = "<b style='color:red;'>CLOSE</b>";
+            } else if ($data['status'] == 3) {
+                $status = "<b style='color:red;'>CLOSE <br> DIVIDED</br>";
             }
-
-            // if(empty($receipt)){
-            //     $item_rm_id = @$sto->item_rm_id;
-            //     $item_rm_number = @$sto->item_rm_number;
-            //     $item_rm_name = @$sto->item_rm_name;
-            //     $qty_receipt = @$sto->qty;
-            // }else{
-            //     $item_rm_id = @$receipt->item_rm_id;
-            //     $item_rm_number = @$receipt->item_rm_number;
-            //     $item_rm_name = @$receipt->item_rm_name;
-            //     $receipt_date = @$receipt->receipt_date;
-            //     $qty_receipt = @$sto->qty_receipt;
-            // }
             
             $html .= '  <tr>
                             <td style="text-align:center">' . $no . '</td>

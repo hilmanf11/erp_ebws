@@ -174,7 +174,7 @@ class Report_purchase_registers extends CI_Controller
                             <td>' . $data['invoice_date'] . '</td>
                             <td>' . $data['trans_date'] . '</td>
                             <td style="mso-number-format:\@;">' . $data['item_rm_id'] . '</td>
-                            <td style="mso-number-format:\@;"></td>
+                            <td style="mso-number-format:\@;">' . $data['asset_code_subs'] . '</td>
                             <td style="mso-number-format:\@;">' . $data['item_rm_number'] . '</td>
                             <td>' . $data['product_family'] . '</td>
                             <td>' . $data['hsn_code'] . '</td>

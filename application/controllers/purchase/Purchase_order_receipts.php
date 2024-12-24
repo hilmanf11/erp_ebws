@@ -922,7 +922,7 @@ class Purchase_order_receipts extends CI_Controller
             <table id="customers" border="1">
             <tr>
                 <th rowspan="2" width="20">No</th>
-                <th rowspan="2" width="80">Status<br>POR</th>
+                <th rowspan="2" width="80">Status<br>GRN</th>
                 <th rowspan="2" width="80">Status<br>Invoice</th>
                 <th rowspan="2">MRN No</th>
                 <th rowspan="2">GRN No</th>

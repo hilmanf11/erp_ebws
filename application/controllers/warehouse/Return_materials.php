@@ -36,6 +36,23 @@ class Return_materials extends CI_Controller
         echo json_encode($records);
     }
 
+    public function readItems($workorder)
+    {
+        $post = isset($_POST['q']) ? $_POST['q'] : "";
+        $workorder = base64_decode($workorder);
+       
+        $this->db->select('c.id, c.number, c.name, a.mpq');
+        $this->db->from('supply_sheets a');
+        $this->db->join('item_rm c', 'a.item_rm_id = c.id');
+        $this->db->where('a.workorder', $workorder);
+        $this->db->like('c.number', $post);
+        $this->db->group_by('a.id');
+        $this->db->order_by('a.id', 'ASC');
+        $records = $this->db->get()->result_array();
+
+        echo json_encode($records);
+    }
+
     public function return_no()
     {
         $datenow    = date("ymd");
@@ -117,15 +134,11 @@ class Return_materials extends CI_Controller
         } else {
             //b.description,
             $this->db->select('a.*, 
-                b.number as item_number, 
-                b.name as item_name, 
-                
-                b.uom,
-                c.mpq');
+                b.number as item_rm_number, 
+                b.name as item_rm_name, 
+                b.uom');
             $this->db->from('return_materials a');
             $this->db->join('item_rm b', 'a.item_rm_id = b.id');
-            $this->db->join('supplier_items c', 'c.item_rm_id = b.id');
-            // $this->db->join('uom e', 'b.uom_id = e.id');
             $this->db->where('a.deleted', 0);
             if ($filter_from != "" or $filter_to != "") {
                 $this->db->where('a.return_date >=', $filter_from);
@@ -141,9 +154,9 @@ class Return_materials extends CI_Controller
                     "return_no" => $record['return_id'],
                     "return_date" => $record['return_date'],
                     "return_name" => $record['return_name'],
-                    "item_number" => $record['item_number'],
-                    "item_name" => $record['item_name'],
-                    // "description" => $record['description'],
+                    "item_rm_id" => $record['item_rm_id'],
+                    "item_rm_number" => $record['item_rm_number'],
+                    "item_rm_name" => $record['item_rm_name'],
                     "workorder" => $record['workorder'],
                     "uom" => $record['uom'],
                     "qty" => $record['qty'],
@@ -204,16 +217,12 @@ class Return_materials extends CI_Controller
         //Return Material
         // b.description,
         $this->db->select('a.*, 
-                b.number as item_number, 
-                b.name as item_name, 
-                
+                b.number as item_rm_number, 
+                b.name as item_rm_name, 
                 b.uom,
-                c.mpq,
-                CEIL(a.qty / c.mpq) as qty_label');
+                CEIL(a.qty / a.mpq) as qty_label');
         $this->db->from('return_materials a');
         $this->db->join('item_rm b', 'a.item_rm_id = b.id');
-        $this->db->join('supplier_items c', 'c.item_rm_id = b.id');
-        // $this->db->join('uom e', 'b.uom_id = e.id');
         $this->db->where('a.deleted', 0);
         $this->db->where('a.return_id', $return_id);
         $this->db->order_by('a.return_id', 'ASC');
@@ -233,6 +242,7 @@ class Return_materials extends CI_Controller
                     $urutan = (int) substr($label, -4);
                     $autoID = $return_id . sprintf("%04s", $urutan + 1);
                 }
+
                 if ($qty_return > $material->mpq) {
                     $qty = $material->mpq;
                 } else {
@@ -250,16 +260,15 @@ class Return_materials extends CI_Controller
             }
         }
 
-        $this->db->select('a.*, b.return_date, c.number, c.name, d.location, d.area');
+        $this->db->select('a.*, b.return_no, b.return_date, c.id as item_rm_id, c.number as item_rm_number, c.name as item_rm_name, c.uom');
         $this->db->from('return_material_labels a');
         $this->db->join('return_materials b', 'a.return_id = b.return_id');
         $this->db->join('item_rm c', 'b.item_rm_id = c.id');
-        $this->db->join('warehouse_location_items d', 'd.item_rm_id = c.id', 'left');
         $this->db->where('a.deleted', 0);
-        //$this->db->where('a.status', 0);
         $this->db->where('a.return_id', $return_id);
         $this->db->order_by('a.label_no', 'asc');
         $records = $this->db->get()->result_object();
+        
         $html = '<html>
                     <head>
                         <title>' . $return_id . '</title>
@@ -267,49 +276,56 @@ class Return_materials extends CI_Controller
                     </head>
                     <style>body {font-family: Arial, Helvetica, sans-serif; margin:5px;}#customers {border-collapse: collapse; width: 100%; font-size: 9px;}#customers td, #customers th {border: 1px solid black;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: #ddd;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: center;color: black;}</style><body>';
         if ($records) {
-            $html .= '<div style="width: 120mm;">';
+            $html .= '<div style="width: 44mm;">';
             $no = 1;
             foreach ($records as $record) {
                 if ($no == 3) {
                     $no = 1;
                 }
                 if ($no == 1) {
-                    $padding = "padding:0 3mm 1mm 0mm;";
+                    $padding = "padding:2mm 3mm 3mm 2mm;";
                 } else {
-                    $padding = "padding:0 0mm 1mm 4mm;";
+                    $padding = "padding:2mm 3mm 3mm 2mm;";
                 }
                 //Generate QRcode
                 $this->createQrcode($record->label_no, "assets/image/qrcode/");
-                $html .= '  <div style="width: 55mm; max-height:42mm; float:left; ' . $padding . '">
+                $html .= '  <div style="width: 44mm; max-height:40mm; float:left; ' . $padding . '">
                                 <table id="customers" border="1" style="margin-bottom:20px;">
                                     <tr>
-                                        <th colspan="2" style="font-size:9px; text-align:center;"><b>' . $config->name . '</b></th>
+                                        <th colspan="3" style="font-size:7px; text-align:center;"><b>' . $config->name . '</b></th>
                                     </tr>
                                     <tr>
-                                        <td colspan="2" style="height:35px;">
+                                        <td colspan="3" style="height:35px;">
                                             <div style="float:left;">
-                                                <small style="font-size:13px;"><b>' . $record->number . '</b></small>
+                                                <small style="font-size:7px;"><b>' . $record->item_rm_number. '</b></small><br>
+                                                <small style="font-size:12px;"><b>' . $record->item_rm_id . '</b></small>
                                                 <br>
-                                                <b style="font-size:9px;">' . $record->name . '</b>
+                                                <b style="font-size:7px;">' . $record->return_no . '</b>
                                             </div>
                                         </td>
                                     </tr>
                                     <tr>
                                         <th style="text-align:left">
-                                            <small>Quantity</small><br><b style="font-size:24px;">' . number_format($record->qty, 2, ",", ".") . '</b>
+                                            <small>Quantity</small><br><b style="font-size:20px;">' . number_format($record->qty, 2) . '</b></small><br>
+                                            <small style="font-size:15px; float: right;"><b>'. $record->uom . '</b></small>
                                         </th>
                                         <th style="text-align:left">
-                                            <small>Location</small><br><b style="font-size:24px;">' . $record->location . '</b>
+                                            <small>Location</small><br><b style="font-size:15px;"></b><br>
                                         </th>
                                     </tr>
+                                    
                                     <tr>
-                                        <td style="width:65%;">
-                                            <small>Date</small><br>
-                                            <b>' . $record->return_date . '</b><br>
-                                            <small>Label No</small><br>
-                                            <b style="font-size:8px;">' . $record->label_no . '</b>
-                                            <b style="color:blue;">RETURN MATERIAL</b>
-                                        </td>
+                                        <th style="text-align:left">
+                                            <div style="display: inline-block;">
+                                                <small>Date :</small><br> 
+                                                <b style="font-size:8px;">' . $record->return_date . '</b>
+                                            </div>
+                                            <div style="display: inline-block;">
+                                                <small>Label No :</small><br>
+                                                <b style="font-size:8px;">' . $record->label_no . '</b><br>
+                                                <b style="color:red;">RETURN MATERIAL</b>
+                                            </div>
+                                        </th>
                                         <th style="text-align:center;">
                                             <img src="' . base_url('assets/image/qrcode/' . $record->label_no . '.png') . '" width="50"/>
                                         </th>

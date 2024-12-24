@@ -12,6 +12,7 @@
             <th rowspan="2" data-options="field:'purchase_invoice_no',width:150,halign:'center'">Purchase Invoice No</th>
             <th rowspan="2" data-options="field:'supplier_name',width:200,halign:'center'">Supplier Name</th>
             <th rowspan="2" data-options="field:'trans_date',width:100,align:'center'">Capitalization<br>Date</th>
+            <th rowspan="2" data-options="field:'shift',width:80,align:'center'">Shift<br>Factor</th>
             <th rowspan="2" data-options="field:'uom',width:80,align:'center'">Uom</th>
             <th rowspan="2" data-options="field:'qty',width:80,halign:'center',align:'right'">Qty</th>
             <th rowspan="2" data-options="field:'cost',width:100,halign:'center',align:'right', formatter:priceformat">Opening<br>Acq.Value</th>
@@ -355,9 +356,6 @@
                                         toastr.error(jqXHR.statusText);
                                         $.messager.alert("Error", jqXHR.statusText, 'error');
                                     },
-                                    complete: function(data) {
-                                        $('#dg').datagrid('reload');
-                                    }
                                 });
                             }
                         });

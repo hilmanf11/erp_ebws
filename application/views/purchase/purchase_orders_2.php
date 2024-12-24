@@ -2,11 +2,12 @@
     <thead>
         <tr>
             <th rowspan="2" field="ck" checkbox="true"></th>
-            <th rowspan="2" data-options="field:'po_no',width:180,halign:'center'">PO No</th>
-            <th rowspan="2" data-options="field:'status',width:80,align:'center',formatter:statusformat,styler:statusStyle">Status PO</th>
+            <th rowspan="2" data-options="field:'po_no',width:180,halign:'center'">Del. Sch No</th>
+            <th rowspan="2" data-options="field:'status',width:80,align:'center',formatter:statusformat,styler:statusStyle">Status</th>
             <th rowspan="2" data-options="field:'request_no',width:150,halign:'center'">Request No</th>
-            <th rowspan="2" data-options="field:'po_date',width:100,align:'center'">PO Date</th>
-            <th rowspan="2" data-options="field:'supplier_name',width:200,halign:'center'">Supplier</th>
+            <th rowspan="2" data-options="field:'po_date',width:100,align:'center'">Del. Sch Date</th>
+            <th rowspan="2" data-options="field:'supplier_po',width:150,halign:'center'">PO No</th>
+            <th rowspan="2" data-options="field:'supplier_name',width:250,halign:'center'">Supplier</th>
             <th rowspan="2" data-options="field:'item_rm_number',width:150,halign:'center'">Part No EBWS</th>
             <th rowspan="2" data-options="field:'item_rm_number',width:150,halign:'center'">Part No Supplier</th>
             <th rowspan="2" data-options="field:'item_rm_name',width:200,halign:'center'">Description</th>
@@ -60,7 +61,7 @@
             </div>
             <div style="width: 30%; float: left;">
                 <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Po No</span>
+                    <span style="width:35%; display:inline-block;">Del. Sch No</span>
                     <input style="width:60%;" id="filter_po_no" class="easyui-combogrid">
                 </div>
             </div>
@@ -81,11 +82,11 @@
             <legend><b>Form Data</b></legend>
             <div style="width: 50%; float: left;">
                 <div class="fitem">
-                    <span style="width:25%; display:inline-block;">PO Date</span>
+                    <span style="width:25%; display:inline-block;">Del. Sch Date</span>
                     <input style="width:60%;" name="po_date" id="po_date" value="<?= date("Y-m-d") ?>" required="" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
                 </div>
                 <div class="fitem">
-                    <span style="width:25%; display:inline-block;">PO No</span>
+                    <span style="width:25%; display:inline-block;">Del. Sch No</span>
                     <input style="width:60%;" name="po_no" id="po_no" readonly class="easyui-textbox" data-options="prompt: 'Automatic'" required>
                 </div>
                 <div class="fitem">
@@ -120,7 +121,7 @@
                 <input style="width:60%;" name="id" id="id" readonly class="easyui-textbox">
             </div>
             <div class="fitem">
-                <span style="width:35%; display:inline-block;">PO No</span>
+                <span style="width:35%; display:inline-block;">Del. Sch No</span>
                 <input style="width:60%;" name="po_no" readonly class="easyui-textbox">
             </div>
             <div class="fitem">
@@ -173,7 +174,7 @@
         <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; padding: 10px; float: left;">
             <legend><b>Setting Terms & Conditions</b></legend>
             <div class="fitem" hidden>
-                <span style="width:35%; display:inline-block;">PO NO</span>
+                <span style="width:35%; display:inline-block;">Del. Sch NO</span>
                 <input style="width:60%;" id="po_no_terms" name="po_no" class="easyui-textbox">
             </div>
 
@@ -253,13 +254,13 @@
         var row = $('#dg').treegrid('getSelected');
         if (row) {
             if (row.datatable == "1") {
-                toastr.error("Please Select Details of PO <br>" + row.po_no);
+                toastr.error("Please Select Details of Del. Sch <br>" + row.po_no);
             } else {
                 if (row.status == "0") {
                     $('#dlg_update').dialog('open');
                     $('#frm_update').form('load', row);
                 } else {
-                    toastr.error("You cannot update this data, because status PO is closed");
+                    toastr.error("You cannot update this data, because status Del. Sch is closed");
                 }
             }
         } else {
@@ -721,7 +722,7 @@
                     for (var i = 0; i < rows.length; i++) {
                         var row = rows[i];
                         if (row.state == "closed") {
-                            toastr.error("Please Select Detail of PO <br>" + row.po_no);
+                            toastr.error("Please Select Detail of Del. Sch <br>" + row.po_no);
                         } else {
                             if (row.status == "0") {
                                 $.ajax({
@@ -744,7 +745,7 @@
                                     }
                                 });
                             } else {
-                                toastr.error("You cannot update this data, because status PO is closed");
+                                toastr.error("You cannot update this data, because status Del. Sch is closed");
                             }
                         }
                     }

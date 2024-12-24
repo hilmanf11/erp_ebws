@@ -137,8 +137,9 @@ class Issued_materials extends CI_Controller
     {
         if ($this->input->post()) {
             $receipt_id = $this->input->post('receipt_id');
+
             $this->db->select('a.label_no, b.item_rm_id, a.qty');
-            $this->db->from('purchase_order_labels a');
+            $this->db->from('scan_item_receipts a');
             $this->db->join('purchase_order_receipts b', 'a.receipt_id = b.receipt_id');
             $this->db->where('a.label_no', $receipt_id);
             $totalRows = $this->db->count_all_results('', false);
@@ -300,6 +301,7 @@ class Issued_materials extends CI_Controller
                                     "por_urut_poc" => 1,
                                 ]);
                                 
+                                $this->db->update('scan_item_receipts', ["status" => 1], ["label_no" => $post['label_no']]);
                                 echo $send;
                             } else {
                                 $fifo = "";

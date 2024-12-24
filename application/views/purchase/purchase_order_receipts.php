@@ -2,7 +2,7 @@
     <thead frozen="true">
         <th field="ck" checkbox="true"></th>
         <th data-options="field:'id',width:230,halign:'center'">Receipt No</th>
-        <th data-options="field:'total_scan',width:80,align:'center',formatter:statusformat,styler:statusStyle">Status<br>POR</th>
+        <th data-options="field:'total_scan',width:80,align:'center',formatter:statusformat,styler:statusStyle">Status<br>GRN</th>
         <th data-options="field:'status',width:80,align:'center',formatter:statusformatFinance,styler:statusStyleFinance">Status<br>Invoice</th>
     </thead>
     <thead>
@@ -903,16 +903,16 @@
 
     function BtnDeleteLabel(val, row) {
         if (row.state != "closed") {
-            if(parseInt(row.qty_mpq) != parseInt(row.mpq)){
-                var onClick = "deleteLabel('"+row.receipt_id+"')";
-                return '<a class="btn btn-success w-100" style="pointer-events: visible; opacity:1;" target="_blank" onClick="'+onClick+'"><i class="fa fa-rotate-left"></i> Sync</a>';
-            }else{
+            if(parseInt(row.qty_mpq) == parseInt(row.mpq)){
                 if (row.total_scan == row.qty_label) {
                     return "-";
                 } else {
                     var onClick = "deleteLabel('"+row.receipt_id+"')";
                     return '<a class="btn btn-success w-100" style="pointer-events: visible; opacity:1;" target="_blank" onClick="'+onClick+'"><i class="fa fa-rotate-left"></i> Sync</a>';
                 }
+            }else{
+                var onClick = "deleteLabel('"+row.receipt_id+"')";
+                return '<a class="btn btn-success w-100" style="pointer-events: visible; opacity:1;" target="_blank" onClick="'+onClick+'"><i class="fa fa-rotate-left"></i> Sync</a>';
             }
         }
     }

@@ -202,7 +202,7 @@
             ],
             onSelect: function(val, loc){
                 $("#t_capacity").html(loc.capacity);
-                $("#t_instock").html((parseInt(loc.qty_receipt) + parseInt(loc.qty_issued)));
+                $("#t_instock").html((parseInt(loc.qty_receipt)));
                 $("#t_balance").html(parseInt(loc.available));
             }
         });

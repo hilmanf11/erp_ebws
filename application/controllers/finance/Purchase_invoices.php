@@ -511,7 +511,7 @@ class Purchase_invoices extends CI_Controller
             $offset = ($page - 1) * $rows;
             $result = array();
             //Select Query
-            $this->db->select("a.*, e.number as gl_no, b.name as supplier_name, d.name as journal_type_name, 
+            $this->db->select("a.*, e.number as gl_no, b.name as supplier_name, d.name as journal_type_name, CONCAT('GRN', SUBSTRING(por_no, 4)) AS grn_no,
                 a.invoice_no as status_invoice,
                 a.total_sub2 as total_sub,
                 a.total_grand2 as total_grand");
@@ -1154,7 +1154,7 @@ class Purchase_invoices extends CI_Controller
         foreach ($records as $data) {
             $number = $data['number'];
 
-            $this->db->select('a.*');
+            $this->db->select("a.*, CONCAT('GRN', SUBSTRING(a.por_no, 4)) as grn_no");
             $this->db->from('purchase_invoices a');
             $this->db->join('suppliers b', 'a.supplier_id = b.id');
             $this->db->where('a.number', $number);
@@ -1185,6 +1185,7 @@ class Purchase_invoices extends CI_Controller
                         <tr>
                             <th width="20"></th>
                             <th>POR No</th>
+                            <th>GRN No</th>
                             <th>PO No</th>
                             <th>Created By</th>
                             <th>Product No EBWS</th>
@@ -1199,6 +1200,7 @@ class Purchase_invoices extends CI_Controller
                 $html .= '  <tr>
                                 <td></td>
                                 <td>' . $detail['por_no'] . '</td>
+                                <td>' . $detail['grn_no'] . '</td>
                                 <td>' . $detail['po_no'] . '</td>
                                 <td >' . $detail['created_by'] . '</td>
                                 <td>' . $detail['item_rm_id'] . '</td>

@@ -38,20 +38,20 @@ class Supplier_items extends CI_Controller
 
     public function readItems()
     {
-       $post = isset($_POST['q']) ? $_POST['q'] : "";
-       $item_family_id = explode(",", $this->input->get('item_family_id'));
-       $supplier_id = $this->input->get('supplier_id');
+        $post = isset($_POST['q']) ? $_POST['q'] : "";
+        $item_family_id = explode(",", $this->input->get('item_family_id'));
+        $supplier_id = $this->input->get('supplier_id');
        
-       $this->db->select('a.*, b.currency, c.number as item_number, c.name as item_name, c.uom');//c.specification
-       $this->db->from('supplier_items a');
-       $this->db->join('suppliers b', 'a.supplier_id = b.id');
-       $this->db->join('item_rm c', 'a.item_rm_id = c.id');
-       $this->db->where_in('c.item_family_id', $item_family_id);
-       $this->db->like('a.supplier_id', $supplier_id);
-       $this->db->like('c.number', $post);
-       $this->db->group_by('a.id');
-       $this->db->order_by('a.id', 'ASC');
-       $records = $this->db->get()->result_array();
+        $this->db->select('a.*, b.currency, c.number as item_number, c.name as item_name, c.uom');//c.specification
+        $this->db->from('supplier_items a');
+        $this->db->join('suppliers b', 'a.supplier_id = b.id');
+        $this->db->join('item_rm c', 'a.item_rm_id = c.id');
+        $this->db->where_in('c.item_family_id', $item_family_id);
+        $this->db->like('a.supplier_id', $supplier_id);
+        $this->db->like('c.number', $post);
+        $this->db->group_by('a.id');
+        $this->db->order_by('a.id', 'ASC');
+        $records = $this->db->get()->result_array();
 
         echo json_encode($records);
     }
@@ -115,8 +115,8 @@ class Supplier_items extends CI_Controller
     //GET DATATABLES
     public function datatables()
     {
-        $filter_suppliers  = base64_decode($this->input->get('filter_suppliers'));
-        $filter_category  = base64_decode($this->input->get('filter_category'));
+        $filter_suppliers = base64_decode($this->input->get('filter_suppliers'));
+        $filter_category = base64_decode($this->input->get('filter_category'));
         $filter_maker  = base64_decode($this->input->get('filter_maker'));
         $filter_item_rm = base64_decode($this->input->get('filter_item_rm'));
         $filter_item_vendor = base64_decode($this->input->get('filter_item_vendor'));
@@ -135,7 +135,7 @@ class Supplier_items extends CI_Controller
 
         $this->db->select('a.*, c.number as item_rm_number, (case when g.uom_po is not null then g.uom_po else c.uom end) as uom,
             c.name as item_rm_name, a.item_supplier, b.number as supplier_number, b.origin, b.name as supplier_name,
-            d.name as item_family_name, b.type, e.name as maker_name, e.type as maker_type,
+            d.name as item_family_name, b.type, b.supplier_po, e.name as maker_name, e.type as maker_type,
             f.number as hsn_number, f.name as hsn_name, f.igst, f.sgst, f.cgst');
         $this->db->from('supplier_items a');
         $this->db->join('suppliers b', 'b.id = a.supplier_id');

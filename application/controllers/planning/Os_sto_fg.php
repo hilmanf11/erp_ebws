@@ -375,7 +375,7 @@ class Os_sto_fg extends CI_Controller
         if ($option == "excel") {
             $format  = date("Ymd");
             header("Content-type: application/vnd-ms-excel");
-            header("Content-Disposition: attachment; filename=os_fg_$format.xls");
+            header("Content-Disposition: attachment; filename=sto_fg_$format.xls");
         }
 
         $get = $this->input->get();

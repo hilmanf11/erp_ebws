@@ -367,23 +367,33 @@ class Fixeds extends CI_Controller
 
             //Product Family
             $item_family = $this->crud->read('item_familys', [], ["number" => $data['item_family_number']]);
-            $item_rm = $this->crud->read('item_rm', [], ["id" => $data['item_rm_id']]);
-            $supplier = $this->crud->read('suppliers', [], ["id" => $data['supplier_id']]);
+            // $item_rm = $this->crud->read('item_rm', [], ["id" => $data['item_rm_id']]);
+            // $supplier = $this->crud->read('suppliers', [], ["id" => $data['supplier_id']]);
             $fixed_assets = $this->crud->read('asset_fixeds', [], ["number" => $data['number']]);
 
             if (empty($item_family->id)) {
-                echo json_encode(array("title" => "Not Found", "message" => "Asset Category No " . $data['item_family_number'] . " Not Found", "theme" => "error"));
-            } elseif (empty($item_rm->id)) {
-                echo json_encode(array("title" => "Not Found", "message" => "Part No EBWS " . $data['item_rm_id'] . " Not Found", "theme" => "error"));
+                echo json_encode(array("title" => "Not Found", "message" => "Product Family " . $data['item_family_number'] . " Not Found", "theme" => "error"));
+            // } elseif (empty($item_rm->id)) {
+            //     echo json_encode(array("title" => "Not Found", "message" => "Part No EBWS " . $data['item_rm_id'] . " Not Found", "theme" => "error"));
             } elseif (!empty($fixed_assets->id)) {
                 echo json_encode(array("title" => "Duplicate", "message" => "Asset No " . $data['number'] . " Duplicate", "theme" => "error"));
             } else {
+                if(empty($data['cost'])){
+                    $cost = 0;
+                    $depreciation = 0;
+                    $total = 0;
+                }else{
+                    $cost = $data['cost'];
+                    $depreciation = ($data['cost'] / ($data['estimate_year'] * 12));
+                    $total = ($data['qty'] * $data['cost']);
+                }
+
                 $dataFinal = array(
                     "item_family_id" => @$item_family->id,
                     "purchase_invoice_no" => $data['purchase_invoice_no'],
-                    "supplier_id" => $data['supplier_id'],
-                    "supplier_name" => @$supplier->name,
-                    "item_rm_id" => @$item_rm->id,
+                    "supplier_id" => "",
+                    "supplier_name" => $data['supplier_id'],
+                    "item_rm_id" => "",
                     "number" => $data['number'],
                     "name" => $data['name'],
                     "shift" => @$item_family->shift,
@@ -391,16 +401,16 @@ class Fixeds extends CI_Controller
                     "uom" => $data['uom'],
                     "qty" => $data['qty'],
                     "currency" => @$supplier->currency,
-                    "cost" => $data['cost'],
+                    "cost" => $cost,
                     "estimate_day" => $data['estimate_day'],
                     "estimate_month" => ($data['estimate_year'] * 12),
                     "estimate_year" => $data['estimate_year'],
                     "residual" => $data['residual'],
                     "expired_date" => date("Y-m-d", strtotime("+" . ($data['estimate_year'] * 12) . ' months', strtotime($data['trans_date']))),
-                    "depreciation" => ($data['cost'] / ($data['estimate_year'] * 12)),
+                    "depreciation" => $depreciation,
                     "method" => "UPLOAD",
                     "departement" => $data['departement'],
-                    "total" => ($data['qty'] * $data['cost']),
+                    "total" => $total,
                     "acq_period" => $data['acq_period'],
                     "acq_closing" => $data['acq_closing'],
                     "addition_op" => $data['addition_op'],
@@ -444,12 +454,12 @@ class Fixeds extends CI_Controller
 
         //Select Query
         $this->db->select("a.*, 
-        b.name as asset_category_name, 
-        b.type as asset_category_type, 
-        PERIOD_DIFF(DATE_FORMAT('$filter_to', '%Y%m'), DATE_FORMAT(trans_date, '%Y%m')) AS qty_month, 
-        (COALESCE(c.depreciation_acc, 0) + a.depreciation_accumulate) as depreciation_acc,
-        (a.cost - (c.depreciation_acc + a.depreciation_accumulate)) as book_value,
-        (CASE WHEN (a.cost - (c.depreciation_acc + a.depreciation_accumulate)) > 0 THEN 0 ELSE 1 END) as status_expired");
+            b.name as asset_category_name, 
+            b.type as asset_category_type, 
+            PERIOD_DIFF(DATE_FORMAT('$filter_to', '%Y%m'), DATE_FORMAT(trans_date, '%Y%m')) AS qty_month, 
+            (COALESCE(c.depreciation_acc, 0) + a.depreciation_accumulate) as depreciation_acc,
+            (a.cost - (c.depreciation_acc + a.depreciation_accumulate)) as book_value,
+            (CASE WHEN (a.cost - (c.depreciation_acc + a.depreciation_accumulate)) > 0 THEN 0 ELSE 1 END) as status_expired");
         $this->db->from('asset_fixeds a');
         $this->db->join('asset_categories b', 'a.asset_category_number = b.number');
         $this->db->join("(SELECT asset_no, SUM(debit) as depreciation_acc FROM asset_journals WHERE periode BETWEEN '$filter_period_from' and '$filter_period_to' GROUP BY asset_no) c", 'a.number = c.asset_no', 'left');

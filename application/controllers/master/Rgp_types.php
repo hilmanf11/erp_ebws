@@ -31,37 +31,11 @@ class Rgp_types extends CI_Controller
     }
 
     //GET DATA
-    public function reads($type = "")
+    public function reads()
     {
         $post = isset($_POST['q']) ? $_POST['q'] : "";
+        $send = $this->crud->reads('rgp_types', ["name" => $post]);
 
-        if ($type == "") {
-            //master/item_familys
-            $send = $this->crud->reads('rgp_types', ["name" => $post]);
-        } elseif ($type == "FG") {
-            //master/item_kinds
-            //master/item_sizes
-            //master/item_rm
-            $send = $this->crud->query("SELECT * FROM rgp_types WHERE name LIKE '%$post%' AND number != 'FG'");
-        } elseif ($type == "RM") {
-            //purchase/purchase_request_others
-            $send = $this->crud->query("SELECT * FROM rgp_types WHERE name LIKE '%$post%' AND number not in ('FG','RM')");
-        }
-
-        echo json_encode($send);
-    }
-
-    public function readAsset($number)
-    {
-        $post = isset($_POST['q']) ? $_POST['q'] : "";
-        $send = $this->crud->query("SELECT * FROM rgp_types WHERE name LIKE '%$post%'AND number = '$number'");
-        echo json_encode($send);
-    }
-
-    public function readsnotfg()
-    {
-        $post = isset($_POST['q']) ? $_POST['q'] : "";
-        $send = $this->crud->query("SELECT * FROM rgp_types WHERE name LIKE '%$post%'AND number != 'FG'");
         echo json_encode($send);
     }
 

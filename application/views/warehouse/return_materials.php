@@ -5,14 +5,14 @@
             <th rowspan="2" data-options="field:'return_no',width:200,halign:'center'">Return No</th>
             <th rowspan="2" data-options="field:'return_date',width:100,halign:'center'">Return Date</th>
             <th rowspan="2" data-options="field:'return_name',width:150,halign:'center'">Return Name</th>
-            <th rowspan="2" data-options="field:'item_number',width:200,halign:'center'">Product No</th>
-            <th rowspan="2" data-options="field:'item_name',width:150,halign:'center'">Product Name</th>
-            <!-- <th rowspan="2" data-options="field:'description',width:400,halign:'center'">Product Specification</th> -->
-            <th rowspan="2" data-options="field:'workorder',width:100,align:'center'">Workorder</th>
-            <th rowspan="2" data-options="field:'uom',width:60,align:'center'">UoM</th>
-            <th rowspan="2" data-options="field:'mpq',width:60,halign:'center',align:'right',formatter:numberformat">MPQ</th>
-            <th rowspan="2" data-options="field:'qty',width:60,halign:'center',align:'right',formatter:numberformat">Qty</th>
-            <th rowspan="2" data-options="field:'state',width:60,halign:'center',align:'center',formatter:BtnPrintLabel">Label</th>
+            <th rowspan="2" data-options="field:'item_rm_id',width:150,halign:'center'">Part No EBWS</th>
+            <th rowspan="2" data-options="field:'item_rm_number',width:200,halign:'center'">Part No Supplier </th>
+            <th rowspan="2" data-options="field:'item_rm_name',width:200,halign:'center'">Description</th>
+            <th rowspan="2" data-options="field:'workorder',width:150,align:'center'">Workorder</th>
+            <th rowspan="2" data-options="field:'uom',width:80,align:'center'">UoM</th>
+            <th rowspan="2" data-options="field:'mpq',width:100,halign:'center',align:'right',formatter:numberformat">MPQ</th>
+            <th rowspan="2" data-options="field:'qty',width:100,halign:'center',align:'right',formatter:numberformat">Qty</th>
+            <th rowspan="2" data-options="field:'state',width:100,halign:'center',align:'center',formatter:BtnPrintLabel">Label</th>
             <th rowspan="2" data-options="field:'status',width:100,align:'center',formatter:statusformat,styler:statusStyle">Status</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
@@ -48,12 +48,14 @@
         <a href="javascript:;" class="easyui-linkbutton" plain="true" onclick="print_return()"><i class="fa fa-print"></i> Return No</a>
     </div>
 </div>
+
 <div id="toolbar2">
     <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="append()"><i class="fa fa-plus"></i> Add</a>
     <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="removeit()"><i class="fa fa-times"></i> Remove</a>
 </div>
+
 <!-- Insert & Update -->
-<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 900px; height: 600px; padding:10px; top: 20px;">
+<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 900px; height: 500px; padding:10px; top: 20px;">
     <form id="frm_insert" method="post" novalidate>
         <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
             <legend><b>Form Data</b></legend>
@@ -68,13 +70,18 @@
                 </div>
             </div>
             <div style="width: 50%; float: left;">
-                <div class="fitem">
+                <div class="fitem" hidden>
                     <span style="width:35%; display:inline-block;">Return Name</span>
                     <input style="width:60%;" name="return_name" id="return_name" value="<?= $this->session->name ?>" readonly class="easyui-textbox">
                 </div>
                 <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Period</span>
+                    <input style="width:30%;" id="month" name="month" required class="easyui-combobox">
+                    <input style="width:30%;" id="year" name="year" required class="easyui-combobox" panelHeight="auto">
+                </div>
+                <div class="fitem">
                     <span style="width:35%; display:inline-block;">Workorder</span>
-                    <input style="width:60%;" name="workorder" id="workorder" required class="easyui-textbox">
+                    <input style="width:60%;" name="workorder" id="workorder" required class="easyui-combobox">
                 </div>
             </div>
         </fieldset>
@@ -92,12 +99,12 @@
                 <input style="width:60%;" name="id" id="id" required class="easyui-textbox">
             </div>
             <div class="fitem">
-                <span style="width:35%; display:inline-block;">Product No</span>
-                <input style="width:60%;" name="item_number" id="item_number" disabled class="easyui-textbox">
+                <span style="width:35%; display:inline-block;">Part No EBWS</span>
+                <input style="width:60%;" name="item_rm_id" id="item_rm_id" disabled class="easyui-textbox">
             </div>
             <div class="fitem">
-                <span style="width:35%; display:inline-block;">Product Name</span>
-                <input style="width:60%;" name="item_name" id="item_name" disabled class="easyui-textbox">
+                <span style="width:35%; display:inline-block;">Part No Supplier</span>
+                <input style="width:60%;" name="item_rm_number" id="item_rm_number" disabled class="easyui-textbox">
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Workorder</span>
@@ -118,7 +125,9 @@
     function add() {
         $('#dlg_insert').dialog('open');
         $('#dg2').datagrid('loadData', []);
-        addTable();
+        $("#year").combobox("setValue", "<?= date("Y") ?>");
+        $("#month").combobox("setValue", "<?= date("m") ?>");
+        // addTable();
 
         $.ajax({
             url: "<?= base_url('warehouse/return_materials/return_no') ?>",
@@ -147,36 +156,46 @@
         }
     }
 
-    function addTable() {
+    function addTable(workorder) {
         var lastIndex;
         var dg = $('#dg2').datagrid({
             singleSelect: true,
             columns: [
                 [{
-                    field: 'item_number',
-                    width: 250,
+                    field: 'item_rm_id',
+                    width: 150,
                     halign: 'center',
-                    title: "Part No",
+                    title: "Part No EBWS",
                     editor: {
                         type: 'combogrid',
                         options: {
-                            url: '<?= base_url('master/supplier_items/readItem') ?>',//base_url('master/supplier_items/readItems?item_family_number=002') ?>
+                            url: '<?= base_url('warehouse/return_materials/readItems/') ?>' + btoa(workorder),
                             required: true,
-                            panelWidth: 400,
-                            idField: 'item_number',
-                            textField: 'item_number',
+                            panelWidth: 650,
+                            idField: 'id',
+                            textField: 'number',
                             mode: 'remote',
                             fitColumns: true,
-                            prompt: 'Choose Part',
+                            prompt: 'Choose Part No',
                             columns: [
                                 [{
-                                    field: 'item_number',
-                                    title: 'Part No',
+                                    field: 'id',
+                                    title: 'Part No EBWS',
+                                    width: 150
+                                },{
+                                    field: 'number',
+                                    title: 'Part No Supplier',
                                     width: 200
-                                }, {
-                                    field: 'item_name',
-                                    title: 'Part Name',
+                                },{
+                                    field: 'name',
+                                    title: 'Description',
                                     width: 200
+                                },{
+                                    field: 'mpq',
+                                    title: 'MPQ',
+                                    halign: 'center',
+                                    align: 'right',
+                                    width: 100
                                 }]
                             ],
                             onSelect: function(value, rows) {
@@ -185,41 +204,27 @@
                                 var rowIndex = dg.datagrid('getRowIndex', row);
                                 var ed = dg.datagrid('getEditor', {
                                     index: rowIndex,
-                                    field: 'item_rm_id'
+                                    field: 'item_rm_number'
                                 });
                                 var ed2 = dg.datagrid('getEditor', {
                                     index: rowIndex,
-                                    field: 'item_name'
-                                });
-                                var ed3 = dg.datagrid('getEditor', {
-                                    index: rowIndex,
                                     field: 'mpq'
                                 });
-                                $(ed.target).textbox('setValue', rows.item_rm_id);
-                                $(ed2.target).textbox('setValue', rows.item_name);
-                                $(ed3.target).textbox('setValue', rows.mpq);
+                                $(ed.target).textbox('setValue', rows.number);
+                                $(ed2.target).textbox('setValue', rows.mpq);
                             }
                         }
                     }
                 }, {
-                    field: 'item_name',
-                    width: 150,
+                    field: 'item_rm_number',
+                    width: 250,
                     halign: 'center',
-                    title: "Part Name",
+                    title: "Part No Supplier",
                     editor: {
                         type: 'textbox',
                         options: {
                             readonly: true
                         }
-                    }
-                }, {
-                    field: 'item_rm_id',
-                    hidden: true,
-                    width: 100,
-                    halign: 'center',
-                    title: "ID",
-                    editor: {
-                        type: 'textbox'
                     }
                 }, {
                     field: 'mpq',
@@ -283,11 +288,18 @@
 
     function append() {
         if (endEditing()) {
-            $('#dg2').datagrid('appendRow', {
-                qty: '0'
-            });
-            editIndex = $('#dg2').datagrid('getRows').length - 1;
-            $('#dg2').datagrid('selectRow', editIndex).datagrid('beginEdit', editIndex);
+            var workorder = $("#workorder").combobox("getValue");
+
+            if(workorder != ""){
+                $('#dg2').datagrid('appendRow', {
+                    qty: '0'
+                });
+
+                editIndex = $('#dg2').datagrid('getRows').length - 1;
+                $('#dg2').datagrid('selectRow', editIndex).datagrid('beginEdit', editIndex);
+            }else{
+                toastr.error("Choose Workorder First!");
+            }
         }
     }
 
@@ -400,6 +412,18 @@
         });
     }
 
+    function readWorkorder(month, year) {
+        $("#workorder").combobox({
+            url: '<?= base_url('planning/production_schedules/filterWo/') ?>' + month + "/" + year,
+            valueField: 'workorder',
+            textField: 'workorder',
+            prompt: "Select Workorder",
+            onSelect: function(wo){
+                addTable(wo.workorder);
+            }
+        });
+    }
+
     $(function() {
         filter();
 
@@ -412,13 +436,16 @@
                     var return_no = $("#return_no").textbox('getValue');
                     var return_date = $("#return_date").datebox('getValue');
                     var return_name = $("#return_name").textbox('getValue');
-                    var workorder = $("#workorder").textbox('getValue');
+                    var p_month = $("#month").combobox('getValue');
+                    var p_year = $("#year").combobox('getValue');
+                    var workorder = $("#workorder").combobox('getValue');
 
                     var rows = $('#dg2').datagrid('getRows');
                     var totalrows = rows.length;
                     endEditing();
+
                     for (let i = 0; i < totalrows; i++) {
-                        if (rows[i].item_rm_id) {
+                        if (rows[i].qty > 0) {
                             $.ajax({
                                 type: "post",
                                 url: '<?= base_url('warehouse/return_materials/create') ?>',
@@ -427,8 +454,11 @@
                                     return_date: return_date,
                                     return_name: return_name,
                                     workorder: workorder,
+                                    p_month: p_month,
+                                    p_year: p_year,
                                     item_rm_id: rows[i].item_rm_id,
                                     qty: rows[i].qty,
+                                    mpq: rows[i].mpq,
                                     remarks: rows[i].remarks
                                 },
                                 dataType: "json",
@@ -447,6 +477,7 @@
                             });
                         }
                     }
+
                     readRequestno();
                     $('#dg').treegrid('reload');
                     $('#dlg_insert').dialog('close');
@@ -478,6 +509,28 @@
                     });
                 }
             }]
+        });
+
+        $("#month").combobox({
+            url: '<?= base_url('planning/production_schedules/readMonth') ?>',
+            valueField: 'number',
+            textField: 'name',
+            prompt: "Month",
+            onSelect: function(month){
+                var year = $("#year").combobox('getValue');
+                readWorkorder(month.number, year);
+            }
+        });
+
+        $("#year").combobox({
+            url: '<?= base_url('planning/production_schedules/readYear') ?>',
+            valueField: 'number',
+            textField: 'number',
+            prompt: "Year",
+            onSelect: function(year){
+                var month = $("#month").combobox('getValue');
+                readWorkorder(month, year.number);
+            }
         });
 
         readRequestno();
@@ -530,7 +583,7 @@
 
     function BtnPrintLabel(val, row) {
         if (val != "closed") {
-            return '<a style="text-decoration: none; font-weight:bold;" target="_blank" href="<?= base_url('warehouse/return_materials/print_label/') ?>' + window.btoa(row.return_no) + '"><i class="fa fa-print"></i> Print</a>';
+            return '<a class="btn btn-primary w-100" target="_blank" href="<?= base_url('warehouse/return_materials/print_label/') ?>' + window.btoa(row.return_no) + '" style="pointer-events: visible; opacity:1;"><i class="fa fa-print"></i> Print</a>';
         }
     }
 </script>

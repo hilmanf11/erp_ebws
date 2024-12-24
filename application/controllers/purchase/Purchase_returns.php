@@ -53,12 +53,25 @@ class purchase_returns extends CI_Controller
         }
     }
 
-    public function readPono()
-    {
-        $records = $this->crud->query("SELECT po_no
-            FROM scan_item_rejections
-            WHERE `status` = 0 GROUP BY po_no ORDER BY po_no desc");
-        echo json_encode($records);
+    function readPono(){
+        $post = isset($_POST['q']) ? $_POST['q'] : "";
+        $supplier_id = base64_decode($this->input->get('supplier_id'));
+        $datas = $this->crud->query("SELECT DISTINCT a.po_no FROM purchase_order_receipts a WHERE a.supplier_id = '$supplier_id' GROUP BY a.po_no ORDER BY a.po_no ASC");
+        echo json_encode($datas);
+    }
+
+    public function readProducts($po_no){
+        $post = isset($_POST['q']) ? $_POST['q'] : "";
+        $po_no = base64_decode($po_no);
+
+        $data = $this->crud->query("SELECT b.id, b.number, b.name, a.receipt_id, round(a.qty_receipt - COALESCE(SUM(c.qty), 0)) as qty_receipt, b.uom
+            FROM purchase_order_receipts a 
+            JOIN item_rm b ON a.item_rm_id = b.id
+            LEFT JOIN purchase_returns c ON a.receipt_id = c.receipt_id and a.item_rm_id = c.item_rm_id and a.supplier_id = c.supplier_id
+            WHERE a.po_no = '$po_no' and (b.number LIKE '%$post%' and b.id like '%$post%')
+            GROUP BY a.item_rm_id
+            ORDER BY b.number asc");
+        echo json_encode($data);
     }
 
     public function readReturnNo()
@@ -102,7 +115,7 @@ class purchase_returns extends CI_Controller
         //Select Query
         $id = $_POST['id'];
         if ($id === "0") {
-            $this->db->select('return_no, return_date, return_name, po_no, sum(a.qty) as qty, a.status');
+            $this->db->select('return_no, return_date, return_name, po_no, sum(a.qty) as qty, a.status, c.name as supplier_name');
             $this->db->from('purchase_returns a');
             $this->db->join('item_rm b', 'a.item_rm_id = b.id');
             $this->db->join('suppliers c', 'a.supplier_id = c.id');
@@ -125,11 +138,12 @@ class purchase_returns extends CI_Controller
                     "id" => $record['return_no'],
                     "return_no" => $record['return_no'],
                     "return_date" => $record['return_date'],
+                    "supplier_name" => $record['supplier_name'],
                     "return_name" => $record['return_name'],
-                    "po_no" => $record['po_no'],
                     "qty" => $record['qty'],
                     "status" => $record['status'],
                     "state" => "closed",
+                    "datatable" => 1,
                 );
             }
             $result['total'] = $totalRows;
@@ -137,8 +151,8 @@ class purchase_returns extends CI_Controller
             echo json_encode($result);
         } else {
             $this->db->select('a.*, 
-                b.number as item_number, 
-                b.name as item_name, 
+                b.number as item_rm_number, 
+                b.name as item_rm_name, 
                 d.name as supplier_name,
                 b.uom,
                 c.mpq');
@@ -165,6 +179,8 @@ class purchase_returns extends CI_Controller
                     "receipt_id" => $record['receipt_id'],
                     "item_rm_id" => $record['item_rm_id'],
                     "item_rm_number" => $record['item_rm_number'],
+                    "item_rm_name" => $record['item_rm_name'],
+                    "po_no" => $record['po_no'],
                     "supplier_name" => $record['supplier_name'],
                     "remarks" => $record['remarks'],
                     "uom" => $record['uom'],
@@ -219,7 +235,7 @@ class purchase_returns extends CI_Controller
     {
         $data = $this->input->post();
         $send = $this->crud->delete('purchase_returns', $data);
-        $this->crud->update('scan_item_rejections', ["receipt_id" => $post['receipt_id']], ["status" => 0]);
+        $this->db->update('scan_item_rejections', ["status" => 0], ["receipt_id" => $data['receipt_id']]);
         echo $send;
     }
 
@@ -348,11 +364,6 @@ class purchase_returns extends CI_Controller
                                 <div style="float:left; width:40%;">
                                     <table style="width:100%; font-size:12px; margin-bottom:10px;">
                                         <tr>
-                                            <td width="100">PO No</td>
-                                            <td width="10">:</td>
-                                            <td><b>' . @$records[0]['po_no'] . '</b></td>
-                                        </tr>
-                                        <tr>
                                             <td width="100">Return No</td>
                                             <td width="10">:</td>
                                             <td><b>' . @$return_no . '</b></td>
@@ -377,9 +388,9 @@ class purchase_returns extends CI_Controller
                                 <table id="customers">
                                     <tr>
                                         <th width="20">No</th>
+                                        <th>PO No</th>
                                         <th>Part No EBWS</th>
                                         <th>Part No Supplier</th>
-                                        <th>Description</th>
                                         <th>Receipt ID</th>
                                         <th width="100">UoM</th>
                                         <th width="100">Qty</th>
@@ -387,9 +398,9 @@ class purchase_returns extends CI_Controller
             foreach ($records as $record) {
                 $html .= '  <tr>
                                 <td style="text-align:center">' . $no . '</td>
-                                <td style="font-size:10px;">' . $record['item_rm_id'] . '</td>
-                                <td>' . $record['item_rm_number'] . '</td>
-                                <td>' . $record['item_rm_name'] . '</td>
+                                <td>' . $record['po_no'] . '</td>
+                                <td>' . $record['item_rm_id'] . '</td>
+                                <td style="font-size:10px;">' . $record['item_rm_number'] . '</td>
                                 <td>' . $record['receipt_id'] . '</td>
                                 <td style="text-align:center;">' . $record['uom'] . '</span></td>
                                 <td style="text-align:right">' . number_format($record['qty'], 2, ",", ".") . '</td>

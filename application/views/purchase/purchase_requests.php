@@ -556,6 +556,7 @@
                     $(this).datagrid('endEdit', lastIndex);
                     $(this).datagrid('beginEdit', rowIndex);
                 }
+                editIndex = rowIndex;
                 lastIndex = rowIndex;
             },
         });

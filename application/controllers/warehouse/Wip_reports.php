@@ -23,7 +23,7 @@ class Wip_reports extends CI_Controller
         } elseif ($this->checkuserAccess($this->id_menu()) > 0) {
             $data['button'] = $this->getbutton($this->id_menu());
             $this->load->view('template/header', $data);
-            $this->load->view('warehouse/wip_reports2');
+            $this->load->view('warehouse/wip_reports');
         } else {
             redirect('error_access');
         }

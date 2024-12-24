@@ -529,38 +529,44 @@
                 text: 'Send to Approval',
                 iconCls: 'icon-ok',
                 handler: function() {
-                    $('#frm_insert').form('submit', {
-                        url: url_save,
-                        onSubmit: function() {
-                            if($(this).form('validate') === true){
-                                $('#dlg_insert').dialog('close');
-                                
-                                Swal.fire({
-                                    title: 'Please Wait...',
-                                    showConfirmButton: false,
-                                    allowOutsideClick: false,
-                                    allowEscapeKey: false,
-                                    didOpen: () => {
-                                        Swal.showLoading();
-                                    },
-                                });
-                            }else{
-                                return $(this).form('validate');
-                            }
-                        },
-                        success: function(result) {
-                            var result = eval('(' + result + ')');
+                    var hsn_code = $("#hsn_code").combogrid('getValue');
 
-                            if (result.theme == "success") {
-                                toastr.success(result.message, result.title);
-                            } else {
-                                toastr.error(result.message, result.title);
-                            }
+                    if(hsn_code.length == 8){
+                        $('#frm_insert').form('submit', {
+                            url: url_save,
+                            onSubmit: function() {
+                                if($(this).form('validate') === true){
+                                    $('#dlg_insert').dialog('close');
+                                    
+                                    Swal.fire({
+                                        title: 'Please Wait...',
+                                        showConfirmButton: false,
+                                        allowOutsideClick: false,
+                                        allowEscapeKey: false,
+                                        didOpen: () => {
+                                            Swal.showLoading();
+                                        },
+                                    });
+                                }else{
+                                    return $(this).form('validate');
+                                }
+                            },
+                            success: function(result) {
+                                var result = eval('(' + result + ')');
 
-                            $('#dg').datagrid('reload');
-                            Swal.close();
-                        }
-                    });
+                                if (result.theme == "success") {
+                                    toastr.success(result.message, result.title);
+                                } else {
+                                    toastr.error(result.message, result.title);
+                                }
+
+                                $('#dg').datagrid('reload');
+                                Swal.close();
+                            }
+                        });
+                    }else{
+                        toastr.error("Please Input HSN Code Correctly");
+                    }
                 }
             }]
         });

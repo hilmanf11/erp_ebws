@@ -176,7 +176,7 @@ class Purchase_request_others extends CI_Controller
         //Select Query
         $id = $_POST['id'];
         if ($id === "0") {
-            $this->db->select('a.request_no, a.request_date, a.expected_date, a.item_family_id, a.request_name, sum(a.qty) as qty, a.status');
+            $this->db->select('a.request_no, a.request_date, a.expected_date, a.item_category_id, a.request_name, sum(a.qty) as qty, a.status');
             $this->db->from('purchase_request_others a');
             $this->db->join('item_rm b', 'a.item_rm_id = b.id');
             $this->db->join('item_familys c', "b.item_family_id = c.id");
@@ -206,7 +206,7 @@ class Purchase_request_others extends CI_Controller
                     "request_date" => $record['request_date'],
                     "expected_date" => $record['expected_date'],
                     "request_name" => $record['request_name'],
-                    "item_family_id" => $record['item_family_id'],
+                    "item_category_id" => $record['item_category_id'],
                     "qty" => $record['qty'],
                     "status" => $record['status'],
                     "state" => "closed",

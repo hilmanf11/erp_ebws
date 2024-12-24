@@ -25,20 +25,21 @@
             <th rowspan="2" data-options="field:'supplier_type',width:80,halign:'center'">Type</th>
             <!-- <th rowspan="2" data-options="field:'request_no',width:120,halign:'center'">PR No</th> -->
             <th rowspan="2" data-options="field:'request_no',width:120,halign:'center'">PR No</th>
-            <th rowspan="2" data-options="field:'po_no',width:120,halign:'center'">PO No</th>
-            <th rowspan="2" data-options="field:'po_date',width:80,halign:'center'">PO Date</th>
+            <th rowspan="2" data-options="field:'supplier_po',width:150,halign:'center'">PO No</th>
+            <th rowspan="2" data-options="field:'po_no',width:120,halign:'center'">Del. Sch No</th>
+            <th rowspan="2" data-options="field:'po_date',width:100,halign:'center'">Del. Sch Date</th>
             <th rowspan="2" data-options="field:'total_qty',width:100,halign:'center',align:'right',formatter:numberformat">Qty</th>
             <th rowspan="2" data-options="field:'currency',width:80,align:'center'">Currency</th>
             <th rowspan="2" data-options="field:'total_amount',width:120,halign:'center',align:'right',formatter:numberformatPrice">Amount</th>
             <th rowspan="2" data-options="field:'detail',width:80,halign:'center',formatter:BtnDetail">Detail</th>
-            <th rowspan="2" data-options="field:'print_po',width:80,halign:'center',formatter:BtnPrint">Print PO</th>
+            <th rowspan="2" data-options="field:'print_po',width:80,halign:'center',formatter:BtnPrint">Print<br>Del. Sch</th>
             <th rowspan="2" data-options="field:'terms',width:100,halign:'center',formatter:btnTerms">Terms<br>Condition</th>
             <th hidden colspan="2" data-options="field:'scedule',width:80,halign:'center'">Schedule Delivery</th>
             <!-- <th rowspan="2" data-options="field:'erp',width:80,align:'center',formatter:BtnPush">Push ERP</th> -->
             <!-- <th rowspan="2" data-options="field:'push_date',width:150,align:'center'">Push Date</th> -->
             <th hidden colspan="3" data-options="field:'Send_mail',width:100,halign:'center'">Send Mail</th>
             <th hidden colspan="2" data-options="field:'Send_mail',width:100,halign:'center'">Vendor Confirm</th>
-            <th rowspan="2" data-options="field:'note',width:200,halign:'center'">Note</th>
+            <!-- <th rowspan="2" data-options="field:'note',width:200,halign:'center'">Note</th> -->
             <th colspan="3" data-options="field:'Send_mail',width:100,halign:'center'">Approved</th>
             <th colspan="2" data-options="field:'Send_mail',width:100,halign:'center'">Created</th>
         </tr>
@@ -91,7 +92,7 @@
             </div>
             <div style="width: 35%; float: left;">
                 <div class="fitem">
-                    <span style="width:35%; display:inline-block;">PO No</span>
+                    <span style="width:35%; display:inline-block;">Del. Sch No</span>
                     <input style="width:60%;" id="filter_po" class="easyui-combobox">
                 </div>
                 <div class="fitem">
@@ -140,7 +141,7 @@
             <legend><b>Form Detail</b></legend>
             <div style="width: 50%; float: left;">
                 <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Purchase Order No</span>
+                    <span style="width:35%; display:inline-block;">Del. Sch No</span>
                     <input style="width:60%;" id="d_po_no" class="easyui-textbox" readonly>
                 </div>
                 <div class="fitem">
@@ -289,7 +290,7 @@
         <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; padding: 10px; float: left;">
             <legend><b>Setting Terms & Conditions</b></legend>
             <div class="fitem" hidden>
-                <span style="width:35%; display:inline-block;">PO NO</span>
+                <span style="width:35%; display:inline-block;">Del. Sch No</span>
                 <input style="width:60%;" id="po_no_terms" name="po_no" class="easyui-textbox">
             </div>
 
@@ -339,7 +340,7 @@
                 <input style="width:20%;" name="rev" id="rev" readonly class="easyui-numberbox">
             </div>
             <div class="fitem">
-                <span style="width:35%; display:inline-block;">PO No</span>
+                <span style="width:35%; display:inline-block;">Del. Sch No</span>
                 <input style="width:50%;" name="po_no" id="po_no" class="easyui-combogrid">
             </div>
             <div class="fitem" hidden>

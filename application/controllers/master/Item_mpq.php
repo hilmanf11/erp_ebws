@@ -33,6 +33,22 @@ class Item_mpq extends CI_Controller
         $send = $this->crud->reads('item_mpq', ["name" => $post]);
         echo json_encode($send);
     }
+
+    public function readItems()
+    {
+        $post = isset($_POST['q']) ? $_POST['q'] : "";
+       
+        $this->db->select('c.id, c.number, c.name, a.mpq');
+        $this->db->from('item_mpq a');
+        $this->db->join('item_rm c', 'a.item_rm_id = c.id');
+        $this->db->like('c.number', $post);
+        $this->db->group_by('a.id');
+        $this->db->order_by('a.id', 'ASC');
+        $records = $this->db->get()->result_array();
+
+        echo json_encode($records);
+    }
+
     //GET DATATABLES
     public function datatables()
     {

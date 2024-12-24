@@ -32,7 +32,7 @@
 </table>
 
 <!-- FORM FILTER DATAGRID -->
-<div id="toolbar" style="height: 270px; padding: 10px;">
+<div id="toolbar" style="height: 260px;">
     <!-- <div style="width: 100%; display: grid; grid-template-columns: auto auto auto; grid-gap: 5px; display: flex;"> -->
     <div style="width: 100%; display: grid; grid-template-columns: auto auto auto; grid-gap: 5px; display: flex;">
         <fieldset style="width: 40%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
@@ -67,6 +67,22 @@
                 </ul>
             </div>
         </fieldset>
+        <!-- <fieldset style="width: 43%; height: 210px; overflow: auto; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
+            <legend><b>Journal Lists</b></legend>
+            <a href="javascript:;" style="margin-bottom: 10px;" class="easyui-linkbutton" onclick="calculate()"><i class="fa fa-refresh"></i> Calculate Journal</a>
+            <table id="dg3" class="easyui-datagrid" style="width: 99%;">
+                <thead>
+                    <tr>
+                        <th field="ck" checkbox="true"></th>
+                        <th data-options="field:'account_number',halign:'center',width:90">Account No</th>
+                        <th data-options="field:'account_name',halign:'center',width:190">Account Name</th>
+                        <th data-options="field:'debit',width:100,halign:'center',align:'right',formatter:priceformat">Debit</th>
+                        <th data-options="field:'credit',width:100,halign:'center',align:'right',formatter:priceformat">Credit</th>
+                    </tr>
+                </thead>
+            </table>
+            <a href="javascript:;" style="margin-top: 10px; width:100%;" class="easyui-linkbutton c6" onclick="saveJournal()"><i class="fa fa-check"></i> Save Data Journal</a>
+        </fieldset> -->
     </div>
     <?= $button ?>
 </div>
@@ -167,6 +183,33 @@
                 });
             }
         });
+    }
+
+    function calculate() {
+        var filter_category = $("#filter_category").combobox('getValue');
+
+        var rows = $('#dg').datagrid('getSelections');
+        var totalrows = rows.length;
+
+        if (filter_category != "") {
+            if (totalrows > 0) {
+                var total = 0;
+                for (let i = 0; i < totalrows; i++) {
+                    if (filter_category == rows[i].asset_category_number) {
+                        total += rows[i].debit;
+                    }
+                }
+
+                $('#dg3').datagrid({
+                    url: '<?= base_url('assets/journal_entries/calculate/') ?>' + window.btoa(filter_category) + "/" + total,
+                    rownumbers: true,
+                });
+            } else {
+                toastr.info("Please Select All Data in the Table first");
+            }
+        } else {
+            toastr.info("Please Select Category First");
+        }
     }
 
     function saveJournal() {

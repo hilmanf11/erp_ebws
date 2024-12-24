@@ -9,10 +9,12 @@
         <tr>
             <th data-options="field:'detail',width:80,halign:'center',formatter:BtnDetail">Details</th>
             <th data-options="field:'supplier_id',width:100,halign:'center'">Supplier ID</th>
+            <th data-options="field:'supplier_po',width:150,halign:'center'">Supplier PO</th>
             <th data-options="field:'supplier_name',width:300,halign:'center'">Supplier Name</th>
             <th data-options="field:'type',width:120,halign:'center'">Supplier Type</th>
             <th data-options="field:'state',width:120,halign:'center'">State</th>
             <th data-options="field:'currency',width:80,align:'center'">Currency</th>
+            <th data-options="field:'total_item',width:100, align:'right', halign:'center'">Total Item</th>
             <th data-options="field:'remarks1',width:200,halign:'center'">Remarks Approval 1</th>
             <th data-options="field:'remarks2',width:200,halign:'center'">Remarks Approval 2</th>
             <th data-options="field:'remarks3',width:200,halign:'center'">Remarks Approval 3</th>

@@ -89,7 +89,6 @@ class Item_receipts extends CI_Controller
             $this->db->join('return_materials b', 'a.receipt_id = b.return_id and a.receipt_no = b.return_no');
             $this->db->join('return_material_labels c', 'a.label_no = c.label_no');
             $this->db->join('item_rm d', 'b.item_rm_id = d.id');
-            // $this->db->join('uom e', 'd.uom_id = e.id');
             $this->db->where('a.deleted', 0);
             $this->db->where('a.status', 0);
             $this->db->like('a.created_date', $date);

@@ -7,12 +7,12 @@
             <th rowspan="2" data-options="field:'name',width:250,halign:'center'">Asset Name</th>
             <th rowspan="2" data-options="field:'asset_category_name',width:150,halign:'center'">Asset Category</th>
             <th rowspan="2" data-options="field:'cost',width:100,halign:'center',align:'right', formatter:priceformat">Asset<br>Cost</th>
-            <th rowspan="2" data-options="field:'residual',width:100,halign:'center',align:'right', formatter:priceformat">Residual<br>Value</th>
+            <!--<th rowspan="2" data-options="field:'residual',width:100,halign:'center',align:'right', formatter:priceformat">Residual<br>Value</th>-->
             <th rowspan="2" data-options="field:'disposal',width:100,halign:'center',align:'right', formatter:priceformat">Disposal<br>Value</th>
             <th rowspan="2" data-options="field:'book_value',width:100,halign:'center',align:'right', formatter:priceformat">Net Book<br>Value</th>
             <th rowspan="2" data-options="field:'gainloss_type',width:100,align:'center'">Gain/Loss</th>
             <th rowspan="2" data-options="field:'gainloss_value',width:100,halign:'center',align:'right', formatter:priceformat">Gain/Loss<br>Value</th>
-            <th rowspan="2" data-options="field:'remarks',width:100,align:'center'">Remarks</th>
+            <th rowspan="2" data-options="field:'remarks',width:150,align:'center'">Remarks</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
         </tr>
@@ -51,7 +51,7 @@
 </div>
 
 <!-- Insert & Update -->
-<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 600px; padding:10px; top: 20px;">
+<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 600px; height: 550px; padding:10px; top: 20px;">
     <form id="frm_insert" method="post" novalidate>
         <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
             <legend><b>Form Data</b></legend>
@@ -87,11 +87,11 @@
                 <input style="width:30%;" id="estimate_year" class="easyui-textbox" disabled data-options="prompt:'Year'">
                 <input style="width:30%;" id="estimate_month" class="easyui-textbox" disabled data-options="prompt:'Month'">
             </div>
-            <div class="fitem">
-                <span style="width:35%; display:inline-block;">Residual Value</span>
-                <input style="width:30%;" id="residual_value" class="easyui-numberbox" disabled data-options="groupSeparator:'.',decimalSeparator:','">
-                <input style="width:30%;" id="currency2" class="easyui-textbox" disabled data-options="prompt:'Currency'">
-            </div>
+            <!--<div class="fitem">-->
+            <!--    <span style="width:35%; display:inline-block;">Residual Value</span>-->
+            <!--    <input style="width:30%;" id="residual_value" class="easyui-numberbox" disabled data-options="groupSeparator:'.',decimalSeparator:','">-->
+            <!--    <input style="width:30%;" id="currency2" class="easyui-textbox" disabled data-options="prompt:'Currency'">-->
+            <!--</div>-->
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Accumulated Depreciation</span>
                 <input style="width:30%;" id="depreciation" class="easyui-numberbox" disabled data-options="groupSeparator:'.',decimalSeparator:','">
@@ -103,15 +103,15 @@
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Net Book Value</span>
-                <input style="width:40%;" name="book_value" id="book_value" required class="easyui-numberbox" data-options="groupSeparator:'.',decimalSeparator:','">
+                <input style="width:40%;" name="book_value" id="book_value" readonly class="easyui-numberbox" data-options="groupSeparator:'.',decimalSeparator:','">
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Gain/Loss</span>
-                <select style="width:30%;" name="gainloss_type" id="gainloss_type" required class="easyui-combobox" panelHeight="auto">
+                <select style="width:30%;" name="gainloss_type" id="gainloss_type" readonly required class="easyui-combobox" panelHeight="auto">
                     <option value="GAIN">GAIN</option>
                     <option value="LOSS">LOSS</option>
                 </select>
-                <input style="width:30%;" name="gainloss_value" id="gainloss_value" required class="easyui-numberbox" data-options="groupSeparator:'.',decimalSeparator:','">
+                <input style="width:30%;" name="gainloss_value" id="gainloss_value" readonly required class="easyui-numberbox" data-options="groupSeparator:'.',decimalSeparator:','">
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Remarks</span>
@@ -160,14 +160,15 @@
                             method: 'post',
                             url: '<?= base_url('assets/disposeds/delete') ?>',
                             data: {
-                                id: row.id
+                                id: row.id,
+                                asset_fixed_id: row.asset_fixed_id
                             },
                             success: function(result) {
                                 var result = eval('(' + result + ')');
                             },
                             error: function(jqXHR, textStatus, errorThrown) {
-                                toastr.error("This data is already used in other modules, You must delete it First", "Error");
-                                
+                                toastr.error(jqXHR.statusText);
+                                $.messager.alert("Error", jqXHR.statusText, 'error');
                             },
                             complete: function(data) {
                                 $('#dg').datagrid('reload');
@@ -195,10 +196,7 @@
             pagination: true,
             clientPaging: false,
             remoteFilter: true,
-            rownumbers: true,
-            fit: true,
-            pageList: [20, 50, 100, 500, 1000],
-            pageSize: 20,
+            rownumbers: true
         });
 
         $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
@@ -253,39 +251,60 @@
                 }
             }]
         });
-
-        //GET COMPONENT
-        $('#asset_fixed_id').combogrid({
-            url: '<?= base_url('assets/disposeds/readFixeds') ?>',
-            panelWidth: 420,
-            idField: 'id',
-            textField: 'number',
-            mode: 'remote',
-            fitColumns: true,
-            prompt: "Choose Asset No",
-            columns: [
-                [{
-                    field: 'number',
-                    title: 'Asset No',
-                    width: 120
-                }, {
-                    field: 'name',
-                    title: 'Asset Name',
-                    width: 250
-                }, ]
-            ],
-            onSelect: function(index, row) {
-                $("#asset_name").textbox('setValue', row.name);
-                $("#asset_date").datebox('setValue', row.usage_date);
-                $("#asset_cost").numberbox('setValue', row.cost);
-                $("#currency").textbox('setValue', row.currency);
-                $("#currency2").textbox('setValue', row.currency);
-                $("#currency3").textbox('setValue', row.currency);
-                $("#estimate_year").textbox('setValue', row.estimate_year);
-                $("#estimate_month").textbox('setValue', row.estimate_month);
-                $("#residual_value").numberbox('setValue', row.residual_value);
-                $("#depreciation").numberbox('setValue', row.depreciation);
-                $("#book_value").numberbox('setValue', row.book_value);
+        
+        $("#disposal_date").datebox({
+           onChange: function(val){
+               //GET COMPONENT
+                $('#asset_fixed_id').combogrid({
+                    url: '<?= base_url('assets/disposeds/readFixeds/') ?>' + btoa(val),
+                    panelWidth: 420,
+                    idField: 'id',
+                    textField: 'number',
+                    mode: 'remote',
+                    fitColumns: true,
+                    prompt: "Choose Asset No",
+                    columns: [
+                        [{
+                            field: 'number',
+                            title: 'Asset No',
+                            width: 200
+                        }, {
+                            field: 'name',
+                            title: 'Asset Name',
+                            width: 200
+                        }, ]
+                    ],
+                    onSelect: function(index, row) {
+                        $("#asset_name").textbox('setValue', row.name);
+                        $("#asset_date").datebox('setValue', row.usage_date);
+                        $("#asset_cost").numberbox('setValue', row.cost);
+                        $("#currency").textbox('setValue', row.currency);
+                        $("#currency2").textbox('setValue', row.currency);
+                        $("#currency3").textbox('setValue', row.currency);
+                        $("#estimate_year").textbox('setValue', row.estimate_year);
+                        $("#estimate_month").textbox('setValue', row.estimate_month);
+                        // $("#residual_value").numberbox('setValue', row.residual_value);
+                        $("#depreciation").numberbox('setValue', row.depreciation_acc);
+                        $("#book_value").numberbox('setValue', row.book_value2);
+                    }
+                });
+           } 
+        });
+        
+        $("#disposal").numberbox({
+            onChange: function(val){
+                var book_value = $("#book_value").numberbox('getValue');
+                var gainloss_value = (parseFloat(val) - parseFloat(book_value));
+                
+                if(gainloss_value >= 0){
+                    var gainloss_type = "GAIN";
+                }else{
+                    var gainloss_type = "LOSS";
+                }
+                
+                
+                $("#gainloss_type").combobox('setValue', gainloss_type);
+                $("#gainloss_value").numberbox('setValue', Math.abs(gainloss_value));
             }
         });
 

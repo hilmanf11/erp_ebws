@@ -6,6 +6,7 @@
             <th rowspan="2" data-options="field:'number',width:150,halign:'center'">Document No</th>
             <th rowspan="2" data-options="field:'status',width:100,align:'center',formatter:statusformat,styler:statusStyle">Payment<br>Status</th>
             <th rowspan="2" data-options="field:'status_invoice',width:110,align:'center',formatter:statusformatInv,styler:statusStyleInv">Supplier<br>Invoice</th>
+            <th rowspan="2" data-options="field:'grn_no',width:150,align:'center'">GRN No</th>
             <th rowspan="2" data-options="field:'gl_no',width:140,align:'center'">GL No</th>
             <th rowspan="2" data-options="field:'trans_date',width:100,align:'center'">Trans Date</th>
             <!-- <th rowspan="2" data-options="field:'item_family_name',width:150,halign:'center'">Sub Category</th> -->

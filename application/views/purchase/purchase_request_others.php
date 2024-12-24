@@ -142,6 +142,7 @@
         $('#dg2').datagrid('loadData', []);
         $('#request_no').textbox('clear');
         $('#item_category_id').combobox('clear');
+        $('#item_category_id').combobox('enable');
 
         flag = "add";
         
@@ -242,7 +243,7 @@
                                 $(ed7.target).textbox('setValue', rows.item_family_id);
                                 
 
-                                if(item_category_id == "C06"){
+                                if(item_category_id == "ASSET"){
                                     $.ajax({
                                         type: "post",
                                         url: "<?= base_url('purchase/purchase_request_others/readAssets') ?>",
@@ -284,7 +285,10 @@
                     halign: 'center',
                     title: "Part No Supplier",
                     editor: {
-                        type: 'textbox'
+                        type: 'textbox',
+                        options: {
+                            readonly: true,
+                        }
                     }
                 }, {
                     field: 'item_rm_name',
@@ -293,7 +297,10 @@
                     halign: 'center',
                     title: "Description",
                     editor: {
-                        type: 'textbox'
+                        type: 'textbox',
+                        options: {
+                            readonly: true,
+                        }
                     }
                 }, {
                     field: 'item_family_id',
@@ -303,7 +310,10 @@
                     halign: 'center',
                     title: "Product Family ID",
                     editor: {
-                        type: 'textbox'
+                        type: 'textbox',
+                        options: {
+                            readonly: true,
+                        }
                     }
                 }, {
                     field: 'item_family_name',
@@ -312,7 +322,10 @@
                     halign: 'center',
                     title: "Product Family",
                     editor: {
-                        type: 'textbox'
+                        type: 'textbox',
+                        options: {
+                            readonly: true,
+                        }
                     }
                 }, {
                     field: 'qty',
@@ -379,6 +392,7 @@
                     $(this).datagrid('endEdit', lastIndex);
                     $(this).datagrid('beginEdit', rowIndex);
                 }
+                editIndex = rowIndex;
                 lastIndex = rowIndex;
             },
             onBeginEdit: function(rowIndex, row) {
@@ -435,7 +449,7 @@
                 if (row.status == "0") {
                     $('#dlg_insert').dialog('open');
                     $('#frm_insert').form('load', row);
-                    // $("#item_family_id").combobox('disable');
+                    $("#item_category_id").combobox('disable');
 
                     flag = "update";
 

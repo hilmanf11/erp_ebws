@@ -4,12 +4,13 @@
         <tr>
             <th field="ck" checkbox="true"></th>
             <th data-options="field:'id',width:100,align:'center'">Supplier ID</th>
+            <th data-options="field:'supplier_po',width:150,align:'center'">Supplier<br>PO</th>
             <th data-options="field:'name',width:250,halign:'center'">Supplier Name</th>
-            <th data-options="field:'number',width:80,align:'center'">Supplier<br>Code</th>
         </tr>
     </thead>
     <thead>
         <tr>
+            <th rowspan="2" data-options="field:'number',width:80,align:'center'">Supplier<br>Code</th>
             <th rowspan="2" data-options="field:'supplier_type',width:100,align:'center'">Supplier<br>Type</th>
             <th rowspan="2" data-options="field:'type',width:80,align:'center'">Type</th>
             <th rowspan="2" data-options="field:'address',width:250,halign:'center'">Address</th>
@@ -70,6 +71,10 @@
                     <input style="width:60%;" name="number" id="number" required="" class="easyui-textbox">
                 </div>
                 <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Supplier PO</span>
+                    <input style="width:60%;" name="supplier_po" id="supplier_po" readonly="true" class="easyui-textbox">
+                </div>
+                <div class="fitem">
                     <span style="width:35%; display:inline-block;">Supplier Type</span>
                     <select style="width:60%;" name="supplier_type" id="supplier_type" required="" panelHeight="auto" class="easyui-combobox">
                         <option value="RAW MATERIAL">RAW MATERIAL</option>
@@ -118,13 +123,6 @@
                     <span style="width:35%; display:inline-block;">Country of Origin</span>
                     <input style="width:60%;" name="origin" id="origin" class="easyui-combobox">
                 </div>
-                <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Commodity</span>
-                    <select style="width:60%;" name="commodity" id="commodity" class="easyui-combobox" required panelHeight="auto">
-                        <option value="YES">YES</option>
-                        <option value="NO">NO</option>
-                    </select>
-                </div>
             </div>
             <div style="float:left; width:50%;">
                 <div class="fitem">
@@ -153,6 +151,13 @@
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">VAT (%)</span>
                     <input style="width:30%;" name="vat" class="easyui-numberbox">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Commodity</span>
+                    <select style="width:30%;" name="commodity" id="commodity" class="easyui-combobox" required panelHeight="auto">
+                        <option value="YES">YES</option>
+                        <option value="NO">NO</option>
+                    </select>
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Tax No</span>
@@ -252,6 +257,7 @@
             dataType: "json",
             success: function(response) {
                 $('#ids').textbox('setValue', response.id);
+                $('#supplier_po').textbox('setValue', "PO<?= date("ym") ?>-" + response.id);
             }
         });
     }

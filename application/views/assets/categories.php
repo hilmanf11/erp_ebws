@@ -33,17 +33,17 @@
 </div>
 
 <!-- DIALOG SAVE AND UPDATE -->
-<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 700px; height: 600px; padding:10px; top: 20px;">
+<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 700px; height: 550px; padding:10px; top: 20px;">
     <form id="frm_insert" method="post" novalidate>
         <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
             <legend><b>Form Data</b></legend>
             <div style="float:left; width: 50%;">
                 <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Code</span>
-                    <input style="width:60%;" name="number" id="number" required="" class="easyui-textbox">
+                    <span style="width:35%; display:inline-block;">Category Code</span>
+                    <input style="width:60%;" name="number" id="number" required="" class="easyui-combobox">
                 </div>
                 <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Name</span>
+                    <span style="width:35%; display:inline-block;">Category Name</span>
                     <input style="width:60%;" name="name" id="name" required="" class="easyui-textbox">
                 </div>
             </div>
@@ -71,7 +71,7 @@
         $('#frm_insert').form('clear');
         $('#dg2').datagrid('loadData', []);
 
-        $("#number").textbox('enable');
+        $("#number").combobox('enable');
         $("#name").textbox('enable');
         $("#type").textbox('enable');
         addTable();
@@ -197,7 +197,7 @@
     }
 
     function append() {
-        var number = $("#number").textbox('getValue');
+        var number = $("#number").combobox('getValue');
         var name = $("#name").textbox('getValue');
         var type = $("#type").textbox('getValue');
 
@@ -230,7 +230,7 @@
                 $('#dlg_insert').dialog('open');
                 $('#frm_insert').form('load', row);
 
-                $("#number").textbox('disable');
+                $("#number").combobox('disable');
                 $("#name").textbox('disable');
                 $("#type").textbox('disable');
                 addTable('<?= base_url('assets/categories/datatable_updates?number=') ?>' + window.btoa(row.number));
@@ -329,7 +329,7 @@
                 text: 'Save All',
                 iconCls: 'icon-ok',
                 handler: function() {
-                    var number = $("#number").textbox('getValue');
+                    var number = $("#number").combobox('getValue');
                     var name = $("#name").textbox('getValue');
                     var type = $("#type").textbox('getValue');
                     var journal_type_id = $("#journal_type_id").combogrid('getValue');
@@ -375,6 +375,19 @@
                     $('#dlg_insert').dialog('close');
                 }
             }]
+        });
+
+        $("#number").combobox({
+            url: '<?= base_url('master/item_familys/reads/C06') ?>',
+            valueField: 'number',
+            textField: 'number',
+            prompt: "Choose Code",
+            formatter: function(row){
+                return row.number + " - " + row.name;
+            },
+            onSelect: function(prod){
+                $("#name").textbox('setValue', prod.name);
+            }
         });
 
         $("#journal_type_id").combogrid({

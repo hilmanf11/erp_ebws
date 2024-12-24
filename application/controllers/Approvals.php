@@ -740,7 +740,7 @@ class Approvals extends CI_Controller
         $approved_to = base64_decode($approved_to);
         $approved_by = base64_decode($approved_by);
 
-        $this->db->select('a.supplier_id, e.number as supplier_number, e.name as supplier_name, e.type, e.state, e.currency');
+        $this->db->select('a.supplier_id, e.supplier_po, e.number as supplier_number, e.name as supplier_name, e.type, e.state, e.currency');
         $this->db->from('generate_mrp_finals a');
         $this->db->join('suppliers e', 'a.supplier_id = e.id');
         $this->db->where('a.approved_to', $approved_to);
@@ -1016,7 +1016,7 @@ class Approvals extends CI_Controller
         $approved_to = base64_decode($approved_to);
         $approved_by = base64_decode($approved_by);
 
-        $this->db->select('a.supplier_id, b.number as supplier_number, b.name as supplier_name, b.type, b.state, b.currency, a.remarks1, a.remarks2, a.remarks3, a.remarks4');
+        $this->db->select('a.supplier_id, b.supplier_po, b.number as supplier_number, b.name as supplier_name, b.type, b.state, b.currency, a.remarks1, a.remarks2, a.remarks3, a.remarks4, COUNT(a.id) as total_item');
         $this->db->from('supplier_items a');
         $this->db->join('suppliers b', 'a.supplier_id = b.id');
         $this->db->where('a.approved_to', $approved_to);

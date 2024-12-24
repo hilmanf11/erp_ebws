@@ -123,7 +123,7 @@ class Purchase_orders extends CI_Controller
             $offset = ($page - 1) * $rows;
             $result = array();
             //Select Query
-            $this->db->select('a.*, SUM(a.qty) as total_qty, SUM(a.total) as total_amount, COUNT(c.po_no) as print_sd, d.number as supplier_no, d.name as supplier_name, d.type as supplier_type, e.name as item_family_name, d.state');
+            $this->db->select('a.*, SUM(a.qty) as total_qty, SUM(a.total) as total_amount, COUNT(c.po_no) as print_sd, d.number as supplier_no, d.name as supplier_name, d.type as supplier_type, d.supplier_po, e.name as item_family_name, d.state');
             $this->db->from('purchase_orders a');
             $this->db->join('item_rm b', "a.item_rm_id = b.id");
             $this->db->join('(select DISTINCT po_no from delivery_schedules) c', "a.po_no = c.po_no", 'left');
@@ -170,7 +170,7 @@ class Purchase_orders extends CI_Controller
 
         //Select Query
         $this->db->select("a.*, g.purchase_order as mrp_qty, b.number as supplier_no, b.name as supplier_name, f.mpq, f.moq, b.state,
-            b.email, d.number as item_rm_number, d.name as item_rm_name, d.item_family_id, e.name as product_family, b.type,
+            b.email, d.number as item_rm_number, d.name as item_rm_name, d.item_family_id, e.name as product_family, b.type, 
             ((a.qty * a.price) * COALESCE(i.igst, 0) / 100) as digst,
             ((a.qty * a.price) * COALESCE(i.sgst, 0) / 100) as dsgst,
             ((a.qty * a.price) * COALESCE(i.cgst, 0) / 100) as dcgst,
@@ -1151,7 +1151,7 @@ class Purchase_orders extends CI_Controller
                             <div style="padding:10px;">
                                 <center>
                                     <br>
-                                    <h3 style="margin:0;">PURCHASE ORDER</h3>
+                                    <h3 style="margin:0;">DELIVERY CONFIRMATION</h3>
                                 </center>
                                 <br>
                                 <div style="width:45%; float:left;">
@@ -1169,7 +1169,8 @@ class Purchase_orders extends CI_Controller
                                         <tr>
                                             <td width="50" style="vertical-align: top;"></td>
                                             <td width="30" style="vertical-align: top;"></td>
-                                            <td>PO NO : ' . $purchase_orders->po_no . '<br>
+                                            <td>PO No : ' . $supplier->supplier_po . '<br>
+                                                Register No : ' . $purchase_orders->po_no . '<br>
                                                 Date : ' . $purchase_orders->po_date . '<br>
                                                 Revision : ' . $purchase_orders->revision . '<br>
                                                 Office Address : <br>
@@ -1547,7 +1548,8 @@ class Purchase_orders extends CI_Controller
 
         //Select Query
         $this->db->select('a.*, b.name as item_rm_name, b.number as item_rm_number, c.number as supplier_no, 
-            c.name as supplier_name, 
+            c.name as supplier_name,
+            c.supplier_po,
             c.type,
             c.state,
             ((a.qty * a.price) * COALESCE(e.igst, 0) / 100) as digst,
@@ -1626,7 +1628,8 @@ class Purchase_orders extends CI_Controller
                 <th style="text-align:center;">Approved By</th>
                 <th style="text-align:center;">Approved Date</th>
                 <th style="text-align:center;">PO No</th>
-                <th style="text-align:center;">PO Date</th>
+                <th style="text-align:center;">Register No</th>
+                <th style="text-align:center;">Register Date</th>
                 <th style="text-align:center;">Part No EBWS</th>
                 <th style="text-align:center;">Part No Supplier</th>
                 <th style="text-align:center;">Part Name</th>
@@ -1686,6 +1689,7 @@ class Purchase_orders extends CI_Controller
                             <td>' . $approved . '</td>
                             <td>' . $data['approved_by'] . '</td>
                             <td>' . $data['approved_date'] . '</td>
+                            <td>' . $data['supplier_po'] . '</td>
                             <td>' . $data['po_no'] . '</td>
                             <td>' . $data['po_date'] . '</td>
                             <td style="mso-number-format:\@;">' . $data['item_rm_id'] . '</td>
