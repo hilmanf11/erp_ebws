@@ -11,10 +11,11 @@
             <th rowspan="2" data-options="field:'item_rm_number',width:150,halign:'center'">Part No EBWS</th>
             <th rowspan="2" data-options="field:'item_rm_number',width:150,halign:'center'">Part No Supplier</th>
             <th rowspan="2" data-options="field:'item_rm_name',width:200,halign:'center'">Description</th>
+            <th rowspan="2" data-options="field:'asset_code',width:100,halign:'center'">Asset Code</th>
             <th rowspan="2" data-options="field:'qty',width:80,halign:'center',align:'right',formatter:numberformatDefault">Qty</th>
             <th rowspan="2" data-options="field:'uom',width:80,align:'center'">UoM</th>
             <th rowspan="2" data-options="field:'price',width:100,halign:'center',align:'right',formatter:numberformat">Price</th>
-            <th rowspan="2" data-options="field:'total_price',width:120,halign:'center',align:'right',formatter:numberformatDefault">Total</th>
+            <th rowspan="2" data-options="field:'total_price',width:120,halign:'center',align:'right',formatter:numberformatPrice2">Total</th>
             <th rowspan="2" data-options="field:'currency',width:80,align:'center'">Currency</th>
             <th rowspan="2" data-options="field:'delivery_date',width:100,align:'center'">Delivery Date</th>
             <th rowspan="2" data-options="field:'revision',width:80,align:'center'">Revision</th>
@@ -99,10 +100,6 @@
                     <span style="width:25%; display:inline-block;">Suppliers</span>
                     <input style="width:60%;" name="supplier_id" id="supplier_id" class="easyui-combobox" required>
                 </div>
-                <div class="fitem">
-                    <span style="width:25%; display:inline-block;">PR No</span>
-                    <input style="width:60%;" name="request_no" id="request_no" required class="easyui-combobox">
-                </div>
             </div>
         </fieldset>
 
@@ -146,12 +143,12 @@
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Price</span>
-                <input style="width:40%;" name="price" id="price" readonly class="easyui-numberbox">
+                <input style="width:40%;" name="price" id="price" readonly class="easyui-numberbox" data-options="precision: 4">
                 <a href="javascript:;" class="easyui-linkbutton" onclick="changePrice()"><i class="fa fa-rotate-left"></i> Sync</a>
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Total</span>
-                <input style="width:40%;" name="total" id="total" readonly class="easyui-numberbox">
+                <input style="width:40%;" name="total" id="total" readonly class="easyui-numberbox" data-options="precision: 4">
             </div>
             <div class="fitem" hidden>
                 <span style="width:35%; display:inline-block;">Revision</span>
@@ -339,18 +336,17 @@
 
     function preview() {
         var supplier_id = $("#supplier_id").combobox('getValue');
-        var request_no = $("#request_no").combogrid('getValue');
         
-        if (request_no == "" && supplier_id == "") {
-            toastr.warning('Please select Purchase Request No and Supplier', 'Required');
+        if (supplier_id == "") {
+            toastr.warning('Please select Supplier', 'Required');
         } else {
-            addTable(supplier_id, request_no);
+            addTable(supplier_id);
 
-            function addTable(supplier_id, request_no, link = "") {
+            function addTable(supplier_id, link = "") {
                 var lastIndex;
                 $('#dg_request').datagrid({
                     singleSelect: true,
-                    url: '<?= base_url('purchase/purchase_request_others/reads') ?>?supplier_id=' + btoa(supplier_id) + '&request_no=' + btoa(request_no),
+                    url: '<?= base_url('purchase/purchase_request_others/reads') ?>?supplier_id=' + btoa(supplier_id),
                     columns: [
                         [{
                             field: 'delete',
@@ -359,6 +355,18 @@
                             halign: 'center',
                             title: "Action",
                             formatter: removebtn
+                        },{
+                            field: 'request_no',
+                            width: 150,
+                            readonly: true,
+                            halign: 'center',
+                            title: "Request No",
+                            editor: {
+                                type: 'textbox',
+                                options: {
+                                    readonly: true
+                                }
+                            }
                         },{
                             field: 'item_rm_id',
                             width: 150,
@@ -849,11 +857,11 @@
         //Save Data
         $('#dlg_insert').dialog({
             buttons: [{
-                text: 'Save All',
+                text: 'Save & Send to Approval',
                 iconCls: 'icon-ok',
                 handler: function() {
                     var po_date = $("#po_date").datebox('getValue');
-                    var request_no = $("#request_no").combobox('getValue');
+                    // var request_no = $("#request_no").combobox('getValue');
                     var po_no = $("#po_no").textbox('getValue');
                     var supplier_id = $("#supplier_id").combobox('getValue');
 
@@ -870,40 +878,44 @@
                                 if (r) {
                                     for (var i = 0; i < totalrows; i++) {
                                         var row = rows[i];
-                                        if(row.price > 0){
-                                            $.ajax({
-                                                type: "post",
-                                                url: '<?= base_url('purchase/purchase_orders_2/create') ?>',
-                                                data: {
-                                                    request_no: request_no,
-                                                    po_no: po_no,
-                                                    po_date: po_date,
-                                                    supplier_id: supplier_id,
-                                                    item_rm_id: row.item_rm_id,
-                                                    delivery_date: row.delivery_date,
-                                                    qty: row.qty,
-                                                    price: row.price,
-                                                    total: row.total,
-                                                    asset_code: row.asset_code,
-                                                    remarks: row.remarks,
-                                                },
-                                                dataType: "json",
-                                                success: function(result) {
-                                                    Swal.fire({
-                                                        title: result.message,
-                                                        icon: result.theme,
-                                                        confirmButtonText: 'Ok',
-                                                        allowOutsideClick: false,
-                                                    }).then((result) => {
-                                                        if (result.isConfirmed) {
-                                                            window.location.reload();
-                                                        }
-                                                    });
-                                                }
-                                            });
-                                        }else{
+                                        if(row.price <= 0){
                                             toastr.error("Price is 0, please Check in Supplier Contract");
+                                            return false;
                                         }
+                                    }
+
+                                    for (var i = 0; i < totalrows; i++) {
+                                        var row = rows[i];
+                                        $.ajax({
+                                            type: "post",
+                                            url: '<?= base_url('purchase/purchase_orders_2/create') ?>',
+                                            data: {
+                                                po_no: po_no,
+                                                po_date: po_date,
+                                                supplier_id: supplier_id,
+                                                request_no: row.request_no,
+                                                item_rm_id: row.item_rm_id,
+                                                delivery_date: row.delivery_date,
+                                                qty: row.qty,
+                                                price: row.price,
+                                                total: row.total,
+                                                asset_code: row.asset_code,
+                                                remarks: row.remarks,
+                                            },
+                                            dataType: "json",
+                                            success: function(result) {
+                                                Swal.fire({
+                                                    title: result.message,
+                                                    icon: result.theme,
+                                                    confirmButtonText: 'Ok',
+                                                    allowOutsideClick: false,
+                                                }).then((result) => {
+                                                    if (result.isConfirmed) {
+                                                        window.location.reload();
+                                                    }
+                                                });
+                                            }
+                                        });
                                     }
 
                                     readPo();
@@ -1032,6 +1044,20 @@
         } else {
             return false;
         }
+    }
+
+    function numberformatPrice2(value, row){
+        if(row.supplier_type == "LOCAL"){
+            var decimal = 2;
+        }else{
+            var decimal = 4;
+        }
+        
+        const formatter = new Intl.NumberFormat('ja-JP', {
+            minimumFractionDigits: decimal
+        });
+
+        return "<b>" + formatter.format(value) + "</b>";
     }
 
     function numberformatDefault(value, row) {

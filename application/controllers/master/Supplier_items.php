@@ -95,11 +95,11 @@ class Supplier_items extends CI_Controller
         $item_id = $this->input->get('item_rm_id');
         $item_family_id = $this->input->get('item_family_id');
 
-        $this->db->select('b.*, c.number as item_number, a.mpq, a.moq, a.price, a.share_order');
+        $this->db->select('b.*, c.number as item_number, a.mpq, a.moq, a.price, a.share_order, b.supplier_po');
         $this->db->from('supplier_items a');
         $this->db->join('suppliers b', 'a.supplier_id = b.id');
         $this->db->join('item_rm c', 'a.item_rm_id = c.id');
-        $this->db->join('item_familys d', 'c.item_family_id = d.id');
+        $this->db->join('item_familys d', "c.item_family_id = d.id and d.item_category_id IN ('C01')");
         $this->db->where('a.deleted', 0);
         // $this->db->where('a.status', 0);
         $this->db->like("c.number", $item_number);
@@ -242,7 +242,9 @@ class Supplier_items extends CI_Controller
                 if($post['mpq'] > 0 && $post['moq'] > 0){
                     if (!$supplier_items) {
                         $attachment = $this->crud->upload('attachment', ["jpg", "png", "jpeg", "pdf", "xls", "xlsx", "docx"], 'assets/documents/supplier_items/', [], "supplier_items", "attachment");
-                        $postFinal = array_merge($post, ["attachment" => $attachment]);
+                        $attachment2 = $this->crud->upload('attachment2', ["jpg", "png", "jpeg", "pdf", "xls", "xlsx", "docx"], 'assets/documents/supplier_items2/', [], "supplier_items", "attachment2");
+                        $attachment3 = $this->crud->upload('attachment3', ["jpg", "png", "jpeg", "pdf", "xls", "xlsx", "docx"], 'assets/documents/supplier_items3/', [], "supplier_items", "attachment3");
+                        $postFinal = array_merge($post, ["attachment" => $attachment, "attachment2" => $attachment2, "attachment3" => $attachment3]);
 
                         $send = $this->crud->create('supplier_items', $postFinal);
                         echo $send;
@@ -297,8 +299,10 @@ class Supplier_items extends CI_Controller
             $sqlSupItm = $this->db->query("SELECT SUM(share_order) as share_order FROM supplier_items WHERE item_rm_id = '$read->item_rm_id' and id != '$id' GROUP BY item_rm_id");
             $rowSupItm = $sqlSupItm->row();
 
-            $attachment = $this->crud->upload('attachment', ["jpg", "png", "jpeg", "pdf", "xls", "docx"], 'assets/documents/supplier_items/', ["id" => $id], "supplier_items", "attachment");
-            $postFinal = array_merge($post, ["attachment" => $attachment]);
+            $attachment = $this->crud->upload('attachment', ["jpg", "png", "jpeg", "pdf", "xls", "xlsx", "docx"], 'assets/documents/supplier_items/', [], "supplier_items", "attachment");
+            $attachment2 = $this->crud->upload('attachment2', ["jpg", "png", "jpeg", "pdf", "xls", "xlsx", "docx"], 'assets/documents/supplier_items2/', [], "supplier_items", "attachment2");
+            $attachment3 = $this->crud->upload('attachment3', ["jpg", "png", "jpeg", "pdf", "xls", "xlsx", "docx"], 'assets/documents/supplier_items3/', [], "supplier_items", "attachment3");
+            $postFinal = array_merge($post, ["attachment" => $attachment, "attachment2" => $attachment2, "attachment3" => $attachment3]);
 
             if((@$rowSupItm->share_order + $post['share_order']) <= 100){
                 if(@$read->price == $post['price']){

@@ -52,7 +52,7 @@ class Purchase_orders extends CI_Controller
             JOIN suppliers b ON a.supplier_id = b.id 
             JOIN item_rm c ON a.item_rm_id = c.id
             JOIN item_familys d ON c.item_family_id = d.id
-            WHERE a.p_month = '$p_month' and a.p_year = '$p_year' and a.revision = '$revision' and d.id = '$product_family'
+            WHERE a.p_month = '$p_month' and a.p_year = '$p_year' and a.revision = '$revision' and d.id = '$product_family' and a.type = 'PO'
             and (a.po_no like '%$post%' or b.name like '%$post%' or d.name like '%$post%')");
         echo json_encode($datas);
     }
@@ -60,13 +60,13 @@ class Purchase_orders extends CI_Controller
     function readPono(){
         $post = isset($_POST['q']) ? $_POST['q'] : "";
         $supplier_id = base64_decode($this->input->get('supplier_id'));
-        $datas = $this->crud->query("SELECT DISTINCT a.po_no, a.po_date FROM purchase_orders a WHERE a.supplier_id = '$supplier_id' and a.status = 0 and (a.approved_to = '' or a.approved_to is null) and (po_date like '%$post%' or po_no like '%$post%') ORDER BY a.po_date, a.po_no ASC");
+        $datas = $this->crud->query("SELECT DISTINCT a.po_no, a.po_date FROM purchase_orders a WHERE a.supplier_id = '$supplier_id' and a.type = 'PO' and a.status = 0 and (a.approved_to = '' or a.approved_to is null) and (po_date like '%$post%' or po_no like '%$post%') ORDER BY a.po_date, a.po_no ASC");
         echo json_encode($datas);
     }
 
     public function readSupplier(){
         $post = isset($_POST['q']) ? $_POST['q'] : "";
-        $data = $this->crud->query("SELECT DISTINCT b.id, b.number, b.name FROM purchase_orders a JOIN suppliers b ON a.supplier_id = b.id WHERE a.status = 0 and b.name like '%$post%' ORDER BY b.name asc");
+        $data = $this->crud->query("SELECT DISTINCT b.id, b.number, b.name FROM purchase_orders a JOIN suppliers b ON a.supplier_id = b.id WHERE a.status = 0 and a.type = 'PO' and b.name like '%$post%' ORDER BY b.name asc");
         echo json_encode($data);
     }
 
@@ -129,6 +129,7 @@ class Purchase_orders extends CI_Controller
             $this->db->join('(select DISTINCT po_no from delivery_schedules) c', "a.po_no = c.po_no", 'left');
             $this->db->join('suppliers d', "a.supplier_id = d.id", 'left');
             $this->db->join('item_familys e', "b.item_family_id = e.id");
+            $this->db->where('a.type', "PO");
             $this->db->where('a.p_month', $filter_month);
             $this->db->where('a.p_year', $filter_year);
             $this->db->where('a.revision', $filter_revision);
@@ -170,7 +171,7 @@ class Purchase_orders extends CI_Controller
 
         //Select Query
         $this->db->select("a.*, g.purchase_order as mrp_qty, b.number as supplier_no, b.name as supplier_name, f.mpq, f.moq, b.state,
-            b.email, d.number as item_rm_number, d.name as item_rm_name, d.item_family_id, e.name as product_family, b.type, 
+            b.email, d.number as item_rm_number, d.name as item_rm_name, d.item_family_id, e.name as product_family, b.type as supplier_type, 
             ((a.qty * a.price) * COALESCE(i.igst, 0) / 100) as digst,
             ((a.qty * a.price) * COALESCE(i.sgst, 0) / 100) as dsgst,
             ((a.qty * a.price) * COALESCE(i.cgst, 0) / 100) as dcgst,
@@ -184,6 +185,7 @@ class Purchase_orders extends CI_Controller
         $this->db->join('generate_mrp_finals g', 'a.p_month = g.p_month and a.p_year = g.p_year and a.revision = g.revision and a.item_rm_id = g.item_rm_id and a.supplier_id = g.supplier_id', 'left');
         $this->db->join('purchase_requests h', 'a.request_no = h.request_no', 'left');
         $this->db->join('hsn i', "d.hsn_code = i.number", 'left');
+        $this->db->where('a.type', "PO");
         $this->db->where('a.po_no', $po_no);
         $this->db->where('a.revision', $revision);
         $this->db->like('a.item_rm_id', $filter_item_rm);
@@ -212,7 +214,7 @@ class Purchase_orders extends CI_Controller
                 $dsgst = $record['dsgst'];
                 $dcgst = $record['dcgst'];
             }else{
-                if($record['type'] == "LOCAL"){
+                if($record['supplier_type'] == "LOCAL"){
                     $total2 = ($record['total'] + $record['digst']);
                     $total_igst += $record['digst'];
                     $total_cgst += 0;
@@ -1561,6 +1563,7 @@ class Purchase_orders extends CI_Controller
         $this->db->join('suppliers c', 'a.supplier_id = c.id');
         $this->db->join('item_familys d', 'b.item_family_id = d.id');
         $this->db->join('hsn e', "b.hsn_code = e.number", 'left');
+        $this->db->where('a.type', "PO");
         $this->db->like('a.p_month', $filter_month);
         $this->db->like('a.p_year', $filter_year);
         $this->db->like('a.revision', $filter_revision);

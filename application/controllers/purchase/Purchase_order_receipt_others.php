@@ -331,23 +331,27 @@ class Purchase_order_receipt_others extends CI_Controller
 
                 $post = $this->input->post();
                 if(empty($post['id'])){
-                    if(empty($post['asset_code']) || $post['asset_code'] == "-"){
+                    if(empty($post['asset_code']) || $post['asset_code'] == "-" || $post['asset_code'] == "null"){
                         $asset_code = "-";
                         $asset_code_subs = "-";
                     }else{
                         $asset_code = $post['asset_code'];
                         
-                        $codes = $asset_code;
-                        $sql = $this->db->query("SELECT max(`asset_code_subs`) as kode FROM purchase_order_receipt_others WHERE `asset_code` like '%$asset_code%'");
-                        $row = $sql->row();
-                        
-                        if ($row->kode == "") {
-                            $kode = 00;
+                        if ($post['qty_delivery'] > $post['qty_receipt']) {
+                            $codes = $asset_code;
+                            $sql = $this->db->query("SELECT max(`asset_code_subs`) as kode FROM purchase_order_receipt_others WHERE `asset_code` like '%$asset_code%'");
+                            $row = $sql->row();
+                            
+                            if ($row->kode == "") {
+                                $kode = 00;
+                            } else {
+                                $kode = sprintf("%02s", (substr($row->kode, -2) + 1));
+                            }
+                            
+                            $asset_code_subs = $codes . "-" . $kode;
                         } else {
-                            $kode = sprintf("%02s", (substr($row->kode, -2) + 1));
+                            $asset_code_subs = $asset_code;
                         }
-                        
-                        $asset_code_subs = $codes . "-" . $kode;
                     }
 
                     $send = $this->crud->create('purchase_order_receipt_others', array_merge($post, ["receipt_id" => $this->receipt_id($post['receipt_no']), "asset_code" => $asset_code, "asset_code_subs" => $asset_code_subs]));
@@ -365,12 +369,12 @@ class Purchase_order_receipt_others extends CI_Controller
 
                     echo $send;
                 }else{
-                    $send = $this->db->update('purchase_order_receipt_others', array_merge($post, [
+                    $send = $this->db->update('purchase_order_receipt_others', [
                         "store" => 1,
                         "store_by" => $this->session->username,
                         "store_date" => date("Y-m-d")
-                    ], ["id" => $post['id']]));
-                    echo $send;
+                    ], ["id" => $post['id']]);
+                    echo json_encode(array('title' => 'Confirmed', 'message' => "Data Successfully Confirmed", 'theme' => "success"));
                 }
             } else {
                 show_error(validation_errors());

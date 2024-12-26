@@ -109,57 +109,111 @@
             <div style="width: 50%; float: left;  margin-bottom: 20px;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Purchase Invoice No</span>
-                    <input style="width:60%;" name="purchase_invoice_number" id="purchase_invoice_number" required="" class="easyui-combogrid">
+                    <input style="width:60%;" name="purchase_invoice_no" id="purchase_invoice_no" required="" class="easyui-textbox">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Asset No</span>
-                    <input style="width:60%;" name="number" id="number" required="" class="easyui-combogrid">
+                    <input style="width:60%;" name="number" id="number" readonly="" class="easyui-textbox">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Asset Name</span>
-                    <input style="width:60%;" name="name" id="name" readonly class="easyui-textbox">
+                    <input style="width:60%;" name="name" id="name" class="easyui-textbox">
                 </div>
                 <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Asset Category</span>
-                    <input style="width:60%;" name="asset_category_number" id="asset_category_number" required="" class="easyui-combobox">
-                </div>
-                <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Purchase Date</span>
+                    <span style="width:35%; display:inline-block;">Capitalization Date</span>
                     <input style="width:60%;" name="trans_date" id="trans_date" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Supplier</span>
-                    <input style="width:60%;" name="supplier_name" id="supplier_name" readonly class="easyui-textbox">
+                    <input style="width:60%;" name="supplier_name" id="supplier_name" class="easyui-textbox">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Uom</span>
+                    <input style="width:30%;" name="uom" id="uom" class="easyui-textbox">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Qty</span>
-                    <input style="width:30%;" name="qty" id="qty" readonly class="easyui-numberbox">
+                    <input style="width:30%;" name="qty" id="qty" class="easyui-numberbox">
                 </div>
                 <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Asset Cost</span>
-                    <input style="width:30%;" name="cost" id="cost" readonly class="easyui-numberbox" data-options="groupSeparator:'.',decimalSeparator:','">
-                    <input style="width:30%;" name="currency" id="currency" readonly class="easyui-textbox" data-options="prompt:'Curency'">
+                    <span style="width:35%; display:inline-block;">Opening Acq.Value</span>
+                    <input style="width:30%;" name="cost" id="cost" class="easyui-numberbox" data-options="groupSeparator:',',decimalSeparator:'.',precision:2">
                 </div>
             </div>
             <div style="width: 50%; float: left;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Estimated Economic</span>
-                    <input style="width:30%;" name="estimate_year" id="estimate_year" required class="easyui-numberbox" data-options="prompt:'Year'">
-                    <input style="width:30%;" name="estimate_month" id="estimate_month" required readonly class="easyui-numberbox" data-options="prompt:'Month'">
+                    <input style="width:20%;" name="estimate_year" id="estimate_year"  class="easyui-numberbox" data-options="prompt:'Year'">
+                    <input style="width:20%;" name="estimate_month" id="estimate_month" class="easyui-numberbox" data-options="prompt:'Month'">
+                    <input style="width:20%;" name="estimate_day" id="estimate_day" class="easyui-numberbox" data-options="prompt:'Day'">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Posting Date</span>
+                    <input style="width:60%;" name="posting_date" id="posting_date" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Expired Date</span>
-                    <input style="width:60%;" name="expired_date" id="expired_date" class="easyui-datebox" required readonly data-options="formatter:myformatter,parser:myparser, editable:false">
+                    <input style="width:60%;" name="expired_date" id="expired_date" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Shift Factor</span>
+                    <input style="width:40%;" name="shift" id="shift" required class="easyui-numberbox">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Depreciation</span>
-                    <input style="width:40%;" name="depreciation" id="depreciation" readonly required class="easyui-numberbox" data-options="groupSeparator:'.',decimalSeparator:','">
+                    <input style="width:40%;" name="depreciation" id="depreciation" required class="easyui-numberbox" data-options="groupSeparator:',',decimalSeparator:'.',precision:2">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Remarks</span>
                     <input style="width:60%; height: 80px;" name="remarks" id="remarks" class="easyui-textbox" multiline="true">
                 </div>
             </div>
+            <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
+                <legend><b>Acquisition, Depreciation and Accumulation Information</b></legend>
+                <div style="width: 35%; float: left;">
+                    <div class="fitem">
+                        <span style="width:60%; display:inline-block;">Acquisition for the period</span>
+                        <input style="width:30%;" name="acq_period" id="acq_period" class="easyui-numberbox" data-options="groupSeparator:',',decimalSeparator:'.',precision:2">
+                    </div>
+                    <div class="fitem">
+                        <span style="width:60%; display:inline-block;">Closing Acq value</span>
+                        <input style="width:30%;" name="acq_closing" id="acq_closing" class="easyui-numberbox" data-options="groupSeparator:',',decimalSeparator:'.',precision:2">
+                    </div>
+                    <div class="fitem">
+                        <span style="width:60%; display:inline-block;">Residual value @5% of cost</span>
+                        <input style="width:30%;" name="residual" id="residual" class="easyui-numberbox" data-options="groupSeparator:',',decimalSeparator:'.',precision:2">
+                    </div>
+                </div>
+                <div style="width: 35%; float: left;">
+                    <div class="fitem">
+                        <span style="width:60%; display:inline-block;">Dep. on opening value</span>
+                        <input style="width:30%;" name="addition_op" id="addition_op" class="easyui-numberbox" data-options="groupSeparator:',',decimalSeparator:'.',precision:2">
+                    </div>
+                    <div class="fitem">
+                        <span style="width:60%; display:inline-block;">Dep. on Addition</span>
+                        <input style="width:30%;" name="addition" id="addition" class="easyui-numberbox" data-options="groupSeparator:',',decimalSeparator:'.',precision:2">
+                    </div>
+                    <div class="fitem">
+                        <span style="width:60%; display:inline-block;">Total Dep. For the period</span>
+                        <input style="width:30%;" name="addition_total" id="addition_total" class="easyui-numberbox" data-options="groupSeparator:',',decimalSeparator:'.',precision:2">
+                    </div>
+                </div>
+                <div style="width: 30%; float: left;">
+                    <div class="fitem">
+                        <span style="width:60%; display:inline-block;">Opening Accum Dep</span>
+                        <input style="width:30%;" name="accum_op" id="accum_op" class="easyui-numberbox" data-options="groupSeparator:',',decimalSeparator:'.',precision:2">
+                    </div>
+                    <div class="fitem">
+                        <span style="width:60%; display:inline-block;">Closing Accum Dep</span>
+                        <input style="width:30%;" name="accum_close" id="accum_close" class="easyui-numberbox" data-options="groupSeparator:',',decimalSeparator:'.',precision:2">
+                    </div>
+                    <div class="fitem">
+                        <span style="width:60%; display:inline-block;">Opening WDV</span>
+                        <input style="width:30%;" name="wdv" id="wdv" class="easyui-numberbox" data-options="groupSeparator:',',decimalSeparator:'.',precision:2">
+                    </div>
+                </div>
+            </fieldset>
+            
             <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
                 <legend><b>General Information</b></legend>
                 <div style="width: 50%; float: left;">
@@ -178,19 +232,19 @@
                 </div>
                 <div style="width: 50%; float: left;">
                     <div class="fitem">
-                        <span style="width:45%; display:inline-block;">Current Departement</span>
+                        <span style="width:45%; display:inline-block;">Departement</span>
                         <input style="width:50%;" name="departement" id="departement" class="easyui-textbox">
                     </div>
                     <div class="fitem">
-                        <span style="width:45%; display:inline-block;">Current Location</span>
+                        <span style="width:45%; display:inline-block;">Location</span>
                         <input style="width:50%;" name="location" id="location" class="easyui-textbox">
                     </div>
                 </div>
             </fieldset>
-            <div style="width: 30%; float: right;">
+            <div style="width: 30%; float: right;" hidden>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Total Asset</span>
-                    <input style="width:60%;" name="total" id="total" readonly class="easyui-numberbox" data-options="groupSeparator:'.',decimalSeparator:','">
+                    <input style="width:60%;" name="total" id="total" readonly class="easyui-numberbox" data-options="groupSeparator:',',decimalSeparator:'.'">
                 </div>
             </div>
         </fieldset>
@@ -297,15 +351,16 @@
 
     //Edit Data
     function update() {
-        toastr.info("Cannot Update Data");
-        // var row = $('#dg').datagrid('getSelected');
-        // if (row) {
-        //     $('#dlg_insert').dialog('open');
-        //     $('#frm_insert').form('load', row);
-        //     url_save = '<?= base_url('assets/fixeds/update') ?>?id=' + btoa(row.id);
-        // } else {
-        //     toastr.warning("Please select one of the data in the table first!", "Information");
-        // }
+        // toastr.info("Cannot Update Data");
+        var row = $('#dg').datagrid('getSelected');
+        if (row) {
+            $('#dlg_insert').dialog('open');
+            $('#frm_insert').form('load', row);
+            $("#method").textbox('setValue', "Straight Line");
+            url_save = '<?= base_url('assets/fixeds/update') ?>?id=' + btoa(row.id);
+        } else {
+            toastr.warning("Please select one of the data in the table first!", "Information");
+        }
     }
 
     //Delete Data
@@ -646,29 +701,29 @@
             }],
         });
 
-        $("#estimate_year").numberbox({
-            onChange: function(val) {
-                var cost = $("#cost").numberbox('getValue');
-                var trans_date = $("#trans_date").datebox('getValue');
+        // $("#estimate_year").numberbox({
+        //     onChange: function(val) {
+        //         var cost = $("#cost").numberbox('getValue');
+        //         var trans_date = $("#trans_date").datebox('getValue');
 
-                if(trans_date != ""){
-                    $("#estimate_month").numberbox('setValue', (parseInt(val) * 12));
-                    $("#depreciation").numberbox('setValue', (cost / (parseInt(val) * 12)));
+        //         if(trans_date != ""){
+        //             $("#estimate_month").numberbox('setValue', (parseInt(val) * 12));
+        //             $("#depreciation").numberbox('setValue', (cost / (parseInt(val) * 12)));
 
-                    $.ajax({
-                        type: "post",
-                        url: "<?= base_url('assets/fixeds/readExpired/') ?>" + (parseInt(val) * 12) + "/" + btoa(trans_date),
-                        dataType: "html",
-                        success: function (response) {
-                            $("#expired_date").datebox('setValue', response);
-                        }
-                    });
-                }else{
-                    toastr.error("Please Select Purchase Date First");
-                    $("#estimate_year").numberbox('clear');
-                }
-            }
-        })
+        //             $.ajax({
+        //                 type: "post",
+        //                 url: "<?= base_url('assets/fixeds/readExpired/') ?>" + (parseInt(val) * 12) + "/" + btoa(trans_date),
+        //                 dataType: "html",
+        //                 success: function (response) {
+        //                     $("#expired_date").datebox('setValue', response);
+        //                 }
+        //             });
+        //         }else{
+        //             toastr.error("Please Select Purchase Date First");
+        //             $("#estimate_year").numberbox('clear');
+        //         }
+        //     }
+        // });
     });
 
     //Format Datepicker

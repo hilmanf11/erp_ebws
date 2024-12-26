@@ -34,6 +34,8 @@
             <th rowspan="2" data-options="field:'ifsc',halign:'center',width:120">Bank IFSC Code</th>
             <th rowspan="2" data-options="field:'bank_account',width:150,halign:'center'">Bank Account</th>
             <th rowspan="2" data-options="field:'bank_name',width:150,halign:'center'">Bank Name</th>
+            <th rowspan="2" data-options="field:'idn_no',width:100,halign:'center'">IDN No</th>
+            <th rowspan="2" data-options="field:'msmi',width:50,halign:'center'">MSMI</th>
             <!-- <th rowspan="2" data-options="field:'terms',width:100,halign:'center',formatter:btnTerms">Terms<br>Condition</th> -->
             <th rowspan="2" data-options="field:'status',width:80,align:'center', styler:cellStyler, formatter:cellFormatter">Status</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
@@ -123,12 +125,12 @@
                     <span style="width:35%; display:inline-block;">Country of Origin</span>
                     <input style="width:60%;" name="origin" id="origin" class="easyui-combobox">
                 </div>
-            </div>
-            <div style="float:left; width:50%;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">State</span>
                     <input style="width:60%;" name="state" id="state" class="easyui-combobox">
                 </div>
+            </div>
+            <div style="float:left; width:50%;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">TDS</span>
                     <input style="width:60%;" name="tds" id="tds" class="easyui-combogrid">
@@ -143,7 +145,7 @@
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Vat Status</span>
-                    <select style="width:30%;" name="vat_status" class="easyui-combobox" panelHeight="auto">
+                    <select style="width:30%;" name="vat_status" id="vat_status" class="easyui-combobox" panelHeight="auto">
                         <option value="VAT">VAT</option>
                         <option value="NON VAT">NON VAT</option>
                     </select>
@@ -170,6 +172,17 @@
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">PEN No</span>
                     <input style="width:60%;" name="pen" class="easyui-textbox">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">IDN No</span>
+                    <input style="width:60%;" name="idn_no" class="easyui-textbox">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">MSMI</span>
+                    <select style="width:30%;" name="msmi" id="msmi" class="easyui-combobox" panelHeight="auto">
+                        <option value="YES">YES</option>
+                        <option value="NO">NO</option>
+                    </select>
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Bank IFSC Code</span>
@@ -250,6 +263,11 @@
 
         $('#type').combobox('setValue', 'LOCAL');
         $('#status').combobox('setValue', '0');
+        $('#commodity').combobox('setValue', 'NO');
+        $('#msmi').combobox('setValue', 'NO');
+        $('#vat_status').combobox('setValue', 'VAT');
+        $('#currency').combobox('setValue', 'INR');
+        $('#origin').combobox('setValue', 'INDIA');
 
         $.ajax({
             type: "post",

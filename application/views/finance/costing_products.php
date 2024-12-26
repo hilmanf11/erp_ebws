@@ -4,7 +4,7 @@
         <tr>
             <th rowspan="3" field="ck" checkbox="true"></th>
             <th rowspan="3" data-options="field:'history',width:100,halign:'center',formatter:btnWorkorder">Detail</th>
-            <th rowspan="3" data-options="field:'item_no',width:150,halign:'center'">Product No</th>
+            <th rowspan="3" data-options="field:'item_number',width:150,halign:'center'">Product No</th>
             <th rowspan="3" data-options="field:'item_name',width:200,halign:'center'">Product Name</th>
             <th rowspan="3" data-options="field:'total_qty',width:100,halign:'center', align:'right',formatter:priceformat">Quantity</th>
             <th rowspan="3" data-options="field:'umh',width:100,halign:'center', align:'right',formatter:priceformat">UMH</th>
@@ -49,7 +49,7 @@
                 <input style="width:30%;" id="filter_year" value="<?= date("Y") ?>" class="easyui-combobox" data-options="prompt:'Year'">
             </div>
             <div class="fitem">
-                <span style="width:35%; display:inline-block;">Product No</span>
+                <span style="width:35%; display:inline-block;">Part No</span>
                 <input style="width:60%;" id="filter_item" class="easyui-combogrid">
             </div>
             <div class="fitem">
@@ -640,7 +640,7 @@
             }],
             columns: [
                 [{
-                    field: 'number',
+                    field: 'number_customer',
                     title: 'Product No',
                     width: 200
                 }, {

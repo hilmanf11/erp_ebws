@@ -230,8 +230,10 @@ class Supplier_item_others extends CI_Controller
             $post   = $this->input->post();
             $supplier_items = $this->crud->read('supplier_items', [], ["supplier_id" => $post['supplier_id'], "item_rm_id" => $post['item_rm_id']]);
             if (!$supplier_items) {
-                $attachment = $this->crud->upload('attachment', ["jpg", "png", "jpeg", "pdf", "xls", "docx"], 'assets/documents/supplier_items/', [], "supplier_items", "attachment");
-                $postFinal = array_merge($post, ["attachment" => $attachment]);
+                $attachment = $this->crud->upload('attachment', ["jpg", "png", "jpeg", "pdf", "xls", "xlsx", "docx"], 'assets/documents/supplier_items/', [], "supplier_items", "attachment");
+                $attachment2 = $this->crud->upload('attachment2', ["jpg", "png", "jpeg", "pdf", "xls", "xlsx", "docx"], 'assets/documents/supplier_items2/', [], "supplier_items", "attachment2");
+                $attachment3 = $this->crud->upload('attachment3', ["jpg", "png", "jpeg", "pdf", "xls", "xlsx", "docx"], 'assets/documents/supplier_items3/', [], "supplier_items", "attachment3");
+                $postFinal = array_merge($post, ["attachment" => $attachment, "attachment2" => $attachment2, "attachment3" => $attachment3]);
 
                 $send = $this->crud->create('supplier_items', $postFinal);
                 echo $send;
@@ -272,8 +274,10 @@ class Supplier_item_others extends CI_Controller
                 "remarks" => $read->remarks,
             );
 
-            $attachment = $this->crud->upload('attachment', ["jpg", "png", "jpeg", "pdf", "xls", "docx"], 'assets/documents/supplier_items/', [], "supplier_items", "attachment");
-            $postFinal = array_merge($post, ["attachment" => $attachment]);
+            $attachment = $this->crud->upload('attachment', ["jpg", "png", "jpeg", "pdf", "xls", "xlsx", "docx"], 'assets/documents/supplier_items/', [], "supplier_items", "attachment");
+            $attachment2 = $this->crud->upload('attachment2', ["jpg", "png", "jpeg", "pdf", "xls", "xlsx", "docx"], 'assets/documents/supplier_items2/', [], "supplier_items", "attachment2");
+            $attachment3 = $this->crud->upload('attachment3', ["jpg", "png", "jpeg", "pdf", "xls", "xlsx", "docx"], 'assets/documents/supplier_items3/', [], "supplier_items", "attachment3");
+            $postFinal = array_merge($post, ["attachment" => $attachment, "attachment2" => $attachment2, "attachment3" => $attachment3]);
 
             if(@$read->price == $post['price']){
                 $this->db->update('supplier_items', $postFinal, ["id" => $id]);

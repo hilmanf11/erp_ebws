@@ -5,10 +5,10 @@
             <th rowspan="2" field="ck" checkbox="true"></th>
             <th rowspan="2" data-options="field:'detail',width:80,halign:'center',formatter:BtnDetail">History</th>
             <th colspan="4" data-options="field:'',width:100,halign:'center'">Approved</th>
-            <th rowspan="2" data-options="field:'supplier_id',width:120,halign:'center'">Supplier ID</th>
+            <th rowspan="2" data-options="field:'supplier_id',width:100,halign:'center'">Supplier ID</th>
             <th rowspan="2" data-options="field:'supplier_po',width:150,halign:'center'">Supplier PO</th>
             <th rowspan="2" data-options="field:'supplier_name',width:250,halign:'center'">Supplier Name</th>
-            <th rowspan="2" data-options="field:'item_rm_id',width:150,halign:'center'">Part No EBWS</th>
+            <th rowspan="2" data-options="field:'item_rm_id',width:100,halign:'center'">Part No EBWS</th>
             <th rowspan="2" data-options="field:'item_rm_number',width:200,halign:'center'">Part No Supplier</th>
             <th rowspan="2" data-options="field:'item_rm_name',width:150,halign:'center'">Description</th>
             <!-- <th rowspan="2" data-options="field:'item_supplier',width:150,halign:'center'">Part Supplier</th> -->
@@ -21,9 +21,11 @@
             <th rowspan="2" data-options="field:'moq',width:80,halign:'center',align:'right',formatter:numberformatComa">MOQ</th>
             <th rowspan="2" data-options="field:'uom',width:80,align:'center'">UoM</th>
             <th rowspan="2" data-options="field:'currency',width:80,align:'center'">Currency</th>
-            <th rowspan="2" data-options="field:'price',width:80,halign:'center',align:'right',formatter:numberformat">Price</th>
+            <th rowspan="2" data-options="field:'price',width:100,halign:'center',align:'right',formatter:numberformat">Price</th>
             <th rowspan="2" data-options="field:'valid_date',width:100,align:'center'">Valid Date</th>
-            <th rowspan="2" data-options="field:'attachment',width:100,halign:'center',formatter:BtnAttachment">Attachment</th>
+            <th rowspan="2" data-options="field:'attachment',width:100,halign:'center',formatter:BtnAttachment">Attachment 1</th>
+            <th rowspan="2" data-options="field:'attachment2',width:100,halign:'center',formatter:BtnAttachment2">Attachment 2</th>
+            <th rowspan="2" data-options="field:'attachment3',width:100,halign:'center',formatter:BtnAttachment3">Attachment 3</th>
             <th rowspan="2" data-options="field:'hsn_number',width:100,halign:'center'">HSN Code</th>
             <th rowspan="2" data-options="field:'igst',width:80,align:'center'">IGST %</th>
             <th rowspan="2" data-options="field:'sgst',width:80,align:'center'">SGST %</th>
@@ -183,8 +185,16 @@
                     </select>
                 </div>
                 <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Attachment</span>
+                    <span style="width:35%; display:inline-block;">Attachment 1</span>
                     <input style="width:60%;" name="attachment" id="attachment" class="easyui-filebox" accept=".jpg, .png, .jpeg, .pdf, .xls, .docx">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Attachment 2</span>
+                    <input style="width:60%;" name="attachment2" id="attachment2" class="easyui-filebox" accept=".jpg, .png, .jpeg, .pdf, .xls, .docx">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Attachment 3</span>
+                    <input style="width:60%;" name="attachment3" id="attachment3" class="easyui-filebox" accept=".jpg, .png, .jpeg, .pdf, .xls, .docx">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Remarks</span>
@@ -490,6 +500,22 @@
             return "-";
         }else{
             return '<a class="btn btn-primary w-100" style="pointer-events: visible; opacity:1;" target="_blank" href="'+val+'"><i class="fa fa-eye"></i> View</a>';
+        }
+    }
+
+    function BtnAttachment2(val, row) {
+        if(val == "" || val == null){
+            return '-';
+        }else{
+            return '<a class="btn btn-primary w-100" style="pointer-events: visible; opacity:1;" target="_blank" href="' + val + '"><i class="fa fa-paperclip"></i> View</a>';
+        }
+    }
+
+    function BtnAttachment3(val, row) {
+        if(val == "" || val == null){
+            return '-';
+        }else{
+            return '<a class="btn btn-primary w-100" style="pointer-events: visible; opacity:1;" target="_blank" href="' + val + '"><i class="fa fa-paperclip"></i> View</a>';
         }
     }
 

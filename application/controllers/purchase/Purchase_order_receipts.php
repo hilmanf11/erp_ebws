@@ -161,8 +161,8 @@ class Purchase_order_receipts extends CI_Controller
     }
 
     public function checkQas(){
-        $invoice_no = $this->input->post('bc_document');
-        $item_id = base64_decode($this->input->post('item_rm_number'));
+        $invoice_no = trim($this->input->post('bc_document'));
+        $item_id = trim(base64_decode($this->input->post('item_rm_number')));
 
         $this->qas = $this->load->database('qas', TRUE);
 
@@ -321,13 +321,12 @@ class Purchase_order_receipts extends CI_Controller
             round(e.qty) as qty_po,
             f.mpq, 
             a.supplier_id, 
-            b.uom,
+            a.uom,
             round(a.delivery - COALESCE(d.qty_os, 0)) as qty_delivery,
             round(a.delivery - COALESCE(d.qty_os, 0)) as qty_receipt,
             CEIL(((a.delivery - COALESCE(d.qty_os, 0)) / f.mpq)) as qty_label');
         $this->db->from('purchase_confirm a');
         $this->db->join('item_rm b', 'a.item_rm_id = b.id');
-        $this->db->join('supplier_items c', 'a.item_rm_id = c.item_rm_id and a.supplier_id = c.supplier_id');
         $this->db->join('item_mpq f', 'a.item_rm_id = f.item_rm_id and a.supplier_id = f.supplier_id');
         $this->db->join('(SELECT sum(qty_receipt) as qty_os, item_rm_id, supplier_id, po_no, bc_document FROM purchase_order_receipts WHERE status = 0 GROUP BY item_rm_id, supplier_id, po_no, bc_document) d', 'a.item_rm_id = d.item_rm_id and a.supplier_id = d.supplier_id and a.po_no = d.po_no and a.invoice_no = d.bc_document', 'left');
         $this->db->join('purchase_orders e', 'a.item_rm_id = e.item_rm_id and a.po_no = e.po_no');
@@ -363,6 +362,21 @@ class Purchase_order_receipts extends CI_Controller
             } else {
                 show_error(validation_errors());
             }
+        } else {
+            show_error("Cannot Process your request");
+        }
+    }
+
+    public function update()
+    {
+        if ($this->input->post()) {
+            $post = $this->input->post();
+            $this->db->where('id', $post['purchase_order_receipts_id']);
+            $this->db->update("purchase_order_receipts", [
+                "qty_receipt" => $post['qty_receipt'], 
+                "qty_delivery" => $post['qty_receipt'], 
+                "qty_label" => $post['qty_label']
+            ]);
         } else {
             show_error("Cannot Process your request");
         }

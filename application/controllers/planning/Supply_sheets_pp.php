@@ -361,15 +361,15 @@ class Supply_sheets_pp extends CI_Controller
             i.mpq,
             b.main_process,
             g.name as item_family_name,
-            (CASE WHEN f.uom_soft is null THEN c.uom ELSE f.uom_soft END) as uom,
-            (CASE WHEN f.uom_soft is null THEN b.composition ELSE (b.composition * f.convertion) END) as qpa,
+            (CASE WHEN f.uom_po is null THEN c.uom ELSE f.uom_po END) as uom,
+            (CASE WHEN f.uom_po is null THEN b.composition ELSE (b.composition * f.convertion) END) as qpa,
             a.qty,
             h.calculate,
             COALESCE(d.qty_issued, 0) as qty_issued,
             ROUND(a.qty * b.composition) AS qty_req2,
             (CEIL(ROUND(a.qty * b.composition) / i.mpq) * i.mpq) AS qty_req3,
-            CASE WHEN d.qty_bal IS NOT NULL THEN d.qty_bal WHEN f.uom_soft IS NOT NULL THEN ROUND(a.qty * (b.composition * f.convertion)) WHEN h.calculate = 'YES' THEN (CEIL(ROUND(a.qty * b.composition) / i.mpq) * i.mpq) ELSE ROUND(a.qty * b.composition) END AS qty_req,
-            CASE WHEN d.qty_bal IS NOT NULL THEN d.qty_bal WHEN f.uom_soft IS NOT NULL THEN ROUND(a.qty * (b.composition * f.convertion)) WHEN h.calculate = 'YES' THEN (CEIL(ROUND(a.qty * b.composition) / i.mpq) * i.mpq) ELSE ROUND(a.qty * b.composition) END AS qty_act");
+            CASE WHEN d.qty_bal IS NOT NULL THEN d.qty_bal WHEN f.uom_po IS NOT NULL THEN ROUND(a.qty * (b.composition * f.convertion)) WHEN h.calculate = 'YES' THEN (CEIL(ROUND(a.qty * b.composition) / i.mpq) * i.mpq) ELSE ROUND(a.qty * b.composition) END AS qty_req,
+            CASE WHEN d.qty_bal IS NOT NULL THEN d.qty_bal WHEN f.uom_po IS NOT NULL THEN ROUND(a.qty * (b.composition * f.convertion)) WHEN h.calculate = 'YES' THEN (CEIL(ROUND(a.qty * b.composition) / i.mpq) * i.mpq) ELSE ROUND(a.qty * b.composition) END AS qty_act");
         $this->db->from('production_schedules a');
         $this->db->join('bom b', 'a.item_fg_id = b.item_fg_id');
         $this->db->join('item_rm c', 'b.item_rm_id = c.id');

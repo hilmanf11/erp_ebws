@@ -24,6 +24,8 @@
             <th rowspan="2" data-options="field:'price',width:80,halign:'center',align:'right',formatter:numberformat">Price</th>
             <th rowspan="2" data-options="field:'valid_date',width:100,align:'center'">Valid Date</th>
             <th rowspan="2" data-options="field:'attachment',width:100,halign:'center',formatter:BtnAttachment">Attachment</th>
+            <th rowspan="2" data-options="field:'attachment2',width:100,halign:'center',formatter:BtnAttachment2">Attachment 2</th>
+            <th rowspan="2" data-options="field:'attachment3',width:100,halign:'center',formatter:BtnAttachment3">Attachment 3</th>
             <th rowspan="2" data-options="field:'hsn_number',width:100,halign:'center'">HSN Code</th>
             <th rowspan="2" data-options="field:'igst',width:80,align:'center'">IGST %</th>
             <th rowspan="2" data-options="field:'sgst',width:80,align:'center'">SGST %</th>
@@ -192,8 +194,16 @@
                     </select>
                 </div>
                 <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Attachment</span>
+                    <span style="width:35%; display:inline-block;">Attachment 1</span>
                     <input style="width:60%;" name="attachment" id="attachment" class="easyui-filebox" accept=".jpg, .png, .jpeg, .pdf, .xls, .xlsx, .docx">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Attachment 2</span>
+                    <input style="width:60%;" name="attachment2" id="attachment2" class="easyui-filebox" accept=".jpg, .png, .jpeg, .pdf, .xls, .xlsx, .docx">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Attachment 3</span>
+                    <input style="width:60%;" name="attachment3" id="attachment3" class="easyui-filebox" accept=".jpg, .png, .jpeg, .pdf, .xls, .xlsx, .docx">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Remarks</span>
@@ -499,6 +509,22 @@
     }
 
     function BtnAttachment(val, row) {
+        if(val == "" || val == null){
+            return "-";
+        }else{
+            return '<a class="btn btn-primary w-100" style="pointer-events: visible; opacity:1;" target="_blank" href="'+val+'"><i class="fa fa-eye"></i> View</a>';
+        }
+    }
+
+    function BtnAttachment2(val, row) {
+        if(val == "" || val == null){
+            return "-";
+        }else{
+            return '<a class="btn btn-primary w-100" style="pointer-events: visible; opacity:1;" target="_blank" href="'+val+'"><i class="fa fa-eye"></i> View</a>';
+        }
+    }
+
+    function BtnAttachment3(val, row) {
         if(val == "" || val == null){
             return "-";
         }else{

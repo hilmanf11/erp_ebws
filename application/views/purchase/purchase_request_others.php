@@ -12,6 +12,7 @@
             <th rowspan="2" data-options="field:'item_rm_id',width:120,halign:'center'">Part No EBWS</th>
             <th rowspan="2" data-options="field:'item_rm_number',width:200,halign:'center'">Part No Supplier</th>
             <th rowspan="2" data-options="field:'item_rm_name',width:200,halign:'center'">Description</th>
+            <th rowspan="2" data-options="field:'asset_code',width:120,halign:'center'">Asset Code</th>
             <th rowspan="2" data-options="field:'uom',width:80,align:'center'">UoM</th>
             <th rowspan="2" data-options="field:'qty',width:80,halign:'center',align:'right',formatter:numberformat">Qty</th>
             <th rowspan="2" data-options="field:'remarks',width:200,halign:'center'">Remarks</th>
@@ -650,6 +651,13 @@
                             var rows = $('#dg2').datagrid('getRows');
                             var totalrows = rows.length;
                             endEditing();
+
+                            for (let i = 0; i < totalrows; i++) {
+                                if(rows[i].asset_code == ""){
+                                    toastr.error("Asset Code Empty, Please Add Code Asset First");
+                                    return false;
+                                }
+                            }
 
                             for (let i = 0; i < totalrows; i++) {
                                 if (rows[i].item_rm_id) {

@@ -62,20 +62,18 @@ class Item_receipts extends CI_Controller
     
     public function datatables($label_no = "")
     {
-        $date = date("Y-m-d");
+        // $date = date("Y-m-d");
         $purchase_order_label = $this->crud->read('purchase_order_labels', [], ["label_no" => base64_decode($label_no)]);
         //Select Query
         $this->db->select('a.label_no, e.name as supplier_name, b.receipt_no, b.bc_kind, b.bc_document, b.bc_date, b.po_no, d.id as item_rm_id, d.number as item_rm_number, d.name as item_rm_name, d.uom, a.qty, a.created_by, a.created_date');
         $this->db->from('scan_item_receipts a');
         $this->db->join('purchase_order_receipts b', 'a.receipt_id = b.receipt_id and a.receipt_no = b.receipt_no and a.po_no = b.po_no');
-        $this->db->join('purchase_order_labels c', 'a.label_no = c.label_no');
         $this->db->join('item_rm d', 'b.item_rm_id = d.id');
         $this->db->join('suppliers e', 'b.supplier_id = e.id');
-        // $this->db->join('uom e', 'd.uom_id = e.id');
         $this->db->where('a.deleted', 0);
         $this->db->where('a.status', 0);
-        $this->db->like('a.created_date', $date);
         $this->db->where('a.receipt_id', @$purchase_order_label->receipt_id);
+        // $this->db->like('a.created_date', $date);
         $this->db->group_by('a.label_no');
         //Total Data
         $totalRows = $this->db->count_all_results('', false);
@@ -91,7 +89,7 @@ class Item_receipts extends CI_Controller
             $this->db->join('item_rm d', 'b.item_rm_id = d.id');
             $this->db->where('a.deleted', 0);
             $this->db->where('a.status', 0);
-            $this->db->like('a.created_date', $date);
+            // $this->db->like('a.created_date', $date);
             $this->db->where('a.receipt_id', @$return_material_labels->return_id);
             $this->db->group_by('a.label_no');
             //Total Data

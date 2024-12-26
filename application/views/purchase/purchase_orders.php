@@ -30,7 +30,7 @@
             <th rowspan="2" data-options="field:'po_date',width:100,halign:'center'">Del. Sch Date</th>
             <th rowspan="2" data-options="field:'total_qty',width:100,halign:'center',align:'right',formatter:numberformat">Qty</th>
             <th rowspan="2" data-options="field:'currency',width:80,align:'center'">Currency</th>
-            <th rowspan="2" data-options="field:'total_amount',width:120,halign:'center',align:'right',formatter:numberformatPrice">Amount</th>
+            <th rowspan="2" data-options="field:'total_amount',width:120,halign:'center',align:'right',formatter:numberformatPrice2">Amount</th>
             <th rowspan="2" data-options="field:'detail',width:80,halign:'center',formatter:BtnDetail">Detail</th>
             <th rowspan="2" data-options="field:'print_po',width:80,halign:'center',formatter:BtnPrint">Print<br>Del. Sch</th>
             <th rowspan="2" data-options="field:'terms',width:100,halign:'center',formatter:btnTerms">Terms<br>Condition</th>
@@ -249,11 +249,11 @@
                 <th data-options="field:'qty',width:80,halign:'center',align:'right',formatter:numberformat">Qty</th>
                 <th data-options="field:'price',width:100,halign:'center',align:'right',formatter:numberformatPrice">Price</th>
                 <th data-options="field:'sync',width:80,align:'center', formatter:BtnSync">Sync</th>
-                <th data-options="field:'total',width:100,halign:'center',align:'right',formatter:numberformatPrice">Total</th>
-                <th data-options="field:'cgst',width:100,halign:'center',align:'right',formatter:numberformatPrice">CGST</th>
-                <th data-options="field:'sgst',width:100,halign:'center',align:'right',formatter:numberformatPrice">SGST</th>
-                <th data-options="field:'igst',width:100,halign:'center',align:'right',formatter:numberformatPrice">IGST</th>
-                <th data-options="field:'total_amount',width:100,halign:'center',align:'right',formatter:numberformatPrice">Total Amount</th>
+                <th data-options="field:'total',width:100,halign:'center',align:'right',formatter:numberformat">Total</th>
+                <th data-options="field:'cgst',width:100,halign:'center',align:'right',formatter:numberformat">CGST</th>
+                <th data-options="field:'sgst',width:100,halign:'center',align:'right',formatter:numberformat">SGST</th>
+                <th data-options="field:'igst',width:100,halign:'center',align:'right',formatter:numberformat">IGST</th>
+                <th data-options="field:'total_amount',width:100,halign:'center',align:'right',formatter:numberformat">Total Amount</th>
                 <th data-options="field:'currency',width:80,align:'center'">Currency</th>
                 <th data-options="field:'rev',width:50,align:'center'">Rev</th>
                 <th data-options="field:'reason',width:150,halign:'center'">Reason</th>
@@ -278,7 +278,7 @@
                 <th data-options="field:'leadtime',width:80,halign:'center'">Leadtime</th>
                 <th data-options="field:'qty',width:100,halign:'center',align:'right',formatter:numberformat">Qty</th>
                 <th data-options="field:'price',width:100,halign:'center',align:'right',formatter:numberformatPrice">Price</th>
-                <th data-options="field:'total',width:100,halign:'center',align:'right',formatter:numberformatPrice">Total</th>
+                <th data-options="field:'total',width:100,halign:'center',align:'right',formatter:numberformat">Total</th>
                 <th data-options="field:'currency',width:80,align:'center'">Currency</th>
             </tr>
         </thead>
@@ -1625,7 +1625,7 @@
 
     function numberformat(value, row) {
         const formatter = new Intl.NumberFormat('ja-JP', {
-            minimumFractionDigits: 0
+            minimumFractionDigits: 2
         });
 
         return "<b>" + formatter.format(value) + "</b>";
@@ -1634,6 +1634,20 @@
     function numberformatPrice(value, row){
         const formatter = new Intl.NumberFormat('ja-JP', {
             minimumFractionDigits: 4
+        });
+
+        return "<b>" + formatter.format(value) + "</b>";
+    }
+
+    function numberformatPrice2(value, row){
+        if(row.supplier_type == "LOCAL"){
+            var decimal = 2;
+        }else{
+            var decimal = 4;
+        }
+        
+        const formatter = new Intl.NumberFormat('ja-JP', {
+            minimumFractionDigits: decimal
         });
 
         return "<b>" + formatter.format(value) + "</b>";

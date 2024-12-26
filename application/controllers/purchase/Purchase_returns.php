@@ -30,48 +30,71 @@ class purchase_returns extends CI_Controller
         }
     }
 
-    public function readItems()
-    {
-        if ($this->input->get()) {
-            $post = isset($_POST['q']) ? $_POST['q'] : "";
-            $po_no = $this->input->get('po_no');
-            // $receipt_id = $this->input->get('receipt_id');
-
-            $this->db->select('a.supplier_id, a.receipt_id, a.item_rm_id, b.number as item_rm_number, SUM(d.qty) as qty');
-            $this->db->from('purchase_order_receipts a');
-            $this->db->join('item_rm b', 'a.item_rm_id = b.id');
-            $this->db->join('supplier_items c', 'a.supplier_id = c.supplier_id and a.item_rm_id = c.item_rm_id');
-            $this->db->join('scan_item_rejections d', 'a.receipt_id = d.receipt_id and a.po_no = d.po_no');
-            $this->db->where('a.po_no', $po_no);
-            // $this->db->where('a.receipt_id', $receipt_id);
-            $this->db->like('b.number', $post);
-            $this->db->group_by('a.receipt_id');
-            $this->db->order_by('b.number', 'asc');
-            $records = $this->db->get()->result_array();
-            
-            echo json_encode($records);
-        }
-    }
-
     function readPono(){
         $post = isset($_POST['q']) ? $_POST['q'] : "";
         $supplier_id = base64_decode($this->input->get('supplier_id'));
-        $datas = $this->crud->query("SELECT DISTINCT a.po_no FROM purchase_order_receipts a WHERE a.supplier_id = '$supplier_id' GROUP BY a.po_no ORDER BY a.po_no ASC");
-        echo json_encode($datas);
+        $source = $this->input->get('source');
+
+        if($source == "QAS"){
+            $datas = $this->crud->query("SELECT a.po_no 
+                FROM purchase_order_receipts a 
+                WHERE a.supplier_id = '$supplier_id' 
+                GROUP BY a.po_no 
+                ORDER BY a.po_no DESC");
+            echo json_encode($datas);
+        }elseif($source == "REJECT"){
+            $datas = $this->crud->query("SELECT a.po_no 
+                FROM scan_item_rejections a 
+                JOIN purchase_order_receipts b ON a.po_no = b.po_no 
+                WHERE b.supplier_id = '$supplier_id' 
+                GROUP BY a.po_no 
+                ORDER BY a.po_no DESC");
+            echo json_encode($datas);
+        }elseif($source == "SCRAP"){
+            $datas = $this->crud->query("SELECT document as po_no FROM scraps a 
+                JOIN supplier_items b ON a.item_rm_id = b.item_rm_id and b.share_order > 0 
+                WHERE b.supplier_id = '$supplier_id' 
+                GROUP BY a.document 
+                ORDER BY a.document DESC");
+            echo json_encode($datas);
+        }
     }
 
-    public function readProducts($po_no){
+    public function readProducts($po_no, $source, $supplier_id){
         $post = isset($_POST['q']) ? $_POST['q'] : "";
         $po_no = base64_decode($po_no);
+        $supplier_id = base64_decode($supplier_id);
 
-        $data = $this->crud->query("SELECT b.id, b.number, b.name, a.receipt_id, round(a.qty_receipt - COALESCE(SUM(c.qty), 0)) as qty_receipt, b.uom
-            FROM purchase_order_receipts a 
-            JOIN item_rm b ON a.item_rm_id = b.id
-            LEFT JOIN purchase_returns c ON a.receipt_id = c.receipt_id and a.item_rm_id = c.item_rm_id and a.supplier_id = c.supplier_id
-            WHERE a.po_no = '$po_no' and (b.number LIKE '%$post%' and b.id like '%$post%')
-            GROUP BY a.item_rm_id
-            ORDER BY b.number asc");
-        echo json_encode($data);
+        if($source == "QAS"){
+            $data = $this->crud->query("SELECT b.id, b.number, b.name, a.receipt_id, round(a.qty_receipt - COALESCE(SUM(c.qty), 0)) as qty_receipt, b.uom
+                FROM purchase_order_receipts a 
+                JOIN item_rm b ON a.item_rm_id = b.id
+                LEFT JOIN purchase_returns c ON a.receipt_id = c.receipt_id and a.item_rm_id = c.item_rm_id and a.supplier_id = c.supplier_id
+                WHERE a.po_no = '$po_no' and (b.number LIKE '%$post%' and b.id like '%$post%')
+                GROUP BY a.item_rm_id
+                ORDER BY b.number asc");
+            echo json_encode($data);
+        }elseif($source == "REJECT"){
+            $data = $this->crud->query("SELECT b.id, b.number, b.name, a.receipt_id, round(SUM(a.qty) - COALESCE(SUM(c.qty), 0)) as qty_receipt, b.uom
+                FROM scan_item_rejections a 
+                JOIN purchase_order_receipts d ON a.receipt_id = d.receipt_id
+                JOIN item_rm b ON d.item_rm_id = b.id
+                LEFT JOIN purchase_returns c ON a.receipt_id = c.receipt_id and b.id = c.item_rm_id and d.supplier_id = c.supplier_id
+                WHERE a.po_no = '$po_no' and (b.number LIKE '%$post%' and b.id like '%$post%')
+                GROUP BY b.id
+                ORDER BY b.number asc");
+            echo json_encode($data);
+        }elseif($source == "SCRAP"){
+            $data = $this->crud->query("SELECT b.id, b.number, b.name, a.document as receipt_id, round(SUM(a.qty) - COALESCE(SUM(d.qty), 0)) as qty_receipt, b.uom
+                FROM scraps a 
+                JOIN item_rm b ON a.item_rm_id = b.id
+                JOIN supplier_items c ON a.item_rm_id = c.item_rm_id and c.share_order > 0
+                LEFT JOIN purchase_returns d ON a.document = d.receipt_id and d.item_rm_id = a.item_rm_id and d.supplier_id = c.supplier_id
+                WHERE a.document = '$po_no' and c.supplier_id = '$supplier_id' and (b.number LIKE '%$post%' and b.id like '%$post%')
+                GROUP BY a.item_rm_id
+                ORDER BY b.number asc");
+            echo json_encode($data);
+        }
     }
 
     public function readReturnNo()
@@ -104,6 +127,8 @@ class purchase_returns extends CI_Controller
         $filter_from = $this->input->get('filter_from');
         $filter_to   = $this->input->get('filter_to');
         $filter_return_no = $this->input->get('filter_return_no');
+        $filter_supplier = $this->input->get('filter_supplier');
+        $filter_item_id = $this->input->get('filter_item_id');
 
         $page = $this->input->post('page');
         $rows = $this->input->post('rows');
@@ -125,6 +150,8 @@ class purchase_returns extends CI_Controller
                 $this->db->where('a.return_date <=', $filter_to);
             }
             $this->db->like('a.return_no', $filter_return_no);
+            $this->db->like('a.supplier_id', $filter_supplier);
+            $this->db->like('a.item_rm_id', $filter_item_id);
             $this->db->group_by('return_no');
             $this->db->order_by('a.return_no', 'DESC');
             //Total Data
@@ -166,10 +193,13 @@ class purchase_returns extends CI_Controller
                 $this->db->where('a.return_date >=', $filter_from);
                 $this->db->where('a.return_date <=', $filter_to);
             }
+            $this->db->like('a.supplier_id', $filter_supplier);
+            $this->db->like('a.item_rm_id', $filter_item_id);
             $this->db->where('a.return_no', $id);
             $this->db->order_by('d.name', 'ASC');
             $records = $this->db->get()->result_array();
 
+            $arr = array();
             foreach ($records as $record) {
                 $arr[] = array(
                     "id" => $record['id'],
@@ -388,7 +418,7 @@ class purchase_returns extends CI_Controller
                                 <table id="customers">
                                     <tr>
                                         <th width="20">No</th>
-                                        <th>PO No</th>
+                                        <th>Document No</th>
                                         <th>Part No EBWS</th>
                                         <th>Part No Supplier</th>
                                         <th>Receipt ID</th>
@@ -450,6 +480,8 @@ class purchase_returns extends CI_Controller
         $filter_from = $this->input->get('filter_from');
         $filter_to   = $this->input->get('filter_to');
         $filter_return_no = $this->input->get('filter_return_no');
+        $filter_supplier = $this->input->get('filter_supplier');
+        $filter_item_id = $this->input->get('filter_item_id');
 
         //Config
         $this->db->select('*');
@@ -466,6 +498,8 @@ class purchase_returns extends CI_Controller
             $this->db->where('a.return_date <=', $filter_to);
         }
         $this->db->like('a.return_no', $filter_return_no);
+        $this->db->like('a.supplier_id', $filter_supplier);
+        $this->db->like('a.item_rm_id', $filter_item_id);
         $this->db->order_by('a.return_no', 'ASC');
         $records = $this->db->get()->result_array();
         $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#customers {border-collapse: collapse;width: 100%;font-size: 12px;}#customers td, #customers th {border: 1px solid black;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: black;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: center;color: black;}</style><body>

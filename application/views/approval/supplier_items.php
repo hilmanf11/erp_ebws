@@ -56,7 +56,9 @@
                 <th data-options="field:'price_before',width:80,halign:'center',align:'right',formatter: numberformatPrice">Price Before</th>
                 <th data-options="field:'price',width:80,halign:'center',align:'right',formatter: numberformatPrice">Price Now</th>
                 <th data-options="field:'valid_date',width:100,halign:'center'">Valid Date</th>
-                <th data-options="field:'attachment',width:100,halign:'center',formatter:BtnAttachment">Attachment</th>
+                <th data-options="field:'attachment',width:100,halign:'center',formatter:BtnAttachment">Attachment 1</th>
+                <th data-options="field:'attachment2',width:100,halign:'center',formatter:BtnAttachment2">Attachment 2</th>
+                <th data-options="field:'attachment3',width:100,halign:'center',formatter:BtnAttachment3">Attachment 3</th>
                 <th data-options="field:'remarks',width:200,halign:'center'">Remarks</th>
                 <th data-options="field:'created_by',width:120,halign:'center'">Created By</th>
                 <th data-options="field:'created_date',width:150,halign:'center'">Created Date</th>
@@ -232,6 +234,22 @@
     }
 
     function BtnAttachment(val, row) {
+        if(val == "" || val == null){
+            return '-';
+        }else{
+            return '<a class="btn btn-primary w-100" style="pointer-events: visible; opacity:1;" target="_blank" href="' + val + '"><i class="fa fa-paperclip"></i> View</a>';
+        }
+    }
+
+    function BtnAttachment2(val, row) {
+        if(val == "" || val == null){
+            return '-';
+        }else{
+            return '<a class="btn btn-primary w-100" style="pointer-events: visible; opacity:1;" target="_blank" href="' + val + '"><i class="fa fa-paperclip"></i> View</a>';
+        }
+    }
+
+    function BtnAttachment3(val, row) {
         if(val == "" || val == null){
             return '-';
         }else{

@@ -30,21 +30,33 @@
 </table>
 <div id="toolbar" style="height: 200px; padding: 10px;">
     <!-- <div style="width: 100%; display: grid; grid-template-columns: auto auto auto; grid-gap: 5px; display: flex;"> -->
-    <div style="width: 100%;">
-        <fieldset style="width: 45%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
+    <div style="width: 80%;">
+        <fieldset style="width: 100%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
             <legend><b>Form Filter Data</b></legend>
-            <div class="fitem">
-                <span style="width:35%; display:inline-block;">Period</span>
-                <input style="width:28%;" id="filter_from" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false"> To
-                <input style="width:28%;" id="filter_to" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
+            <div style="float: left; width: 50%;">
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Period</span>
+                    <input style="width:28%;" id="filter_from" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false"> To
+                    <input style="width:28%;" id="filter_to" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Return No</span>
+                    <input style="width:60%;" id="filter_return_no" class="easyui-combobox">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;"></span>
+                    <a href="javascript:;" class="easyui-linkbutton" onclick="filter()"><i class="fa fa-search"></i> Filter Data</a>
+                </div>
             </div>
-            <div class="fitem">
-                <span style="width:35%; display:inline-block;">Return No</span>
-                <input style="width:60%;" id="filter_return_no" class="easyui-combobox">
-            </div>
-            <div class="fitem">
-                <span style="width:35%; display:inline-block;"></span>
-                <a href="javascript:;" class="easyui-linkbutton" onclick="filter()"><i class="fa fa-search"></i> Filter Data</a>
+            <div style="float: left; width: 50%;">
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Supplier No</span>
+                    <input style="width:60%;" id="filter_supplier" class="easyui-combogrid">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Part No</span>
+                    <input style="width:60%;" id="filter_item_id" class="easyui-combogrid">
+                </div>
             </div>
         </fieldset>
         <?= $button ?>
@@ -147,76 +159,103 @@
             singleSelect: true,
             columns: [
                 [{
-                    field: 'po_no',
-                    width: 200,
+                    field: 'source',
+                    width: 120,
                     halign: 'center',
-                    title: "PO No",
+                    title: "Source",
                     editor: {
                         type: 'combobox',
                         options: {
-                            url: '<?= base_url('purchase/purchase_returns/readPono?supplier_id='); ?>' + btoa(supplier_id),
-                            valueField: 'po_no',
-                            textField: 'po_no',
-                            prompt: 'Choose Purchase Order',
                             required: true,
-                            onSelect: function (po) {
+                            panelHeight: 'auto',
+                            valueField: 'id',
+                            textField: 'id',
+                            data: [{
+                                "id": "QAS"
+                            },{
+                                "id": "REJECT"
+                            },{
+                                "id": "SCRAP"
+                            }],
+                            onSelect: function (source) {
                                 var dg = $('#dg2');
                                 var row = dg.datagrid('getSelected');
                                 var rowIndex = dg.datagrid('getRowIndex', row);
-
+                                
+                                var edpo = dg.datagrid('getEditor', {index: rowIndex, field: 'po_no'});
                                 var ed = dg.datagrid('getEditor', {index: rowIndex, field: 'item_rm_id'});
                                 var ed2 = dg.datagrid('getEditor', {index: rowIndex, field: 'item_rm_number'});
                                 var ed3 = dg.datagrid('getEditor', {index: rowIndex, field: 'receipt_id'});
                                 var ed4 = dg.datagrid('getEditor', {index: rowIndex, field: 'qty_receipt'});
                                 var ed5 = dg.datagrid('getEditor', {index: rowIndex, field: 'qty'});
 
-                                $(ed.target).combogrid({
-                                    url: '<?= base_url('purchase/purchase_returns/readProducts/'); ?>' + btoa(po.po_no),
+                                $(edpo.target).combobox({
+                                    url: '<?= base_url('purchase/purchase_returns/readPono?supplier_id='); ?>' + btoa(supplier_id) + "&source=" + source.id,
+                                    valueField: 'po_no',
+                                    textField: 'po_no',
+                                    prompt: 'Choose Purchase Order',
                                     required: true,
-                                    panelWidth: 800,
-                                    idField: 'id',
-                                    textField: 'number',
-                                    mode: 'remote',
-                                    fitColumns: true,
-                                    prompt: 'Choose Part No EBWS',
-                                    columns: [
-                                        [{
-                                            field: 'id',
-                                            title: 'Part No EBWS',
-                                            width: 150
-                                        },{
-                                            field: 'number',
-                                            title: 'Part No Supplier',
-                                            width: 150
-                                        }, {
-                                            field: 'name',
-                                            title: 'Description',
-                                            width: 200
-                                        }, {
-                                            field: 'receipt_id',
-                                            title: 'Receipt ID',
-                                            width: 150
-                                        }, {
-                                            field: 'qty_receipt',
-                                            title: 'Receipt',
-                                            width: 80
-                                        }]
-                                    ],
-                                    onSelect: function (value, item) {
-                                        $(ed2.target).textbox('setValue', item.number);
-                                        $(ed3.target).textbox('setValue', item.receipt_id);
-                                        $(ed4.target).textbox('setValue', item.qty_receipt);
-                                        $(ed5.target).numberbox({
-                                            onChange: function(val){
-                                                if((parseInt(item.qty_receipt) - val) < 0){
-                                                    toastr.info("You cannot exceed qty Receipt");
-                                                    $(ed5.target).numberbox('setValue', 0);
-                                                }
+                                    onSelect: function (po) {
+                                        $(ed.target).combogrid({
+                                            url: '<?= base_url('purchase/purchase_returns/readProducts/'); ?>' + btoa(po.po_no) + "/" + source.id + "/" + btoa(supplier_id),
+                                            required: true,
+                                            panelWidth: 800,
+                                            idField: 'id',
+                                            textField: 'number',
+                                            mode: 'remote',
+                                            fitColumns: true,
+                                            prompt: 'Choose Part No EBWS',
+                                            columns: [
+                                                [{
+                                                    field: 'id',
+                                                    title: 'Part No EBWS',
+                                                    width: 150
+                                                },{
+                                                    field: 'number',
+                                                    title: 'Part No Supplier',
+                                                    width: 150
+                                                }, {
+                                                    field: 'name',
+                                                    title: 'Description',
+                                                    width: 200
+                                                }, {
+                                                    field: 'receipt_id',
+                                                    title: 'Receipt ID',
+                                                    width: 150
+                                                }, {
+                                                    field: 'qty_receipt',
+                                                    title: 'Receipt',
+                                                    width: 80
+                                                }]
+                                            ],
+                                            onSelect: function (value, item) {
+                                                $(ed2.target).textbox('setValue', item.number);
+                                                $(ed3.target).textbox('setValue', item.receipt_id);
+                                                $(ed4.target).textbox('setValue', item.qty_receipt);
+                                                $(ed5.target).numberbox({
+                                                    onChange: function(val){
+                                                        if((parseInt(item.qty_receipt) - val) < 0){
+                                                            toastr.info("You cannot exceed qty Receipt");
+                                                            $(ed5.target).numberbox('setValue', 0);
+                                                        }
+                                                    }
+                                                });
                                             }
                                         });
                                     }
-                                });
+                                })
                             }
+                        }
+                    }
+                }, {
+                    field: 'po_no',
+                    width: 150,
+                    halign: 'center',
+                    title: "PO No",
+                    editor: {
+                        type: 'combobox',
+                        options: {
+                            required: true
                         }
                     }
                 }, {
@@ -276,7 +315,7 @@
                     }
                 }, {
                     field: 'remarks',
-                    width: 200,
+                    width: 150,
                     halign: 'center',
                     title: "Remarks",
                     editor: {
@@ -383,11 +422,15 @@
         var filter_from = $("#filter_from").datebox('getValue');
         var filter_to = $("#filter_to").datebox('getValue');
         var filter_return_no = $("#filter_return_no").combobox('getValue');
+        var filter_item_id = $("#filter_item_id").combogrid('getValue');
+        var filter_supplier = $("#filter_supplier").combogrid('getValue');
 
-        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_return_no=" + filter_return_no;
+        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_return_no=" + filter_return_no + "&filter_item_id=" + filter_item_id + "&filter_supplier=" + filter_supplier;
+        
         $('#dg').treegrid({
             url: '<?= base_url('purchase/purchase_returns/datatables') ?>' + url
         });
+
         $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
         $("#printout").attr('src', '<?= base_url('purchase/purchase_returns/print') ?>' + url);
     }
@@ -400,8 +443,10 @@
         var filter_from = $("#filter_from").datebox('getValue');
         var filter_to = $("#filter_to").datebox('getValue');
         var filter_return_no = $("#filter_return_no").combobox('getValue');
+        var filter_item_id = $("#filter_item_id").combogrid('getValue');
+        var filter_supplier = $("#filter_supplier").combogrid('getValue');
 
-        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_return_no=" + filter_return_no;
+        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_return_no=" + filter_return_no + "&filter_item_id=" + filter_item_id + "&filter_supplier=" + filter_supplier;
         window.location.assign('<?= base_url('purchase/purchase_returns/print/excel') ?>' + url);
     }
 
@@ -455,6 +500,7 @@
                                     return_date: return_date,
                                     return_name: return_name,
                                     supplier_id: supplier_id,
+                                    source: rows[i].source,
                                     po_no: rows[i].po_no,
                                     receipt_id: rows[i].receipt_id,
                                     item_rm_id: rows[i].item_rm_id,
@@ -546,6 +592,53 @@
             ],
             onSelect: function(val, supp){
                 addTable(supp.id);
+            }
+        });
+
+        $("#filter_supplier").combogrid({
+            url: '<?php echo base_url('purchase/purchase_orders/readSupplier'); ?>',
+            panelWidth: 400,
+            idField: 'id',
+            textField: 'name',
+            mode: 'remote',
+            fitColumns: true,
+            prompt: "Choose Supplier",
+            columns: [
+                [{
+                    field: 'id',
+                    title: 'Supplier ID',
+                    width: 100
+                }, {
+                    field: 'name',
+                    title: 'Supplier Name',
+                    width: 300
+                }]
+            ],
+            onSelect: function(val, supp){
+                $("#filter_item_id").combogrid({
+                    url: '<?php echo base_url('master/supplier_items/readItem?supplier_id='); ?>' + supp.id,
+                    panelWidth: 550,
+                    idField: 'item_rm_id',
+                    textField: 'item_number',
+                    mode: 'remote',
+                    fitColumns: true,
+                    prompt: "Choose Part No",
+                    columns: [
+                        [{
+                            field: 'item_rm_id',
+                            title: 'Part No EBWS',
+                            width: 150
+                        }, {
+                            field: 'item_number',
+                            title: 'Part No Supplier',
+                            width: 200
+                        }, {
+                            field: 'item_name',
+                            title: 'Description',
+                            width: 200
+                        }]
+                    ],
+                });
             }
         });
     });

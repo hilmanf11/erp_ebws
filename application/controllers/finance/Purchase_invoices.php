@@ -604,7 +604,7 @@ class Purchase_invoices extends CI_Controller
 
                                 //Fixed Asset
                                 if($item_rm->item_category_id = 'C06'){
-                                    if(@$post['asset_code_subs'] != ""){
+                                    if(@$post['asset_code_subs'] != "" && @$post['asset_code_subs'] != "-"){
                                         $dataAsset = array(
                                             "item_family_id" => $post['item_family_id'],
                                             "purchase_invoice_no" => $post['number'],

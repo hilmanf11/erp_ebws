@@ -139,6 +139,7 @@ class Report_purchase_registers extends CI_Controller
                     <th>TDS Amount</th>
                     <th>TDS Section</th>
                     <th>Total Invoice</th>
+                    <th>PI No</th>
                     <th>GRN No</th>
                     <th>GRN Date</th>
                     <th>COA No</th>
@@ -192,6 +193,7 @@ class Report_purchase_registers extends CI_Controller
                             <td style="text-align:right;">' . $data['total_tds'] . '</td>
                             <td>' . $data['tds'] . '</td>
                             <td style="text-align:right;">' . ($data['total2']) . '</td>
+                            <td>' . $data['number'] . '</td>
                             <td>' . $data['por_no'] . '</td>
                             <td>' . $data['receipt_date'] . '</td>
                             <td style="mso-number-format:\@;">' . $data['account_number'] . '</td>

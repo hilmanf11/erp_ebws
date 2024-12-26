@@ -159,9 +159,9 @@ class Sto_wip extends CI_Controller
         for ($i = 3; $i <= $total_row; $i++) {
             $datas[] = array(
                 'item_rm_id' => $data->val($i, 2),
-                'type' => $data->val($i, 3),
-                'qty' => $data->val($i, 4),
-                'trans_date' => $data->val($i, 5),
+                // 'type' => $data->val($i, 3),
+                'qty' => $data->val($i, 3),
+                'trans_date' => $data->val($i, 4),
             );
         }
 
@@ -220,21 +220,22 @@ class Sto_wip extends CI_Controller
 
             $document_no = "STO-" . $datenow ."-WIP-" . $autoID;
 
+            $dataFinal = array(
+                "item_rm_id" => $data['item_rm_id'],
+                "trans_date" => $data['trans_date'],
+                "document_no" => $document_no,
+                "qty" => $data['qty']
+            );
+
             $item_rm = $this->crud->read('item_rm', [], ["id" => $data['item_rm_id']]);
+            $sto_wip = $this->crud->read('sto_wip', [], ["item_rm_id" => $data['item_rm_id']]);
 
             if(empty($item_rm->id)){
                 echo json_encode(array("title" => "Not Found", "message" => "Part No EBWS " . $data['item_rm_id'] . " is Not Found", "theme" => "error"));
-            }elseif(!in_array($data['type'], array("IN","OUT"))){
-                echo json_encode(array("title" => "Not Found", "message" => "Type " . $data['type'] . " is Not IN/OUT", "theme" => "error"));
-            } else {
-                $dataFinal = array(
-                    "item_rm_id" => $data['item_rm_id'],
-                    "trans_date" => $data['trans_date'],
-                    "type" => $data['type'],
-                    "document_no" => $document_no,
-                    "qty" => $data['qty']
-                );
-
+            }elseif(!empty($sto_wip)){
+                $send = $this->crud->update('sto_wip', ["item_rm_id" => $data['item_rm_id']], $dataFinal);
+                echo $send;
+            }else{
                 $send = $this->crud->create('sto_wip', $dataFinal);
                 echo $send;
             }

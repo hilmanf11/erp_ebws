@@ -9,7 +9,7 @@
             <th rowspan="2" data-options="field:'asset_no',width:150,halign:'center'">Asset No</th>
             <th rowspan="2" data-options="field:'asset_name',width:200,halign:'center'">Asset Name</th>
             <th rowspan="2" data-options="field:'asset_category_name',width:150,halign:'center'">Asset Category</th>
-            <th rowspan="2" data-options="field:'purchase_invoice_number',width:150,halign:'center'">Purchase Invoice No</th>
+            <th rowspan="2" data-options="field:'purchase_invoice_no',width:150,halign:'center'">Purchase Invoice No</th>
             <th rowspan="2" data-options="field:'purchase_date',width:120,align:'center'">Purchase Date</th>
             <th rowspan="2" data-options="field:'cost',width:100,halign:'center',align:'right', formatter:priceformat">Asset Cost</th>
             <th rowspan="2" data-options="field:'estimate_year',width:100,align:'center'">Est. Economic<br>(year)</th>
@@ -67,22 +67,6 @@
                 </ul>
             </div>
         </fieldset>
-        <!-- <fieldset style="width: 43%; height: 210px; overflow: auto; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
-            <legend><b>Journal Lists</b></legend>
-            <a href="javascript:;" style="margin-bottom: 10px;" class="easyui-linkbutton" onclick="calculate()"><i class="fa fa-refresh"></i> Calculate Journal</a>
-            <table id="dg3" class="easyui-datagrid" style="width: 99%;">
-                <thead>
-                    <tr>
-                        <th field="ck" checkbox="true"></th>
-                        <th data-options="field:'account_number',halign:'center',width:90">Account No</th>
-                        <th data-options="field:'account_name',halign:'center',width:190">Account Name</th>
-                        <th data-options="field:'debit',width:100,halign:'center',align:'right',formatter:priceformat">Debit</th>
-                        <th data-options="field:'credit',width:100,halign:'center',align:'right',formatter:priceformat">Credit</th>
-                    </tr>
-                </thead>
-            </table>
-            <a href="javascript:;" style="margin-top: 10px; width:100%;" class="easyui-linkbutton c6" onclick="saveJournal()"><i class="fa fa-check"></i> Save Data Journal</a>
-        </fieldset> -->
     </div>
     <?= $button ?>
 </div>
@@ -421,7 +405,7 @@
 
         $("#filter_category").combobox({
             url: '<?= base_url('assets/categories/reads') ?>',
-            valueField: 'number',
+            valueField: 'id',
             textField: 'name',
             prompt: "Choose Category",
             icons: [{

@@ -9,6 +9,7 @@
             <th rowspan="2" data-options="field:'supplier_name',width:200,halign:'center'">Supplier</th>
             <th rowspan="2" data-options="field:'item_number',width:150,halign:'center'">Product No</th>
             <th rowspan="2" data-options="field:'item_name',width:200,halign:'center'">Product Name</th>
+            <th rowspan="2" data-options="field:'asset_code',width:200,halign:'center'">Asset Code</th>
             <th rowspan="2" data-options="field:'mpq',width:80,halign:'center',align:'right',formatter:numberformat">MPQ</th>
             <th rowspan="2" data-options="field:'moq',width:80,halign:'center',align:'right',formatter:numberformat">MOQ</th>
             <th rowspan="2" data-options="field:'qty',width:80,halign:'center',align:'right',formatter:numberformat">Qty</th>

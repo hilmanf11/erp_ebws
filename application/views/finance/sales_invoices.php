@@ -1623,31 +1623,6 @@
                                             });
 
                                             if (totalrows > 0) {
-                                                if (totalrows2 > 0) {
-                                                    for (let z = 0; z < totalrows2; z++) {
-                                                        $.ajax({
-                                                            type: "post",
-                                                            url: '<?= base_url('finance/sales_invoices/createJournals') ?>',
-                                                            data: {
-                                                                number: number,
-                                                                account_number: rows2[z].account_number,
-                                                                account_name: rows2[z].account_name,
-                                                                debit: rows2[z].debit,
-                                                                credit: rows2[z].credit,
-                                                                flag: rows2[z].flag,
-                                                            },
-                                                            dataType: "json",
-                                                            success: function(result2) {
-                                                                // if (result2.theme == "success") {
-                                                                //     toastr.success(result2.message, result2.title);
-                                                                // } else {
-                                                                //     toastr.error(result2.message, result2.title);
-                                                                // }
-                                                            }
-                                                        });
-                                                    }
-                                                }
-                                                
                                                 requestData(totalrows, rows);
                                                 $('#dlg_insert').dialog('close');
 
@@ -1702,19 +1677,49 @@
                                                             success: function(result) {
                                                                 requestData(total, json, jml + 1, value);
                                                                 if (jml == total) {
-                                                                    Swal.close();
-                                                                    Swal.fire({
-                                                                        title: result.message,
-                                                                        icon: result.theme,
-                                                                        confirmButtonText: 'Ok',
-                                                                        allowOutsideClick: false,
-                                                                    }).then((result) => {
-                                                                        if (result.isConfirmed) {
-                                                                            window.location.reload();
-                                                                        }
-                                                                    });
+                                                                    
+                                                                    if (totalrows2 > 0) {
+                                                                        requestData2(totalrows2, rows2);
+                                                                        
+                                                                        function requestData2(total2, json2, jml2 = 1, value2 = 0) {
+                                                                            if (value2 < 100) {
+                                                                                value2 = Math.floor((jml2 / total2) * 100);
+                                                                                var z = (jml2 - 1);
 
-                                                                    $('#dg').datagrid('reload');
+                                                                                $.ajax({
+                                                                                    type: "post",
+                                                                                    url: '<?= base_url('finance/sales_invoices/createJournals') ?>',
+                                                                                    data: {
+                                                                                        number: number,
+                                                                                        account_number: json2[z].account_number,
+                                                                                        account_name: json2[z].account_name,
+                                                                                        debit: json2[z].debit,
+                                                                                        credit: json2[z].credit,
+                                                                                        flag: json2[z].flag,
+                                                                                    },
+                                                                                    dataType: "json",
+                                                                                    success: function(result2) {
+                                                                                        requestData2(total2, json2, jml2 + 1, value2);
+                                                                                        if (jml2 == total2) {
+                                                                                            Swal.close();
+                                                                                            Swal.fire({
+                                                                                                title: result.message,
+                                                                                                icon: result.theme,
+                                                                                                confirmButtonText: 'Ok',
+                                                                                                allowOutsideClick: false,
+                                                                                            }).then((result) => {
+                                                                                                if (result.isConfirmed) {
+                                                                                                    window.location.reload();
+                                                                                                }
+                                                                                            });
+
+                                                                                            $('#dg').datagrid('reload');
+                                                                                        }
+                                                                                    }
+                                                                                });
+                                                                            }
+                                                                        }
+                                                                    }
                                                                 }
                                                             }
                                                         });

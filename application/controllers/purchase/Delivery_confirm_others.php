@@ -56,7 +56,7 @@ class Delivery_confirm_others extends CI_Controller
         $post = isset($_POST['q']) ? $_POST['q'] : "";
         $po_no = base64_decode($po_no);
 
-        $data = $this->crud->query("SELECT b.id, b.number, b.name, a.qty as qty_po, (a.qty - COALESCE(SUM(c.delivery), 0)) as qty, b.uom, a.delivery_date, DATE_FORMAT(now(), '%Y-%m-%d') as today, (a.qty - COALESCE(SUM(c.delivery), 0)) as delivery, COALESCE(SUM(c.delivery), 0) as actual
+        $data = $this->crud->query("SELECT b.id, b.number, b.name, SUM(a.qty) as qty_po, (SUM(a.qty) - COALESCE(SUM(c.delivery), 0)) as qty, b.uom, a.delivery_date, DATE_FORMAT(now(), '%Y-%m-%d') as today, (SUM(a.qty) - COALESCE(SUM(c.delivery), 0)) as delivery, COALESCE(SUM(c.delivery), 0) as actual
             FROM purchase_order_others a 
             JOIN item_rm b ON a.item_rm_id = b.id
             LEFT JOIN purchase_confirm_others c ON a.po_no = c.po_no and a.item_rm_id = c.item_rm_id and a.supplier_id = c.supplier_id
@@ -129,6 +129,7 @@ class Delivery_confirm_others extends CI_Controller
             $this->db->like('a.po_no', $filter_po_no);
             $this->db->like('c.item_family_id', $filter_product_family);
             $this->db->like('a.item_rm_id', $filter_item_rm_id);
+            $this->db->order_by('a.status', 'ASC');
             $this->db->order_by('a.supplier_id', 'ASC');
             $this->db->order_by('a.delivery_no', 'ASC');
             $this->db->order_by('a.item_rm_id', 'ASC');

@@ -98,7 +98,8 @@
     </div>
     <?= $button ?>
 </div>
-<!-- Insert & Update -->
+
+<!-- Insert -->
 <div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 90%; height: 550px; padding:10px; top: 20px;">
     <form id="frm_insert" method="post" novalidate>
         <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
@@ -190,6 +191,50 @@
     </form>
 </div>
 
+<div id="dlg_update" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 400px; padding: 10px; top: 10px;">
+    <form id="frm_update" method="post" novalidate>
+        <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
+            <legend><b>Form Data</b></legend>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">ID</span>
+                <input style="width:60%;" name="purchase_order_receipts_id" id="purchase_order_receipts_id" readonly class="easyui-textbox">
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Receipt ID</span>
+                <input style="width:60%;" name="receipt_id" id="receipt_date" readonly class="easyui-textbox">
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Supplier Name</span>
+                <input style="width:60%;" name="supplier_name" id="supplier_name" readonly class="easyui-textbox">
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Part No EBWS</span>
+                <input style="width:60%;" name="item_rm_id" id="item_rm_id" readonly class="easyui-textbox">
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Part No Supplier</span>
+                <input style="width:60%;" name="item_rm_number" id="item_rm_number" readonly class="easyui-textbox">
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Description</span>
+                <input style="width:60%;" name="item_rm_name" id="item_rm_name" readonly class="easyui-textbox">
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">MPQ</span>
+                <input style="width:60%;" name="qty_mpq" id="qty_mpq" readonly class="easyui-numberbox">
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Qty</span>
+                <input style="width:60%;" name="qty_receipt" id="qty_receipt" class="easyui-numberbox">
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Label</span>
+                <input style="width:60%;" name="qty_label" id="qty_label" readonly class="easyui-numberbox">
+            </div>
+        </fieldset>
+    </form>
+</div>
+
 <!-- INSERT LABEL -->
 <div id="dlg_label" class="easyui-dialog" title="Create Data Label" data-options="closed: true,modal:true,closable: false" style="width: 500px; padding:10px; top: 20px;">
     <span style="float: left; color:green;">SUCCESS : <b id="p_success">0</b></span><span style="float: right; color:red;"> FAILED : <b id="p_failed">0</b></span>
@@ -201,7 +246,6 @@
         </ul>
     </div>
 </div>
-
 
 <!-- PDF -->
 <iframe id="printout" src="" style="width: 100%;" hidden></iframe>
@@ -273,6 +317,33 @@
                         });
                     }
                 });
+            }
+        });
+    }
+
+    function update() {
+        var row = $('#dg').treegrid('getSelected');
+        if (row) {
+            if(row.receipt_no != row.id){
+                if(row.total_scan == 0){
+                    $('#dlg_update').dialog('open');
+                    $('#frm_update').form('load', row);
+                    url_update = '<?= base_url('purchase/purchase_order_receipts/update') ?>';
+                }else{
+                    toastr.warning("Cannot Update data because the label already scan in");
+                }
+            }else{
+                toastr.warning("Please Select Detail in the table!");
+            }
+        } else {
+            toastr.warning("Please select one of the data in the table first!", "Information");
+        }
+
+        $("#qty_receipt").numberbox({
+            onChange: function(val){
+                var qty_mpq = $("#qty_mpq").numberbox('getValue');
+                var label = Math.ceil(val / qty_mpq);
+                $("#qty_label").numberbox('setValue', label);
             }
         });
     }
@@ -503,8 +574,8 @@
             },
         });
         
-        $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
-        $("#printout").attr('src', '<?= base_url('purchase/purchase_order_receipts/print') ?>' + url);
+        // $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
+        // $("#printout").attr('src', '<?= base_url('purchase/purchase_order_receipts/print') ?>' + url);
     }
 
     function pdf() {
@@ -698,6 +769,47 @@
                     }else{
                         toastr.error("Please Complete Your input");    
                     }
+                }
+            }]
+        });
+
+        $('#dlg_update').dialog({
+            buttons: [{
+                text: 'Update Data',
+                iconCls: 'icon-ok',
+                handler: function() {
+                    $('#frm_update').form('submit', {
+                        url: url_save,
+                        onSubmit: function() {
+                            if($(this).form('validate') === true){
+                                $('#dlg_update').dialog('close');
+                                
+                                Swal.fire({
+                                    title: 'Please Wait...',
+                                    showConfirmButton: false,
+                                    allowOutsideClick: false,
+                                    allowEscapeKey: false,
+                                    didOpen: () => {
+                                        Swal.showLoading();
+                                    },
+                                });
+                            }else{
+                                return $(this).form('validate');
+                            }
+                        },
+                        success: function(result) {
+                            var result = eval('(' + result + ')');
+
+                            if (result.theme == "success") {
+                                toastr.success(result.message, result.title);
+                            } else {
+                                toastr.error(result.message, result.title);
+                            }
+
+                            $('#dg').treegrid('reload');
+                            Swal.close();
+                        }
+                    });
                 }
             }]
         });

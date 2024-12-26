@@ -40,7 +40,7 @@ class Purchase_request_others extends CI_Controller
 
     public function reads()
     {
-        $request_no = base64_decode($this->input->get('request_no'));
+        // $request_no = base64_decode($this->input->get('request_no'));
         $supplier_id = base64_decode($this->input->get('supplier_id'));
 
         //Select Query
@@ -64,7 +64,7 @@ class Purchase_request_others extends CI_Controller
         $this->db->join('suppliers e', 'd.supplier_id = e.id');
         $this->db->where('a.status', 0);
         $this->db->where('d.supplier_id', $supplier_id);
-        $this->db->where('a.request_no', $request_no);
+        $this->db->where("a.approved_to", "");
         $this->db->order_by('b.number', 'ASC');
         $records = $this->db->get()->result_array();
         
@@ -81,6 +81,7 @@ class Purchase_request_others extends CI_Controller
         $this->db->join('supplier_items d', "a.id = d.item_rm_id", 'left');
         $this->db->where('a.item_category_id !=', 'C01');
         $this->db->where('d.supplier_id', $supplier_id);
+        $this->db->where("d.approved_to", "");
         $this->db->order_by('a.number', 'ASC');
         $records = $this->db->get()->result_array();
         
@@ -116,7 +117,7 @@ class Purchase_request_others extends CI_Controller
 
     public function readAssets(){
         $item_rm_id = base64_decode($this->input->post('item_rm_id'));
-        $query = $this->db->query("SELECT * FROM assets WHERE status = 0 and item_rm_id = '$item_rm_id'");
+        $query = $this->db->query("SELECT * FROM assets WHERE status = 0 and item_rm_id = '$item_rm_id' ORDER BY `number` asc");
         $records = $query->row();
 
         echo json_encode($records);

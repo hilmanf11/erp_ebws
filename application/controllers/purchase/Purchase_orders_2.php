@@ -176,8 +176,8 @@ class purchase_orders_2 extends CI_Controller
                 $this->db->like('a.po_no', $filter_po_no);
                 $this->db->like('d.id', $filter_suppliers);
                 $this->db->group_by('a.po_no');
-                $this->db->order_by('a.status', 'ASC');
-                $this->db->order_by('a.po_date', 'DESC');
+                // $this->db->order_by('a.status', 'ASC');
+                $this->db->order_by('a.po_no', 'DESC');
                 //Total Data
                 $totalRows = $this->db->count_all_results('', false);
                 //Limit 1 - 10
@@ -454,7 +454,7 @@ class purchase_orders_2 extends CI_Controller
                             <div style="padding:10px;">
                                 <center>
                                     <br>
-                                    <h3 style="margin:0;">DELIVERY CONFIRMATION</h3>
+                                    <h3 style="margin:0;">PURCHASE ORDERS</h3>
                                 </center>
                                 <br>
                                 <div style="width:45%; float:left;">
