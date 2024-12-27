@@ -67,28 +67,51 @@ class Rgp_out extends CI_Controller
         //planning/where_used
         $post = isset($_POST['q']) ? $_POST['q'] : "";
         if ($item_category != 'C08') { // bukan finish good
-            $send = $this->crud->query("SELECT a.*,b.name as item_family_name,
-            ((COALESCE(SUM(d.qty_sto),0) + COALESCE(e.sto_qty_in, 0) + COALESCE(f.qty_receipt, 0) + COALESCE(h.return_qty, 0)) - COALESCE(g.qty, 0) - COALESCE(e.sto_qty_out, 0) - COALESCE(i.qty_reject, 0)) AS stock
-            FROM item_rm a 
-            JOIN item_familys b ON a.item_family_id = b.id
-            JOIN item_categories c ON a.item_category_id = c.id
+            if ($item_category == 'C03') { // JIKA CONSUMABLE
+                $send = $this->crud->query("SELECT a.*,b.name as item_family_name,
+                (COALESCE(f.begin_stock,0) + COALESCE(d.qty_receipt,0) - COALESCE(e.qty,0)) AS stock 
+                FROM item_rm a 
+                JOIN item_familys b ON a.item_family_id = b.id
+                JOIN item_categories c ON a.item_category_id = c.id
+    
+                JOIN (SELECT item_rm_id, COALESCE(SUM(qty_receipt), 0) as qty_receipt FROM purchase_order_receipt_others WHERE receipt_date <= '$trans_date' GROUP BY item_rm_id) d ON a.id = d.item_rm_id
+                LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as qty FROM issued_others WHERE trans_date <= '$trans_date' and `status` = '1' GROUP BY item_rm_id) e ON a.id = e.item_rm_id
+                LEFT JOIN (SELECT
+                    a.id,
+                    (c.qty_receipt - d.qty) AS begin_stock
+                    FROM item_rm a 
+                    JOIN item_familys b ON a.item_family_id = b.id AND b.number != '006'
+                    JOIN (SELECT item_rm_id, COALESCE(SUM(qty_receipt), 0) as qty_receipt FROM purchase_order_receipt_others WHERE receipt_date <= '$trans_date' GROUP BY item_rm_id) c ON a.id = c.item_rm_id
+                    LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as qty FROM issued_others WHERE trans_date <= '$trans_date' and `status` = '1' GROUP BY item_rm_id) d ON a.id = d.item_rm_id
+                    GROUP BY a.id) f on a.id = f.id
+                
+                WHERE a.status = 0 and c.id = '$item_category'
+                and (a.id like '%$post%' or a.number like '%$post%' or a.name like '%$post%')
+                GROUP BY a.id");
+            } else {
+                $send = $this->crud->query("SELECT a.*,b.name as item_family_name,
+                ((COALESCE(SUM(d.qty_sto),0) + COALESCE(e.sto_qty_in, 0) + COALESCE(f.qty_receipt, 0) + COALESCE(h.return_qty, 0)) - COALESCE(g.qty, 0) - COALESCE(e.sto_qty_out, 0) - COALESCE(i.qty_reject, 0)) AS stock
+                FROM item_rm a 
+                JOIN item_familys b ON a.item_family_id = b.id
+                JOIN item_categories c ON a.item_category_id = c.id
 
-            LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) AS qty_sto FROM os_rm a JOIN scan_item_receipts b ON a.id  = b.receipt_id WHERE a.trans_date <= '$trans_date' GROUP BY item_rm_id) d ON a.id = d.item_rm_id
-            LEFT JOIN (SELECT a.item_rm_id, (CASE WHEN a.type = 'IN' THEN COALESCE(SUM(a.qty), 0) ELSE 0 END) AS sto_qty_in, (CASE WHEN a.type = 'OUT' THEN COALESCE(SUM(a.qty), 0) ELSE 0 END) AS sto_qty_out FROM sto_rm a WHERE a.trans_date <= '$trans_date' AND a.approved_to = '' GROUP BY item_rm_id) e ON a.id = e.item_rm_id
-            LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) AS qty_receipt FROM purchase_order_receipts a JOIN scan_item_receipts b ON a.receipt_id  = b.receipt_id WHERE a.receipt_date <= '$trans_date' GROUP BY item_rm_id) f ON a.id = f.item_rm_id
-            LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) AS qty FROM issued_material_details WHERE DATE_FORMAT(created_date, '%Y-%m-%d') <= '$trans_date' GROUP BY item_rm_id) g ON a.id = g.item_rm_id
-            LEFT JOIN (SELECT a.item_rm_id, SUM(c.qty) AS return_qty
-                        FROM return_materials a 
-                        JOIN return_material_labels b ON a.return_id = b.return_id
-                        JOIN scan_item_receipts c ON a.return_id = c.receipt_id AND b.label_no = c.label_no
-                        WHERE a.return_date <= '$trans_date'
-                        GROUP BY a.item_rm_id) h ON a.id = h.item_rm_id
-            LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) as qty_reject FROM purchase_order_receipts a JOIN scan_item_rejections b ON a.receipt_id  = b.receipt_id WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') <= '$trans_date' GROUP BY item_rm_id) i ON a.id = i.item_rm_id
+                LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) AS qty_sto FROM os_rm a JOIN scan_item_receipts b ON a.id  = b.receipt_id WHERE a.trans_date <= '$trans_date' GROUP BY item_rm_id) d ON a.id = d.item_rm_id
+                LEFT JOIN (SELECT a.item_rm_id, (CASE WHEN a.type = 'IN' THEN COALESCE(SUM(a.qty), 0) ELSE 0 END) AS sto_qty_in, (CASE WHEN a.type = 'OUT' THEN COALESCE(SUM(a.qty), 0) ELSE 0 END) AS sto_qty_out FROM sto_rm a WHERE a.trans_date <= '$trans_date' AND a.approved_to = '' GROUP BY item_rm_id) e ON a.id = e.item_rm_id
+                LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) AS qty_receipt FROM purchase_order_receipts a JOIN scan_item_receipts b ON a.receipt_id  = b.receipt_id WHERE a.receipt_date <= '$trans_date' GROUP BY item_rm_id) f ON a.id = f.item_rm_id
+                LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) AS qty FROM issued_material_details WHERE DATE_FORMAT(created_date, '%Y-%m-%d') <= '$trans_date' GROUP BY item_rm_id) g ON a.id = g.item_rm_id
+                LEFT JOIN (SELECT a.item_rm_id, SUM(c.qty) AS return_qty
+                            FROM return_materials a 
+                            JOIN return_material_labels b ON a.return_id = b.return_id
+                            JOIN scan_item_receipts c ON a.return_id = c.receipt_id AND b.label_no = c.label_no
+                            WHERE a.return_date <= '$trans_date'
+                            GROUP BY a.item_rm_id) h ON a.id = h.item_rm_id
+                LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) as qty_reject FROM purchase_order_receipts a JOIN scan_item_rejections b ON a.receipt_id  = b.receipt_id WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') <= '$trans_date' GROUP BY item_rm_id) i ON a.id = i.item_rm_id
 
-            WHERE a.status = 0 and c.id = '$item_category'
-            and (a.id like '%$post%' or a.number like '%$post%' or a.name like '%$post%')
-            GROUP BY a.id");
-        } else {
+                WHERE a.status = 0 and c.id = '$item_category'
+                and (a.id like '%$post%' or a.number like '%$post%' or a.name like '%$post%')
+                GROUP BY a.id");
+            }
+        } else { // FG
             $send = $this->crud->query("SELECT a.number as id, a.number_customer as number, a.name, a.uom, a.hsn_code,
             (COALESCE(b.qty_sto, 0) + COALESCE(d.sto_qty_in, 0) + COALESCE(c.qty_wip, 0) - COALESCE(g.qty, 0) - COALESCE(d.sto_qty_out, 0)) as stock 
             FROM item_fg a 
@@ -850,7 +873,7 @@ class Rgp_out extends CI_Controller
         $html .= '
                             <table id="customers">
                             <tr>
-                                <td colspan="13" style="font-size:15px;" align="center"><b>Delivery Challan</b> <i><u>Under Rule-55 </u><b>(2)</b></i></td>
+                                <td colspan="13" style="font-size:15px;" align="center"><b>Delivery Challan</b><br><i><u>Under Rule-55 </u><b>(2)</b> of CGST Act 2017</i></td>
                             </tr>
                             <tr>
                                 <td colspan="13" align="center"><b>' . @$config->name . ' PVT. LTD.</b><br> ' . @$config->address2 . '<br>GSTIN : ' . @$config->gst_no . '</td>

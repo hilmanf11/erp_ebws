@@ -193,6 +193,7 @@
         $('#frm_insert').form('clear');
         let today = myformatter(new Date());
         $('#transaction_date').datebox('setValue', today);
+        $('#reference_number').textbox('setValue', '-');
         autonumber("<?= $id_menu ?>");
         $('#declaration').textbox('setValue', "It is hereby declared that above mentioned material is return after emulation and not for sale and no commercial value.\nHowever, the value for transit purpose is rs.2210000/- (Incl. GST@18%) only.");
     }

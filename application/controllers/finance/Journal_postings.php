@@ -2258,6 +2258,7 @@ class Journal_postings extends CI_Controller
                                         <th rowspan="2">Account No</th>
                                         <th rowspan="2">Account Name</th>
                                         <th rowspan="2">Description</th>
+                                        <th rowspan="2">Company Name</th>
                                         <th colspan="3">Original Currency</th>
                                         <th colspan="3">Local Currency</th>
                                     </tr>
@@ -2281,6 +2282,7 @@ class Journal_postings extends CI_Controller
                                 <td>' . $record['account_number'] . '</td>
                                 <td>' . $record['account_name'] . '</td>
                                 <td style="font-size:10px;">' . $record['description'] . '</td>
+                                <td>' . $record['company_name'] . '</td>
                                 <td>' . $record['currency'] . '</td>
                                 <td style="text-align:right;">' . @number_format($record['original_debit'], 2) . '</td>
                                 <td style="text-align:right;">' . @number_format($record['original_credit'], 2) . '</td>

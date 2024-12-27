@@ -28,7 +28,7 @@
 </table>
 
 <!-- TOOLBAR DATAGRID -->
-<div id="toolbar" style="height: 270px; padding: 10px;">
+<div id="toolbar" style="height: 300px; padding: 10px;">
     <!-- <div style="width: 100%; display: grid; grid-template-columns: auto auto auto; grid-gap: 5px; display: flex;"> -->
     <div style="width: 100%;">
         <fieldset style="width: 80%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
@@ -189,6 +189,7 @@
         $('#frm_insert').form('clear');
         let today = myformatter(new Date());
         $('#transaction_date').datebox('setValue', today);
+        $('#reference_number').textbox('setValue', '-');
         autonumber("<?= $id_menu ?>");
     }
 
@@ -223,7 +224,7 @@
     }
 
     function addTable(process_type = "", item_category_id = "", link = "") {
-        if (process_type == 'FOC') {
+        if (process_type == 'FOC' || process_type == 'NRGP') {
             var readonly = false;
         } else {
             var readonly = true;
@@ -509,7 +510,7 @@
 
     function onClickCell(index, field) {
         var process_type = $("#process_type").combobox('getValue');
-        if (process_type != 'FOC') {
+        if (process_type != 'FOC' || process_type == 'NRGP') {
             // alert('tidak bisa edit');
         } else {
             if (editIndex != index) {
@@ -534,7 +535,7 @@
         var reference_number = $("#reference_number").textbox('getValue');
         var rgp_number = $("#rgp_number").combobox('getValue');
 
-        if (process_type != 'FOC') {
+        if (process_type == 'RGP') {
             toastr.error("Can't add or remove for process type RGP/NRGP");
         } else {
             if (process_type != "" && company_id != "" && item_category_id != "" && departement_id != "" && rgp_type_id != "" && reference_number != "") {
@@ -556,7 +557,7 @@
     function removeit() {
         var process_type = $("#process_type").combobox('getValue');
 
-        if (process_type != 'FOC') {
+        if (process_type == 'RGP') {
             toastr.error("Can't add or remove for process type RGP/NRGP");
         } else {
             if (editIndex == undefined) {

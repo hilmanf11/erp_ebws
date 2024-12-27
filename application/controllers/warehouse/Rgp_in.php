@@ -43,7 +43,7 @@ class Rgp_in extends CI_Controller
     {
         $post = isset($_POST['q']) ? $_POST['q'] : "";
         $send = $this->crud->query("
-        select number from rgp_transactions where type='OUT' and number LIKE '%$post%' group by number");
+        select number from rgp_transactions where type='IN' and number LIKE '%$post%' group by number");
         echo json_encode($send);
     }
 
@@ -52,7 +52,7 @@ class Rgp_in extends CI_Controller
         $post = isset($_POST['q']) ? $_POST['q'] : "";
         $process_type = isset($_GET['process_type']) ? $_GET['process_type'] : "";
         $company_id = isset($_GET['company_id']) ? $_GET['company_id'] : "";
-        if (!empty($process_type)) {
+        if ($process_type == 'FOC') {
             $process = " and a.process_type like '%$process_type%'";
         } else {
             $process = "";
