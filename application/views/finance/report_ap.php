@@ -35,6 +35,14 @@
                     </select>
                 </div>
                 <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Status</span>
+                    <select style="width:60%;" id="filter_status" class="easyui-combobox" panelHeight="auto">
+                        <option value="">Choose All</option>
+                        <option value="0">OPEN</option>
+                        <option value="1">CLOSE</option>
+                    </select>
+                </div>
+                <div class="fitem">
                     <span style="width:35%; display:inline-block;">Display</span>
                     <select style="width:60%;" id="filter_display" class="easyui-combobox" panelHeight="auto">
                         <option value="Summary">Summary</option>
@@ -60,6 +68,7 @@
         var filter_payment = $("#filter_payment").combobox("getValue");
         var filter_display = $("#filter_display").combobox("getValue");
         var filter_purchase_invoice = $("#filter_purchase_invoice").combobox("getValue");
+        var filter_status = $("#filter_status").combobox("getValue");
 
         var url = "?filter_from=" + window.btoa(filter_from) +
             "&filter_to=" + window.btoa(filter_to) +
@@ -67,6 +76,7 @@
             "&filter_currency=" + filter_currency +
             "&filter_display=" + filter_display +
             "&filter_purchase_invoice=" + btoa(filter_purchase_invoice) +
+            "&filter_status=" + filter_status +
             "&filter_payment=" + filter_payment;
 
         if (filter_from == "" || filter_to == "") {
@@ -85,6 +95,7 @@
         var filter_payment = $("#filter_payment").combobox("getValue");
         var filter_display = $("#filter_display").combobox("getValue");
         var filter_purchase_invoice = $("#filter_purchase_invoice").combobox("getValue");
+        var filter_status = $("#filter_status").combobox("getValue");
 
         var url = "?filter_from=" + window.btoa(filter_from) +
             "&filter_to=" + window.btoa(filter_to) +
@@ -92,6 +103,7 @@
             "&filter_currency=" + filter_currency +
             "&filter_display=" + filter_display +
             "&filter_purchase_invoice=" + btoa(filter_purchase_invoice) +
+            "&filter_status=" + filter_status +
             "&filter_payment=" + filter_payment;
 
         if (filter_from == "" || filter_to == "") {
@@ -120,7 +132,7 @@
                     $(e.data.target).combobox('clear').combobox('textbox').focus();
                 }
             }],
-            onSelect: function(row){
+            onSelect: function(row) {
                 $("#filter_purchase_invoice").combobox({
                     url: '<?php echo base_url('finance/report_ap/readPi/'); ?>' + row.id,
                     valueField: 'number',

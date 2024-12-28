@@ -15,14 +15,14 @@
             <th rowspan="2" data-options="field:'price',width:100,halign:'center',align:'right',formatter:numberformat">Price</th>
             <th rowspan="2" data-options="field:'amount',width:120,halign:'center',align:'right',formatter:numberformatDefault">Amount</th>
             <th rowspan="2" data-options="field:'remarks',width:100,halign:'center'">Remarks</th>
-            <!-- <th colspan="3" data-options="field:'',width:100,halign:'center'">Approved</th> -->
+            <th colspan="3" data-options="field:'',width:100,halign:'center'">Approved</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
         </tr>
         <tr>
-            <!-- <th data-options="field:'approved_to',width:80,align:'center', styler:cellStylerApproval, formatter:cellFormatterApproval">Status</th>
+            <th data-options="field:'approved_to',width:80,align:'center', styler:cellStylerApproval, formatter:cellFormatterApproval">Status</th>
             <th data-options="field:'approved_by',width:120,align:'center'">By</th>
-            <th data-options="field:'approved_date',width:120,align:'center'">Date</th> -->
+            <th data-options="field:'approved_date',width:120,align:'center'">Date</th>
             <th data-options="field:'created_by',width:100,align:'center'"> By</th>
             <th data-options="field:'created_date',width:150,align:'center'"> Date</th>
             <th data-options="field:'updated_by',width:100,align:'center'"> By</th>

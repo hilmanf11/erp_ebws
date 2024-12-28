@@ -12,6 +12,10 @@
                     <span style="width:35%; display:inline-block;">Customer</span>
                     <input style="width:60%;" id="filter_customer" class="easyui-combobox">
                 </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Plant</span>
+                    <input style="width:60%;" id="filter_plant" class="easyui-combobox">
+                </div>
                 <div class="fitem" hidden>
                     <span style="width:35%; display:inline-block;">Sales Invoice</span>
                     <input style="width:60%;" id="filter_sales_invoice" class="easyui-combobox">
@@ -26,17 +30,13 @@
                     <span style="width:35%; display:inline-block;">Currency</span>
                     <input style="width:60%;" id="filter_currency" class="easyui-combobox">
                 </div>
-                <div class="fitem" hidden>
-                    <span style="width:35%; display:inline-block;">Payment</span>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Status</span>
                     <select style="width:60%;" id="filter_status" class="easyui-combobox" panelHeight="auto">
                         <option value="">Choose All</option>
                         <option value="0">OPEN</option>
                         <option value="1">CLOSE</option>
                     </select>
-                </div>
-                <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Plant</span>
-                    <input style="width:60%;" id="filter_plant" class="easyui-combobox">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Display</span>
@@ -128,7 +128,7 @@
                     $(e.data.target).combobox('clear').combobox('textbox').focus();
                 }
             }],
-            onSelect: function(row){
+            onSelect: function(row) {
                 $("#filter_plant").combobox({
                     url: '<?php echo base_url('master/customers/readAddress/'); ?>' + btoa(row.id),
                     valueField: 'plant',
