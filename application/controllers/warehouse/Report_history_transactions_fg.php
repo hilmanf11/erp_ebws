@@ -55,13 +55,15 @@ class Report_history_transactions_fg extends CI_Controller
             a.name, 
             a.uom, 
             COALESCE(0,0) as begin_stock,
-            (COALESCE(b.qty_sto, 0) + COALESCE(d.sto_qty_in,0) + COALESCE(c.qty_wip, 0)) as qty_in,
-            (g.qty + COALESCE(d.sto_qty_out, 0)) as qty_out,
-            (COALESCE((b.qty_sto + d.sto_qty_in + c.qty_wip),0) - COALESCE(g.qty, 0) - COALESCE(d.sto_qty_out, 0)) as end_stock
+            (COALESCE(b.qty_sto, 0) + COALESCE(d.sto_qty_in,0) + COALESCE(c.qty_wip, 0) + COALESCE(e.qty_rgp_in, 0)) as qty_in,
+            (g.qty + COALESCE(d.sto_qty_out, 0) + COALESCE(f.qty_rgp_out, 0)) as qty_out,
+            (COALESCE((b.qty_sto + d.sto_qty_in + c.qty_wip),0) + COALESCE(e.qty_rgp_in, 0) - COALESCE(g.qty, 0) - COALESCE(d.sto_qty_out, 0) - COALESCE(f.qty_rgp_out, 0)) as end_stock
         FROM item_fg a 
         LEFT JOIN (select a.item_fg_id, COALESCE(SUM(b.qty), 0) as qty_sto FROM os_fg a JOIN scan_item_receipts_fg b ON a.id = b.workorder WHERE a.trans_date between '$filter_from' and '$filter_to' GROUP BY a.item_fg_id) b ON a.id = b.item_fg_id
         LEFT JOIN (SELECT a.item_fg_id, (CASE WHEN a.type = 'IN' THEN COALESCE(SUM(a.qty), 0) ELSE 0 END) as sto_qty_in, (CASE WHEN a.type = 'OUT' THEN COALESCE(SUM(a.qty), 0) ELSE 0 END) as sto_qty_out FROM sto_fg a WHERE a.trans_date between '$filter_from' and '$filter_to' and (a.approved_to = '' or a.approved_to is null) GROUP BY item_fg_id) d ON a.id = d.item_fg_id
         LEFT JOIN (select a.item_fg_id, COALESCE(SUM(b.qty), 0) as qty_wip FROM wip_receipts a JOIN scan_item_receipts_fg b ON a.workorder = b.workorder and a.checksheet_number = b.checksheet_number WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') between '$filter_from' and '$filter_to' GROUP BY a.item_fg_id) c ON a.id = c.item_fg_id
+        LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_in FROM rgp_transactions WHERE type = 'IN' and transaction_date between '$filter_from' and '$filter_to' GROUP BY item_id) e ON a.id = e.item_id
+        LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_out FROM rgp_transactions WHERE type = 'OUT' and transaction_date between '$filter_from' and '$filter_to' GROUP BY item_id) f ON a.id = f.item_id
         LEFT JOIN (SELECT item_fg_id, delivery_note_date, COALESCE(SUM(qty), 0) as qty FROM delivery_notes WHERE DATE_FORMAT(created_date, '%Y-%m-%d') between '$filter_from' and '$filter_to' GROUP BY item_fg_id) g ON a.id = g.item_fg_id
         WHERE a.id like '%$filter_items%'
         GROUP BY a.id
@@ -111,11 +113,13 @@ class Report_history_transactions_fg extends CI_Controller
 
             $endstock = $this->crud->query("SELECT
                 a.id,
-                (COALESCE(b.qty_sto, 0) + COALESCE(d.sto_qty_in, 0) + COALESCE(c.qty_wip, 0) - COALESCE(g.qty, 0) - COALESCE(d.sto_qty_out, 0)) as begin_stock
+                (COALESCE(b.qty_sto, 0) + COALESCE(d.sto_qty_in, 0) + COALESCE(c.qty_wip, 0) + COALESCE(e.qty_rgp_in, 0) - COALESCE(g.qty, 0) - COALESCE(d.sto_qty_out, 0) - COALESCE(f.qty_rgp_out, 0)) as begin_stock
             FROM item_fg a 
             LEFT JOIN (select a.item_fg_id, COALESCE(SUM(b.qty), 0) as qty_sto FROM os_fg a JOIN scan_item_receipts_fg b ON a.id = b.workorder WHERE a.trans_date < '$filter_from' GROUP BY a.item_fg_id) b ON a.id = b.item_fg_id
             LEFT JOIN (select a.item_fg_id, COALESCE(SUM(b.qty), 0) as qty_wip FROM wip_receipts a JOIN scan_item_receipts_fg b ON a.workorder = b.workorder and a.checksheet_number = b.checksheet_number WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') < '$filter_from' GROUP BY a.item_fg_id) c ON a.id = c.item_fg_id
             LEFT JOIN (SELECT a.item_fg_id, (CASE WHEN a.type = 'IN' THEN COALESCE(SUM(a.qty), 0) ELSE 0 END) as sto_qty_in, (CASE WHEN a.type = 'OUT' THEN COALESCE(SUM(a.qty), 0) ELSE 0 END) as sto_qty_out FROM sto_fg a WHERE a.trans_date < '$filter_from' and (a.approved_to = '' or a.approved_to is null) GROUP BY item_fg_id) d ON a.id = d.item_fg_id
+            LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_in FROM rgp_transactions WHERE type = 'IN' and transaction_date < '$filter_from' GROUP BY item_id) e ON a.id = e.item_id
+            LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_out FROM rgp_transactions WHERE type = 'OUT' and transaction_date < '$filter_from' GROUP BY item_id) f ON a.id = f.item_id
             LEFT JOIN (SELECT item_fg_id, delivery_note_date, COALESCE(SUM(qty), 0) as qty FROM delivery_notes WHERE DATE_FORMAT(created_date, '%Y-%m-%d') < '$filter_from' GROUP BY item_fg_id) g ON a.id = g.item_fg_id
             WHERE a.id = '$item_fg_id'
             GROUP BY a.id
@@ -193,6 +197,9 @@ class Report_history_transactions_fg extends CI_Controller
                         FROM delivery_notes a 
                         JOIN users d ON a.created_by = d.username
                         WHERE a.item_fg_id = '$item_fg_id' and DATE_FORMAT(a.created_date, '%Y-%m-%d') = '$working_date'");
+
+                    //RGP TRANSACTION
+                    $rgps = $this->crud->query("SELECT a.*, b.name as company_name FROM rgp_transactions a JOIN suppliers b ON a.company_id = b.id WHERE a.item_id = '$item_fg_id' and a.transaction_date = '$working_date'");
 
                     //BEGIN STOCK
                     foreach ($os_rms as $os_rm) {
@@ -287,6 +294,46 @@ class Report_history_transactions_fg extends CI_Controller
                                                 <td style="text-align:right;">' . number_format($balance, 2)  . '</td>
                                             </tr>';
                         $begin -= $return->qty;
+                        $nod++;
+                    }
+
+                    //RGP
+                    foreach ($rgps as $rgp) {
+                        $user = $this->crud->read("users", [], ["username" => $rgp->created_by]);
+                        if($rgp->type == "IN"){
+                            $balance = ($begin + $rgp->qty);
+                            $rgp_status = "RGP IN";
+                            $rgp_qty_in = $rgp->qty;
+                            $rgp_qty_out = 0;
+                        }else{
+                            $rgp_status = "RGP OUT";
+                            $balance = ($begin - $rgp->qty);
+                            $rgp_qty_in = 0;
+                            $rgp_qty_out = $rgp->qty;
+                        }
+
+                        $html .= '  <tr>
+                                        <td></td>
+                                        <td style="text-align:center">' . $nod . '</td>
+                                        <td>' . $rgp_status . '</td>
+                                        <td>' . $user->name . '</td>
+                                        <td>' . $rgp->transaction_date . '</td>
+                                        <td>' . $rgp->company_id . '</td>
+                                        <td>' . $rgp->company_name . '</td>
+                                        <td>' . $rgp->reference_number . '</td>
+                                        <td>' . $rgp->rgp_number . '</td>
+                                        <td style="text-align:right;">' . number_format($begin, 2) . '</td>
+                                        <td style="text-align:right;">' . number_format($rgp_qty_in) . '</td>
+                                        <td style="text-align:right;">' . number_format($rgp_qty_out, 2)  . '</td>
+                                        <td style="text-align:right;">' . number_format($balance, 2)  . '</td>
+                                    </tr>';
+                        
+                        if($rgp->type == "IN"){
+                            $begin += $rgp_qty_in;
+                        }else{
+                            $begin -= $rgp_qty_out;
+                        }
+
                         $nod++;
                     }
                 }

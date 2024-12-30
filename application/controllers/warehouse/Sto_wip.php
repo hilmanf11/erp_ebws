@@ -232,7 +232,7 @@ class Sto_wip extends CI_Controller
 
             if(empty($item_rm->id)){
                 echo json_encode(array("title" => "Not Found", "message" => "Part No EBWS " . $data['item_rm_id'] . " is Not Found", "theme" => "error"));
-            }elseif(!empty($sto_wip)){
+            }elseif(!empty($sto_wip->item_rm_id)){
                 $send = $this->crud->update('sto_wip', ["item_rm_id" => $data['item_rm_id']], $dataFinal);
                 echo $send;
             }else{

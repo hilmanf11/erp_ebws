@@ -531,7 +531,7 @@
                 handler: function() {
                     var hsn_code = $("#hsn_code").combogrid('getValue');
 
-                    if(hsn_code.length == 8){
+                    if(hsn_code.length >= 6){
                         $('#frm_insert').form('submit', {
                             url: url_save,
                             onSubmit: function() {

@@ -323,7 +323,7 @@ class Purchase_invoices extends CI_Controller
         $config = $this->db->get()->row();
 
         if($type == "purchase"){
-            $this->db->select("a.receipt_no as por_no, a.po_no, '' as asset_code_subs, c.id as item_rm_id, c.number as item_rm_number, c.name as item_rm_name, c.uom, c.hsn_code, b.currency, 
+            $this->db->select("a.receipt_no as por_no, a.po_no, '' as asset_code, c.id as item_rm_id, c.number as item_rm_number, c.name as item_rm_name, c.uom, c.hsn_code, b.currency, 
                 a.qty_receipt as qty, f.price, f.discount, 'INR' as currency_local, h.account_number, i.account_name, h.id  as item_family_id, h.name as item_family_name,
                 b.tds, b.state, k.individual, b.type as supplier_type,
                 ((a.qty_receipt * f.price) * COALESCE(j.igst, 0) / 100) as igst,
@@ -350,7 +350,7 @@ class Purchase_invoices extends CI_Controller
             $this->db->order_by('a.receipt_no', 'asc');
             $records = $this->db->get()->result_array();
         }else{
-            $this->db->select("a.receipt_no as por_no, a.po_no, a.asset_code_subs, c.id as item_rm_id, c.number as item_rm_number, c.name as item_rm_name, c.uom, c.hsn_code, b.currency, 
+            $this->db->select("a.receipt_no as por_no, a.po_no, a.asset_code, c.id as item_rm_id, c.number as item_rm_number, c.name as item_rm_name, c.uom, c.hsn_code, b.currency, 
                 a.qty_receipt as qty, f.price, f.discount, 'INR' as currency_local, h.account_number, i.account_name, h.id  as item_family_id, h.name as item_family_name,
                 b.tds, b.state, k.individual, b.type as supplier_type,
                 ((a.qty_receipt * f.price) * COALESCE(j.igst, 0) / 100) as igst,
@@ -424,7 +424,7 @@ class Purchase_invoices extends CI_Controller
 
             $obj[] = array(
                 "no_id" => $id,
-                "asset_code_subs" => $record['asset_code_subs'],
+                "asset_code" => $record['asset_code'],
                 "por_no" => $record['por_no'],
                 "po_no" => $record['po_no'],
                 "item_rm_id" => $record['item_rm_id'],
@@ -604,18 +604,26 @@ class Purchase_invoices extends CI_Controller
 
                                 //Fixed Asset
                                 if($item_rm->item_category_id = 'C06'){
-                                    if(@$post['asset_code_subs'] != "" && @$post['asset_code_subs'] != "-"){
+                                    if(@$post['asset_code'] != "" && @$post['asset_code'] != "-"){
+
+                                        $asset_code = $post['asset_code'];
+                                        $asset = $this->crud->read("assets", [], ["number" => $asset_code]);
+                                        $asset_fixeds = $this->crud->read("asset_fixeds", [], ["number" => $asset_code]);
+                                        // $sql_asset_fixed = $this->db->query("SELECT max(numbers) as numbers FROM asset_fixeds WHERE number = '$asset_code'");
+                                        // $row_asset_fixed = $sql_asset_fixed->row();
+
                                         $dataAsset = array(
                                             "item_family_id" => $post['item_family_id'],
                                             "purchase_invoice_no" => $post['number'],
                                             "supplier_id" => $post['supplier_id'],
                                             "supplier_name" => @$supplier->name,
                                             "item_rm_id" => $post['item_rm_id'],
-                                            "number" => @$post['asset_code_subs'],
-                                            "name" => @$item_rm->name,
+                                            "number" => @$asset_code,
+                                            // "numbers" => @$row_asset_fixed->numbers + 1,
+                                            "name" => @$asset->name,
                                             "shift" => $shift,
                                             "trans_date" => $post['trans_date'],
-                                            "qty" => $post['qty'],
+                                            "qty" => (@$asset->qty),
                                             "currency" => $post['currency'],
                                             "cost" => $post['price'],
                                             "estimate_month" => $estimate_month,
@@ -633,8 +641,10 @@ class Purchase_invoices extends CI_Controller
                                             "addition" => ($post['total2'] - (($post['total2'] * 5) / 100) / $estimate_year / 365 * $estimate_day * $factor),
                                             "estimate_day" => $estimate_day,
                                         );
-
-                                        $send = $this->crud->create('asset_fixeds', $dataAsset);
+                                        
+                                        if(empty($asset_fixeds)){
+                                            $send = $this->crud->create('asset_fixeds', $dataAsset);
+                                        }
                                     }
                                 }
 

@@ -141,15 +141,15 @@ class Fixeds extends CI_Controller
     //GET DATATABLES
     public function datatables()
     {
-        if ($this->input->post()) {
-            $page = $this->input->post('page');
-            $rows = $this->input->post('rows');
+        if ($this->input->get()) {
+            // $page = $this->input->post('page');
+            // $rows = $this->input->post('rows');
 
-            //Pagination 1-10
-            $page   = isset($page) ? intval($page) : 1;
-            $rows   = isset($rows) ? intval($rows) : 10;
-            $offset = ($page - 1) * $rows;
-            $result = array();
+            // //Pagination 1-10
+            // $page   = isset($page) ? intval($page) : 1;
+            // $rows   = isset($rows) ? intval($rows) : 10;
+            // $offset = ($page - 1) * $rows;
+            // $result = array();
 
             $filter_from = base64_decode($this->input->get('filter_from'));
             $filter_to = base64_decode($this->input->get('filter_to'));
@@ -185,7 +185,7 @@ class Fixeds extends CI_Controller
             //Total Data
             $totalRows = $this->db->count_all_results('', false);
             //Limit 1 - 10
-            $this->db->limit($rows, $offset);
+            // $this->db->limit($rows, $offset);
             //Get Data Array
             $records = $this->db->get()->result_array();
             //Mapping Data

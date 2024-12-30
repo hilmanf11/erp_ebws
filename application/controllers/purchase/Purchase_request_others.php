@@ -63,6 +63,7 @@ class Purchase_request_others extends CI_Controller
         $this->db->join('supplier_items d', "a.item_rm_id = d.item_rm_id");
         $this->db->join('suppliers e', 'd.supplier_id = e.id');
         $this->db->where('a.status', 0);
+        $this->db->where("(a.asset_code = '' or a.asset_code is null or a.asset_code = '-')");
         $this->db->where('d.supplier_id', $supplier_id);
         $this->db->where("a.approved_to", "");
         $this->db->order_by('b.number', 'ASC');
@@ -177,13 +178,17 @@ class Purchase_request_others extends CI_Controller
         //Select Query
         $id = $_POST['id'];
         if ($id === "0") {
-            $this->db->select('a.request_no, a.request_date, a.expected_date, a.item_category_id, a.request_name, sum(a.qty) as qty, a.status');
+            $this->db->select('a.request_no, a.request_date, a.expected_date, a.item_category_id, a.asset_code, d.name as asset_name, d.qty as asset_qty, d.uom as asset_uom, a.request_name, sum(a.qty) as qty, a.status');
             $this->db->from('purchase_request_others a');
             $this->db->join('item_rm b', 'a.item_rm_id = b.id');
             $this->db->join('item_familys c', "b.item_family_id = c.id");
+            $this->db->join('assets d', 'a.asset_code = d.number', 'left');
             $this->db->where('a.deleted', 0);
-            if(!in_array($this->session->username, ["PURCHASE-03", "Purchase-01", "PURCHASE-02", "admin", "hariom_bhardwaj", "ITADMIN"])){
+            if(!in_array($this->session->username, ["PURCHASE-03", "Purchase-01", "PURCHASE-02", "admin", "hariom_bhardwaj", "ITADMIN", "Accounts01"])){
                 $this->db->where('a.created_by', $this->session->username);
+            }
+            if($this->session->username == "Accounts01"){
+                $this->db->where('a.item_category_id', "ASSET");
             }
             if ($filter_from != "" or $filter_to != "") {
                 $this->db->where('a.request_date >=', $filter_from);
@@ -210,6 +215,10 @@ class Purchase_request_others extends CI_Controller
                     "item_category_id" => $record['item_category_id'],
                     "qty" => $record['qty'],
                     "status" => $record['status'],
+                    "asset_code" => $record['asset_code'],
+                    "asset_name" => $record['asset_name'],
+                    "asset_qty" => $record['asset_qty'],
+                    "asset_uom" => $record['asset_uom'],
                     "state" => "closed",
                     "datatable" => 1
                 );
@@ -262,11 +271,24 @@ class Purchase_request_others extends CI_Controller
                 $post   = $this->input->post();
                 $p_month = date("m", strtotime($post['request_date']));
                 $p_year = date("Y", strtotime($post['request_date']));
+                $asset_code = $post['asset_code'];
 
                 $purchase_request_item = $this->crud->read('purchase_request_others', [], ["request_no" => $post['request_no'], "item_rm_id" => $post['item_rm_id']]);
                 if (@$purchase_request_item->id != "") {
                     $send = $this->crud->update('purchase_request_others', ["request_no" => $post['request_no'], "item_rm_id" => $post['item_rm_id']], $post);
                 } else {
+                    // $sql = $this->db->query("SELECT max(`asset_code_sub`) as kode FROM purchase_request_others WHERE `asset_code` like '%$asset_code%'");
+                    // $row = $sql->row();
+                    
+                    // if ($row->kode == "") {
+                    //     $kode = "00";
+                    // } else {
+                    //     $kode = sprintf("%02s", (substr($row->kode, -2) + 1));
+                    // }
+                    
+                    // $asset_code_sub = $asset_code . "-" . $kode;
+
+                    // $send = $this->crud->create('purchase_request_others', array_merge($post, ["request_type" => "OTHER", "p_month" => $p_month, "p_year" => $p_year, "asset_code_sub" => $asset_code_sub]));
                     $send = $this->crud->create('purchase_request_others', array_merge($post, ["request_type" => "OTHER", "p_month" => $p_month, "p_year" => $p_year]));
                     $this->db->update('assets', ["status" => 1], ["number" => $post['asset_code']]);
                 }
@@ -296,6 +318,7 @@ class Purchase_request_others extends CI_Controller
     {
         $data = $this->input->post();
         $send = $this->crud->delete('purchase_request_others', $data);
+        $this->db->update('assets', ["status" => 0, "request_no" => ""], ["number" => $data['asset_code']]);
         echo $send;
     }
 
@@ -615,12 +638,19 @@ class Purchase_request_others extends CI_Controller
                 <th>Part No EBWS</th>
                 <th>Part No Supplier</th>
                 <th>Description</th>
+                <th>Asset Code</th>
+                <th>Asset Code Sub</th>
                 <th>Product Family</th>
                 <th>Qty</th>
                 <th>Uom</th>
                 <th>Status</th>
                 <th>PO No</th>
                 <th>Remarks</th>
+                <th>Created By</th>
+                <th>Created Date</th>
+                <th>Approved Next</th>
+                <th>Approved By</th>
+                <th>Approved Date</th>
             </tr>';
         $no = 1;
         foreach ($records as $data) {
@@ -638,12 +668,19 @@ class Purchase_request_others extends CI_Controller
                         <td>' . $data['item_rm_id'] . '</td>
                         <td>' . $data['item_rm_number'] . '</td>
                         <td>' . $data['item_rm_name'] . '</td>
+                        <td>' . $data['asset_code'] . '</td>
+                        <td>' . $data['asset_code_sub'] . '</td>
                         <td>' . $data['item_family_name'] . '</td>
                         <td>' . number_format($data['qty'], 2) . '</td>
                         <td>' . $data['uom'] . '</td>
                         <td>' . $status . '</td>
                         <td>' . $data['po_no'] . '</td>
                         <td>' . $data['remarks'] . '</td>
+                        <td>' . $data['created_by'] . '</td>
+                        <td>' . $data['created_date'] . '</td>
+                        <td>' . $data['approved_to'] . '</td>
+                        <td>' . $data['approved_by'] . '</td>
+                        <td>' . $data['approved_date'] . '</td>
                     </tr>';
             $no++;
         }

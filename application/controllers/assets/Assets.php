@@ -14,7 +14,7 @@ class Assets extends CI_Controller
         $this->load->library('Ciqrcode');
         $this->load->model('crud');
         //Validasi Form
-        $this->form_validation->set_rules('item_rm_id', 'Product No', 'required|min_length[1]|max_length[30]');
+        $this->form_validation->set_rules('number', 'Asset No', 'required|min_length[1]|max_length[30]');
     }
 
     public function index()
@@ -30,6 +30,39 @@ class Assets extends CI_Controller
         } else {
             redirect('error_access');
         }
+    }
+
+    public function reads()
+    {
+        $post = isset($_POST['q']) ? $_POST['q'] : "";
+        $send = $this->crud->reads('assets', ["number" => $post, "name" => $post], ["status" => 0]);
+        echo json_encode($send);
+    }
+
+    public function readPr()
+    {
+        $sql = $this->db->query("SELECT a.request_no 
+            FROM purchase_request_others a 
+            JOIN assets b ON a.request_no != b.request_no 
+            WHERE a.status = 0 and a.item_category_id = 'ASSET' 
+            and (a.asset_code = '' or a.asset_code is null or a.asset_code = '-') 
+            GROUP BY a.request_no 
+            ORDER BY a.request_no");
+        $datas = $sql->result_array();
+        echo json_encode($datas);
+    }
+
+    public function readPrDetails()
+    {
+        $request_no = $this->input->get('request_no');
+        $sql = $this->db->query("SELECT a.*, b.number as item_rm_number, b.name as item_rm_name, c.name as item_family_name, b.uom
+            FROM purchase_request_others a
+            JOIN item_rm b ON a.item_rm_id = b.id
+            JOIN item_familys c ON b.item_family_id = c.id
+            WHERE a.request_no = '$request_no'
+            ORDER BY a.request_no");
+        $datas = $sql->result_array();
+        echo json_encode($datas);
     }
 
     public function autoid()
@@ -67,70 +100,40 @@ class Assets extends CI_Controller
 
     public function datatables()
     {
-        $filter_item_rm = $this->input->get('filter_item_rm');
-        $filter_item_familys = $this->input->get('filter_item_familys');
-
-        $page = $this->input->post('page');
-        $rows = $this->input->post('rows');
-        //Pagination 1-10
-        $page   = isset($page) ? intval($page) : 1;
-        $rows   = isset($rows) ? intval($rows) : 10;
-        $offset = ($page - 1) * $rows;
-        $result = array();
-        //Select Query
-        $id = $_POST['id'];
-        if ($id === "0") {
-            $this->db->select('*, SUM(qty) as total');
-            $this->db->from('assets');
-            $this->db->like('item_family_id', $filter_item_familys);
-            $this->db->like('item_rm_id', $filter_item_rm);
-            $this->db->group_by('number');
-            $this->db->order_by('number', 'DESC');
+        if ($this->input->post()) {
+            $filters = json_decode($this->input->post('filterRules'));
+            $page = $this->input->post('page');
+            $rows = $this->input->post('rows');
+            //Pagination 1-10
+            $page   = isset($page) ? intval($page) : 1;
+            $rows   = isset($rows) ? intval($rows) : 10;
+            $offset = ($page - 1) * $rows;
+            $result = array();
+            //Select Query
+            $this->db->select('a.*, b.name as item_family_name');
+            $this->db->from('assets a');
+            $this->db->join('item_familys b', 'a.item_family_id = b.id');
+            if (@count($filters) > 0) {
+                foreach ($filters as $filter) {
+                    if($filter->field == "item_family_name"){
+                        $this->db->like("b.name", $filter->value);
+                    }else{
+                        $this->db->like("a.".$filter->field, $filter->value);
+                    }
+                }
+            }
+            $this->db->order_by('a.id', 'desc');
             //Total Data
             $totalRows = $this->db->count_all_results('', false);
             //Limit 1 - 10
             $this->db->limit($rows, $offset);
             //Get Data Array
             $records = $this->db->get()->result_array();
-            foreach ($records as $record) {
-                $arr[] = array(
-                    "id" => $record['number'],
-                    "number" => $record['number'],
-                    "name" => $record['name'],
-                    "description" => $record['description'],
-                    "item_family_id" => $record['item_family_id'],
-                    "qty" => $record['total'],
-                    "status" => $record['status'],
-                    "state" => "closed",
-                    "datatable" => 1
-                );
-            }
-            
+            //Mapping Data
             $result['total'] = $totalRows;
-            $result = array_merge($result, ['rows' => @$arr]);
+            $result = array_merge($result, ['rows' => $records]);
             echo json_encode($result);
-        } else {
-            $this->db->select('a.id, b.id as number, b.number as name, b.name as description, a.qty, a.created_by, a.created_date, a.updated_by, a.updated_date, a.status');
-            $this->db->from('assets a');
-            $this->db->join('item_rm b', 'a.item_rm_id = b.id');
-            $this->db->where('a.number', $id);
-            $this->db->like('a.item_family_id', $filter_item_familys);
-            $this->db->like('a.item_rm_id', $filter_item_rm);
-            $this->db->order_by('b.number', 'ASC');
-            $records = $this->db->get()->result_array();
-            echo json_encode($records);
         }
-    }
-
-    public function datatable_updates(){
-        $number = base64_decode($this->input->get('number'));
-        
-        $records = $this->crud->query("SELECT a.*, c.number as item_rm_number, c.name as item_rm_name
-            FROM assets a
-            JOIN item_rm c on a.item_rm_id = c.id
-            WHERE a.number = '$number'
-            GROUP BY c.number");
-        echo json_encode($records);
     }
 
     public function create()
@@ -139,15 +142,9 @@ class Assets extends CI_Controller
             if ($this->form_validation->run() == TRUE) {
                 $post = $this->input->post();
 
-                $assets = $this->crud->read('assets', [], ["item_rm_id" => $post['item_rm_id'], "number" => $post['number']]);
-                if (empty($assets)) {
-                    $send = $this->crud->create('assets', $post);
-                    echo $send;
-                }else{
-                    $send = $this->crud->update('assets', ["number" => $post['number'], "item_rm_id" => $post['item_rm_id']], $post);
-                    echo $send;
-                }
-
+                $send = $this->crud->create('assets', $post);
+                $this->db->update('purchase_request_others', ["asset_code" => $post['number']], ["request_no" => $post['request_no']]);
+                echo $send;
             } else {
                 show_error(validation_errors());
             }
@@ -159,7 +156,7 @@ class Assets extends CI_Controller
     public function update()
     {
         if ($this->input->post()) {
-            $id   = $this->input->post('id');
+            $id = $this->input->post('id');
             $post = $this->input->post();
             $send = $this->crud->update('assets', ["id" => $id], $post);
             echo $send;
@@ -172,6 +169,7 @@ class Assets extends CI_Controller
     {
         $data = $this->input->post();
         $send = $this->crud->delete('assets', $data);
+        $this->db->update('purchase_request_others', ["asset_code" => ""], ["request_no" => $data['request_no']]);
         echo $send;
     }
 
@@ -185,15 +183,13 @@ class Assets extends CI_Controller
         $file = $_FILES['file_upload']['name'];
         $data = new Spreadsheet_Excel_Reader($file, false);
         $total_row = $data->rowcount($sheet_index = 0);
-        $category = $data->val(2, 3);
         
         for ($i = 3; $i <= $total_row; $i++) {
             $datas[] = array(
-                'item_family_id' => $data->val($i, 2),
-                'item_rm_id' => $data->val($i, 3),
-                'number' => $data->val($i, 4),
-                'name' => $data->val($i, 5),
-                'description' => $data->val($i, 6)
+                'item_rm_id' => $data->val($i, 2),
+                'number' => $data->val($i, 3),
+                'name' => $data->val($i, 4),
+                'description' => $data->val($i, 5)
             );
         }
         $datas['total'] = count($datas);
@@ -235,14 +231,14 @@ class Assets extends CI_Controller
             $data = $this->input->post('data');
             //Cek Process Number
             $item = $this->crud->read('item_rm', [], ["id" => $data['item_rm_id']]);
-            $assets = $this->crud->read('assets', [], ["number" => $data['number'], "item_rm_id" => $data['item_rm_id']]);
+            $assets = $this->crud->read('assets', [], ["number" => $data['number']]);
 
             if (empty($item->id)) {
                 echo json_encode(array("title" => "Not Found", "message" => "Part No " . $data['item_rm_id'] . " Not Found", "theme" => "error"));
             } elseif (!empty($assets->id)) {
-                echo json_encode(array("title" => "Duplicated", "message" => "Part No " . $data['item_rm_id'] . " Duplicate Data", "theme" => "error"));
+                echo json_encode(array("title" => "Duplicated", "message" => "Asset Code " . $data['number'] . " Duplicate Data", "theme" => "error"));
             } else {
-                $send = $this->crud->create('assets', $data);
+                $send = $this->crud->create('assets', array_merge($data, array("item_family_id" => @$item->item_family_id)));
                 echo $send;
             }
         }
@@ -256,19 +252,14 @@ class Assets extends CI_Controller
             header("Content-Disposition: attachment; filename=assets_$format.xls");
         }
 
-        $filter_item_rm = $this->input->get('filter_item_rm');
-        $filter_item_familys = $this->input->get('filter_item_familys');
-
         //Config
         $this->db->select('*');
         $this->db->from('config');
         $config = $this->db->get()->row();
         
-        $this->db->select('a.*, b.number as item_rm_number, b.name as item_rm_name');
+        $this->db->select('a.*, b.name as item_family_name');
         $this->db->from('assets a');
-        $this->db->join('item_rm b', 'a.item_rm_id = b.id');
-        $this->db->like('a.item_family_id', $filter_item_familys);
-        $this->db->like('a.item_rm_id', $filter_item_rm);
+        $this->db->join('item_familys b', 'a.item_family_id = b.id');
         $this->db->order_by('a.number', 'DESC');
         $records = $this->db->get()->result_array();
         
@@ -297,23 +288,22 @@ class Assets extends CI_Controller
             <table id="customers" border="1">
             <tr>
                 <th width="20">No</th>
+                <th>Asset Category</th>
                 <th>Asset Code</th>
                 <th>Asset Name</th>
-                <th>Description</th>
-                <th>Part No EBWS</th>
-                <th>Part No Supplier</th>
-                <th>Description</th>
+                <th>Uom</th>
+                <th>Qty</th>
             </tr>';
         $no = 1;
         foreach ($records as $data) {
             $html .= '<tr>
                         <td style="text-align:center">' . $no . '</td>
+                        <td>' . $data['item_family_name'] . '</td>
                         <td>' . $data['number'] . '</td>
                         <td>' . $data['name'] . '</td>
-                        <td>' . $data['description'] . '</td>
-                        <td>' . $data['item_rm_id'] . '</td>
-                        <td>' . $data['item_rm_number'] . '</td>
-                        <td>' . $data['item_rm_name'] . '</td>
+                        <td>' . $data['uom'] . '</td>
+                        <td>' . $data['qty'] . '</td>
+                        <td>' . $data['status'] . '</td>
                     </tr>';
             $no++;
         }

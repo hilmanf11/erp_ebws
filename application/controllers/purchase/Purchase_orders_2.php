@@ -66,7 +66,7 @@ class purchase_orders_2 extends CI_Controller
         $this->db->join('users d', 'a.created_by = d.username');
         $this->db->where('a.status', 0);
         $this->db->where("(a.approved_to = '' or a.approved_to is null)");
-        $this->db->like('a.supplier_id', $supplier_id);
+        $this->db->where('a.supplier_id', $supplier_id);
         $this->db->like('a.po_no', $post);
         $this->db->group_by('a.po_no');
         $this->db->order_by('a.created_date', 'desc');

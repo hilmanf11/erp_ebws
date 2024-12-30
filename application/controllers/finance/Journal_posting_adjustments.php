@@ -295,6 +295,81 @@ class Journal_posting_adjustments extends CI_Controller
     {
         if ($this->input->post()) {
             $post = $this->input->post();
+            $taxes = $this->crud->reads('taxes', [], ["number" => $post['taxes']]);
+
+            if(empty($post['id'])){
+                foreach ($taxes as $tax) {
+                    $journals = $this->crud->read('journal_postings', [], ["number" => $post['number'], "account_number" => $tax->account_number]);
+
+                    if(count($journals) > 0){
+                        foreach ($journals as $journal) {
+                            if($journal->local_debit > 0){
+                                $local_debit = ($journal->local_debit + $post['taxes_amount']);
+                                $local_credit = 0;
+                            }else{
+                                $local_debit = 0;
+                                $local_credit = ($journal->local_credit + $post['taxes_amount']);
+                            }
+
+                            $dataFinals2 = array(
+                                "journal_date" => $post['journal_date'],
+                                "modul" => $post['modul'],
+                                "journal_type_id" => $post['journal_type_id'],
+                                "number" => $post['number'],
+                                "remarks" => $post['remarks'],
+                                "trans_date" => $post['document_date'],
+                                "document_no" => $post['document_no'],
+                                "invoice_no" => $post['document_no'],
+                                "company_id" => $post['company_id'],
+                                "company_name" => $post['company_name'],
+                                "account_number" => $tax->account_number,
+                                "account_name" => $tax->account_name,
+                                "description" => $tax->account_name,
+                                "currency" => $post['currency'],
+                                "local_debit" => $local_debit,
+                                "local_credit" => $local_credit,
+                                "original_debit" => $local_debit,
+                                "original_credit" => $local_credit,
+                                "rates" => 1,
+                            );
+
+                            $this->crud->create('journal_postings', $dataFinals2);
+                        }
+                    }else{
+                        if($journal->local_debit > 0){
+                            $local_debit = ($journal->local_debit + $post['taxes_amount']);
+                            $local_credit = 0;
+                        }else{
+                            $local_debit = 0;
+                            $local_credit = ($journal->local_credit + $post['taxes_amount']);
+                        }
+
+                        $dataFinals2 = array(
+                            "journal_date" => $post['journal_date'],
+                            "modul" => $post['modul'],
+                            "journal_type_id" => $post['journal_type_id'],
+                            "number" => $post['number'],
+                            "remarks" => $post['remarks'],
+                            "trans_date" => $post['document_date'],
+                            "document_no" => $post['document_no'],
+                            "invoice_no" => $post['document_no'],
+                            "company_id" => $post['company_id'],
+                            "company_name" => $post['company_name'],
+                            "account_number" => $tax->account_number,
+                            "account_name" => $tax->account_name,
+                            "description" => $tax->account_name,
+                            "currency" => $post['currency'],
+                            "local_debit" => $local_debit,
+                            "local_credit" => $local_credit,
+                            "original_debit" => $local_debit,
+                            "original_credit" => $local_credit,
+                            "rates" => 1,
+                        );
+
+                        $this->crud->create('journal_postings', $dataFinals2);
+                    }
+                }
+            }
 
             $dataFinal = array(
                 "journal_date" => $post['journal_date'],

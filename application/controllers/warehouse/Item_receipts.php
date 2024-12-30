@@ -32,6 +32,7 @@ class Item_receipts extends CI_Controller
             $this->db->select('b.po_no, b.receipt_no, b.receipt_id, a.label_no, a.qty');
             $this->db->from('purchase_order_labels a');
             $this->db->join('purchase_order_receipts b', 'a.receipt_id = b.receipt_id');
+            $this->db->where('b.status != 2');
             $this->db->where('a.label_no', $label_no);
             $totalRows = $this->db->count_all_results('', false);
             $records = $this->db->get()->result_array();

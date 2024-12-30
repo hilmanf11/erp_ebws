@@ -59,6 +59,7 @@
                     <option value="scraps">Scraps</option>
                     <option value="item_mpq">Item MPQ</option>
                     <option value="sales_orders">Sales Orders</option>
+                    <option value="sample_requests">Purch. Sample Requests</option>
                 </select>
             </div>
             <div class="fitem">
@@ -341,6 +342,7 @@
                 }, ]
             ]
         });
+        
         //DATA USERS
         $('#user_approval_5').combogrid({
             url: '<?= base_url('admin/setting_users/getusers') ?>',

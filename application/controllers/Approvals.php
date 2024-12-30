@@ -144,6 +144,7 @@ class Approvals extends CI_Controller
         $sto_rm = $this->crud->reads('sto_rm', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
         $sto_fg = $this->crud->reads('sto_fg', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
         $sales_orders = $this->crud->reads('sales_orders', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
+        $sample_requests = $this->crud->reads('sample_requests', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
 
         $totalRows = (count($users) + 
             count($purchase_orders) + 
@@ -157,7 +158,7 @@ class Approvals extends CI_Controller
             count($item_fg) +
             // count($stock_fg) +
             count($stock_wip) +
-            // count($stock_so) +
+            count($sample_requests) +
             count($sto_rm) +
             count($sto_fg) +
             count($purchase_requests) +
@@ -205,6 +206,7 @@ class Approvals extends CI_Controller
         $sto_rms = $this->crud->reads('sto_rm', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
         $sto_fgs = $this->crud->reads('sto_fg', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
         $sales_orders = $this->crud->reads('sales_orders', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
+        $sample_requests = $this->crud->reads('sample_requests', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
 
         foreach ($users as $user) {
             $this->approvalMessage($user->approved_by, $user->approved_to, $user->created_by, "users");
@@ -288,6 +290,10 @@ class Approvals extends CI_Controller
 
         foreach ($sales_orders as $sales_order) {
             $this->approvalMessage($sales_order->approved_by, $sales_order->approved_to, $sales_order->created_by, "sales_orders");
+        }
+
+        foreach ($sample_requests as $sample_request) {
+            $this->approvalMessage($sample_request->approved_by, $sample_request->approved_to, $sample_request->created_by, "sample_requests");
         }
     }
 
@@ -617,6 +623,18 @@ class Approvals extends CI_Controller
             $data['table'] = "sto_fg";
             $this->load->view('template/header', $data);
             $this->load->view('approval/sto_fg');
+        }
+    }
+    
+    public function sample_requests($approved_to, $approved_by){
+        if (empty($this->session->username)) {
+            redirect('error_session');
+        } else {
+            $data['approved_to'] = base64_decode($approved_to);
+            $data['approved_by'] = base64_decode($approved_by);
+            $data['table'] = "sample_requests";
+            $this->load->view('template/header', $data);
+            $this->load->view('approval/sample_requests');
         }
     }
 
@@ -1220,6 +1238,32 @@ class Approvals extends CI_Controller
         $this->db->where('a.approved_by', $approved_by);
         $this->db->group_by('a.id');
         $this->db->order_by('a.id', 'ASC');
+        $records = $this->db->get()->result_array();
+
+        die(json_encode($records));
+    }
+
+    public function approvalSampleRequest($approved_to, $approved_by){
+        $approved_to = base64_decode($approved_to);
+        $approved_by = base64_decode($approved_by);
+
+        $this->db->select('a.*, 
+            b.number as item_rm_number, 
+            b.name as item_rm_name,
+            c.name as item_family_name, 
+            d.name as item_category_name,
+            a.currency,
+            a.qty, 
+            a.price, 
+            a.amount, 
+            a.status');
+        $this->db->from('sample_requests a');
+        $this->db->join('item_rm b', 'a.item_rm_id = b.id');
+        $this->db->join('item_familys c', 'b.item_family_id = c.id');
+        $this->db->join('item_categories d', 'b.item_category_id = d.id');
+        $this->db->where('a.approved_to', $approved_to);
+        $this->db->where('a.approved_by', $approved_by);
+        $this->db->order_by('a.item_rm_id', 'DESC');
         $records = $this->db->get()->result_array();
 
         die(json_encode($records));

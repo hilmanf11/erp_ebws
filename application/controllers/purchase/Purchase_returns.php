@@ -274,199 +274,177 @@ class purchase_returns extends CI_Controller
         $return_no = base64_decode($return_no);
 
         $config = $this->db->get('config')->row();
-        $config_iso = $this->db->get('config_iso')->row();
 
-        $this->db->select('supplier_id');
-        $this->db->from('purchase_returns');
-        $this->db->where('return_no', $return_no);
-        $this->db->group_by('supplier_id');
-        $suppliers = $this->db->get()->result_array();
+        $this->db->select('a.*, 
+            b.number as item_rm_number, 
+            b.name as item_rm_name,  
+            b.uom, 
+            b.hsn_code,
+            d.id as supplier_number, 
+            d.name as supplier_name,
+            d.type,
+            d.gst, 
+            d.address,
+            d.state,
+            e.price,
+            f.invoice_no,
+            (a.qty * e.price) as value,
+            (((a.qty * e.price) * c.igst) / 100) as igst,
+            (((a.qty * e.price) * c.sgst) / 100) as sgst,
+            (((a.qty * e.price) * c.cgst) / 100) as cgst');
+            // b.specification,
+        $this->db->from('purchase_returns a');
+        $this->db->join('item_rm b', 'a.item_rm_id = b.id');
+        $this->db->join('hsn c', 'b.hsn_code = c.number', 'left');
+        $this->db->join('suppliers d', 'a.supplier_id = d.id');
+        $this->db->join('purchase_orders e', 'a.item_rm_id = e.item_rm_id and a.supplier_id = e.supplier_id and a.po_no = e.po_no');
+        $this->db->join('purchase_confirm f', 'a.item_rm_id = f.item_rm_id and a.supplier_id = f.supplier_id and a.po_no = f.po_no');
+        $this->db->where('a.deleted', 0);
+        $this->db->where('a.return_no', $return_no);
+        $this->db->group_by('a.id');
+        $this->db->order_by('b.number', 'asc');
+        $records = $this->db->get()->result_array();
 
-        //Config Page
-        // $rows = 10;
-        // $page = ceil(count($purchase_returns) / $rows);
-        //Generate QRcode
-        $this->createQrcode($return_no, "assets/image/qrcode/");
-        //Header Print
-        $html = '<html><head><title>' . $return_no . '</title><link rel="icon" href="' . $config->favicon . '" type="image/png" sizes="16x16"></head>';
-        $html .= '<style>body {font-family: Arial, Helvetica, sans-serif;}';
-        $html .= '#customers {border-collapse: collapse;width: 100%;font-size: 12px;}#customers {border-collapse: collapse;width: 100%;font-size: 12px;}#customers td, #customers th {border: 1px solid black;padding: 2px;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: center;color: black;}';
-        $html .= '@media screen {.print {display: none !important;}}@media print {.noprint {display: none !important;}}</style>';
-        $html .= '<body><div style="margin:20%;" class="noprint"><center>
-                        <h1>Press CTRL + P for Print</h1>
-                        <p>Display pages for 10 rows</p>
-                        <p>Paper Size A4, Layout Landscape</p>
-                        <p>Margin Default, Scale 98</p>
-                    </center></div><div class="print">';
-        //Loop Page
-        $no = 1;
-        $page = 1;
-        foreach ($suppliers as $supplier) {
-            $this->db->select('a.*, 
-                b.number as item_rm_number, 
-                b.name as item_rm_name,  
-                b.uom, 
-                d.id as supplier_number, 
-                d.name as supplier_name,
-                d.type, 
-                d.address,
-                d.contact_person, 
-                d.telp');
-                // b.specification,
-            $this->db->from('purchase_returns a');
-            $this->db->join('item_rm b', 'a.item_rm_id = b.id');
-            $this->db->join('suppliers d', 'a.supplier_id = d.id');
-            $this->db->join('supplier_items e', 'a.item_rm_id = e.item_rm_id and a.supplier_id = e.supplier_id');
-            $this->db->where('a.deleted', 0);
-            $this->db->where('a.return_no', $return_no);
-            $this->db->where('a.supplier_id', $supplier['supplier_id']);
-            $this->db->order_by('b.number', 'asc');
-            $records = $this->db->get()->result_array();
-
-            $html .= '  <table style="width:100%;">
+        $html = '<html>
+                    <head>
+                        <title>' . $return_no . '</title>
+                        <link rel="icon" href="' . $config->favicon . '" type="image/png" sizes="16x16">
+                    </head>
+                    <style>
+                        body {
+                            font-family: Arial, Helvetica, sans-serif;
+                        }
+                        #customers {
+                            border-collapse: collapse;width: 100%;
+                            font-size: 12px;
+                        }
+                        #customers td, #customers th {
+                            border: 1px solid black;padding: 2px;
+                        }
+                        #customers th {
+                            padding-top: 2px;
+                            padding-bottom: 2px;
+                            text-align: center;color: black;
+                        }
+                        @media screen {
+                            .print {
+                                display: none !important;
+                            }
+                        }
+            
+                        @media print {
+                            .noprint {
+                                display: none !important;
+                            }
+                        }
+                    </style>
+                    <body>
+                    <div style="margin:20%;" class="noprint">
+                        <center>
+                            <h1>Press CTRL + P for Print</h1>
+                        </center>
+                    </div>
+                    <div class="print">';
+        $html .= '  <table id="customers">
+                        <tr>
+                            <td colspan="14" style="font-size:15px;" align="center"><b>Delivery Challan cum Debit Advice</b><br><i><u>Under Rule-55 </u><b>(2)</b> of CGST Act 2017</i></td>
+                        </tr>
+                        <tr>
+                            <td colspan="14" align="center"><b>' . @$config->name . ' PVT. LTD.</b><br> ' . @$config->address2 . '<br>GSTIN : ' . @$config->gst_no . '</td>
+                        </tr>
+                        <tr>
+                            <td colspan="9">Consignee</td>
+                            <td colspan="6"></td>
+                        </tr>
+                        <tr>
+                            <td colspan="9" rowspan="3"><b>' . @$records[0]['supplier_name'] . '</b><br>' . @$records[0]['address'] . '<br>GSTN : ' . @$records[0]['gst'] . '</td>
+                            <td colspan="3"><b>Documen No</b></td>
+                            <td colspan="4"><b>' . $return_no . '</b></td>
+                        </tr>
+                        <tr>
+                            <td colspan="3"><b>Date</b></td>
+                            <td colspan="4"><b>' . @$records[0]['return_date'] . '</b></td>
+                        </tr>
+                        <tr>
+                            <td colspan="3"><b>Note</b></td>
+                            <td colspan="4">' . @$records[0]['source'] . '</td>
+                        </tr>
                             <tr>
-                                <th width="10"><img src="' . $config->favicon . '" width="60" /></th>
-                                <td width="250" style="padding:10px;">
-                                    <b style="font-size:14px;">' . $config->name . '</b><br>
-                                    <span style="font-size:10px;">' . $config->address . '</span><br>
-                                </td>
-                                <th width="100" style="text-align:right;">
-                                    <table style="width:100%; font-size:10px;">
-                                        <tr>
-                                            <td width="50" rowspan="4"><img src="' . base_url('assets/image/qrcode/' . $return_no . '.png') . '" width="60"/></td>
-                                            <td width="60">Doc No</td>
-                                            <td width="5">:</td>
-                                            <td width="100">' . $config_iso->doc_delivery_note . '</td>
-                                        </tr>
-                                        <tr>
-                                            <td>Form</td>
-                                            <td>:</td>
-                                            <td>' . $config_iso->form_delivery_note . '</td>
-                                        </tr>
-                                        <tr>
-                                            <td>Print Date</td>
-                                            <td>:</td>
-                                            <td>' . date("Y-m-d H:i") . '</td>
-                                        </tr>
-                                        <tr>
-                                            <td>Print By</td>
-                                            <td>:</td>
-                                            <td>' . $this->session->name . '</td>
-                                        </tr>
-                                    </table>
-                                </th>
-                            </tr>
-                        </table>
-                        <div style="border: 1px solid black; width:100%; height:73%;">
-                            <div style="padding:10px;">
-                                <center>
-                                    <h3>PURCHASE RETURN</h3>
-                                </center>
-                                <div style="float:left; width:60%;">
-                                    <table style="width:100%; font-size:12px; margin-bottom:10px;">
-                                        <tr>
-                                            <td width="150">Supplier Code</td>
-                                            <td width="10">:</td>
-                                            <td><b>' . $records[0]['supplier_number'] . '</b></td>
-                                        </tr>
-                                        <tr>
-                                            <td>Supplier Name</td>
-                                            <td>:</td>
-                                            <td><b>' . $records[0]['supplier_name'] . '</b></td>
-                                        </tr>
-                                        <tr>
-                                            <td style="vertical-align:top;">Ship To</td>
-                                            <td style="vertical-align:top;">:</td>
-                                            <td><b>' . $records[0]['address'] . '</b></td>
-                                        </tr>
-                                        <tr>
-                                            <td>Attention</td>
-                                            <td>:</td>
-                                            <td><b>' . $records[0]['contact_person'] . '</b></td>
-                                        </tr>
-                                        <tr>
-                                            <td>Telp</td>
-                                            <td>:</td>
-                                            <td><b>' . $records[0]['telp'] . '</b></td>
-                                        </tr>
-                                    </table>
-                                </div>
-                                <div style="float:left; width:40%;">
-                                    <table style="width:100%; font-size:12px; margin-bottom:10px;">
-                                        <tr>
-                                            <td width="100">Return No</td>
-                                            <td width="10">:</td>
-                                            <td><b>' . @$return_no . '</b></td>
-                                        </tr>
-                                        <tr>
-                                            <td>Trans Type</td>
-                                            <td>:</td>
-                                            <td><b>RETURN MATERIAL</b></td>
-                                        </tr>
-                                        <tr>
-                                            <td>Return Date</td>
-                                            <td>:</td>
-                                            <td><b>' . date("d F Y", strtotime($records[0]['return_date'])) . '</b></td>
-                                        </tr>
-                                        <tr>
-                                            <td>Create Date</td>
-                                            <td>:</td>
-                                            <td><b>' . date("d F Y", strtotime($records[0]['created_date'])) . '</b></td>
-                                        </tr>
-                                    </table>
-                                </div>
-                                <table id="customers">
-                                    <tr>
-                                        <th width="20">No</th>
-                                        <th>Document No</th>
-                                        <th>Part No EBWS</th>
-                                        <th>Part No Supplier</th>
-                                        <th>Receipt ID</th>
-                                        <th width="100">UoM</th>
-                                        <th width="100">Qty</th>
-                                    </tr>';
-            foreach ($records as $record) {
-                $html .= '  <tr>
-                                <td style="text-align:center">' . $no . '</td>
-                                <td>' . $record['po_no'] . '</td>
-                                <td>' . $record['item_rm_id'] . '</td>
-                                <td style="font-size:10px;">' . $record['item_rm_number'] . '</td>
-                                <td>' . $record['receipt_id'] . '</td>
-                                <td style="text-align:center;">' . $record['uom'] . '</span></td>
-                                <td style="text-align:right">' . number_format($record['qty'], 2, ",", ".") . '</td>
-                            </tr>';
-                $no++;
+                            <th>NO</th>
+                            <th>PART NO EBWS</th>
+                            <th>PART NO SUPPLIER</th>
+                            <th>PO NO</th>
+                            <th>INVOICE NO</th>
+                            <th>UOM</th>
+                            <th>QTY</th>
+                            <th>HSN</th>
+                            <th>PRICE</th>
+                            <th>VALUE</th>
+                            <th>IGST</th>
+                            <th>CGST</th>
+                            <th>SGST</th>
+                            <th>TOTAL VALUE</th>
+                        </tr>';
+        $no = 1;
+        $total_qty = 0;
+        $total_amount = 0;
+        foreach ($records as $record) {
+            if($record['state'] == $config->state){
+                $igst = 0;
+                $sgst = $record['sgst'];
+                $cgst = $record['cgst'];
+            }else{
+                if($record['type'] == "LOCAL"){
+                    $igst = $record['igst'];
+                    $sgst = 0;
+                    $cgst = 0;
+                }else{
+                    $igst = 0;
+                    $sgst = 0;
+                    $cgst = 0;
+                }
             }
-            $html .= '</table>';
-            $html .= '</div></div>';
-            $html .= '  <div style="position:fixed; bottom:0; width:98.7%;">
-                            <table id="customers" style="margin-top:10px; font-size:10px;">
-                                <tr>
-                                    <th width="400" style="text-align:left; vertical-align:top;" rowspan="4">Note.</th>
-                                </tr>
-                                <tr>
-                                    <th width="200" style="text-align:center;">CUSTOMER STAMP & SIGNATURE</th>
-                                    <th width="200" style="text-align:center;">AUTHORISED SIGNATURE</th>
-                                    <th width="200" style="text-align:center;">DELIVER CONTROL</th>
-                                </tr>
-                                <tr>
-                                    <th style="height:80px;"></th>
-                                    <th style="height:80px;"></th>
-                                    <th style="height:80px;"></th>
-                                </tr>
-                                <tr>
-                                    <th style="height:20px; text-align:center;"></th>
-                                    <th style="height:20px; text-align:center;"></th>
-                                    <th style="height:20px; text-align:center;"></th>
-                                </tr>
-                            </table>
-                        </div>';
+            
+            $html .= '
+                <tr>
+                    <td align="center">' . $no . '</td>
+                    <td>' . $record['item_rm_id'] . '</td>
+                    <td>' . $record['item_rm_number'] . '</td>
+                    <td>' . $record['po_no'] . '</td>
+                    <td>' . $record['invoice_no'] . '</td>
+                    <td>' . $record['uom'] . '</td>
+                    <td align="right">' . $record['qty'] . '</td>
+                    <td align="center">' . $record['hsn_code'] . '</td>
+                    <td align="right">' . @number_format(($record['price']), 4) . '</td>
+                    <td align="right">' . @number_format(($record['value']), 2) . '</td>
+                    <td align="right">' . @number_format(($igst), 2) . '</td>
+                    <td align="right">' . @number_format(($cgst), 2) . '</td>
+                    <td align="right">' . @number_format(($sgst), 2) . '</td>
+                    <td align="right">' . @number_format(($record['value'] + $igst + $cgst + $sgst), 2) . '</td>
+                </tr>';
 
-            if ($page != count($suppliers)) {
-                $html .= '<div style="page-break-after:always;"></div>';
-            }
+            $total_qty += $record['qty'];
+            $total_amount += ($record['value'] + $igst + $cgst + $sgst);
+            $no++;
         }
-        $html .= '</div><script>window.print()</script>';
+
+        $html .= '
+                <tr>
+                    <td colspan="6" align="right"><b>TOTAL</b></td>
+                    <td align="right"><b>' . $total_qty . '</b></td>
+                    <td colspan="4" align="right"><b>TOTAL AMOUNT</b></td>
+                    <td colspan="5" align="right"><b>' . @number_format(($total_amount), 2) . '</b></td>
+                </tr>
+                <tr>
+                    <td colspan="7" rowspan="2" style="vertical-align: text-top;">Declaration :<br></td>
+                    <td colspan="8"><b>For ' . @$config->name . '</b></td>
+                </tr>
+                <tr>
+                    <td colspan="8" style="height:100px; vertical-align: bottom; text-align:center;"><b>AUTHORISED SIGNATORY</b></td>
+                </tr>
+        </table>';
+
+        $html .= "</div><script>window.print()</script></body>";
         die($html);
     }
 
@@ -512,7 +490,7 @@ class purchase_returns extends CI_Controller
                             </td>
                             <td style="font-size: 14px; text-align: left; margin:2px;">
                                 <b>' . $config->name . '</b><br>
-                                <small>RETURN MATERIAL FROM PRODUCTION TO WAREHOUSE</small>
+                                <small>PURCHASE RETURN TO SUPPILER</small>
                             </td>
                         </tr>
                     </table>

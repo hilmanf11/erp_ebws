@@ -46,14 +46,18 @@ class Item_rm extends CI_Controller
 
     public function readItemCategory($item_category = "")
     {
-        //master/bom
-        //planning/where_used
+        if($item_category == "ASSET"){
+            $where_category = "and c.type IN ('OTHER','ASSET','SERVICE')";
+        }else{
+            $where_category = "and c.type = '$item_category'";
+        }
+
         $post = isset($_POST['q']) ? $_POST['q'] : "";
         $send = $this->crud->query("SELECT a.*, b.name as item_family_name 
             FROM item_rm a 
             JOIN item_familys b ON a.item_family_id = b.id
             JOIN item_categories c ON a.item_category_id = c.id 
-            WHERE a.status = 0 and c.type = '$item_category'
+            WHERE a.status = 0 $where_category
             and (a.id like '%$post%' or a.number like '%$post%' or a.name like '%$post%')");
         echo json_encode($send);
     }
@@ -320,11 +324,11 @@ class Item_rm extends CI_Controller
     {
         if ($this->input->post()) {
             if ($this->form_validation->run() == TRUE) {
-                $post   = $this->input->post();
+                $post = $this->input->post();
                 $foto = $this->crud->upload('foto', ["jpg", "png", "jpeg"], 'assets/image/item_rm/');
                 $postFinal = array_merge($post, ["foto" => $foto]);
 
-                $send   = $this->crud->create('item_rm', $postFinal);
+                $send = $this->crud->create('item_rm', $postFinal);
                 echo $send;
             } else {
                 show_error(validation_errors());
@@ -428,6 +432,7 @@ class Item_rm extends CI_Controller
 
             //Cek Process Number          //table       //field        //field excel
             $item_rm = $this->crud->read('item_rm', [], ["number" => $data['number']]);
+            $item_rm_name = $this->crud->read('item_rm', ["name" => $data['name']]);
             $category = $this->crud->read('item_categories', [], ["number" => $data['item_category_number']]);
             $product_family = $this->crud->read('item_familys', [], ["number" => $data['item_family_number']]);
             $kind = $this->crud->read('item_kinds', [], ["number" => $data['kind']]);
@@ -463,6 +468,8 @@ class Item_rm extends CI_Controller
                 echo json_encode(array("title" => "Not Found", "message" => "Maker Code " . $data['maker_code'] . " Not Found", "theme" => "error"));
             } elseif (!empty($item_rm->number)) {
                 echo json_encode(array("title" => "Duplicated", "message" => " Part No. " . $data['number'] . " is Duplicate Data", "theme" => "error"));
+            } elseif (!empty($item_rm_name->name)) {
+                echo json_encode(array("title" => "Duplicated", "message" => " Part Name " . $data['name'] . " Similar Data in Item master", "theme" => "error"));
             } else {
                 $item_family_number = $product_family->number;
                 $kind = $data['kind'];
@@ -572,6 +579,7 @@ class Item_rm extends CI_Controller
                     "type" => $data['type'],
                     "status" => $data['status'],
                 );
+
                 $send   = $this->crud->create('item_rm', $dataFinal);
                 echo $send;
             }

@@ -40,41 +40,53 @@ class Wip_reports extends CI_Controller
 
             $sqlBom = $this->db->query("SELECT a.item_fg_id, a.main_process, a.composition, b.number_customer
                 FROM bom a
+                JOIN production_schedules c ON a.item_fg_id = c.item_fg_id
                 JOIN item_fg b ON a.item_fg_id = b.id
+                WHERE c.trans_date between '$filter_from' and '$filter_to'
                 GROUP BY a.item_fg_id");
             $boms = $sqlBom->result_array();
             
             $datas = [];
-            foreach ($boms as $bom) {
-                $assy_number = $bom['number_customer'];
-                $sqlQty = $this->dummy->query("SELECT COUNT(x.serial_number) as qty FROM (
-                    SELECT DISTINCT z.serial_number FROM (
-                    SELECT DISTINCT
-                        TRIM(a.serial_number) AS serial_number,
-                        TRIM(a.assy_number) AS assy_number,
-                        TRIM(a.customer) AS customer,
-                        TRIM(a.mpp) AS mpp,
-                        TRIM(a.wp) AS wp,
-                        TRIM(a.lot) AS lot,
-                        DATE(a.tanggal_proses) AS tanggal,
-                        COALESCE(a.jam_scan,'00:00:00') AS jam,
-                        a.wds_qty
-                    FROM mst_scan_proses a
-                    WHERE kode_proses = '5' and assy_number = '$assy_number' and mpp = '$mpp' and tanggal_proses between '$filter_from' and '$filter_to' and status_repair = 'false' 
-                    AND status_before IS NOT NULL
-                    AND status_repair = 'f'
-                    ORDER BY serial_number) z ) x");
-                $rowQty = $sqlQty->row();
-                $qty_scan = empty(@$rowQty->qty) ? 0 : @$rowQty->qty;
+            while (strtotime($filter_from) <= strtotime($filter_to)) {
+                $working_date = date("Y-m-d", strtotime($filter_from));
+                $wp = date("d/m", strtotime($working_date));
 
-                if($qty_scan > 0){
-                    $datas[] = array(
-                        "created_by" => $this->session->username,
-                        "created_date" => date("Y-m-d H:i:s"),
-                        "item_fg_id" => $bom['item_fg_id'], 
-                        "qty" => $qty_scan
-                    );
+                foreach ($boms as $bom) {
+                    $assy_number = $bom['number_customer'];
+                    $sqlQty = $this->dummy->query("SELECT COUNT(x.serial_number) as qty FROM (
+                        SELECT DISTINCT z.serial_number FROM (
+                        SELECT DISTINCT
+                            TRIM(a.serial_number) AS serial_number,
+                            TRIM(a.assy_number) AS assy_number,
+                            TRIM(a.customer) AS customer,
+                            TRIM(a.mpp) AS mpp,
+                            TRIM(a.wp) AS wp,
+                            TRIM(a.lot) AS lot,
+                            DATE(a.tanggal_proses) AS tanggal,
+                            COALESCE(a.jam_scan,'00:00:00') AS jam,
+                            a.wds_qty
+                        FROM mst_scan_proses a
+                        WHERE kode_proses = '5' and assy_number = '$assy_number' and mpp = '$mpp' and wp = '$wp' and status_repair = 'false' 
+                        AND status_before IS NOT NULL
+                        AND status_repair = 'f'
+                        ORDER BY serial_number) z ) x");
+                    $rowQty = $sqlQty->row();
+                    $qty_scan = empty(@$rowQty->qty) ? 0 : @$rowQty->qty;
+
+                    if($qty_scan > 0){
+                        $datas[] = array(
+                            "created_by" => $this->session->username,
+                            "created_date" => date("Y-m-d H:i:s"),
+                            "trans_date" => $working_date,
+                            "item_fg_id" => $bom['item_fg_id'], 
+                            "wp" => $wp,
+                            "qty" => $qty_scan
+                        );
+                    }
+
                 }
+
+                $filter_from = date("Y-m-d", strtotime("+1 day", strtotime($filter_from)));
             }
 
             //Mapping Data
@@ -93,36 +105,74 @@ class Wip_reports extends CI_Controller
             $filter_to = $this->input->post('filter_to');
 
             //Select Query
-            $this->db->select("a.id, a.number, a.name, a.uom, b.name as item_family_name, c.main_process,
+            $this->db->select("a.id, a.number, a.name, a.uom, b.name as item_family_name, c.main_process, 
+                i.supplier_id,
+                j.name as supplier_name,
+                COALESCE(h.beginWip, 0) as begin,
                 COALESCE(d.qty_receipt, 0) as receipt,
                 COALESCE(SUM(c.fg), 0) as fg,
                 COALESCE(e.qty_ng, 0) as ng, 
                 COALESCE(f.qty_scrap, 0) as scrap,
                 COALESCE(g.wip, 0) as wip,
-                (COALESCE(d.qty_receipt, 0) + COALESCE(e.qty_ng, 0) + COALESCE(f.qty_scrap, 0) + COALESCE(g.wip, 0) - COALESCE(SUM(c.fg), 0)) as balance");
+                (COALESCE(h.beginWip, 0) + COALESCE(g.wip, 0) + COALESCE(d.qty_receipt, 0) - COALESCE(e.qty_ng, 0) - COALESCE(f.qty_scrap, 0) - COALESCE(SUM(c.fg), 0)) as balance");
             $this->db->from('item_rm a');
             $this->db->join('item_familys b', 'a.item_family_id = b.id');
-            $this->db->join('(select a.item_rm_id, a.main_process, a.item_fg_id, (a.composition * b.qty) as fg from bom a JOIN wip_reports b ON a.item_fg_id = b.item_fg_id GROUP BY a.item_rm_id, a.item_fg_id) c', 'a.id = c.item_rm_id');
+            $this->db->join('supplier_items i', 'a.id = i.item_rm_id and i.share_order > 0', 'left');
+            $this->db->join('suppliers j', 'i.supplier_id = j.id', 'left');
+            $this->db->join("(SELECT a.item_rm_id, a.main_process, a.item_fg_id, (a.composition * SUM(b.qty)) as fg from bom a JOIN wip_reports b ON a.item_fg_id = b.item_fg_id WHERE b.trans_date BETWEEN '$filter_from' AND '$filter_to' GROUP BY a.item_rm_id, a.item_fg_id) c", 'a.id = c.item_rm_id', 'left');
             $this->db->join("(SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) AS qty_receipt
                 FROM issued_materials a
-                JOIN (SELECT item_rm_id, request_no, SUM(qty) as qty FROM issued_material_details WHERE created_date BETWEEN '$filter_from' AND '$filter_to' GROUP BY request_no, item_rm_id) b ON b.request_no = a.request_no and b.item_rm_id = a.item_rm_id
-                GROUP BY a.item_rm_id) d", 'a.id = d.item_rm_id');
+                JOIN (SELECT item_rm_id, request_no, DATE_FORMAT(created_date, '%Y-%m-%d') as trans_date, SUM(qty) as qty FROM issued_material_details GROUP BY request_no, item_rm_id) b ON b.request_no = a.request_no and b.item_rm_id = a.item_rm_id
+                WHERE b.trans_date BETWEEN '$filter_from' AND '$filter_to'
+                GROUP BY a.item_rm_id) d", 'a.id = d.item_rm_id', 'left');
             $this->db->join("(SELECT item_rm_id, SUM(qty) as qty_ng FROM scraps WHERE source = 'Vendor' and trans_date between '$filter_from' and '$filter_to' GROUP BY item_rm_id) e", 'a.id = e.item_rm_id', 'left');
             $this->db->join("(SELECT item_rm_id, SUM(qty) as qty_scrap FROM scraps WHERE source = 'User' and trans_date between '$filter_from' and '$filter_to' GROUP BY item_rm_id) f", 'a.id = f.item_rm_id', 'left');
             $this->db->join("(SELECT item_rm_id, SUM(qty) as wip FROM sto_wip WHERE trans_date between '$filter_from' and '$filter_to' GROUP BY item_rm_id) g", 'a.id = g.item_rm_id', 'left');
-            $this->db->join("wip_reports h", 'c.item_fg_id = h.item_fg_id');
+            $this->db->join("(SELECT a.id, (COALESCE(c.qty_receipt, 0) + COALESCE(f.wip, 0) - COALESCE(d.qty_ng, 0) - COALESCE(e.qty_scrap, 0) - COALESCE(SUM(b.fg), 0)) AS beginWip
+                FROM item_rm a 
+                JOIN (	SELECT a.item_rm_id, a.main_process, a.item_fg_id, (a.composition * SUM(b.qty)) AS fg 
+                    FROM bom a JOIN wip_reports b ON a.item_fg_id = b.item_fg_id 
+                    WHERE b.trans_date < '$filter_from' 
+                    GROUP BY a.item_rm_id, a.item_fg_id) b ON a.id = b.item_rm_id
+                LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) AS qty_receipt
+                    FROM issued_materials a
+                    JOIN (SELECT item_rm_id, request_no, DATE_FORMAT(created_date, '%Y-%m-%d') as trans_date, SUM(qty) AS qty FROM issued_material_details GROUP BY request_no, item_rm_id) b ON b.request_no = a.request_no AND b.item_rm_id = a.item_rm_id
+                    WHERE b.trans_date < '$filter_from'
+                    GROUP BY a.item_rm_id) c ON a.id = c.item_rm_id
+                LEFT JOIN (SELECT item_rm_id, SUM(qty) AS qty_ng FROM scraps WHERE source = 'Vendor' AND trans_date < '$filter_from' GROUP BY item_rm_id) d ON a.id = d.item_rm_id
+                LEFT JOIN (SELECT item_rm_id, SUM(qty) AS qty_scrap FROM scraps WHERE source = 'User' AND trans_date < '$filter_from' GROUP BY item_rm_id) e ON a.id = d.item_rm_id
+                LEFT JOIN (SELECT item_rm_id, SUM(qty) AS wip FROM sto_wip WHERE trans_date < '$filter_from' GROUP BY item_rm_id) f ON a.id = f.item_rm_id
+                GROUP BY a.id) h", 'a.id = h.id', 'left');
             $this->db->where('a.item_category_id', "C01");
             $this->db->group_by('a.id');
+            $this->db->order_by('b.number', 'ASC');
             $this->db->order_by('a.number', 'ASC');
-
-            //Total Data
-            $totalRows = $this->db->count_all_results('', false);
-            //Get Data Array
             $records = $this->db->get()->result_array();
+            
+            $datas = [];
+            foreach ($records as $record) {
+                $datas[] = array(
+                    "id" => $record['id'],
+                    "number" => $record['number'],
+                    "name" => $record['name'],
+                    "uom" => $record['uom'],
+                    "supplier_id" => $record['supplier_id'],
+                    "supplier_name" => $record['supplier_name'],
+                    "item_family_name" => $record['item_family_name'],
+                    "main_process" => $record['main_process'],
+                    "begin" => $record['begin'],
+                    "wip" => $record['wip'],
+                    "receipt" => $record['receipt'],
+                    "fg" => $record['fg'],
+                    "ng" => $record['ng'],
+                    "scrap" => $record['scrap'],
+                    "balance" => $record['balance'],
+                );
+            }
 
             //Mapping Data
-            $result['total'] = $totalRows;
-            $result = array_merge($result, ['rows' => $records]);
+            $result['total'] = count($datas);
+            $result = array_merge($result, ['rows' => $datas]);
             echo json_encode($result);
         }
     }
@@ -132,9 +182,9 @@ class Wip_reports extends CI_Controller
         if ($this->input->post()) {
             $post = $this->input->post('data');
 
-            $reads = $this->crud->reads("wip_reports", [], ["item_fg_id" => $post['item_fg_id']]);
+            $reads = $this->crud->reads("wip_reports", [], ["item_fg_id" => $post['item_fg_id'], "trans_date" => $post['trans_date']]);
             if(count($reads) > 0){
-                $send = $this->db->update('wip_reports', $post, ["item_fg_id" => $post['item_fg_id']]);
+                $send = $this->db->update('wip_reports', $post, ["item_fg_id" => $post['item_fg_id'], "trans_date" => $post['trans_date']]);
                 die(json_encode(array("title" => "Good Job", "message" => "Product No ".$post['item_fg_id']." Updated Successfuly", "theme" => "success")));
             }else{
                 $send = $this->db->insert('wip_reports', $post);

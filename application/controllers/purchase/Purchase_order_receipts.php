@@ -91,7 +91,7 @@ class Purchase_order_receipts extends CI_Controller
     public function readSupplier()
     {
         $post = isset($_POST['q']) ? $_POST['q'] : "";
-        $records = $this->crud->query("SELECT b.id, b.number, b.name FROM purchase_order_receipts a JOIN suppliers b ON a.supplier_id = b.id WHERE a.status = '0' and b.name like '%$post%' GROUP BY a.supplier_id ORDER BY a.created_date desc");
+        $records = $this->crud->query("SELECT b.id, b.number, b.name FROM purchase_order_receipts a JOIN suppliers b ON a.supplier_id = b.id WHERE (b.name like '%$post%' or b.id like '%$post%') GROUP BY a.supplier_id ORDER BY a.created_date desc");
         echo json_encode($records);
     }
 
@@ -195,6 +195,7 @@ class Purchase_order_receipts extends CI_Controller
             $filter_po_no = $this->input->get('filter_po_no');
             $filter_receipt = $this->input->get('filter_receipt');
             $filter_doc_no = $this->input->get('filter_doc_no');
+            $filter_status = $this->input->get('filter_status');
 
             $page = $this->input->post('page');
             $rows = $this->input->post('rows');
@@ -229,6 +230,9 @@ class Purchase_order_receipts extends CI_Controller
                 }
                 if ($filter_doc_no != "") {
                     $this->db->where('a.bc_document', $filter_doc_no);
+                }
+                if ($filter_status != "") {
+                    $this->db->where('a.status', $filter_status);
                 }
                 $this->db->group_by('a.receipt_no');
                 $this->db->order_by('a.receipt_id', 'DESC');
@@ -289,7 +293,7 @@ class Purchase_order_receipts extends CI_Controller
                 $this->db->join('item_rm c', 'a.item_rm_id = c.id');
                 $this->db->join('item_familys d', 'c.item_family_id = d.id');
                 // $this->db->join('supplier_items e', 'b.id = e.supplier_id and c.id = e.item_rm_id');
-                $this->db->join('item_mpq f', 'b.id = f.supplier_id and c.id = f.item_rm_id');
+                $this->db->join('item_mpq f', 'b.id = f.supplier_id and c.id = f.item_rm_id', 'left');
                 $this->db->join('scan_item_receipts g', 'g.receipt_id = a.receipt_id', 'left');
                 $this->db->where('a.deleted', 0);
                 if ($filter_from != "" and $filter_to != "") {
@@ -298,6 +302,9 @@ class Purchase_order_receipts extends CI_Controller
                 }
                 if ($filter_item_rm != "") {
                     $this->db->where('c.id', $filter_item_rm);
+                }
+                if ($filter_status != "") {
+                    $this->db->where('a.status', $filter_status);
                 }
                 $this->db->where('a.receipt_no', $id);
                 $this->db->group_by('a.receipt_id');
@@ -490,11 +497,11 @@ class Purchase_order_receipts extends CI_Controller
 
         if($por->status == 0){
             $deleteScanItemReceipts = $this->crud->delete('purchase_order_labels', ["receipt_id" => $data['receipt_id']]);
-            $this->db->update('purchase_order_receipts', ["status" => 2], ["receipt_id" => $data['receipt_id']]);
+            $this->db->update('purchase_order_receipts', ["status" => 2, "cancel_status" => date("Y-m-d H:i:s")], ["receipt_id" => $data['receipt_id']]);
             $this->db->update('purchase_confirm', ["status" => 0], ["po_no" => $por->po_no, "item_rm_id" => $por->item_rm_id]);
             echo $deleteScanItemReceipts;
         }else if($por->status == 2){
-            $this->db->update('purchase_order_receipts', ["status" => 0], ["receipt_id" => $data['receipt_id']]);
+            $this->db->update('purchase_order_receipts', ["status" => 0, "cancel_status" => null], ["receipt_id" => $data['receipt_id']]);
             $this->db->update('purchase_confirm', ["status" => 1], ["po_no" => $por->po_no, "item_rm_id" => $por->item_rm_id]);
             echo json_encode(array("theme" => "success"));
         }else{
@@ -862,6 +869,8 @@ class Purchase_order_receipts extends CI_Controller
         $filter_po_no = $this->input->get('filter_po_no');
         $filter_receipt = $this->input->get('filter_receipt');
         $filter_doc_no = $this->input->get('filter_doc_no');
+        $filter_status = $this->input->get('filter_status');
+
         //Config
         $this->db->select('*');
         $this->db->from('config');
@@ -906,6 +915,9 @@ class Purchase_order_receipts extends CI_Controller
         }
         if ($filter_doc_no != "") {
             $this->db->where('a.bc_document', $filter_doc_no);
+        }
+        if ($filter_status != "") {
+            $this->db->where('a.status', $filter_status);
         }
         $this->db->group_by('a.receipt_id');
         $this->db->order_by('a.receipt_id', 'ASC');
@@ -968,6 +980,9 @@ class Purchase_order_receipts extends CI_Controller
             if($data['status'] == "0"){
                 $status = "OPEN";
                 $style = "style='background: green; color:white;'";
+            }elseif($data['status'] == "2"){
+                $status = "CANCEL";
+                $style = "style='background: blue; color:white;'";
             }else{
                 $status = "CLOSED";
                 $style = "style='background: red; color:white;'";
@@ -977,6 +992,10 @@ class Purchase_order_receipts extends CI_Controller
                 $grn_no = "GRN".substr(@$data['receipt_no'], 3);
                 $status2 = "CLOSED";
                 $style2 = "style='background: red; color:white;'";
+            }elseif($data['status'] == "2"){
+                $grn_no = "";
+                $status2 = "CANCEL";
+                $style2 = "style='background: blue; color:white;'";
             }else{
                 $grn_no = "";
                 $status2 = "OPEN";

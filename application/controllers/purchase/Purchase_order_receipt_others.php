@@ -284,6 +284,7 @@ class Purchase_order_receipt_others extends CI_Controller
             f.mpq, 
             a.supplier_id,
             e.asset_code,
+            e.asset_code_sub,
             b.uom,
             round(a.delivery - COALESCE(d.qty_os, 0)) as qty_delivery,
             round(a.delivery - COALESCE(d.qty_os, 0)) as qty_receipt,
@@ -331,30 +332,7 @@ class Purchase_order_receipt_others extends CI_Controller
 
                 $post = $this->input->post();
                 if(empty($post['id'])){
-                    if(empty($post['asset_code']) || $post['asset_code'] == "-" || $post['asset_code'] == "null"){
-                        $asset_code = "-";
-                        $asset_code_subs = "-";
-                    }else{
-                        $asset_code = $post['asset_code'];
-                        
-                        if ($post['qty_delivery'] > $post['qty_receipt']) {
-                            $codes = $asset_code;
-                            $sql = $this->db->query("SELECT max(`asset_code_subs`) as kode FROM purchase_order_receipt_others WHERE `asset_code` like '%$asset_code%'");
-                            $row = $sql->row();
-                            
-                            if ($row->kode == "") {
-                                $kode = 00;
-                            } else {
-                                $kode = sprintf("%02s", (substr($row->kode, -2) + 1));
-                            }
-                            
-                            $asset_code_subs = $codes . "-" . $kode;
-                        } else {
-                            $asset_code_subs = $asset_code;
-                        }
-                    }
-
-                    $send = $this->crud->create('purchase_order_receipt_others', array_merge($post, ["receipt_id" => $this->receipt_id($post['receipt_no']), "asset_code" => $asset_code, "asset_code_subs" => $asset_code_subs]));
+                    $send = $this->crud->create('purchase_order_receipt_others', array_merge($post, ["receipt_id" => $this->receipt_id($post['receipt_no'])]));
 
                     if ($post['qty_delivery'] > $post['qty_receipt']) {
                         $status = 0;

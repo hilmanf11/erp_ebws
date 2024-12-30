@@ -32,8 +32,13 @@ class Taxes extends CI_Controller
     public function reads()
     {
         $post = isset($_POST['q']) ? $_POST['q'] : "";
-        // $send = $this->crud->query("SELECT * FROM item_categories WHERE name LIKE '%$post%'AND number != 'FG'");
-        $send = $this->crud->reads('taxes', ["name" => $post]);
+        $send = $this->crud->query("SELECT *, SUM(cgst) as cgst2, SUM(sgst) as sgst2, SUM(igst) as igst2 FROM taxes WHERE `number` like '%$post%' or `name` like '%$post%' GROUP BY `number` ORDER BY `number` ASC");
+        echo json_encode($send);
+    }
+
+    public function readAccounts($number)
+    {
+        $send = $this->crud->query("SELECT * FROM taxes WHERE `number` = '$number' GROUP BY `number` ORDER BY `number` ASC");
         echo json_encode($send);
     }
 
