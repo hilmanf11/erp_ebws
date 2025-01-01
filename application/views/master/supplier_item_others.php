@@ -105,6 +105,7 @@
             </div>
         </fieldset>
         <?= $button ?>
+        <a href="javascript:;" class="easyui-linkbutton" onclick="excel_price()" plain="true"><i class="fa fa-file"></i> Export Price History</a>
     </div>
 </div>
 
@@ -186,15 +187,15 @@
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Attachment 1</span>
-                    <input style="width:60%;" name="attachment" id="attachment" class="easyui-filebox" accept=".jpg, .png, .jpeg, .pdf, .xls, .docx">
+                    <input style="width:60%;" name="attachment" id="attachment" class="easyui-filebox" accept=".jpg, .png, .jpeg, .pdf, .xls, .xlsx, .docx">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Attachment 2</span>
-                    <input style="width:60%;" name="attachment2" id="attachment2" class="easyui-filebox" accept=".jpg, .png, .jpeg, .pdf, .xls, .docx">
+                    <input style="width:60%;" name="attachment2" id="attachment2" class="easyui-filebox" accept=".jpg, .png, .jpeg, .pdf, .xls, .xlsx, .docx">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Attachment 3</span>
-                    <input style="width:60%;" name="attachment3" id="attachment3" class="easyui-filebox" accept=".jpg, .png, .jpeg, .pdf, .xls, .docx">
+                    <input style="width:60%;" name="attachment3" id="attachment3" class="easyui-filebox" accept=".jpg, .png, .jpeg, .pdf, .xls, .xlsx, .docx">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Remarks</span>
@@ -449,6 +450,28 @@
             "&filter_check=" + filter_check.checked;
 
         window.location.assign('<?= base_url('master/supplier_item_others/print/excel') ?>' + url);
+    }
+
+    function excel_price(){
+        var filter_category = $("#filter_category").combobox('getValue');
+        var filter_suppliers = $("#filter_suppliers").combogrid('getValue');
+        var filter_maker = $("#filter_maker").combogrid('getValue');
+        var filter_item_rm = $("#filter_item_rm").combogrid('getValue');
+        var filter_item_vendor = $("#filter_item_vendor").combobox('getValue');
+        var filter_share_order = $("#filter_share_order").combobox('getValue');
+        var filter_status_price = $("#filter_status_price").combobox('getValue');
+        var filter_check = $("#filter_check").checkbox('options');
+
+        var url = "?filter_suppliers=" + window.btoa(filter_suppliers) +
+            "&filter_item_rm=" + window.btoa(filter_item_rm) +
+            "&filter_category=" + window.btoa(filter_category) +
+            "&filter_maker=" + window.btoa(filter_maker) +
+            "&filter_item_vendor=" + window.btoa(filter_item_vendor) +
+            "&filter_share_order=" + window.btoa(filter_share_order) +
+            "&filter_status_price=" + window.btoa(filter_status_price) +
+            "&filter_check=" + filter_check.checked;
+
+        window.location.assign('<?= base_url('master/supplier_item_others/excel_price') ?>' + url);
     }
 
     //RELOAD

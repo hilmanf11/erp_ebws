@@ -183,7 +183,7 @@
                     editor: {
                         type: 'combobox',
                         options: {
-                            url: '<?= base_url('purchase/purchase_orders_2/readPono/'); ?>' + btoa(supplier_id),
+                            url: '<?= base_url('purchase/purchase_orders_2/readPono?supplier_id='); ?>' + btoa(supplier_id),
                             valueField: 'po_no',
                             textField: 'po_no',
                             prompt: 'Choose Purchase Order',

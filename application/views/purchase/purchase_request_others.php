@@ -4,6 +4,7 @@
             <th rowspan="2" field="ck" checkbox="true"></th>
             <th rowspan="2" data-options="field:'print_pr',width:80,halign:'center',formatter:BtnPrint">Print PR</th>
             <th rowspan="2" data-options="field:'status',width:120,align:'center',formatter:statusformat,styler:statusStyle">Status</th>
+            <th rowspan="2" data-options="field:'item_category_id',width:100,halign:'center'">Category</th>
             <th rowspan="2" data-options="field:'request_no',width:200,halign:'center'">Request No</th>
             <th rowspan="2" data-options="field:'request_date',width:100,halign:'center'">Request Date</th>
             <th rowspan="2" data-options="field:'request_name',width:150,halign:'center'">Request Name</th>
@@ -16,7 +17,6 @@
             <th rowspan="2" data-options="field:'uom',width:80,align:'center'">UoM</th>
             <th rowspan="2" data-options="field:'qty',width:80,halign:'center',align:'right',formatter:numberformat">Qty</th>
             <th rowspan="2" data-options="field:'remarks',width:200,halign:'center'">Remarks</th>
-            <th rowspan="2" data-options="field:'asset_code',width:120,align:'center'">Asset Code</th>
             <th rowspan="2" data-options="field:'po_no',width:120,align:'center'">Po No</th>
             <th colspan="3" data-options="field:'',width:100,halign:'center'">Approved</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
@@ -81,7 +81,7 @@
             <legend><b>Form Data</b></legend>
             <div style="width: 30%; float: left;">
                 <div class="fitem">
-                    <span style="width:30%; display:inline-block;">Category</span>
+                    <span style="width:35%; display:inline-block;">Category</span>
                     <select style="width:60%;" name="item_category_id" id="item_category_id" class="easyui-combobox" panelHeight="auto" required>
                         <option value="SERVICE">SERVICE</option>
                         <option value="ASSET">FIXED ASSET</option>
@@ -109,6 +109,21 @@
                     <input style="width:60%;" name="expected_date" id="expected_date" value="<?= date("Y-m-d") ?>" required="" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
                 </div>
             </div>
+            <!-- <div style="width: 35%; float: left;" id="formAsset">
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Asset Code</span>
+                    <input style="width:60%;" name="asset_code" id="asset_code" required class="easyui-combogrid">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Asset Name</span>
+                    <input style="width:60%;" name="asset_name" id="asset_name" readonly class="easyui-textbox">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Asset Qty</span>
+                    <input style="width:30%;" name="asset_qty" id="asset_qty" class="easyui-numberbox">
+                    <input style="width:30%;" name="asset_uom" id="asset_uom" readonly class="easyui-textbox">
+                </div>
+            </div> -->
         </fieldset>
         <table id="dg2" class="easyui-datagrid" style="width:100%;" title="Purchase Request Lists" toolbar="#toolbar2"></table>
     </form>
@@ -212,6 +227,11 @@
                                     field: 'item_number'
                                 });
 
+                                var ed4 = dg.datagrid('getEditor', {
+                                    index: rowIndex,
+                                    field: 'po'
+                                });
+
                                 var ed5 = dg.datagrid('getEditor', {
                                     index: rowIndex,
                                     field: 'item_rm_name'
@@ -227,14 +247,14 @@
                                     field: 'item_family_id'
                                 });
 
-                                var ed3 = dg.datagrid('getEditor', {
+                                var ed8 = dg.datagrid('getEditor', {
                                     index: rowIndex,
-                                    field: 'asset_code'
+                                    field: 'qty'
                                 });
 
-                                var ed4 = dg.datagrid('getEditor', {
+                                var ed9 = dg.datagrid('getEditor', {
                                     index: rowIndex,
-                                    field: 'po'
+                                    field: 'stock'
                                 });
 
                                 $(ed.target).textbox('setValue', rows.id);
@@ -243,25 +263,27 @@
                                 $(ed6.target).textbox('setValue', rows.item_family_name);
                                 $(ed7.target).textbox('setValue', rows.item_family_id);
                                 
-
-                                if(item_category_id == "ASSET"){
-                                    $.ajax({
-                                        type: "post",
-                                        url: "<?= base_url('purchase/purchase_request_others/readAssets') ?>",
-                                        data: "item_rm_id=" + btoa(rows.id),
-                                        dataType: "json",
-                                        success: function(json) {
-                                            if (json != null) {
-                                                $(ed3.target).textbox('setValue', json.number);
-                                            } else {
-                                                $(ed3.target).textbox('setValue', '');
-                                                toastr.warning("Asset Code Not Register, Please Contact Finance Departement for Request Asset Code");
-                                            }
-                                        }
-                                    });
-                                }else{
-                                    $(ed3.target).textbox('setValue', '-');
-                                }
+                                // if(item_category_id == "ASSET"){
+                                    // $.ajax({
+                                    //     type: "post",
+                                    //     url: "<?= base_url('purchase/purchase_request_others/readAssets') ?>",
+                                    //     data: "item_rm_id=" + btoa(rows.id),
+                                    //     dataType: "json",
+                                    //     success: function(json) {
+                                    //         if (json != null) {
+                                    //             $(ed3.target).textbox('setValue', json.number);
+                                    //             $(ed8.target).numberbox('setValue', json.qty);
+                                    //             $(ed9.target).numberbox('setValue', json.stock);
+                                    //         } else {
+                                    //             $(ed3.target).textbox('setValue', '');
+                                    //             $(ed9.target).numberbox('setValue', 0);
+                                    //             toastr.warning("Asset Code Not Register, Please Contact Finance Departement for Request Asset Code");
+                                    //         }
+                                    //     }
+                                    // });
+                                // }else{
+                                //     $(ed3.target).textbox('setValue', '-');
+                                // }
 
                                 // $.ajax({
                                 //     type: "post",
@@ -337,7 +359,26 @@
                         type: 'numberbox',
                         options: {
                             required: true,
-                            precision: 2
+                            precision: 2,
+                            // onChange: function(val){
+                            //     if(item_category_id == "ASSET"){
+                            //         var dg = $('#dg2');
+                            //         var row = dg.datagrid('getSelected');
+                            //         var rowIndex = dg.datagrid('getRowIndex', row);
+
+                            //         var ed = dg.datagrid('getEditor', {
+                            //             index: rowIndex,
+                            //             field: 'qty'
+                            //         });
+
+                            //         var asset_qty = $("#asset_qty").numberbox("getValue");
+                                    
+                            //         if(val > asset_qty){
+                            //             $(ed.target).numberbox('clear');
+                            //             toastr.error("Qty Cannot Increase from Asset Qty, Please Confirm Finance Departement");
+                            //         }
+                            //     }
+                            // }
                         }
                     }
                 }, {
@@ -364,18 +405,6 @@
                         options: {
                             readonly: true,
                             precision: 2
-                        }
-                    }
-                },{
-                    field: 'asset_code',
-                    width: 120,
-                    halign: 'center',
-                    title: "Asset Code",
-                    editor: {
-                        type: 'textbox',
-                        options: {
-                            readonly: true,
-                            required: true
                         }
                     }
                 }, {
@@ -419,19 +448,38 @@
 
     function append() {
         var item_category_id = $("#item_category_id").combobox('getValue');
-        if (item_category_id != "") {
-            if (endEditing()) {
-                $('#dg2').datagrid('appendRow', {
-                    qty: '0',
-                    stock: '0',
-                    po: '0'
-                });
-                editIndex = $('#dg2').datagrid('getRows').length - 1;
-                $('#dg2').datagrid('selectRow', editIndex).datagrid('beginEdit', editIndex);
+        // var asset_code = $("#asset_code").combogrid('getValue');
+
+        // if(item_category_id == "ASSET"){
+        //     if (asset_code != "") {
+        //         if (endEditing()) {
+        //             $('#dg2').datagrid('appendRow', {
+        //                 qty: '0',
+        //                 stock: '0',
+        //                 po: '0'
+        //             });
+
+        //             editIndex = $('#dg2').datagrid('getRows').length - 1;
+        //             $('#dg2').datagrid('selectRow', editIndex).datagrid('beginEdit', editIndex);
+        //         }
+        //     } else {
+        //         toastr.error("Please Choose Asset Code First");
+        //     }
+        // }else{
+            if (item_category_id != "") {
+                if (endEditing()) {
+                    $('#dg2').datagrid('appendRow', {
+                        qty: '0',
+                        stock: '0',
+                        po: '0'
+                    });
+                    editIndex = $('#dg2').datagrid('getRows').length - 1;
+                    $('#dg2').datagrid('selectRow', editIndex).datagrid('beginEdit', editIndex);
+                }
+            } else {
+                toastr.error("Please Choose Category first");
             }
-        } else {
-            toastr.error("Please Choose Category first");
-        }
+        // }
     }
 
     function removeit() {
@@ -488,7 +536,8 @@
                                 url: '<?= base_url('purchase/purchase_request_others/delete') ?>',
                                 data: {
                                     id: row.id,
-                                    request_no: row.request_no
+                                    request_no: row.request_no,
+                                    asset_code: row.asset_code
                                 },
                                 success: function(result) {
                                     readRequestno();
@@ -646,6 +695,7 @@
                             var request_name = $("#request_name").textbox('getValue');
                             var expected_date = $("#expected_date").datebox('getValue');
                             var item_category_id = $("#item_category_id").combobox('getValue');
+                            // var asset_code = $("#asset_code").combogrid('getValue');
 
                             $("#dg2").datagrid('acceptChanges');
                             var rows = $('#dg2').datagrid('getRows');
@@ -653,8 +703,8 @@
                             endEditing();
 
                             for (let i = 0; i < totalrows; i++) {
-                                if(rows[i].asset_code == ""){
-                                    toastr.error("Asset Code Empty, Please Add Code Asset First");
+                                if(rows[i].qty == 0){
+                                    toastr.error("Qty Cannot 0");
                                     return false;
                                 }
                             }
@@ -669,7 +719,7 @@
                                             request_no: request_no,
                                             request_date: request_date,
                                             request_name: request_name,
-                                            asset_code: rows[i].asset_code,
+                                            // asset_code: asset_code,
                                             item_family_id: rows[i].item_family_id,
                                             item_rm_id: rows[i].item_rm_id,
                                             qty: rows[i].qty,
@@ -681,16 +731,18 @@
                                         },
                                         dataType: "json",
                                         success: function(result) {
-                                            Swal.fire({
-                                                title: result.message,
-                                                icon: result.theme,
-                                                confirmButtonText: 'Ok',
-                                                allowOutsideClick: false,
-                                            }).then((result) => {
-                                                if (result.isConfirmed) {
-                                                    window.location.reload();
-                                                }
-                                            });
+                                            if((i+1) == totalrows){
+                                                Swal.fire({
+                                                    title: result.message,
+                                                    icon: result.theme,
+                                                    confirmButtonText: 'Ok',
+                                                    allowOutsideClick: false,
+                                                }).then((result) => {
+                                                    if (result.isConfirmed) {
+                                                        window.location.reload();
+                                                    }
+                                                });
+                                            }
                                         }
                                     });
                                 }
@@ -787,6 +839,55 @@
 
         $('#item_category_id').combobox({
             onChange: function(value){
+                // if(value == "ASSET"){
+                //     $("#formAsset").show();
+                    
+                //     $('#asset_code').combogrid({
+                //         url: '<?= base_url('assets/assets/reads') ?>',
+                //         panelWidth: 450,
+                //         idField: 'number',
+                //         mode: 'remote',
+                //         fitColumns: true,
+                //         prompt: 'Choose Asset No',
+                //         columns: [
+                //             [{
+                //                 field: 'number',
+                //                 title: 'Asset No',
+                //                 width: 100
+                //             }, {
+                //                 field: 'name',
+                //                 title: 'Asset Name',
+                //                 width: 200
+                //             }, {
+                //                 field: 'qty',
+                //                 title: 'qty',
+                //                 width: 80
+                //             }]
+                //         ],
+                //         onSelect: function(val, row){
+                //             $("#asset_name").textbox("setValue", row.name);
+                //             $("#asset_qty").numberbox("setValue", row.qty);
+                //             $("#asset_uom").textbox("setValue", row.uom);
+
+                //             $("#asset_qty").numberbox({
+                //                 onChange: function(valAsset){
+                //                     if(parseInt(valAsset) > parseInt(row.qty)){
+                //                         toastr.error("Qty Cannot > Qty Asset in Master");
+                //                         $("#asset_qty").numberbox("setValue", row.qty);
+                //                     }
+                //                 }
+                //             });
+                //         },
+                //         onLoadSuccess: function(val){
+                //             if(val.total == 0){
+                //                 toastr.error("Asset Code Empty, Please Contact Finance Departement for Request Asset Code");
+                //             }
+                //         }
+                //     });
+                // }else{
+                //     $("#formAsset").hide();
+                // }
+
                 addTable(value);
             }
         });

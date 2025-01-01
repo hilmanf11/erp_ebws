@@ -204,7 +204,7 @@
                 <tr>
                     <th rowspan="2" data-options="field:'action',width:120,formatter:buttonEdit">Action</th>
                     <th hidden rowspan="2" data-options="field:'id',width:150, editor: {type: 'textbox'}">ID</th>
-                    <th hidden rowspan="2" data-options="field:'asset_code_subs',width:150, editor: {type: 'textbox'}">Asset Code</th>
+                    <th hidden rowspan="2" data-options="field:'asset_code',width:150, editor: {type: 'textbox'}">Asset Code</th>
                     <th rowspan="2" data-options="field:'por_no',width:150,editor: {type: 'textbox'}">POR. No</th>
                     <th rowspan="2" data-options="field:'po_no',width:180,editor: {type: 'textbox'}">PO. No</th>
                     <th rowspan="2" data-options="field:'item_rm_id',width:120,editor: {type: 'textbox', options: {readonly: true}}">Part No EBWS</th>
@@ -1590,7 +1590,7 @@
                             halign: 'center',
                             width: 120
                         }, {
-                            field: 'asset_code_subs',
+                            field: 'asset_code',
                             title: 'Asset Code',
                             halign: 'center',
                             width: 120
@@ -1778,7 +1778,7 @@
                                                                 //total_grand: total_grand,
                                                                 total_dp: total_dp,
                                                                 id: json[i].id,
-                                                                asset_code_subs: json[i].asset_code_subs,
+                                                                asset_code: json[i].asset_code,
                                                                 item_family_id: json[i].item_family_id,
                                                                 por_no: json[i].por_no,
                                                                 po_no: json[i].po_no,

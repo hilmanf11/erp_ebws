@@ -19,7 +19,7 @@
             <th rowspan="2" data-options="field:'item_rm_number',width:200,halign:'center'">Part No Supplier</th>
             <th rowspan="2" data-options="field:'item_rm_name',width:200,halign:'center'">Description</th>
             <th rowspan="2" data-options="field:'asset_code',width:120,halign:'center'">Asset Code</th>
-            <th rowspan="2" data-options="field:'asset_code_subs',width:120,halign:'center'">Asset Code Sub</th>
+            <th rowspan="2" data-options="field:'asset_code_sub',width:120,halign:'center'">Asset Code Sub</th>
             <th rowspan="2" data-options="field:'qty_receipt',width:80,halign:'center',align:'right',formatter:numberformat">Qty</th>
             <th rowspan="2" data-options="field:'uom',width:80,halign:'center',align:'center'">UoM</th>
             <th rowspan="2" data-options="field:'currency',width:80,halign:'center',align:'center'">Currency</th>
@@ -171,6 +171,7 @@
                     <th data-options="field:'item_rm_id',width:120">Part No EBWS</th>
                     <th data-options="field:'item_rm_number',width:200">Part No Supplier</th>
                     <th data-options="field:'item_rm_name',width:200">Description</th>
+                    <th hidden data-options="field:'asset_code_sub',width:150">Asset Code Sub</th>
                     <th data-options="field:'asset_code',width:150">Asset Code</th>
                     <th data-options="field:'uom',width:80">UoM</th>
                     <th data-options="field:'qty_po',width:80,editor:{type:'numberbox', options:{readonly:true}}">PO</th>
@@ -213,6 +214,7 @@
         $('#dg_request').datagrid('loadData', []);
         $('#frm_insert').form('clear');
         $('#receipt_date').datebox('setValue', '<?= date("Y-m-d") ?>');
+        $('#awb_date').datebox('setValue', '<?= date("Y-m-d") ?>');
         $("#bc_document").textbox('enable');
         $("#bc_date").datebox('enable');
         $("#awb_no").textbox('enable');
@@ -265,7 +267,7 @@
                     onSelect: function(val, row){
                         $("#bc_date").datebox('setValue', row.invoice_date);
                         $("#awb_no").textbox('setValue', row.awb_no);
-                        $("#awb_date").datebox('setValue', row.awb_date);
+                        $("#awb_date").datebox('setValue', "<?= date("Y-m-d") ?>");
 
                         $("#po_no").combobox({
                             url: '<?= base_url('purchase/delivery_confirm_others/readPono?invoice_no=') ?>' + btoa(row.invoice_no),
@@ -602,6 +604,7 @@
                                         data: 'item_rm_id=' + json[i].item_rm_id +
                                             '&supplier_id=' + json[i].supplier_id +
                                             '&asset_code=' + json[i].asset_code +
+                                            '&asset_code_sub=' + json[i].asset_code_sub +
                                             '&receipt_date=' + receipt_date +
                                             '&receipt_no=' + receipt_no +
                                             '&po_no=' + json[i].po_no +

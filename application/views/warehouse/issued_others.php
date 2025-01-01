@@ -14,6 +14,7 @@
             <th rowspan="2" data-options="field:'stock',width:80,halign:'center',align:'right',formatter:numberformat">Stock</th>
             <th rowspan="2" data-options="field:'qty',width:80,halign:'center',align:'right',formatter:numberformat">Qty</th>
             <th rowspan="2" data-options="field:'balance',width:80,halign:'center',align:'center',formatter:numberformat">Balance</th>
+            <th rowspan="2" data-options="field:'location_other_name',width:120,halign:'center'">Location Store</th>
             <th rowspan="2" data-options="field:'remarks',width:200,halign:'center'">Remarks</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
@@ -82,6 +83,10 @@
                     <span style="width:35%; display:inline-block;">Requisition Name</span>
                     <input style="width:60%;" name="request_name" id="request_name" value="<?= $this->session->name ?>" readonly class="easyui-textbox">
                 </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Location Store</span>
+                    <input style="width:60%;" name="location_other_number" id="location_other_number" required class="easyui-combobox">
+                </div>
             </div>
         </fieldset>
         <table id="dg2" class="easyui-datagrid" style="width:100%;" title="Requisition Item List" toolbar="#toolbar2"></table>
@@ -146,9 +151,9 @@
             url: "<?= base_url('warehouse/issued_others/request_no') ?>/" + id_menu,
             dataType: "html",
             success: function(result) {
-                if(result == ""){
+                if (result == "") {
                     toastr.info("Please Check Configuration in Serial No First");
-                }else{
+                } else {
                     $("#request_no").textbox('setValue', result);
                 }
             }
@@ -159,14 +164,14 @@
     function update() {
         var row = $('#dg').datagrid('getSelected');
         if (row) {
-            if(row.state != "closed"){
+            if (row.state != "closed") {
                 if (row.status == "0") {
                     $('#dlg_update').dialog('open');
                     $('#frm_update').form('load', row);
                 } else {
                     toastr.error("You cannot update this data, because status Return is closed");
                 }
-            }else{
+            } else {
                 toastr.warning("Please select detail of table first");
             }
         } else {
@@ -200,15 +205,15 @@
                                     field: 'item_rm_id',
                                     title: 'Part No EBWS',
                                     width: 150
-                                },{
+                                }, {
                                     field: 'item_rm_number',
                                     title: 'Part No Supplier',
                                     width: 200
-                                },{
+                                }, {
                                     field: 'item_rm_name',
                                     title: 'Description',
                                     width: 200
-                                },{
+                                }, {
                                     field: 'stock',
                                     title: 'Stock',
                                     width: 80
@@ -281,7 +286,7 @@
                         type: 'numberbox',
                         options: {
                             required: true,
-                            onChange: function(qty){
+                            onChange: function(qty) {
                                 var dg = $('#dg2');
                                 var row = dg.datagrid('getSelected');
                                 var rowIndex = dg.datagrid('getRowIndex', row);
@@ -299,9 +304,9 @@
                                 var stock = $(ed.target).numberbox('getValue');
                                 var balance = (parseInt(stock) - parseInt(qty));
 
-                                if(balance >= 0){
+                                if (balance >= 0) {
                                     $(ed2.target).numberbox('setValue', balance);
-                                }else{
+                                } else {
                                     toastr.error("Balance cannot < 0");
                                     $(ed2.target).numberbox('clear');
                                 }
@@ -347,6 +352,7 @@
     }
 
     var editIndex = undefined;
+
     function endEditing() {
         if (editIndex == undefined) {
             return true
@@ -362,13 +368,17 @@
 
     function append() {
         if (endEditing()) {
+            var location_other_number = $("#location_other_number").combobox('getValue');
+            if (location_other_number != '') {
+                $('#dg2').datagrid('appendRow', {
+                    qty: '0'
+                });
 
-            $('#dg2').datagrid('appendRow', {
-                qty: '0'
-            });
-
-            editIndex = $('#dg2').datagrid('getRows').length - 1;
-            $('#dg2').datagrid('selectRow', editIndex).datagrid('beginEdit', editIndex);
+                editIndex = $('#dg2').datagrid('getRows').length - 1;
+                $('#dg2').datagrid('selectRow', editIndex).datagrid('beginEdit', editIndex);
+            } else {
+                toastr.error("Please Complete Input", "Error");
+            }
         }
     }
 
@@ -381,8 +391,8 @@
     }
 
     function BtnPrint(val, row) {
-        if(row.status == 0){
-            return '<a class="btn btn-primary w-100" target="_blank" href="<?= base_url('warehouse/issued_others/print_request/') ?>'+btoa(row.request_no)+'" style="pointer-events: visible; opacity:1;"><i class="fa fa-print"></i> Print</a>';
+        if (row.status == 0) {
+            return '<a class="btn btn-primary w-100" target="_blank" href="<?= base_url('warehouse/issued_others/print_request/') ?>' + btoa(row.request_no) + '" style="pointer-events: visible; opacity:1;"><i class="fa fa-print"></i> Print</a>';
         }
     }
 
@@ -405,7 +415,7 @@
                             },
                             error: function(jqXHR, textStatus, errorThrown) {
                                 toastr.error("This data is already used in other modules, You must delete it First", "Error");
-                                
+
                             },
                             complete: function(data) {
                                 $('#dg').datagrid('reload');
@@ -461,7 +471,7 @@
 
         if (row) {
             window.open("<?= base_url('warehouse/issued_others/print_return/') ?>" + window.btoa(row.request_no));
-        }else{
+        } else {
             toastr.warning("Please select one of the data in the table first!", "Information");
         }
     }
@@ -484,6 +494,7 @@
                     var request_no = $("#request_no").textbox('getValue');
                     var trans_date = $("#trans_date").datebox('getValue');
                     var request_name = $("#request_name").textbox('getValue');
+                    var location_other_number = $("#location_other_number").combobox('getValue');
 
                     $('#dg2').datagrid('acceptChanges');
                     var rows = $('#dg2').datagrid('getRows');
@@ -499,6 +510,7 @@
                                     request_no: request_no,
                                     trans_date: trans_date,
                                     request_name: request_name,
+                                    location_other_number: location_other_number,
                                     item_rm_id: rows[i].item_rm_id,
                                     stock: rows[i].stock,
                                     qty: rows[i].qty,
@@ -605,17 +617,33 @@
         });
 
         $("#qty").numberbox({
-            onChange: function(qty){
+            onChange: function(qty) {
                 var stock = $("#stock").numberbox('getValue');
                 var balance = (parseInt(stock) - parseInt(qty));
 
-                if(balance >= 0){
-                    $("#balance").numberbox('setValue',  balance);
-                }else{
+                if (balance >= 0) {
+                    $("#balance").numberbox('setValue', balance);
+                } else {
                     toastr.error("Balance Cannot > 0");
                     $("#qty").numberbox('clear');
                     $("#balance").numberbox('clear');
                 }
+            }
+        });
+
+        $('#location_other_number').combobox({
+            url: '<?= base_url('master/location_others/reads'); ?>',
+            valueField: 'number',
+            textField: 'number',
+            prompt: 'Choose Location',
+            icons: [{
+                iconCls: 'icon-clear',
+                handler: function(e) {
+                    $(e.data.target).combobox('clear').combobox('textbox').focus();
+                }
+            }],
+            onSelect: function(rgp) {
+                //   
             }
         });
     });

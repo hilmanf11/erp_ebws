@@ -28,7 +28,7 @@
 </div>
 
 <div id="toolbar2" style="height: auto; padding:10px;">
-    <div style="width: 100%; display: grid; grid-template-columns: auto auto auto; grid-gap: 5px; display: flex;">        
+    <div style="width: 100%; display: grid; grid-template-columns: auto auto auto; grid-gap: 5px; display: flex;">
         <fieldset style="width: 100%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
             <legend><b>Form Detail</b></legend>
             <div style="width: 50%; float: left;">
@@ -39,6 +39,10 @@
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Request Name</span>
                     <input style="width:60%;" id="request_name" class="easyui-textbox" readonly>
+                </div>
+                <div class="fitem" hidden>
+                    <span style="width:35%; display:inline-block;">Location Store</span>
+                    <input style="width:60%;" id="location_other_number" class="easyui-textbox" readonly>
                 </div>
             </div>
             <div style="width: 50%; float: left;">
@@ -79,7 +83,6 @@
 <!-- PDF -->
 <iframe id="printout" src="<?= base_url('warehouse/issued_others_out/print') ?>" style="width: 100%;" hidden></iframe>
 <script>
-
     //DELETE DATA
     function deleted() {
         var rows = $('#dg').datagrid('getSelections');
@@ -99,7 +102,7 @@
                             },
                             error: function(jqXHR, textStatus, errorThrown) {
                                 toastr.error("This data is already used in other modules, You must delete it First", "Error");
-                                
+
                             },
                             complete: function(data) {
                                 $('#dg').datagrid('reload');
@@ -148,19 +151,20 @@
                 handler: function() {
                     var status = $("#status").numberbox('getValue');
 
-                    if(status == 0){
+                    if (status == 0) {
                         $.messager.confirm('Warning', 'Are you sure you want to save this data', function(r) {
                             if (r) {
                                 var request_no = $("#request_no").textbox('getValue');
                                 var trans_date = $("#trans_date").datebox('getValue');
                                 var request_name = $("#request_name").textbox('getValue');
                                 var out_date = $("#out_date").datebox('getValue');
+                                var location_other_number = $("#location_other_number").textbox('getValue');
 
                                 $('#dg_detail').datagrid('acceptChanges');
                                 var rows = $('#dg_detail').datagrid('getRows');
                                 var totalrows = rows.length;
 
-                                if(totalrows > 0){
+                                if (totalrows > 0) {
                                     for (let i = 0; i < totalrows; i++) {
                                         if (rows[i].balance >= 0) {
                                             $.ajax({
@@ -170,13 +174,16 @@
                                                     request_no: request_no,
                                                     trans_date: trans_date,
                                                     request_name: request_name,
+                                                    location_other_number: location_other_number,
                                                     out_by: "<?= $this->session->name ?>",
                                                     out_date: out_date,
                                                     item_rm_id: rows[i].item_rm_id,
+                                                    stock: rows[i].stock,
                                                     qty: rows[i].qty,
                                                     balance: rows[i].balance,
                                                     remarks: rows[i].remarks,
-                                                    status: '1'
+                                                    status: '1',
+                                                    status_store: '0'
                                                 },
                                                 dataType: "json",
                                                 success: function(result) {
@@ -192,30 +199,30 @@
                                                     });
                                                 }
                                             });
-                                        }else{
+                                        } else {
                                             toastr.error("Failed to Save Data, Balance cannot empty");
                                         }
                                     }
 
                                     $('#dg').datagrid('reload');
                                     $('#dlg_detail').dialog('close');
-                                }else{
+                                } else {
                                     toastr.warning("Please Select data in the table first!");
                                 }
                             }
                         });
-                    }else{
+                    } else {
                         toastr.error("The Data Already Created");
                     }
                 }
-            },{
+            }, {
                 text: 'Cancel',
                 handler: function() {
                     var status = $("#status").numberbox('getValue');
 
-                    if(status == 0){
-                        $.messager.prompt('Reason', 'Please input the reason, why the Request is Cancel ?', function(r){
-                            if (r){
+                    if (status == 0) {
+                        $.messager.prompt('Reason', 'Please input the reason, why the Request is Cancel ?', function(r) {
+                            if (r) {
                                 var request_no = $("#request_no").textbox('getValue');
                                 var trans_date = $("#trans_date").datebox('getValue');
                                 var request_name = $("#request_name").textbox('getValue');
@@ -225,7 +232,7 @@
                                 var rows = $('#dg_detail').datagrid('getRows');
                                 var totalrows = rows.length;
 
-                                if(totalrows > 0){
+                                if (totalrows > 0) {
                                     for (let i = 0; i < totalrows; i++) {
                                         if (rows[i].item_rm_id) {
                                             $.ajax({
@@ -238,8 +245,10 @@
                                                     out_date: out_date,
                                                     out_by: "<?= $this->session->name ?>",
                                                     item_rm_id: rows[i].item_rm_id,
+                                                    stock: rows[i].stock,
                                                     remarks: rows[i].remarks,
                                                     status: '2',
+                                                    status_store: '2',
                                                     reason: r
                                                 },
                                                 dataType: "json",
@@ -261,12 +270,12 @@
 
                                     $('#dg').datagrid('reload');
                                     $('#dlg_detail').dialog('close');
-                                }else{
+                                } else {
                                     toastr.warning("Please Select data in the table first!");
                                 }
                             }
                         });
-                    }else{
+                    } else {
                         toastr.error("The Data Already Created");
                     }
                 }
@@ -298,15 +307,16 @@
         });
     });
 
-    function details(request_no, trans_date, request_name, status) {
+    function details(request_no, trans_date, request_name, status, location_other_number) {
         $("#dlg_detail").dialog('open');
 
         $("#request_no").textbox('setValue', request_no);
         $("#request_name").textbox('setValue', request_name);
         $("#trans_date").datebox('setValue', trans_date);
         $("#status").numberbox('setValue', status);
+        $("#location_other_number").textbox('setValue', location_other_number);
         $("#out_date").datebox('setValue', "<?= date("Y-m-d") ?>");
-        
+
         // $('#dg_detail').datagrid({
         //     url: "<?= base_url('warehouse/issued_others_out/datatableDetails/') ?>" + btoa(request_no),
         //     clientPaging: false,
@@ -321,7 +331,7 @@
             url: "<?= base_url('warehouse/issued_others_out/datatableDetails/') ?>" + btoa(request_no),
             rownumbers: true,
             singleSelect: true,
-            fit:true,
+            fit: true,
             columns: [
                 [{
                     field: 'item_rm_id',
@@ -358,7 +368,7 @@
                         type: 'numberbox',
                         options: {
                             required: true,
-                            onChange: function(qty){
+                            onChange: function(qty) {
                                 var dg = $('#dg_detail');
                                 var row = dg.datagrid('getSelected');
                                 var rowIndex = dg.datagrid('getRowIndex', row);
@@ -376,9 +386,9 @@
                                 var stock = $(ed.target).numberbox('getValue');
                                 var balance = (parseInt(stock) - parseInt(qty));
 
-                                if(balance >= 0){
+                                if (balance >= 0) {
                                     $(ed2.target).numberbox('setValue', balance);
-                                }else{
+                                } else {
                                     toastr.error("Balance cannot < 0");
                                     $(ed2.target).numberbox('clear');
                                 }
@@ -423,6 +433,7 @@
         });
 
         var editIndex = undefined;
+
         function endEditing() {
             if (editIndex == undefined) {
                 return true
@@ -438,8 +449,8 @@
     }
 
     function BtnDetail(val, row) {
-        var details = "details('"+row.request_no+"','"+row.trans_date+"','"+row.request_name+"','"+row.status+"')";
-        return '<a class="btn btn-primary w-100" style="pointer-events: visible; opacity:1;" onClick="'+details+'"><i class="fa fa-eye"></i> View</a>';
+        var details = "details('" + row.request_no + "','" + row.trans_date + "','" + row.request_name + "','" + row.status + "','" + row.location_other_number + "' )";
+        return '<a class="btn btn-primary w-100" style="pointer-events: visible; opacity:1;" onClick="' + details + '"><i class="fa fa-eye"></i> View</a>';
     }
 
     function numberformat(value, row) {

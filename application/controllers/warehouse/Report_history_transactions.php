@@ -246,277 +246,65 @@ class Report_history_transactions extends CI_Controller
                                 <th>Balance</th>
                             </tr>';
 
+                $details = $this->crud->query("SELECT z.* FROM (
+                SELECT 'STO' AS trans_type, c.name AS created_by, a.trans_date, '-' AS supplier_id, '-' AS supplier_name, a.document_no, a.id AS invoice_no, a.qty AS qty_in, '0' AS qty_out FROM os_rm a JOIN scan_item_receipts b ON a.id = b.receipt_id JOIN users c ON a.created_by = c.username WHERE a.item_rm_id = '$item_rm_id' GROUP BY a.id
+                UNION
+                SELECT 'STO ADJUSTMENT IN' AS trans_type, c.name AS created_by, a.trans_date, '-' AS supplier_id, '-' AS supplier_name, a.document_no, '-' AS invoice_no, a.qty AS qty_in, '0' AS qty_out FROM sto_rm a JOIN users c ON a.created_by = c.username WHERE a.type = 'IN' AND a.item_rm_id = '$item_rm_id' GROUP BY a.id
+                UNION
+                SELECT 'STO ADJUSTMENT OUT' AS trans_type, c.name AS created_by, a.trans_date, '-' AS supplier_id, '-' AS supplier_name, a.document_no, '-' AS invoice_no, '0' AS qty_in, a.qty AS qty_out FROM sto_rm a JOIN users c ON a.created_by = c.username WHERE a.type = 'OUT' AND a.item_rm_id = '$item_rm_id' GROUP BY a.id
+                UNION
+                SELECT 'RECEIPT' AS trans_type, c.name AS created_by, a.receipt_date AS trans_date, d.id AS supplier_id, d.name AS supplier_name, a.receipt_no AS document_no, a.bc_document AS invoice_no, SUM(b.qty) AS qty_in, '0' AS qty_out FROM purchase_order_receipts a JOIN scan_item_receipts b ON a.receipt_id = b.receipt_id JOIN users c ON a.created_by = c.username JOIN suppliers d ON a.supplier_id = d.id WHERE a.item_rm_id = '$item_rm_id' GROUP BY a.receipt_no, a.bc_document
+                UNION
+                SELECT 'REJECTION' AS trans_type, c.name AS created_by, DATE_FORMAT(b.created_date, '%Y-%m-%d') AS trans_date, d.id AS supplier_id, d.name AS supplier_name, a.bc_document AS document_no, b.label_no AS invoice_no, '0' AS qty_in, SUM(b.qty) AS qty_out FROM purchase_order_receipts a JOIN scan_item_rejections b ON a.receipt_id = b.receipt_id JOIN users c ON b.created_by = c.username JOIN suppliers d ON a.supplier_id = d.id WHERE a.item_rm_id = '$item_rm_id' GROUP BY b.id
+                UNION
+                SELECT 'ISSUED' AS trans_type, created_by, DATE_FORMAT(created_date, '%Y-%m-%d') AS trans_date, '-' AS supplier_id, '-' AS supplier_name, request_no AS document_no, label_no AS invoice_no, '0' AS qty_in, qty AS qty_out FROM issued_material_details WHERE item_rm_id = '$item_rm_id'
+                UNION
+                SELECT 'RETURN MATERIAL' AS trans_type, d.name AS created_by, a.return_date AS trans_date, '-' AS supplier_id, '-' AS supplier_name, a.return_no AS document_no, b.label_no AS invoice_no, b.qty AS qty_in, '0' AS qty_out FROM return_materials a JOIN return_material_labels b ON a.return_id = b.return_id JOIN scan_item_receipts c ON a.return_id = c.receipt_id JOIN users d ON a.created_by = d.username WHERE a.item_rm_id = '$item_rm_id' GROUP BY b.label_no
+                UNION 
+                SELECT 'RGP IN' AS trans_type, a.created_by, a.transaction_date AS trans_date, b.id AS supplier_id, b.name AS supplier_name, a.reference_number AS document_no, a.rgp_number AS invoice_no, a.qty AS qtty_in, '0' AS qty_out FROM rgp_transactions a JOIN suppliers b ON a.company_id = b.id WHERE a.type = 'IN' AND a.item_id = '$item_rm_id'
+                UNION
+                SELECT 'RGP OUT' AS trans_type, a.created_by, a.transaction_date AS trans_date, b.id AS supplier_id, b.name AS supplier_name, a.reference_number AS document_no, a.rgp_number AS invoice_no, '0' AS qtty_in, a.qty AS qty_out FROM rgp_transactions a JOIN suppliers b ON a.company_id = b.id WHERE a.type = 'OUT' AND a.item_id = '$item_rm_id'
+                ) z WHERE z.trans_date between '$filter_from' and '$filter_to' ORDER BY z.trans_date ASC");
+
                 $nod = 1;
                 $begin = @$record->begin_stock;
                 $in_qty = 0;
-                $end_qty = 0;
+                $out_qty = 0;
                 $balance = @$record->begin_stock;
-
-                for ($i = $start; $i <= $finish; $i += (60 * 60 * 24)) {
-                    $working_date = date('Y-m-d', $i);
-
-                    //BEGIN STOCK
-                    $os_rms = $this->crud->query("SELECT
-                        a.*,
-                        SUM(b.qty) as qty,
-                        c.name as username
-                    FROM os_rm a 
-                    JOIN scan_item_receipts b ON a.id = b.receipt_id
-                    JOIN users c ON a.created_by = c.username
-                    WHERE a.item_rm_id = '$item_rm_id' and a.trans_date = '$working_date'
-                    GROUP BY a.id");
-
-                    //STO
-                    $sto_rms = $this->crud->query("SELECT
-                        a.*,
-                        c.name as username
-                    FROM sto_rm a 
-                    JOIN users c ON a.created_by = c.username
-                    WHERE a.item_rm_id = '$item_rm_id' and a.trans_date = '$working_date'
-                    GROUP BY a.id");
-
-                    //RECEIPT
-                    $receipts = $this->crud->query("SELECT
-                        a.receipt_date, 
-                        a.receipt_no, 
-                        a.bc_document, 
-                        SUM(b.qty) as qty_receipt,
-                        c.name as username,
-                        d.id as supplier_id,
-                        d.name as supplier_name
-                    FROM purchase_order_receipts a 
-                    JOIN scan_item_receipts b ON a.receipt_id = b.receipt_id
-                    JOIN users c ON a.created_by = c.username
-                    JOIN suppliers d ON a.supplier_id = d.id
-                    WHERE a.item_rm_id = '$item_rm_id' and a.receipt_date between '$working_date' and '$working_date'
-                    GROUP BY a.receipt_no, a.bc_document");
-
-                    //REJECTION
-                    $rejections = $this->crud->query("SELECT
-                        b.created_date, 
-                        a.bc_document, 
-                        b.label_no, 
-                        SUM(b.qty) as qty,
-                        c.name as username,
-                        d.id as supplier_id,
-                        d.name as supplier_name
-                    FROM purchase_order_receipts a 
-                    JOIN scan_item_rejections b ON a.receipt_id = b.receipt_id
-                    JOIN users c ON b.created_by = c.username
-                    JOIN suppliers d ON a.supplier_id = d.id
-                    WHERE a.item_rm_id = '$item_rm_id' and DATE_FORMAT(b.created_date, '%Y-%m-%d') = '$working_date'
-                    GROUP BY b.id");
-
-                    //ISSUED
-                    $issueds = $this->crud->query("SELECT * FROM issued_material_details WHERE item_rm_id = '$item_rm_id' and DATE_FORMAT(created_date, '%Y-%m-%d') between '$working_date' and '$working_date'");
-
-                    //RETURN
-                    $returns = $this->crud->query("SELECT
-                        a.return_no,
-                        a.return_id,
-                        a.return_name,
-                        a.return_date,
-                        b.label_no,
-                        b.qty,
-                        d.name as username
-                    FROM return_materials a 
-                    JOIN return_material_labels b ON a.return_id = b.return_id
-                    JOIN scan_item_receipts c ON a.return_id = c.receipt_id
-                    JOIN users d ON a.created_by = d.username
-                    WHERE a.item_rm_id = '$item_rm_id' and a.return_date between '$working_date' and '$working_date'
-                    GROUP BY b.label_no");
-
-                    //RGP TRANSACTION
-                    $rgps = $this->crud->query("SELECT a.*, b.name as company_name FROM rgp_transactions a JOIN suppliers b ON a.company_id = b.id WHERE a.item_id = '$item_rm_id' and a.transaction_date = '$working_date'");
-
-                    //BEGIN STOCK
-                    foreach ($os_rms as $os_rm) {
-                        $balance = ($begin + $os_rm->qty);
-                        $html .= '  <tr>
-                                        <td></td>
-                                        <td style="text-align:center">' . $nod . '</td>
-                                        <td>STO</td>
-                                        <td>' . $os_rm->username . '</td>
-                                        <td>' . $os_rm->trans_date . '</td>
-                                        <td>-</td>
-                                        <td>-</td>
-                                        <td>' . $os_rm->document_no . '</td>
-                                        <td>' . $os_rm->id . '</td>
-                                        <td style="text-align:right;">' . number_format($begin, 2) . '</td>
-                                        <td style="text-align:right;">' . number_format($os_rm->qty) . '</td>
-                                        <td style="text-align:right;">' . number_format(0)  . '</td>
-                                        <td style="text-align:right;">' . number_format($balance, 2)  . '</td>
-                                    </tr>';
-                        $begin += $os_rm->qty;
-                        $nod++;
+                foreach ($details as $detail) {
+                    if($detail->qty_in > 0){
+                        $in_qty = $detail->qty_in;
+                        $out_qty = 0;
+                    }else{
+                        $in_qty = 0;
+                        $out_qty = $detail->qty_out;
                     }
 
-                    //STO
-                    foreach ($sto_rms as $sto_rm) {
-                        if($sto_rm->type == "IN"){
-                            $type = "STO ADJUSTMENT IN";
-                            $qty_in = $sto_rm->qty;
-                            $qty_out = 0;
-                            $balance = ($begin + $sto_rm->qty);
-                        }else{
-                            $type = "STO ADJUSTMENT OUT";
-                            $qty_in = 0;
-                            $qty_out = $sto_rm->qty;
-                            $balance = ($begin - $sto_rm->qty);
-                        }
+                    $balance = ($begin + $in_qty - $out_qty);
 
-                        $html .= '  <tr>
-                                        <td></td>
-                                        <td style="text-align:center">' . $nod . '</td>
-                                        <td>' . $type . '</td>
-                                        <td>' . $sto_rm->username . '</td>
-                                        <td>' . $sto_rm->trans_date . '</td>
-                                        <td>-</td>
-                                        <td>-</td>
-                                        <td>' . $sto_rm->document_no . '</td>
-                                        <td>-</td>
-                                        <td style="text-align:right;">' . number_format($begin, 2) . '</td>
-                                        <td style="text-align:right;">' . number_format($qty_in, 2) . '</td>
-                                        <td style="text-align:right;">' . number_format($qty_out)  . '</td>
-                                        <td style="text-align:right;">' . number_format($balance, 2)  . '</td>
-                                    </tr>';
-                        if($sto_rm->type == "IN"){
-                            $begin += $sto_rm->qty;
-                        }else{
-                            $begin -= $sto_rm->qty;
-                        }
+                    $html .= '  <tr>
+                                    <td></td>
+                                    <td style="text-align:center">' . $nod . '</td>
+                                    <td>' . $detail->trans_type . '</td>
+                                    <td>' . $detail->created_by . '</td>
+                                    <td>' . $detail->trans_date . '</td>
+                                    <td>' . $detail->supplier_id . '</td>
+                                    <td>' . $detail->supplier_name . '</td>
+                                    <td>' . $detail->document_no . '</td>
+                                    <td>' . $detail->invoice_no . '</td>
+                                    <td style="text-align:right;">' . number_format($begin, 2) . '</td>
+                                    <td style="text-align:right;">' . number_format($in_qty, 2)  . '</td>
+                                    <td style="text-align:right;">' . number_format($out_qty, 2) . '</td>
+                                    <td style="text-align:right;">' . number_format($balance, 2)  . '</td>
+                                </tr>';
 
-                        $nod++;
+                    if($detail->qty_in > 0){
+                        $begin += ($in_qty);
+                    }else{
+                        $begin -= ($out_qty);
                     }
 
-                    //Purchase Order Receipt
-                    foreach ($receipts as $receipt) {
-                        $balance = ($begin + ($receipt->qty_receipt - $end_qty));
-                        $html .= '  <tr>
-                                        <td></td>
-                                        <td style="text-align:center">' . $nod . '</td>
-                                        <td>RECEIPT</td>
-                                        <td>' . $receipt->username . '</td>
-                                        <td>' . $receipt->receipt_date . '</td>
-                                        <td>' . $receipt->supplier_id . '</td>
-                                        <td>' . $receipt->supplier_name . '</td>
-                                        <td>' . $receipt->receipt_no . '</td>
-                                        <td>' . $receipt->bc_document . '</td>
-                                        <td style="text-align:right;">' . number_format($begin, 2) . '</td>
-                                        <td style="text-align:right;">' . number_format($receipt->qty_receipt, 2) . '</td>
-                                        <td style="text-align:right;">' . number_format(0)  . '</td>
-                                        <td style="text-align:right;">' . number_format($balance, 2)  . '</td>
-                                    </tr>';
-                        $begin += $receipt->qty_receipt;
-                        $nod++;
-                    }
-
-                    //Rejections
-                    foreach ($rejections as $rejection) {
-                        $balance = ($begin - $rejection->qty);
-                        $html .= '  <tr>
-                                        <td></td>
-                                        <td style="text-align:center">' . $nod . '</td>
-                                        <td>REJECTION</td>
-                                        <td>' . $rejection->username . '</td>
-                                        <td>' . $rejection->created_date . '</td>
-                                        <td>' . $rejection->supplier_id . '</td>
-                                        <td>' . $rejection->supplier_name . '</td>
-                                        <td>' . $rejection->label_no . '</td>
-                                        <td>' . $rejection->bc_document . '</td>
-                                        <td style="text-align:right;">' . number_format($begin, 2) . '</td>
-                                        <td style="text-align:right;">' . number_format(0) . '</td>
-                                        <td style="text-align:right;">' . number_format($rejection->qty, 2)  . '</td>
-                                        <td style="text-align:right;">' . number_format($balance, 2)  . '</td>
-                                    </tr>';
-                        $begin -= $rejection->qty;
-                        $nod++;
-                    }
-                    
-                    //Issued Material
-                    foreach ($issueds as $issued) {
-                        $user = $this->crud->read("users", [], ["username" => $issued->created_by]);
-                        $balance = ($begin - $issued->qty);
-                        $html .= '  <tr>
-                                        <td></td>
-                                        <td style="text-align:center">' . $nod . '</td>
-                                        <td>ISSUED</td>
-                                        <td>' . $user->name . '</td>
-                                        <td>' . date("Y-m-d", strtotime($issued->created_date)) . '</td>
-                                        <td>-</td>
-                                        <td>-</td>
-                                        <td>' . $issued->request_no . '</td>
-                                        <td>-</td>
-                                        <td style="text-align:right;">' . number_format($begin, 2) . '</td>
-                                        <td style="text-align:right;">' . number_format(0) . '</td>
-                                        <td style="text-align:right;">' . number_format($issued->qty, 2)  . '</td>
-                                        <td style="text-align:right;">' . number_format($balance, 2)  . '</td>
-                                    </tr>';
-                        $begin -= $issued->qty;
-                        $nod++;
-                    }
-
-                    //Return Material
-                    foreach ($returns as $return) {
-                        $balance = ($begin + $return->qty);
-                        $html .= '  <tr>
-                                        <td></td>
-                                        <td style="text-align:center">' . $nod . '</td>
-                                        <td>RETURN</td>
-                                        <td>' . $return->username . '</td>
-                                        <td>' . date("Y-m-d", strtotime($return->return_date)) . '</td>
-                                        <td>-</td>
-                                        <td>-</td>
-                                        <td>' . $return->return_no . '</td>
-                                        <td>-</td>
-                                        <td style="text-align:right;">' . number_format($begin, 2) . '</td>
-                                        <td style="text-align:right;">' . number_format($return->qty, 2)  . '</td>
-                                        <td style="text-align:right;">' . number_format(0) . '</td>
-                                        <td style="text-align:right;">' . number_format($balance, 2)  . '</td>
-                                    </tr>';
-                        $begin += $return->qty;
-                        $nod++;
-                    }
-
-                    //RGP
-                    foreach ($rgps as $rgp) {
-                        $user = $this->crud->read("users", [], ["username" => $rgp->created_by]);
-                        if($rgp->type == "IN"){
-                            $balance = ($begin + $rgp->qty);
-                            $rgp_status = "RGP IN";
-                            $rgp_qty_in = $rgp->qty;
-                            $rgp_qty_out = 0;
-                        }else{
-                            $rgp_status = "RGP OUT";
-                            $balance = ($begin - $rgp->qty);
-                            $rgp_qty_in = 0;
-                            $rgp_qty_out = $rgp->qty;
-                        }
-
-                        $html .= '  <tr>
-                                        <td></td>
-                                        <td style="text-align:center">' . $nod . '</td>
-                                        <td>' . $rgp_status . '</td>
-                                        <td>' . $user->name . '</td>
-                                        <td>' . $rgp->transaction_date . '</td>
-                                        <td>' . $rgp->company_id . '</td>
-                                        <td>' . $rgp->company_name . '</td>
-                                        <td>' . $rgp->reference_number . '</td>
-                                        <td>' . $rgp->rgp_number . '</td>
-                                        <td style="text-align:right;">' . number_format($begin, 2) . '</td>
-                                        <td style="text-align:right;">' . number_format($rgp_qty_in) . '</td>
-                                        <td style="text-align:right;">' . number_format($rgp_qty_out, 2)  . '</td>
-                                        <td style="text-align:right;">' . number_format($balance, 2)  . '</td>
-                                    </tr>';
-                        
-                        if($rgp->type == "IN"){
-                            $begin += $rgp_qty_in;
-                        }else{
-                            $begin -= $rgp_qty_out;
-                        }
-
-                        $nod++;
-                    }
+                    $nod++;
                 }
             }
             $no++;

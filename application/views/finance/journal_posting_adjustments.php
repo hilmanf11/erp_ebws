@@ -5,11 +5,13 @@
             <th rowspan="2" data-options="field:'details',width:90,align:'center', formatter:btnDetails">Detail</th>
             <th rowspan="2" data-options="field:'journal_date',width:100,align:'center'">Journal Date</th>
             <th rowspan="2" data-options="field:'number',width:140,align:'center'">GL No</th>
-            <th rowspan="2" data-options="field:'journal_type_name',width:200,halign:'center'">Journal Type</th>
-            <th rowspan="2" data-options="field:'modul',width:150,halign:'center'">Modul</th>
+            <!-- <th rowspan="2" data-options="field:'journal_type_name',width:100,halign:'center'">Journal Type</th> -->
+            <th rowspan="2" data-options="field:'document_no',width:200,halign:'center'">Document No</th>
+            <!-- <th rowspan="2" data-options="field:'modul',width:150,halign:'center'">Modul</th> -->
+            <th rowspan="2" data-options="field:'tds',width:100,halign:'center'">TDS</th>
             <th colspan="3" data-options="field:'',width:200,halign:'center'">Original Currency</th>
             <th colspan="3" data-options="field:'',width:200,halign:'center'">Local Currency</th>
-            <th rowspan="2" data-options="field:'remarks',width:100,halign:'center'">Remarks</th>
+            <th rowspan="2" data-options="field:'remarks',width:200,halign:'center'">Remarks</th>
             <th colspan="3" data-options="field:'',width:100,halign:'center'"> Approval</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
@@ -66,6 +68,7 @@
 
 <div id="toolbar2">
     <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="append()"><i class="fa fa-plus"></i> Add</a>
+    <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="preview()"><i class="fa fa-eye"></i> Preview Journal</a>
 </div>
 
 <!-- Insert -->
@@ -95,6 +98,10 @@
                         <option value="GL - BANK">GL - BANK</option>
                     </select>
                 </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Vourcher No</span>
+                    <input style="width:60%;" name="number" id="number" readonly class="easyui-textbox">
+                </div>
             </div>
             <div style="width:30%; float:left;">
                 <div class="fitem">
@@ -105,16 +112,12 @@
                     <span style="width:35%; display:inline-block;">Document No</span>
                     <input style="width:60%;" name="document_no" required id="document_no" class="easyui-textbox">
                 </div>
-            </div>
-            <div style="width:30%; float:left;">
-                <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Vourcher No</span>
-                    <input style="width:60%;" name="number" id="number" readonly class="easyui-textbox">
-                </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Remarks</span>
                     <input style="width:60%;" name="remarks" id="remarks" class="easyui-textbox">
                 </div>
+            </div>
+            <div style="width:30%; float:left;">
                 <!-- Buat Validasi -->
                 <div class="fitem" hidden>
                     <span style="width:35%; display:inline-block;">Total Debit</span>
@@ -157,7 +160,62 @@
                     <th hidden data-options="field:'company_id',width:100,editor: {type: 'textbox', options: {readonly: true}}">Company ID</th>
                     <th hidden data-options="field:'company_name',width:200,editor: {type: 'textbox', options: {readonly: true}}">Company Name</th>
                     <th data-options="field:'currency',width:80,editor: {type: 'textbox', options: {required: true, readonly: true}}">Currency</th>
-                    <th data-options="field:'amount',width:100,halign:'center',align:'right',formatter:numberformatDefaultIdr,editor: {type: 'numberbox', options: {required: true, precision:2}}">Amount</th>
+                    <th data-options="field:'amount',width:100,halign:'center',align:'right',formatter:numberformatDefaultIdr,editor: {type: 'numberbox', options: {required: true, precision:2}}">Taxable<br>Amount</th>
+                    <th data-options="field:'taxes',width:100, halign:'center', editor: {type: 'combogrid', options: {
+                            url: '<?= base_url("finance/taxes/reads");  ?>',
+                            panelWidth: 350,
+                            panelHeight: 200,
+                            idField: 'number',
+                            textField: 'name',
+                            mode: 'remote', 
+                            fitColumns: true,
+                            prompt: 'Choose GST Conditions',
+                            columns: [
+                                [{
+                                    field: 'number',
+                                    title: 'Code',
+                                    width: 100
+                                }, {
+                                    field: 'name',
+                                    title: 'Name',
+                                    width: 200
+                                }]
+                            ],
+                            onSelect: function(value, rows) {
+                                var dg = $('#dg2');
+                                var row = dg.datagrid('getSelected');
+                                var rowIndex = dg.datagrid('getRowIndex', row);
+                                var ed = dg.datagrid('getEditor', {
+                                    index: rowIndex,
+                                    field: 'amount'
+                                });
+                                var ed2 = dg.datagrid('getEditor', {
+                                    index: rowIndex,
+                                    field: 'taxes'
+                                });
+                                var ed3 = dg.datagrid('getEditor', {
+                                    index: rowIndex,
+                                    field: 'taxes_amount'
+                                });
+                                var ed4 = dg.datagrid('getEditor', {
+                                    index: rowIndex,
+                                    field: 'debitcredit'
+                                });
+
+                                var amount = $(ed.target).numberbox('getValue');
+
+                                if(amount > 0){
+                                    $(ed3.target).numberbox('setValue', (parseFloat(amount) * ((parseFloat(rows.cgst2) + parseFloat(rows.sgst2) + parseFloat(rows.igst2)) / 100)));
+                                    $(ed4.target).combobox('clear');
+                                }else{
+                                    toastr.error('Amount Still Empty');
+                                    $(ed2.target).combogrid('clear');
+                                    $(ed3.target).numberbox('clear');
+                                }
+                            }
+                        }
+                    }">GST<br>Conditions</th>
+                    <th data-options="field:'taxes_amount',width:100, halign:'center', editor: {type: 'numberbox', options: {precision: 2, readonly: true}}">GST Amount</th>
                     <th data-options="field:'debitcredit',width:100,editor: {type: 'combobox',
                         options: {
                             data: [
@@ -194,16 +252,22 @@
                                     field: 'debitcredit'
                                 });
 
+                                var ed5 = dg.datagrid('getEditor', {
+                                    index: rowIndex,
+                                    field: 'taxes_amount'
+                                });
+
                                 var amount = $(ed.target).numberbox('getValue');
-                                if(amount == ''){
+                                var taxes_amount = $(ed5.target).numberbox('getValue');
+                                if(amount == '' && taxes_amount == ''){
                                     toastr.error('Please Complete the amount');
                                     $(ed4.target).combobox('clear');
                                 }else if(db.name == 'DEBIT'){
-                                    $(ed1.target).numberbox('setValue', amount);
+                                    $(ed1.target).numberbox('setValue', (parseFloat(amount) + parseFloat(taxes_amount)));
                                     $(ed2.target).numberbox('setValue', 0);
                                 }else if(db.name == 'CREDIT'){
                                     $(ed1.target).numberbox('setValue', 0);
-                                    $(ed2.target).numberbox('setValue', amount);
+                                    $(ed2.target).numberbox('setValue', (parseFloat(amount) + parseFloat(taxes_amount)));
                                 }else{
                                     $(ed4.target).combobox('clear');
                                 }
@@ -230,6 +294,19 @@
                 <th data-options="field:'account_name',width:250,halign:'center'">Account Name</th>
                 <th data-options="field:'description',width:150,halign:'center'">Description</th>
                 <th data-options="field:'currency',width:80,align:'center'">Currency</th>
+                <th data-options="field:'local_debit',width:100,halign:'center',align:'right',formatter:numberformatDefaultIdr">Debit</th>
+                <th data-options="field:'local_credit',width:100,halign:'center',align:'right',formatter:numberformatDefaultIdr">Credit</th>
+            </tr>
+        </thead>
+    </table>
+</div>
+
+<div id="dlg_journal" class="easyui-dialog" title="Preview Journal" data-options="closed: true,modal:true" style="width: 650px; top:20px;">
+    <table id="dg4" class="easyui-datagrid" style="width:100%;" showFooter="true">
+        <thead>
+            <tr>
+                <th data-options="field:'account_number',width:100,halign:'center'">Account No</th>
+                <th data-options="field:'account_name',width:250,halign:'center'">Account Name</th>
                 <th data-options="field:'local_debit',width:100,halign:'center',align:'right',formatter:numberformatDefaultIdr">Debit</th>
                 <th data-options="field:'local_credit',width:100,halign:'center',align:'right',formatter:numberformatDefaultIdr">Credit</th>
             </tr>
@@ -274,10 +351,12 @@
 <!-- PDF -->
 <iframe id="printout" src="<?= base_url('finance/journal_posting_adjustments/print') ?>" style="width: 100%;" hidden></iframe>
 <script>
+
     //Add Data
     function add() {
         $('#dlg_insert').dialog('open');
         $("#fieldset").show();
+        $('#dg2').datagrid('loadData', []);
         $('#frm_insert').form('clear');
 
         $("#journal_date").datebox('setValue', "<?= date("Y-m-d") ?>");
@@ -288,7 +367,6 @@
         $("#journal_category").combobox('enable');
         $("#document_no").combobox('enable');
         $("#number").textbox('enable');
-        $("#preview").linkbutton('enable');
         
         $("#journal_category").combobox('setValue', 'GL - GL');
         $("#journal_type").combogrid('setValue', '20241120000001');
@@ -367,14 +445,49 @@
 
         if(journal_type != ""){
             if (endEditing()) {
+                var rows = $('#dg2').datagrid('getRows');
+                var totalrows = rows.length;
+                
+                var amount = 0;
+                var local_amount = 0;
+                for (let i = 0; i < totalrows; i++) {
+                    if(rows[i].debitcredit == "DEBIT"){
+                        local_amount += parseFloat(rows[i].local_debit);
+                    }else{
+                        local_amount -= parseFloat(rows[i].local_credit);
+                    }
+
+                    amount += parseFloat(rows[i].amount);
+                }
+
+                if(local_amount > 0){
+                    var debitcredit1 = "CREDIT";
+                    var local_debit = 0;
+                    var local_credit = local_amount;
+                }else if(local_amount < 0){
+                    var debitcredit1 = "DEBIT";
+                    var local_debit = local_amount;
+                    var local_credit = 0;
+                }else{
+                    var debitcredit1 = "";
+                    var local_debit = 0;
+                    var local_credit = 0;
+                }
+
                 $('#dg2').datagrid('appendRow', {
                     "flag": 1,
                     "currency": "INR",
+                    "debitcredit": debitcredit1,
+                    "amount": (local_debit + local_credit),
+                    "taxes_amount": 0,
+                    "local_debit": local_debit,
+                    "local_credit": local_credit,
                 });
 
                 editIndex = $('#dg2').datagrid('getRows').length - 1;
                 $('#dg2').datagrid('selectRow', editIndex).datagrid('beginEdit', editIndex);
-
+                
+                
                 var ed = $('#dg2').datagrid('getEditor', {
                     index: editIndex,
                     field: 'account_number'
@@ -384,23 +497,15 @@
 
                 $(ed.target).combogrid({
                     url: urls,
-                    panelWidth: 650,
+                    panelWidth: 450,
                     panelHeight: 200,
                     idField: 'account_number',
-                    textField: 'account_number',
+                    textField: 'name',
                     mode: 'remote', 
                     fitColumns: true,
                     prompt: 'Choose Account No',
                     columns: [
                         [{
-                            field: 'account_number',
-                            title: 'Account No',
-                            width: 100
-                        }, {
-                            field: 'account_name',
-                            title: 'Account Name',
-                            width: 200
-                        }, {
                             field: 'number',
                             title: 'Code',
                             width: 100
@@ -426,10 +531,35 @@
                             index: rowIndex,
                             field: 'company_name'
                         });
+                        var ed3 = dg.datagrid('getEditor', {
+                            index: rowIndex,
+                            field: 'amount'
+                        });
+                        var ed4 = dg.datagrid('getEditor', {
+                            index: rowIndex,
+                            field: 'debitcredit'
+                        });
+                        var ed5 = dg.datagrid('getEditor', {
+                            index: rowIndex,
+                            field: 'local_credit'
+                        });
 
                         $(ed.target).textbox('setValue', rows.account_name);
                         $(ed1.target).textbox('setValue', rows.number);
                         $(ed2.target).textbox('setValue', rows.name);
+
+                        $.ajax({
+                            type: "post",
+                            url: "<?= base_url('master/tds/reads/') ?>" + rows.account_number,
+                            dataType: "json",
+                            success: function (tds) {
+                                if(tds.length > 0){
+                                    $(ed3.target).numberbox('setValue', (parseFloat(amount) * (parseFloat(tds[0].individual) / 100)));
+                                    $(ed4.target).combobox('setValue', "CREDIT");
+                                    $(ed5.target).numberbox('setValue', (parseFloat(amount) * (parseFloat(tds[0].individual) / 100)));
+                                }
+                            }
+                        });
                     }
                 });
             }
@@ -558,7 +688,6 @@
             $("#company_name").combobox('disable');
             $("#document_no").combobox('disable');
             $("#number").textbox('disable');
-            $("#preview").linkbutton('disable');
 
             setTimeout(function() {
                 $("#number").textbox('setValue', row.number);
@@ -637,6 +766,35 @@
             });
         } else {
             toastr.warning("Please select one of the data in the table first!", "Information");
+        }
+    }
+
+    function preview() {
+        $("#dlg_journal").dialog('open');
+
+        var rows = $('#dg2').datagrid('getRows');
+        var totalrows = rows.length;
+        endEditing();
+
+        if (totalrows > 0) {
+            var jsonData = JSON.stringify(rows);
+
+            $.ajax({
+                type: "POST",
+                url: "<?= base_url('finance/journal_posting_adjustments/createJson') ?>",
+                data: {
+                    jsonData: jsonData,
+                },
+                success: function(response) {
+                    $('#dg4').datagrid({
+                        url: '<?= base_url('finance/journal_posting_adjustments/calculateJournal') ?>',
+                        pagination: false,
+                        rownumbers: true,
+                    });
+                },
+            });
+        } else {
+            toastr.warning("No Data to Preview");
         }
     }
 
@@ -784,6 +942,10 @@
                                                                 id: json[i].id,
                                                                 document_no: document_no,
                                                                 document_date: document_date,
+                                                                amount: json[i].amount,
+                                                                taxes: json[i].taxes,
+                                                                taxes_amount: json[i].taxes_amount,
+                                                                debitcredit: json[i].debitcredit,
                                                                 account_number: json[i].account_number,
                                                                 account_name: json[i].account_name,
                                                                 description: json[i].description,
@@ -816,7 +978,8 @@
                                                                         allowOutsideClick: false,
                                                                     }).then((result) => {
                                                                         if (result.isConfirmed) {
-                                                                            window.location.reload();
+                                                                            // window.location.reload();
+                                                                            $("#dg").datagrid('reload');
                                                                         }
                                                                     });
                                                                 }

@@ -29,11 +29,10 @@ class Tds extends CI_Controller
         }
     }
     //GET DATA
-    public function reads()
+    public function reads($account_number = "")
     {
         $post = isset($_POST['q']) ? $_POST['q'] : "";
-        // $send = $this->crud->query("SELECT * FROM tds WHERE name LIKE '%$post%'AND number != 'FG'");
-        $send = $this->crud->reads('tds', ["payment" => $post, "section" => $post]);
+        $send = $this->crud->reads('tds', ["account_number" => $account_number, "payment" => $post, "section" => $post]);
         echo json_encode($send);
     }
 

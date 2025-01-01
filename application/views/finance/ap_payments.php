@@ -191,6 +191,7 @@
                 <tr>
                     <th data-options="field:'delete',width:120, formatter:removebtn">#</th>
                     <th hidden data-options="field:'id',width:150, editor: {type: 'textbox'}">ID</th>
+                    <th hidden data-options="field:'trans_date',width:150, editor: {type: 'textbox', options: { readonly: true }}">Trans Date</th>
                     <th data-options="field:'purchase_invoice',width:150, editor: {type: 'textbox'}">Purchase Invoice</th>
                     <th data-options="field:'supplier_invoice',width:150, editor: {type: 'textbox'}">Description</th>
                     <th data-options="field:'currency',align:'center',width:80, editor: {
@@ -427,6 +428,7 @@
                 var total_payment = 0;
                 var total_currency = 1;
                 var currency = "";
+                var trans_date = "";
 
                 for (let i = 0; i < totalrows; i++) {
                     //if(rows[i].balance >= rows[i].payment){
@@ -437,6 +439,7 @@
                         description: rows[i].supplier_invoice,
                         currency: rows[i].currency,
                         payment_date: payment_date,
+                        trans_date: rows[i].trans_date,
                         payment: rows[i].payment,
                         rate: rows[i].rate
                     }
@@ -462,6 +465,7 @@
                     //     toastr.error("Balance must >= Payment, Please check again your data");
                     //     return false;
                     // }
+                    trans_date = rows[i].trans_date;
                 }
 
                 for (let z = 0; z < totalrows2; z++) {
@@ -483,7 +487,7 @@
                         $.ajax({
                             type: "post",
                             url: "<?= base_url('finance/ap_payments/readExchangeRate') ?>",
-                            data: "payment_date=" + payment_date + "&currency=" + currency,
+                            data: "payment_date=" + payment_date + "&trans_date=" + trans_date + "&currency=" + currency,
                             dataType: "html",
                             success: function(exchange) {
                                 $("#exchange").html(exchange);

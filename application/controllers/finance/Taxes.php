@@ -38,7 +38,7 @@ class Taxes extends CI_Controller
 
     public function readAccounts($number)
     {
-        $send = $this->crud->query("SELECT * FROM taxes WHERE `number` = '$number' GROUP BY `number` ORDER BY `number` ASC");
+        $send = $this->crud->query("SELECT * FROM taxes WHERE `number` = '$number' ORDER BY `number` ASC");
         echo json_encode($send);
     }
 

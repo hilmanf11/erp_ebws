@@ -1012,7 +1012,7 @@ class Purchase_order_receipts extends CI_Controller
                         <td>' . $data['bc_document'] . '</td>
                         <td>' . $data['bc_date'] . '</td>
                         <td>' . $data['awb_no'] . '</td>
-                        <td>' . $data['awb_date'] . '</td>
+                        <td></td>
                         <td>' . $data['supplier_id'] . '</td>
                         <td>' . $data['supplier_name'] . '</td>
                         <td>' . $data['gst'] . '</td>

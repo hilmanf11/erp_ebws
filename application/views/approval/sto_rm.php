@@ -12,12 +12,11 @@
             <th data-options="field:'item_rm_id',width:150,halign:'center'">Part No EBWS</th>
             <th data-options="field:'item_rm_number',width:150,halign:'center'">Part No Supplier</th>
             <th data-options="field:'item_rm_name',width:100,halign:'center'">Description</th>
-            <th data-options="field:'category_name',width:100,halign:'center'">Category</th>
             <th data-options="field:'product_family_name',width:150,halign:'center'">Product Family</th>
             <th data-options="field:'trans_date',width:80,halign:'center'">Trans Date</th>
             <th data-options="field:'uom',width:80,align:'center'">Uom</th>
             <th data-options="field:'type',width:80,align:'center'">Type</th>
-            <th data-options="field:'qty',width:80,halign:'center',align:'right',formatter:numberFormat">Qty</th>
+            <th data-options="field:'qty',width:80,halign:'center',align:'right'">Qty</th>
             <th data-options="field:'created_by',width:120,halign:'center'">Create By</th>
             <th data-options="field:'created_date',width:150,halign:'center'">Create Date</th>
         </tr>

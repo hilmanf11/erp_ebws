@@ -80,6 +80,15 @@
                     <span style="width:35%; display:inline-block;">PO No</span>
                     <input style="width:60%;" id="filter_po_no" class="easyui-combobox">
                 </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Status Invoice</span>
+                    <select style="width:60%;" id="filter_status" class="easyui-combobox" panelHeight="auto">
+                        <option value="">Select Status</option>
+                        <option value="0">OPEN</option>
+                        <option value="1">CLOSED</option>
+                        <option value="2">CANCEL</option>
+                    </select>
+                </div>
             </div>
         </fieldset>
         <fieldset style="width: 30%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
@@ -556,8 +565,9 @@
         var filter_po_no = $("#filter_po_no").combobox('getValue');
         var filter_receipt = $("#filter_receipt").combobox('getValue');
         var filter_doc_no = $("#filter_doc_no").combobox('getValue');
+        var filter_status = $("#filter_status").combobox('getValue');
 
-        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_po_no=" + filter_po_no + "&filter_supplier=" + filter_supplier + "&filter_receipt=" + filter_receipt + "&filter_doc_no=" + filter_doc_no + "&filter_item_rm=" + filter_item_rm;
+        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_po_no=" + filter_po_no + "&filter_supplier=" + filter_supplier + "&filter_receipt=" + filter_receipt + "&filter_doc_no=" + filter_doc_no + "&filter_item_rm=" + filter_item_rm + "&filter_status=" + filter_status;
         
         $('#dg').treegrid({
             url: '<?= base_url('purchase/purchase_order_receipts/datatables') ?>' + url,
@@ -590,8 +600,9 @@
         var filter_po_no = $("#filter_po_no").combobox('getValue');
         var filter_receipt = $("#filter_receipt").combobox('getValue');
         var filter_doc_no = $("#filter_doc_no").combobox('getValue');
+        var filter_status = $("#filter_status").combobox('getValue');
 
-        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_po_no=" + filter_po_no + "&filter_supplier=" + filter_supplier + "&filter_receipt=" + filter_receipt + "&filter_doc_no=" + filter_doc_no + "&filter_item_rm=" + filter_item_rm;
+        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_po_no=" + filter_po_no + "&filter_supplier=" + filter_supplier + "&filter_receipt=" + filter_receipt + "&filter_doc_no=" + filter_doc_no + "&filter_item_rm=" + filter_item_rm + "&filter_status=" + filter_status;
         window.location.assign('<?= base_url('purchase/purchase_order_receipts/print/excel') ?>' + url);
     }
 
@@ -1007,9 +1018,14 @@
 
     function BtnPrintLabel(val, row) {
         if (val != "closed") {
-            var onClick = "checkQas('"+row.id+"','"+row.bc_document+"','"+row.item_rm_number+"','"+row.qty_label+"','"+row.qty_receipt+"','"+row.qty_mpq+"','"+row.receipt_id+"')";
-            return '<a class="btn btn-primary w-100" style="pointer-events: visible; opacity:1;" target="_blank" onClick="'+onClick+'"><i class="fa fa-print"></i> Print</a>';
-
+            if (row.status == '0') {
+                var onClick = "checkQas('"+row.id+"','"+row.bc_document+"','"+row.item_rm_number+"','"+row.qty_label+"','"+row.qty_receipt+"','"+row.qty_mpq+"','"+row.receipt_id+"')";
+                return '<a class="btn btn-primary w-100" style="pointer-events: visible; opacity:1;" target="_blank" onClick="'+onClick+'"><i class="fa fa-print"></i> Print</a>';
+            }else if (row.total_scan == row.qty_label) {
+                return "-";
+            } else if(row.status == "2"){
+                return "-";
+            }
         }
     }
 

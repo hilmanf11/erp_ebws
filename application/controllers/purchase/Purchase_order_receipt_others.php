@@ -276,7 +276,8 @@ class Purchase_order_receipt_others extends CI_Controller
         $bc_document = base64_decode($this->input->get('bc_document'));
         
         //Select Query
-        $this->db->select('a.po_no, 
+        $this->db->select("a.po_no,
+            '' as id,
             b.id as item_rm_id, 
             b.number as item_rm_number, 
             b.name as item_rm_name, 
@@ -288,7 +289,7 @@ class Purchase_order_receipt_others extends CI_Controller
             b.uom,
             round(a.delivery - COALESCE(d.qty_os, 0)) as qty_delivery,
             round(a.delivery - COALESCE(d.qty_os, 0)) as qty_receipt,
-            CEIL(((a.delivery - COALESCE(d.qty_os, 0)) / f.mpq)) as qty_label');
+            CEIL(((a.delivery - COALESCE(d.qty_os, 0)) / f.mpq)) as qty_label");
         $this->db->from('purchase_confirm_others a');
         $this->db->join('item_rm b', 'a.item_rm_id = b.id');
         $this->db->join('supplier_items c', 'a.item_rm_id = c.item_rm_id and a.supplier_id = c.supplier_id');

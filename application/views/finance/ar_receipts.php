@@ -402,7 +402,7 @@
                 var total_receipt = 0;
                 var total_currency = 1;
                 var currency = "";
-
+                var trans_date = "";
                 for (let i = 0; i < totalrows; i++) {
                     var data = {
                         account_number: rows[i].account_number,
@@ -411,6 +411,7 @@
                         description: rows[i].description,
                         currency: rows[i].currency,
                         receipt_date: receipt_date,
+                        trans_date: rows[i].trans_date,
                         receipt: rows[i].receipt,
                         rate: rows[i].rate,
                     }
@@ -432,6 +433,7 @@
                     }
 
                     data_array.push(data);
+                    trans_date = rows[i].trans_date;
                 }
 
                 for (let z = 0; z < totalrows2; z++) {
@@ -453,7 +455,7 @@
                         $.ajax({
                             type: "post",
                             url: "<?= base_url('finance/ar_receipts/readExchangeRate') ?>",
-                            data: "receipt_date=" + receipt_date + "&currency=" + currency,
+                            data: "receipt_date=" + receipt_date + "&trans_date=" + trans_date + "&currency=" + currency,
                             dataType: "html",
                             success: function(exchange) {
                                 $("#exchange").html(exchange);

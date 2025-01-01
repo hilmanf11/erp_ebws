@@ -32,6 +32,7 @@
                         <option value="">Select ALL</option>
                         <option value="0">NOT SCAN</option>
                         <option value="1">SCAN IN</option>
+                        <option value="2">CANCEL</option>
                     </select>
                 </div>
             </div>

@@ -54,7 +54,7 @@
             <div style="width: 30%; float: left;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Supplier</span>
-                    <input style="width:60%;" id="filter_suppliers" class="easyui-combobox">
+                    <input style="width:60%;" id="filter_suppliers" class="easyui-combogrid">
                 </div>
             </div>
             <div style="width: 30%; float: left;">
@@ -91,7 +91,7 @@
             <div style="width: 30%; float: left;">
                 <div class="fitem">
                     <span style="width:25%; display:inline-block;">Suppliers</span>
-                    <input style="width:60%;" name="supplier_id" id="supplier_id" class="easyui-combobox" required>
+                    <input style="width:60%;" name="supplier_id" id="supplier_id" class="easyui-combogrid" required>
                 </div>
                 <div class="fitem">
                     <span style="width:25%; display:inline-block;">PO No</span>
@@ -206,12 +206,26 @@
             }
         });
 
-        $('#supplier_id').combobox({
+        $("#supplier_id").combogrid({
             url: '<?php echo base_url('master/supplier_items/readSuppliers'); ?>',
-            valueField: 'id',
+            panelWidth: 500,
+            idField: 'id',
             textField: 'name',
-            prompt: 'Select Supplier',
-            onSelect: function(supp){
+            mode: 'remote',
+            fitColumns: true,
+            prompt: "Choose Supplier",
+            columns: [
+                [{
+                    field: 'id',
+                    title: 'Supplier ID',
+                    width: 50
+                }, {
+                    field: 'name',
+                    title: 'Supplier Name',
+                    width: 200
+                }]
+            ],
+            onSelect: function(val, supp){
                 addTable(supp.id);
                 $("#supplier_po").textbox('setValue', supp.supplier_po);
             }
@@ -238,20 +252,34 @@
     }
 
     function readPo() {
-        $("#filter_suppliers").combobox({
+        $("#filter_suppliers").combogrid({
             url: '<?php echo base_url('master/supplier_items/readSuppliers'); ?>',
-            valueField: 'id',
+            panelWidth: 500,
+            idField: 'id',
             textField: 'name',
-            prompt: "Select Supplier",
+            mode: 'remote',
+            fitColumns: true,
+            prompt: "Choose Supplier",
+            columns: [
+                [{
+                    field: 'id',
+                    title: 'Supplier ID',
+                    width: 50
+                }, {
+                    field: 'name',
+                    title: 'Supplier Name',
+                    width: 200
+                }]
+            ],
             icons: [{
                 iconCls: 'icon-clear',
                 handler: function(e) {
-                    $(e.data.target).combobox('clear').combobox('textbox').focus();
+                    $(e.data.target).combogrid('clear').combogrid('textbox').focus();
                 }
             }],
-            onSelect: function(supp) {
+            onSelect: function(val, supp) {
                 $("#filter_po_no").combobox({
-                    url: '<?= base_url('purchase/purchase_order_closing/readPono?supplier_id=') ?>' + supp.id,
+                    url: '<?= base_url('purchase/purchase_order_closing/readPono?supplier_id=') ?>' + btoa(supp.id),
                     valueField: 'po_no',
                     textField: 'po_no',
                     prompt: "Select Del. Sch No",
@@ -545,7 +573,7 @@
 
     function append() {
         if (endEditing()) {
-            var supplier_id = $("#supplier_id").combobox('getValue');
+            var supplier_id = $("#supplier_id").combogrid('getValue');
 
             if(supplier_id != ""){
                 $('#dg_request').datagrid('appendRow', {
@@ -693,7 +721,7 @@
         var filter_from = $("#filter_from").datebox('getValue');
         var filter_to = $("#filter_to").datebox('getValue');
         var filter_po_no = $("#filter_po_no").combogrid('getValue');
-        var filter_suppliers = $("#filter_suppliers").combobox('getValue');
+        var filter_suppliers = $("#filter_suppliers").combogrid('getValue');
 
         url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_po_no=" + filter_po_no + "&filter_suppliers=" + filter_suppliers;
 
@@ -726,7 +754,7 @@
         var filter_from = $("#filter_from").datebox('getValue');
         var filter_to = $("#filter_to").datebox('getValue');
         var filter_po_no = $("#filter_po_no").combogrid('getValue');
-        var filter_suppliers = $("#filter_suppliers").combobox('getValue');
+        var filter_suppliers = $("#filter_suppliers").combogrid('getValue');
 
         url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_po_no=" + filter_po_no + "&filter_suppliers=" + filter_suppliers;
         
@@ -786,7 +814,7 @@
                 handler: function() {
                     var po_date = $("#po_date").datebox('getValue');
                     var po_no = $("#po_no").textbox('getValue');
-                    var supplier_id = $("#supplier_id").combobox('getValue');
+                    var supplier_id = $("#supplier_id").combogrid('getValue');
 
                     if (po_date == "" || supplier_id == "") {
                         toastr.warning('Please select Po Date', 'Required');

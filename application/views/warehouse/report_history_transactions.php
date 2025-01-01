@@ -99,6 +99,37 @@
             }],
         });
 
+        $('#filter_items').combogrid({
+            url: '<?= base_url('master/item_rm/reads') ?>',
+            panelWidth: 550,
+            idField: 'id',
+            textField: 'number',
+            mode: 'remote',
+            fitColumns: true,
+            prompt: "Select Part No",
+            icons: [{
+                iconCls: 'icon-clear',
+                handler: function(e) {
+                    $(e.data.target).combogrid('clear').combogrid('textbox').focus();
+                }
+            }],
+            columns: [
+                [{
+                    field: 'id',
+                    title: 'Part No EBWS',
+                    width: 150
+                },{
+                    field: 'number',
+                    title: 'Part No Supplier',
+                    width: 200
+                }, {
+                    field: 'name',
+                    title: 'Description',
+                    width: 200
+                }, ]
+            ]
+        });
+
         $("#filter_item_family").combobox({
             url: '<?= base_url('warehouse/report_history_transactions/readItemFamily') ?>',
             valueField: 'number',

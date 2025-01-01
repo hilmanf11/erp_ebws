@@ -1,14 +1,19 @@
 <!-- TABLE DATAGRID -->
 <table id="dg" class="easyui-datagrid" style="width:99.5%;" toolbar="#toolbar">
+    <thead frozen="true">
+        <th field="ck" checkbox="true"></th>
+        <th data-options="field:'id',width:120,halign:'center'">Part No EBWS</th>
+        <th data-options="field:'number',width:200,halign:'center'">Part No Supplier</th>
+    </thead>
     <thead>
         <tr>
-            <th field="ck" checkbox="true"></th>
-            <th data-options="field:'id',width:120,halign:'center'">Part No EBWS</th>
-            <th data-options="field:'number',width:200,halign:'center'">Part No Supplier</th>
-            <th data-options="field:'item_family_name',width:150,halign:'center'">Product Family</th>
+            <th data-options="field:'item_family_name',width:120,halign:'center'">Product Family</th>
+            <th data-options="field:'supplier_id',width:100,halign:'center'">Supplier ID</th>
+            <th data-options="field:'supplier_name',width:250,halign:'center'">Supplier Name</th>
             <th data-options="field:'main_process',width:100,halign:'center'">Process</th>
             <th data-options="field:'uom',width:80,align:'center'">Uom</th>
-            <th data-options="field:'wip',width:120,halign:'center',align:'right', formatter:numberformat">WIP Opening</th>
+            <th data-options="field:'begin',width:120,halign:'center',align:'right', formatter:numberformat">WIP Opening</th>
+            <th data-options="field:'wip',width:120,halign:'center',align:'right', formatter:numberformat">Adjustment</th>
             <th data-options="field:'receipt',width:120,halign:'center',align:'right', formatter:numberformat">Received</th>
             <th data-options="field:'scrap',width:100,halign:'center',align:'right', formatter:numberformat">Scrap</th>
             <th data-options="field:'ng',width:100,halign:'center',align:'right', formatter:numberformat">NG</th>
@@ -18,16 +23,21 @@
     </thead>
 </table>
 <!-- TOOLBAR DATAGRID -->
-<div id="toolbar" style="height: 125px; padding: 10px;">
+<div id="toolbar" style="height: 190px; padding: 10px;">
     <fieldset style="width: 100%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
         <legend><b>Form Filter Data</b></legend>
-        <div style="width: 60%;">
+        <div style="width: 60%; float: left;">
             <div class="fitem">
                 <span style="width:10%; display:inline-block;">Period</span>
                 <input style="width:18%;" id="filter_from" class="easyui-datebox" value="<?= date("Y-m-01") ?>" data-options="formatter:myformatter,parser:myparser, editable:false"> To
-                <input style="width:18%;" id="filter_to" class="easyui-datebox" value="<?= date("Y-m-t") ?>" data-options="formatter:myformatter,parser:myparser, editable:false">
+                <input style="width:18%;" id="filter_to" class="easyui-datebox" value="<?= date('Y-m-d', strtotime('+14 days', strtotime(date('Y-m-01')))); ?>" data-options="formatter:myformatter,parser:myparser, editable:false">
                 <a href="javascript:;" class="easyui-linkbutton" onclick="filter()"><i class="fa fa-search"></i> Filter Data</a>
                 <a href="javascript:;" class="easyui-linkbutton c1" id="generate" onclick="generate()"><i class="fa fa-database"></i> Calculate WIP</a>
+            </div>
+        </div>
+        <div style="width: 40%; float: left;">
+            <div class="alert alert-warning">
+                It is recommended to calculate the data per week (maximum 2 weeks), the data will be saved and you will no longer need to calculate if the finished good quantity is correct.
             </div>
         </div>
     </fieldset>
@@ -74,87 +84,100 @@
         var filter_to = $("#filter_to").datebox('getValue');
 
         if (filter_from != "" && filter_to != "") {
-            $.messager.prompt('Calculate WIP', 'Please input "YES" to starting Calculate', function(r) {
-                if (r == "YES") {
-                    Swal.fire({
-                        title: 'Checking Data. . ',
-                        showConfirmButton: false,
-                        allowOutsideClick: false,
-                        allowEscapeKey: false,
-                        didOpen: () => {
-                            Swal.showLoading();
-                        },
-                    });
+            const start = new Date(filter_from).getTime();
+            const end = new Date(filter_to).getTime();
+            const daysDifference = Math.abs(end - start) / (1000 * 3600 * 24);
+            const weeks = Math.ceil(daysDifference / 7);
 
-                    $.ajax({
-                        type: "post",
-                        url: "<?= base_url('warehouse/wip_reports/getdata') ?>",
-                        data: "filter_from=" + filter_from +
-                            "&filter_to=" + filter_to,
-                        dataType: "json",
-                        success: function(rows) {
-                            Swal.close();
-                            $("#dlg_save").dialog('open');
-                            requestData(rows['total'], rows);
+            if (weeks > 2) {
+                toastr.warning("Data is too long, please select the date of periode maximum for 2 weeks", "Information");
+            } else {
+                $.messager.prompt('Calculate WIP', 'Please input "YES" to starting Calculate', function(r) {
+                    if (r == "YES") {
+                        Swal.fire({
+                            title: 'Checking Data. . ',
+                            showConfirmButton: false,
+                            allowOutsideClick: false,
+                            allowEscapeKey: false,
+                            didOpen: () => {
+                                Swal.showLoading();
+                            },
+                        });
 
-                            function requestData(total, json, number = 1, value = 0, success = 1, failed = 1) {
-                                if (value < 100) {
-                                    value = Math.floor((number / total) * 100);
-                                    $('#p_save').progressbar('setValue', value);
-                                    $('#p_start_save').html(number);
-                                    $('#p_finish_save').html(total);
+                        $.ajax({
+                            type: "post",
+                            url: "<?= base_url('warehouse/wip_reports/getdata') ?>",
+                            data: "filter_from=" + filter_from +
+                                "&filter_to=" + filter_to,
+                            dataType: "json",
+                            success: function(rows) {
+                                Swal.close();
+                                if (rows['total'] > 0) {
+                                    $("#dlg_save").dialog('open');
+                                    requestData(rows['total'], rows);
 
-                                    $.post('<?= base_url('warehouse/wip_reports/create') ?>', {
-                                        data: json[number - 1],
-                                        filter_from: filter_from,
-                                        filter_to: filter_to
-                                    }, function(note) {
-                                        var result = eval('(' + note + ')');
-                                        if (result.theme == "success") {
-                                            Swal.close();
-                                            $('#p_success').html(success);
-                                            var title = "<b style='color: green;'>" + result.title + "</b> | " + result.message;
-                                            requestData(total, json, number + 1, value, success + 1, failed + 0);
-                                        } else {
-                                            $('#p_failed').html(failed);
-                                            var title = "<b style='color: red;'>" + result.title + "</b> | " + result.message;
+                                    function requestData(total, json, number = 1, value = 0, success = 1, failed = 1) {
+                                        if (value < 100) {
+                                            value = Math.floor((number / total) * 100);
+                                            $('#p_save').progressbar('setValue', value);
+                                            $('#p_start_save').html(number);
+                                            $('#p_finish_save').html(total);
 
-                                            //Json Failed
-                                            $.ajax({
-                                                type: "POST",
-                                                async: true,
-                                                url: "<?= base_url('warehouse/wip_reports/uploadcreateFailed') ?>",
-                                                data: {
-                                                    data: json[number - 1],
-                                                    message: result.message
-                                                },
-                                                cache: false
+                                            $.post('<?= base_url('warehouse/wip_reports/create') ?>', {
+                                                data: json[number - 1],
+                                                filter_from: filter_from,
+                                                filter_to: filter_to
+                                            }, function(note) {
+                                                var result = eval('(' + note + ')');
+                                                if (result.theme == "success") {
+                                                    Swal.close();
+                                                    $('#p_success').html(success);
+                                                    var title = "<b style='color: green;'>" + result.title + "</b> | " + result.message;
+                                                    requestData(total, json, number + 1, value, success + 1, failed + 0);
+                                                } else {
+                                                    $('#p_failed').html(failed);
+                                                    var title = "<b style='color: red;'>" + result.title + "</b> | " + result.message;
+
+                                                    //Json Failed
+                                                    $.ajax({
+                                                        type: "POST",
+                                                        async: true,
+                                                        url: "<?= base_url('warehouse/wip_reports/uploadcreateFailed') ?>",
+                                                        data: {
+                                                            data: json[number - 1],
+                                                            message: result.message
+                                                        },
+                                                        cache: false
+                                                    });
+
+                                                    requestData(total, json, number + 1, value, success + 0, failed + 1);
+                                                }
+
+                                                if (value == 100) {
+                                                    $("#dlg_save").dialog('close');
+                                                    Swal.fire('Good job!', 'Process Calculate Data Completed!', 'success');
+                                                }
+
+                                                $("#p_remark_save").append(title + "<br>");
+                                            }).fail(function(jqXHR, textStatus) {
+                                                if (textStatus == "error") {
+                                                    toastr.error("Something Wrong in System. .");
+                                                    // requestData(total, json, number, value, success + 0, failed + 0);
+                                                }
                                             });
-
-                                            requestData(total, json, number + 1, value, success + 0, failed + 1);
                                         }
-
-                                        if (value == 100) {
-                                            $("#dlg_save").dialog('close');
-                                            Swal.fire('Good job!', 'Process Calculate Data Completed!', 'success');
-                                        }
-
-                                        $("#p_remark_save").append(title + "<br>");
-                                    }).fail(function(jqXHR, textStatus) {
-                                        if (textStatus == "error") {
-                                            toastr.error("Something Wrong in System. .");
-                                            // requestData(total, json, number, value, success + 0, failed + 0);
-                                        }
-                                    });
+                                    }
+                                } else {
+                                    toastr.error("Data Not Found");
                                 }
+                            },
+                            error: function() {
+                                Swal.fire('Failed!', 'Process Calculating Data is Failed, Please Try Again!', 'error');
                             }
-                        },
-                        error: function(){
-                            Swal.fire('Failed!', 'Process Calculating Data is Failed, Please Try Again!', 'error');
-                        }
-                    });
-                }
-            });
+                        });
+                    }
+                });
+            }
         } else {
             toastr.warning("Component Check Not Complete ", "Information");
         }
@@ -169,15 +192,15 @@
         $('#dg').datagrid('loading');
 
         $.ajax({
-            url:'<?= base_url('warehouse/wip_reports/datatables') ?>',
-            type:'POST',
+            url: '<?= base_url('warehouse/wip_reports/datatables') ?>',
+            type: 'POST',
             data: {
-                filter_from:filter_from,
-                filter_to:filter_to
+                filter_from: filter_from,
+                filter_to: filter_to
             },
             dataType: 'json',
-            success: function(result) { 
-                $('#dg').datagrid('loadData',result).datagrid('loaded'); 
+            success: function(result) {
+                $('#dg').datagrid('loadData', result).datagrid('loaded');
             }
         });
     }
@@ -194,12 +217,12 @@
 
     //PRINT PDF
     function pdf() {
-        $('#dg').datagrid('print','DataGrid');
+        $('#dg').datagrid('print', 'DataGrid');
     }
 
     //PRINT EXCEL
     function excel() {
-        $('#dg').datagrid('toExcel','wip_reports.xls');
+        $('#dg').datagrid('toExcel', 'wip_reports.xls');
     }
 
     //RELOAD

@@ -208,8 +208,7 @@ class Supplier_item_others extends CI_Controller
         $this->db->join('makers f', 'c.maker_id = f.id', 'left');
         $this->db->where('a.supplier_id', $supplier_id);
         $this->db->where('a.item_rm_id', $item_rm_id);
-        $this->db->order_by('b.name', 'ASC');
-        $this->db->order_by('c.number', 'ASC');
+        $this->db->order_by('a.created_date', 'DESC');
         //Total Data
         $totalRows = $this->db->count_all_results('', false);
         //Limit 1 - 10
@@ -229,6 +228,31 @@ class Supplier_item_others extends CI_Controller
         if ($this->input->post()) {
             $post   = $this->input->post();
             $supplier_items = $this->crud->read('supplier_items', [], ["supplier_id" => $post['supplier_id'], "item_rm_id" => $post['item_rm_id']]);
+
+            if(empty(@$post['valid_date'])){
+                $valid_date = "";
+            }else{
+                $valid_date = $post['valid_date'];
+            }
+
+            $history = array(
+                "supplier_id" => $post['supplier_id'],
+                "item_rm_id" => $post['item_rm_id'],
+                "item_supplier" => $post['item_supplier'],
+                "maker_id" => $post['maker_id'],
+                "mpq" => $post['mpq'],
+                "moq" => $post['moq'],
+                "share_order" => $post['share_order'],
+                "transit" => $post['transit'],
+                "leadtime" => $post['leadtime'],
+                "safety_stock" => $post['safety_stock'],
+                "price" => $post['price'],
+                "currency" => $post['currency'],
+                "valid_date" => $valid_date,
+                "calculate" => $post['calculate'],
+                "remarks" => $post['remarks'],
+            );
+
             if (!$supplier_items) {
                 $attachment = $this->crud->upload('attachment', ["jpg", "png", "jpeg", "pdf", "xls", "xlsx", "docx"], 'assets/documents/supplier_items/', [], "supplier_items", "attachment");
                 $attachment2 = $this->crud->upload('attachment2', ["jpg", "png", "jpeg", "pdf", "xls", "xlsx", "docx"], 'assets/documents/supplier_items2/', [], "supplier_items", "attachment2");
@@ -236,10 +260,15 @@ class Supplier_item_others extends CI_Controller
                 $postFinal = array_merge($post, ["attachment" => $attachment, "attachment2" => $attachment2, "attachment3" => $attachment3]);
 
                 $send = $this->crud->create('supplier_items', $postFinal);
+                $this->crud->create("supplier_item_histories", $history);
                 echo $send;
+
+                $this->crud->create("supplier_item_histories", $history);
             } else {
                 $send = $this->crud->update('supplier_items', ["supplier_id" => $post['supplier_id'], "item_rm_id" => $post['item_rm_id']], $post);
                 echo $send;
+
+                $this->crud->create("supplier_item_histories", $history);
             }
         } else {
             show_error("Cannot Process your request");
@@ -254,24 +283,24 @@ class Supplier_item_others extends CI_Controller
             $post = $this->input->post();
             $read = $this->crud->read("supplier_items", ["id" => $id]);
             
-            $send = $this->crud->update('supplier_items', ["id" => $id], $post);
+            // $send = $this->crud->update('supplier_items', ["id" => $id], $post);
             $history = array(
                 "supplier_id" => $read->supplier_id,
                 "item_rm_id" => $read->item_rm_id,
-                "item_supplier" => $read->item_supplier,
-                "maker_id" => $read->maker_id,
+                "item_supplier" => $post['item_supplier'],
+                "maker_id" => $post['maker_id'],
                 "type" => $read->type,
-                "mpq" => $read->mpq,
-                "moq" => $read->moq,
-                "share_order" => $read->share_order,
-                "transit" => $read->transit,
-                "leadtime" => $read->leadtime,
-                "safety_stock" => $read->safety_stock,
-                "price" => $read->price,
-                "currency" => $read->currency,
-                "valid_date" => $read->valid_date,
-                "calculate" => $read->calculate,
-                "remarks" => $read->remarks,
+                "mpq" => $post['mpq'],
+                "moq" => $post['moq'],
+                "share_order" => $post['share_order'],
+                "transit" => $post['transit'],
+                "leadtime" => $post['leadtime'],
+                "safety_stock" => $post['safety_stock'],
+                "price" => $post['price'],
+                "currency" => $post['currency'],
+                "valid_date" => $post['valid_date'],
+                "calculate" => $post['calculate'],
+                "remarks" => $post['remarks'],
             );
 
             $attachment = $this->crud->upload('attachment', ["jpg", "png", "jpeg", "pdf", "xls", "xlsx", "docx"], 'assets/documents/supplier_items/', [], "supplier_items", "attachment");
@@ -583,6 +612,120 @@ class Supplier_item_others extends CI_Controller
                     <td>' . $data['created_date'] . '</td>
                     <td>' . $data['updated_by'] . '</td>
                     <td>' . $data['updated_date'] . '</td>';
+            $no++;
+        }
+        $html .= '</table></body></html>';
+        echo $html;
+    }
+
+    public function excel_price($option = "")
+    {
+        $format  = date("Ymd");
+        header("Content-type: application/vnd-ms-excel");
+        header("Content-Disposition: attachment; filename=supplier_items_price_other_history_$format.xls");
+
+        $filter_suppliers  = base64_decode($this->input->get('filter_suppliers'));
+        $filter_category  = base64_decode($this->input->get('filter_category'));
+        $filter_maker  = base64_decode($this->input->get('filter_maker'));
+        $filter_item_rm = base64_decode($this->input->get('filter_item_rm'));
+        $filter_item_vendor = base64_decode($this->input->get('filter_item_vendor'));
+        $filter_share_order = base64_decode($this->input->get('filter_share_order'));
+        $filter_status_price = base64_decode($this->input->get('filter_status_price'));
+        $filter_type = base64_decode($this->input->get('filter_type'));
+        $filter_check = $this->input->get('filter_check');
+
+        //Config
+        $this->db->select('*');
+        $this->db->from('config');
+        $config = $this->db->get()->row();
+
+        $this->db->select('a.item_rm_id, c.number as item_rm_number, c.name as item_rm_name, d.name as item_family_name, a.supplier_id, b.name as supplier_name, b.type, b.currency, a.price, a.valid_date, a.remarks, a.created_by, a.created_date');
+        $this->db->from('supplier_item_histories a');
+        $this->db->join('suppliers b', 'b.id = a.supplier_id');
+        $this->db->join('item_rm c', 'c.id = a.item_rm_id');
+        $this->db->join('item_familys d', "c.item_family_id = d.id and d.item_category_id NOT IN ('C01','C08')");
+        if($filter_category != ""){
+            $this->db->like('c.item_family_id', $filter_category);
+        }
+        if($filter_suppliers != ""){
+            $this->db->like('a.supplier_id', $filter_suppliers);
+        }
+        if($filter_item_rm != ""){
+            $this->db->like('a.item_rm_id', $filter_item_rm);
+        }
+        if($filter_maker != ""){
+            $this->db->like('e.number', $filter_maker);
+        }
+        if($filter_item_vendor != ""){
+            $this->db->like('a.item_supplier', $filter_item_vendor);
+        }
+        if($filter_type != ""){
+            $this->db->like('b.type', $filter_type);
+        }
+        $this->db->group_by('a.item_rm_id');
+        $this->db->group_by('a.supplier_id');
+        $this->db->group_by('a.price');
+        $this->db->order_by('b.number', 'ASC');
+        $this->db->order_by('c.number', 'ASC');
+        $records = $this->db->get()->result_array();
+        $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#supplier_items {border-collapse: collapse;width: 100%;font-size: 12px;}#supplier_items td, #supplier_items th {border: 1px solid #ddd;padding: 2px;}#supplier_items tr:nth-child(even){background-color: #f2f2f2;}#supplier_items tr:hover {background-color: #ddd;}#supplier_items th {padding-top: 2px;padding-bottom: 2px;text-align: left;color: black;}</style><body>
+        <center>
+            <div style="float: left; font-size: 12px; text-align: left;">
+                <table style="width: 100%;">
+                    <tr>
+                        <td width="50" style="font-size: 12px; vertical-align: top; text-align: center; vertical-align:jus margin-right:10px;">
+                            <img src="' . $config->favicon . '" width="30">
+                        </td>
+                        <td style="font-size: 14px; text-align: left; margin:2px;">
+                            <b>' . $config->name . '</b>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <div style="float: right; font-size: 12px; text-align: right;">
+                Print Date ' . date("d M Y H:m:s") . ' <br>
+                Print By ' . $this->session->username . '  
+            </div>
+            <br><br>
+            <div style="float: centet; font-size: 16px; text-align: center;">
+                <h3>HISTORY SUPPLIER CONTRACT PRICE RM</h3>
+            </div>
+        </center>
+        
+        <table id="supplier_items" border="1">
+            <tr>
+                <th width="20">No</th>
+                <th>Supplier ID</th>
+                <th>Supplier Name</th>
+                <th>Part No EBWS</th>
+                <th>Part No Supplier</th>
+                <th>Description</th>
+                <th>Supplier Type</th>
+                <th>Product Family</th>
+                <th>Currency</th>
+                <th>Price</th>
+                <th>Valid Date</th>
+                <th>Remarks</th>
+                <th>Created By</th>
+                <th>Created Date</th>
+            </tr>';
+        $no = 1;
+        foreach ($records as $data) {
+            $html .= '<tr>
+                    <td>' . $no . '</td>
+                    <td style="mso-number-format:\@;">' . $data['supplier_id'] . '</td>
+                    <td>' . $data['supplier_name'] . '</td>
+                    <td>' . $data['item_rm_id'] . '</td>
+                    <td style="mso-number-format:\@;">' . $data['item_rm_number'] . '</td>
+                    <td style="mso-number-format:\@;">' . $data['item_rm_name'] . '</td>
+                    <td>' . $data['type'] . '</td>
+                    <td>' . $data['item_family_name'] . '</td>
+                    <td>' . $data['currency'] . '</td>
+                    <td>' . $data['price'] . '</td>
+                    <td>' . $data['valid_date'] . '</td>
+                    <td>' . $data['remarks'] . '</td>
+                    <td>' . $data['created_by'] . '</td>
+                    <td>' . $data['created_date'] . '</td>';
             $no++;
         }
         $html .= '</table></body></html>';

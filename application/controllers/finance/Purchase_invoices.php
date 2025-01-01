@@ -219,7 +219,7 @@ class Purchase_invoices extends CI_Controller
                 JOIN item_rm b ON a.item_rm_id = b.id
                 JOIN item_familys c ON b.item_family_id = c.id
                 JOIN purchase_order_others d ON a.po_no = d.po_no
-                WHERE a.supplier_id = '$supplier_id' and a.status = '0' $dp
+                WHERE a.supplier_id = '$supplier_id' and a.status = '0' and a.store = '1' $dp
                 GROUP BY a.receipt_no 
                 ORDER BY a.created_date desc");
         }
@@ -342,7 +342,7 @@ class Purchase_invoices extends CI_Controller
             $this->db->join('hsn j', "c.hsn_code = j.number", 'left');
             $this->db->join('tds k', "b.tds = k.section", 'left');
             $this->db->where('a.deleted', 0);
-            // $this->db->where('a.status', 0);
+            $this->db->where('a.status', 0);
             $this->db->where_in('a.receipt_no', $por_no_ex);
             $this->db->group_by('a.po_no');
             $this->db->group_by('a.item_rm_id');
@@ -582,71 +582,72 @@ class Purchase_invoices extends CI_Controller
                             if($post['type'] == "purchase"){
                                 $update = $this->crud->update('purchase_order_receipts', ["receipt_no" => $post['por_no'], "po_no" => $post['po_no'], "item_rm_id" => $post['item_rm_id'], "supplier_id" => $post['supplier_id']], ["status" => 1]);
                             }else{
-                                $supplier = $this->crud->read("suppliers", [], ["id" => $post['supplier_id']]);
-                                $item_rm = $this->crud->read("item_rm", [], ["id" => $post['item_rm_id']]);
-                                $item_family = $this->crud->read("item_familys", [], ["id" => $post['item_family_id']]);
+                                // $supplier = $this->crud->read("suppliers", [], ["id" => $post['supplier_id']]);
+                                // $item_rm = $this->crud->read("item_rm", [], ["id" => $post['item_rm_id']]);
+                                // $item_family = $this->crud->read("item_familys", [], ["id" => $post['item_family_id']]);
 
-                                $estimate_year = $item_family->usefull;
-                                $shift = $item_family->shift;
-                                $estimate_month = ($estimate_year * 12);
-                                $depreciation = ($estimate_year / $estimate_month);
-                                $expired_date = date("Y-m-d", strtotime("+" . $estimate_year . " year", strtotime($post['trans_date'])));
-                                $date_from  = date_create($post['trans_date']);
-                                $date_to  = date_create($expired_date);
-                                $diff  = date_diff($date_from, $date_to); 
-                                $estimate_day = $diff->d;
+                                // $estimate_year = $item_family->usefull;
+                                // $shift = $item_family->shift;
+                                // $estimate_month = ($estimate_year * 12);
+                                // $depreciation = ($estimate_year / $estimate_month);
+                                // $expired_date = date("Y-m-d", strtotime("+" . $estimate_year . " year", strtotime($post['trans_date'])));
+                                // $date_from  = date_create($post['trans_date']);
+                                // $date_to  = date_create($expired_date);
+                                // $diff  = date_diff($date_from, $date_to); 
+                                // $estimate_day = $diff->d;
 
-                                if($shift == "1"){
-                                    $factor = 1;
-                                }else{
-                                    $factor = 2;
-                                }
+                                // if($shift == "1"){
+                                //     $factor = 1;
+                                // }else{
+                                //     $factor = 2;
+                                // }
 
-                                //Fixed Asset
-                                if($item_rm->item_category_id = 'C06'){
-                                    if(@$post['asset_code'] != "" && @$post['asset_code'] != "-"){
+                                // //Fixed Asset
+                                // if($item_rm->item_category_id = 'C06'){
+                                //     if(@$post['asset_code'] != "" && @$post['asset_code'] != "-"){
 
-                                        $asset_code = $post['asset_code'];
-                                        $asset = $this->crud->read("assets", [], ["number" => $asset_code]);
-                                        $asset_fixeds = $this->crud->read("asset_fixeds", [], ["number" => $asset_code]);
-                                        // $sql_asset_fixed = $this->db->query("SELECT max(numbers) as numbers FROM asset_fixeds WHERE number = '$asset_code'");
-                                        // $row_asset_fixed = $sql_asset_fixed->row();
+                                //         $asset_code = $post['asset_code'];
+                                //         $asset = $this->crud->read("assets", [], ["number" => $asset_code]);
+                                //         $asset_fixeds = $this->crud->read("asset_fixeds", [], ["number" => $asset_code]);
+                                //         // $sql_asset_fixed = $this->db->query("SELECT max(numbers) as numbers FROM asset_fixeds WHERE number = '$asset_code'");
+                                //         // $row_asset_fixed = $sql_asset_fixed->row();
 
-                                        $dataAsset = array(
-                                            "item_family_id" => $post['item_family_id'],
-                                            "purchase_invoice_no" => $post['number'],
-                                            "supplier_id" => $post['supplier_id'],
-                                            "supplier_name" => @$supplier->name,
-                                            "item_rm_id" => $post['item_rm_id'],
-                                            "number" => @$asset_code,
-                                            // "numbers" => @$row_asset_fixed->numbers + 1,
-                                            "name" => @$asset->name,
-                                            "shift" => $shift,
-                                            "trans_date" => $post['trans_date'],
-                                            "qty" => (@$asset->qty),
-                                            "currency" => $post['currency'],
-                                            "cost" => $post['price'],
-                                            "estimate_month" => $estimate_month,
-                                            "estimate_year" => $estimate_year,
-                                            "residual" => (($post['total2'] * 5) / 100),
-                                            "expired_date" => $expired_date,
-                                            "depreciation" => $depreciation,
-                                            "remarks" => $post['remarks'],
-                                            "method" => "PURCHASE INVOICING",
-                                            "departement" => @$item_rm->departement,
-                                            "total" => $post['total2'],
-                                            //Field Baru
-                                            "total_period" => 0,
-                                            "uom" => @$item_rm->uom,
-                                            "addition" => ($post['total2'] - (($post['total2'] * 5) / 100) / $estimate_year / 365 * $estimate_day * $factor),
-                                            "estimate_day" => $estimate_day,
-                                        );
+                                //         $dataAsset = array(
+                                //             "item_family_id" => $post['item_family_id'],
+                                //             "purchase_invoice_no" => $post['number'],
+                                //             "supplier_id" => $post['supplier_id'],
+                                //             "supplier_name" => @$supplier->name,
+                                //             "item_rm_id" => $post['item_rm_id'],
+                                //             "number" => @$asset_code,
+                                //             // "numbers" => @$row_asset_fixed->numbers + 1,
+                                //             "name" => @$asset->name,
+                                //             "shift" => $shift,
+                                //             "trans_date" => $post['trans_date'],
+                                //             "qty" => (@$asset->qty),
+                                //             "currency" => $post['currency'],
+                                //             "cost" => $post['price'],
+                                //             "estimate_month" => $estimate_month,
+                                //             "estimate_year" => $estimate_year,
+                                //             "residual" => (($post['total2'] * 5) / 100),
+                                //             "expired_date" => $expired_date,
+                                //             "depreciation" => $depreciation,
+                                //             "remarks" => $post['remarks'],
+                                //             "method" => "PURCHASE INVOICING",
+                                //             "departement" => @$item_rm->departement,
+                                //             "total" => $post['total2'],
+                                //             //Field Baru
+                                //             "total_period" => 0,
+                                //             "uom" => @$item_rm->uom,
+                                //             // "addition" => ($post['total2'] - (($post['total2'] * 5) / 100) / $estimate_year / 365 * $estimate_day * $factor),
+                                //             "addition" => 0,
+                                //             "estimate_day" => $estimate_day,
+                                //         );
                                         
-                                        if(empty($asset_fixeds)){
-                                            $send = $this->crud->create('asset_fixeds', $dataAsset);
-                                        }
-                                    }
-                                }
+                                //         if(empty($asset_fixeds)){
+                                //             $this->crud->create('asset_fixeds', $dataAsset);
+                                //         }
+                                //     }
+                                // }
 
                                 $update = $this->crud->update('purchase_order_receipt_others', ["receipt_no" => $post['por_no'], "po_no" => $post['po_no'], "item_rm_id" => $post['item_rm_id'], "supplier_id" => $post['supplier_id']], ["status" => 1]);
                             }
@@ -655,6 +656,7 @@ class Purchase_invoices extends CI_Controller
                         $update = $this->crud->update('purchase_order_others', ["po_no" => $post['po_no'], "item_rm_id" => $post['item_rm_id'], "supplier_id" => $post['supplier_id']], ["status" => 1]);
                     }
                 }
+
                 echo $send;
             }
         } else {

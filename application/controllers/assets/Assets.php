@@ -59,7 +59,7 @@ class Assets extends CI_Controller
             FROM purchase_request_others a
             JOIN item_rm b ON a.item_rm_id = b.id
             JOIN item_familys c ON b.item_family_id = c.id
-            WHERE a.request_no = '$request_no'
+            WHERE a.request_no = '$request_no' and (a.asset_code = '' or a.asset_code is null or a.asset_code = '-')
             ORDER BY a.request_no");
         $datas = $sql->result_array();
         echo json_encode($datas);
@@ -141,10 +141,14 @@ class Assets extends CI_Controller
         if ($this->input->post()) {
             if ($this->form_validation->run() == TRUE) {
                 $post = $this->input->post();
+                $reads = $this->crud->reads("assets", [], ["number" => $post['number']]);
+                
+                if(count($reads) == 0){
+                    $send = $this->crud->create('assets', $post);
+                }
 
-                $send = $this->crud->create('assets', $post);
-                $this->db->update('purchase_request_others', ["asset_code" => $post['number']], ["request_no" => $post['request_no']]);
-                echo $send;
+                $this->db->update('purchase_request_others', ["asset_code" => $post['number']], ["request_no" => $post['request_no'], "item_rm_id" => $post['item_rm_id']]);
+                echo json_encode(array("title" => "Good Job", "message" => "Asset Code Save Data", "theme" => "success"));
             } else {
                 show_error(validation_errors());
             }
@@ -169,7 +173,7 @@ class Assets extends CI_Controller
     {
         $data = $this->input->post();
         $send = $this->crud->delete('assets', $data);
-        $this->db->update('purchase_request_others', ["asset_code" => ""], ["request_no" => $data['request_no']]);
+        $this->db->update('purchase_request_others', ["asset_code" => ""], ["request_no" => $data['request_no'], "asset_code" => $data['number']]);
         echo $send;
     }
 

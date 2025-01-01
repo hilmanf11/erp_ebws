@@ -86,10 +86,10 @@
                     <ul>
                         <li><b>Forecast</b> is taken from <b>Order Management > Forecasting > Forecast Customer</b></li>
                         <li><b>Stock Finish Good</b> is taken from <b>Stock FG Based on Cutoff</b></li>
-                        <li><b>Stock WIP</b> is taken from <b>Production Schedule - RFG</b></li>
+                        <li><b>Stock WIP</b> is taken from <b>Production Schedule - RFG (start from M-1 to Cutoff)</b></li>
                         <li><b>Sales Order</b> is taken from <b>Sales Orders on Cutoff</b></li>
                         <li><b>OST Sales Order</b> is taken from <b>Sales Orders in Previous Month</b></li>
-                        <li><b>OST Workorder</b> is taken from <b>MPP Qty - Production Schedule Based on Cutoff</b></li>
+                        <li><b>OST MPP</b> is taken from <b>MPP Qty - Production Schedule Based on Cutoff</b></li>
                     </ul>
                     <center><b style="font-size:16px !important;">FORMULA</b><hr></center>
                     <ul>

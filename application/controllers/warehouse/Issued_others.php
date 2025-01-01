@@ -12,7 +12,7 @@ class Issued_others extends CI_Controller
         $this->load->library('Ciqrcode');
         $this->load->library('session');
         $this->load->model('crud');
-        
+
         //Validasi Form
         $this->form_validation->set_rules('item_fg_id', 'Item ID', 'required|min_length[1]|max_length[50]');
     }
@@ -32,14 +32,16 @@ class Issued_others extends CI_Controller
         }
     }
 
-    public function readRequestno(){
+    public function readRequestno()
+    {
         $post = isset($_POST['q']) ? $_POST['q'] : "";
         $sql = $this->db->query("SELECT DISTINCT request_no, request_name, trans_date FROM issued_others WHERE request_no like '%$post%' and request_name like '%$post%'");
         $results = $sql->result_array();
         echo json_encode($results);
     }
 
-    public function readItem(){
+    public function readItem()
+    {
         $post = isset($_POST['q']) ? $_POST['q'] : "";
         $sql = $this->db->query("SELECT a.item_rm_id, b.number as item_rm_number, b.name as item_rm_name, c.issued, (SUM(a.qty_receipt) - COALESCE(c.issued, 0)) as stock
             FROM purchase_order_receipt_others a 
@@ -58,33 +60,33 @@ class Issued_others extends CI_Controller
         $sql_menu = $this->db->query("SELECT * FROM menus_no WHERE menus_id = '$id_menu' and `status` = '0' and `start_date` <= '$datenow' and end_date >= '$datenow'");
         $row_menu = $sql_menu->row();
 
-        if(@$row_menu->number == ""){
+        if (@$row_menu->number == "") {
             //
-        }else{
+        } else {
             $number = @$row_menu->number;
             $yearnow = date("y", strtotime($row_menu->start_date));
             $yearend = date("y", strtotime($row_menu->end_date));
 
-            $whereDate = $number.$yearnow.$yearend."1";
+            $whereDate = $number . $yearnow . $yearend . "1";
 
-            $sqlGetID	= $this->db->query("SELECT max(request_no) as kode FROM issued_others WHERE request_no like '%$whereDate%'");
+            $sqlGetID    = $this->db->query("SELECT max(request_no) as kode FROM issued_others WHERE request_no like '%$whereDate%'");
             $rowID = $sqlGetID->row();
             $kode = $rowID->kode;
-            
+
             if ($kode == NULL) {
-                $autoID = sprintf("%0".$row_menu->sequence."s", $kode + 1);
-                $autoNo = $whereDate.$autoID;
+                $autoID = sprintf("%0" . $row_menu->sequence . "s", $kode + 1);
+                $autoNo = $whereDate . $autoID;
             } else {
                 $urutan = (int) substr($kode, -6);
                 $urutan++;
-                $autoID	= sprintf("%0".$row_menu->sequence."s", $urutan);
-                $autoNo = $whereDate.$autoID;
+                $autoID    = sprintf("%0" . $row_menu->sequence . "s", $urutan);
+                $autoNo = $whereDate . $autoID;
             }
 
             echo $autoNo;
         }
     }
-    
+
     public function datatables()
     {
         if ($this->input->get()) {
@@ -92,9 +94,10 @@ class Issued_others extends CI_Controller
             $filter_part_no = $this->input->get('filter_part_no');
 
             //Select Query
-            $this->db->select('a.*, c.number as item_rm_number, c.name as item_rm_name, c.uom');
+            $this->db->select('a.*, c.number as item_rm_number, c.name as item_rm_name, c.uom, d.name as location_other_name');
             $this->db->from('issued_others a');
             $this->db->join('item_rm c', 'a.item_rm_id = c.id');
+            $this->db->join('warehouse_location_others d', 'a.location_other_number = d.number', 'left');
             $this->db->where('a.deleted', 0);
             $this->db->where('a.status', 0);
             if ($filter_request_no != "") {
@@ -116,13 +119,13 @@ class Issued_others extends CI_Controller
             echo json_encode($result);
         }
     }
-    
+
     public function create()
     {
         if ($this->input->post()) {
             $post = $this->input->post();
             $issued_others = $this->crud->read("issued_others", [], ["request_no" => $post['request_no'], "item_rm_id" => $post['item_rm_id']]);
-            
+
             if (!$issued_others) {
                 $send = $this->crud->create('issued_others', $post);
                 echo $send;
@@ -159,6 +162,7 @@ class Issued_others extends CI_Controller
     {
         $kanbans = $this->crud->reads('issued_others', [], ["request_no" => base64_decode($request_no)]);
         $kanban = $this->crud->read('issued_others', [], ["request_no" => base64_decode($request_no)]);
+        $warehouse_location_others = $this->crud->read('warehouse_location_others', [], ["number" => @$kanban->location_other_number]);
         $config = $this->db->get('config')->row();
         $rows = 8;
         $page = ceil(count($kanbans) / $rows);
@@ -254,6 +258,11 @@ class Issued_others extends CI_Controller
                                 <div style="float:left; width:45%;">
                                     <table style="width:100%; font-size:12px; margin-bottom:10px;">
                                         <tr>
+                                            <td width="100">Location Store</td>
+                                            <td width="10">:</td>
+                                            <td><b>' . @$warehouse_location_others->name . '</b></td>
+                                        </tr>
+                                        <tr>
                                             <td width="100">Print Date</td>
                                             <td width="10">:</td>
                                             <td><b>' . @date("d F Y") . '</b></td>
@@ -301,7 +310,7 @@ class Issued_others extends CI_Controller
                         <td style="height:60px;"></td>
                     </tr>
                     <tr>
-                        <td style="height:20px; text-align:center;">'.@$kanban->request_name.'</td>
+                        <td style="height:20px; text-align:center;">' . @$kanban->request_name . '</td>
                         <td style="height:20px;"></td>
                     </tr>
                 </table>
@@ -334,9 +343,10 @@ class Issued_others extends CI_Controller
         $filter_part_no = $this->input->get('filter_part_no');
 
         //Select Query
-        $this->db->select('a.*, c.number as item_rm_number, c.name as item_rm_name, c.uom');
+        $this->db->select('a.*, c.number as item_rm_number, c.name as item_rm_name, c.uom, d.name as location_other_name');
         $this->db->from('issued_others a');
         $this->db->join('item_rm c', 'a.item_rm_id = c.id');
+        $this->db->join('warehouse_location_others d', 'a.location_other_number = d.number');
         $this->db->where('a.deleted', 0);
         $this->db->where('a.status', 0);
         if ($filter_request_no != "") {
@@ -387,11 +397,12 @@ class Issued_others extends CI_Controller
                     <th>Stock</th>
                     <th>Qty</th>
                     <th>Balance</th>
+                    <th>Location Store</th>
                     <th>Remarks</th>
                 </tr>';
-            $no = 1;
-            foreach ($records as $data) {
-                $html .= '<tr>
+        $no = 1;
+        foreach ($records as $data) {
+            $html .= '<tr>
                             <td>' . $no . '</td>
                             <td>' . $data['request_no'] . '</td>
                             <td>' . $data['trans_date'] . '</td>
@@ -403,11 +414,12 @@ class Issued_others extends CI_Controller
                             <td>' . number_format($data['stock']) . '</td>
                             <td>' . number_format($data['qty']) . '</td>
                             <td>' . number_format($data['balance']) . '</td>
+                            <td>' . $data['location_other_name'] . '</td>
                             <td>' . $data['remarks'] . '</td>
                         </tr>';
-                $no++;
-            }
-            $html .= '</table></body></html>';
-            echo $html;
-    }   
+            $no++;
+        }
+        $html .= '</table></body></html>';
+        echo $html;
+    }
 }

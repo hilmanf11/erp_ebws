@@ -141,6 +141,7 @@ class Issued_materials extends CI_Controller
             $this->db->select('a.label_no, b.item_rm_id, a.qty');
             $this->db->from('scan_item_receipts a');
             $this->db->join('purchase_order_receipts b', 'a.receipt_id = b.receipt_id');
+            $this->db->where('b.status != 2');
             $this->db->where('a.label_no', $receipt_id);
             $totalRows = $this->db->count_all_results('', false);
             $records = $this->db->get()->result_array();
@@ -266,7 +267,7 @@ class Issued_materials extends CI_Controller
                             LEFT JOIN purchase_order_labels b ON a.receipt_id = b.receipt_id
                             LEFT JOIN barcode_divides c ON b.label_no = c.label_no
                             LEFT JOIN issued_material_details d ON a.item_rm_id = d.item_rm_id and b.label_no = d.label_no
-                            WHERE a.item_rm_id = '$purchase_order_receipts->item_rm_id' and a.receipt_date < '$trans_date' AND d.label_no is null and c.label_no is null and b.status = 1
+                            WHERE a.item_rm_id = '$purchase_order_receipts->item_rm_id' and a.receipt_date < '$trans_date' AND d.label_no is null and c.label_no is null and b.status = 1 and a.status != 2
                             ORDER BY receipt_date ASC");
 
                             if (($totalSupply[0]->qty + $post['qty']) <= $issued_materials->qty || $issued_materials->qty == "0") {
@@ -341,7 +342,7 @@ class Issued_materials extends CI_Controller
                             LEFT JOIN purchase_order_labels b ON a.receipt_id = b.receipt_id
                             LEFT JOIN barcode_divides c ON b.label_no = c.label_no and c.type = 'SUPPLY'
                             LEFT JOIN issued_material_details d ON a.item_rm_id = d.item_rm_id and (b.label_no = d.label_no or c.label_divided = d.label_no)
-                            WHERE a.item_rm_id = '$purchase_order_receipts->item_rm_id' and a.receipt_date < '$receipt_date' AND c.status = 0 AND d.label_no is null and b.status = 1
+                            WHERE a.item_rm_id = '$purchase_order_receipts->item_rm_id' and a.receipt_date < '$receipt_date' AND c.status = 0 AND d.label_no is null and b.status = 1 and a.status != 2
                             ORDER BY receipt_date ASC");
 
                             if (($totalSupply[0]->qty + $post['qty']) <= $issued_materials->qty || $issued_materials->qty == "0") {

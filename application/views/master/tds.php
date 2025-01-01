@@ -7,6 +7,8 @@
             <th rowspan="2" data-options="field:'payment',width:250,halign:'center'">For Payment of</th>
             <th rowspan="2" data-options="field:'exceed',width:150,halign:'center'">On Payment Exceed</th>
             <th rowspan="2" data-options="field:'individual',width:100,halign:'center'">Individual %</th>
+            <th rowspan="2" data-options="field:'account_number',width:100,halign:'center'">Account No</th>
+            <th rowspan="2" data-options="field:'account_name',width:150,halign:'center'">Account Name</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
         </tr>
@@ -42,6 +44,14 @@
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Individual %</span>
                 <input style="width:60%;" name="individual" id="individual" class="easyui-numberbox">
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Account No</span>
+                <input style="width:60%;" name="account_number" id="account_number" required="" class="easyui-combogrid">
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Account Name</span>
+                <input style="width:60%;" name="account_name" id="account_name" readonly class="easyui-textbox">
             </div>
         </fieldset>
     </form>
@@ -197,6 +207,30 @@
                     });
                 }
             }]
+        });
+
+        $('#account_number').combogrid({
+            url: '<?= base_url('finance/account_coa/reads') ?>',
+            panelWidth: 350,
+            idField: 'account_number',
+            textField: 'account_number',
+            mode: 'remote',
+            fitColumns: true,
+            prompt: "Choose Account No",
+            columns: [
+                [{
+                    field: 'account_number',
+                    title: 'Account No',
+                    width: 100
+                }, {
+                    field: 'account_name',
+                    title: 'Account Name',
+                    width: 200
+                }]
+            ],
+            onSelect: function(val, record) {
+                $("#account_name").textbox("setValue", record.account_name);
+            }
         });
     });
 </script>

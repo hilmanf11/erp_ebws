@@ -46,31 +46,31 @@
     </thead>
 </table>
 
-<div id="toolbar" style="height: 235px; padding: 10px;">
+<div id="toolbar" style="height: 165px; padding: 10px;">
     <!-- <div style="width: 100%; display: grid; grid-template-columns: auto auto auto; grid-gap: 5px; display: flex;"> -->
     <div style="width: 100%;">
         <fieldset style="width: 100%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
             <legend><b>Form Filter Data</b></legend>
-            <div style="width: 50%; float: left;">
+            <div style="width: 30%; float: left;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Purchase Date</span>
                     <input style="width:28%;" id="filter_from" value="<?= $filter_from ?>" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false"> To
                     <input style="width:28%;" id="filter_to" value="<?= date("Y-m-t") ?>" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
                 </div>
-                <div class="fitem">
+                <!-- <div class="fitem">
                     <span style="width:35%; display:inline-block;">Asset Category</span>
                     <input style="width:60%;" id="filter_category" class="easyui-combobox">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Asset No</span>
                     <input style="width:60%;" id="filter_number" class="easyui-combobox">
-                </div>
+                </div> -->
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;"></span>
                     <a href="javascript:;" class="easyui-linkbutton" onclick="filter()"><i class="fa fa-search"></i> Filter Data</a>
                 </div>
             </div>
-            <div style="width: 50%; float: left;">
+            <!-- <div style="width: 50%; float: left;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Estimate Economic</span>
                     <select style="width:60%;" id="filter_estimate" panelHeight="auto" class="easyui-combobox">
@@ -95,7 +95,7 @@
                     <span style="width:35%; display:inline-block;">Supplier</span>
                     <input style="width:60%;" id="filter_supplier" class="easyui-combobox">
                 </div>
-            </div>
+            </div> -->
         </fieldset>
         <?= $button ?>
     </div>
@@ -272,7 +272,7 @@
 </div>
 
 <!-- PDF -->
-<iframe id="printout" src="<?= base_url('assets/fixeds/print') ?>" style="width: 100%;" hidden></iframe>
+<!-- <iframe id="printout" src="<?= base_url('assets/fixeds/print') ?>" style="width: 100%;" hidden></iframe> -->
 <script>
     //Add Data
     function add() {
@@ -427,26 +427,41 @@
     function filter() {
         var filter_from = $("#filter_from").datebox('getValue');
         var filter_to = $("#filter_to").datebox('getValue');
-        var filter_number = $("#filter_number").combobox('getValue');
-        var filter_category = $("#filter_category").combobox('getValue');
-        var filter_estimate = $("#filter_estimate").combobox('getValue');
-        var filter_purchase_invoice_number = $("#filter_purchase_invoice_number").combobox('getValue');
-        var filter_supplier = $("#filter_supplier").combobox('getValue');
+        // var filter_number = $("#filter_number").combobox('getValue');
+        // var filter_category = $("#filter_category").combobox('getValue');
+        // var filter_estimate = $("#filter_estimate").combobox('getValue');
+        // var filter_purchase_invoice_number = $("#filter_purchase_invoice_number").combobox('getValue');
+        // var filter_supplier = $("#filter_supplier").combobox('getValue');
 
         var url = "?filter_from=" + window.btoa(filter_from) +
-            "&filter_to=" + window.btoa(filter_to) +
-            "&filter_number=" + window.btoa(filter_number) +
-            "&filter_category=" + window.btoa(filter_category) +
-            "&filter_estimate=" + window.btoa(filter_estimate) +
-            "&filter_purchase_invoice_number=" + window.btoa(filter_purchase_invoice_number) +
-            "&filter_supplier=" + window.btoa(filter_supplier);
+            "&filter_to=" + window.btoa(filter_to);
+            // "&filter_number=" + window.btoa(filter_number) +
+            // "&filter_category=" + window.btoa(filter_category) +
+            // "&filter_estimate=" + window.btoa(filter_estimate) +
+            // "&filter_purchase_invoice_number=" + window.btoa(filter_purchase_invoice_number) +
+            // "&filter_supplier=" + window.btoa(filter_supplier);
 
-        $('#dg').datagrid({
-            url: '<?= base_url('assets/fixeds/datatables') ?>' + url
+        $('#dg').datagrid('loading');
+
+        $.ajax({
+            url:'<?= base_url('assets/fixeds/datatables') ?>' + url,
+            type:'POST',
+            // data: {
+            //     filter_from:filter_from,
+            //     filter_to:filter_to
+            // },
+            dataType: 'json',
+            success: function(result) { 
+                $('#dg').datagrid('loadData',result).datagrid('loaded'); 
+            }
         });
 
-        $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
-        $("#printout").attr('src', '<?= base_url('assets/fixeds/print') ?>' + url);
+        // $('#dg').datagrid({
+        //     url: '<?= base_url('assets/fixeds/datatables') ?>' + url
+        // });
+
+        // $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
+        // $("#printout").attr('src', '<?= base_url('assets/fixeds/print') ?>' + url);
     }
 
     //Upload Data
@@ -459,41 +474,55 @@
     }
 
     function pdf() {
-        $("#printout").get(0).contentWindow.print();
+        // $("#printout").get(0).contentWindow.print();
+        $('#dg').datagrid('print','DataGrid');
     }
 
     function excel() {
-        var filter_from = $("#filter_from").datebox('getValue');
-        var filter_to = $("#filter_to").datebox('getValue');
-        var filter_number = $("#filter_number").combobox('getValue');
-        var filter_category = $("#filter_category").combobox('getValue');
-        var filter_estimate = $("#filter_estimate").combobox('getValue');
-        var filter_purchase_invoice_number = $("#filter_purchase_invoice_number").combobox('getValue');
-        var filter_supplier = $("#filter_supplier").combobox('getValue');
+        // var filter_from = $("#filter_from").datebox('getValue');
+        // var filter_to = $("#filter_to").datebox('getValue');
+        // var filter_number = $("#filter_number").combobox('getValue');
+        // var filter_category = $("#filter_category").combobox('getValue');
+        // var filter_estimate = $("#filter_estimate").combobox('getValue');
+        // var filter_purchase_invoice_number = $("#filter_purchase_invoice_number").combobox('getValue');
+        // var filter_supplier = $("#filter_supplier").combobox('getValue');
 
-        var url = "?filter_from=" + window.btoa(filter_from) +
-            "&filter_to=" + window.btoa(filter_to) +
-            "&filter_number=" + window.btoa(filter_number) +
-            "&filter_category=" + window.btoa(filter_category) +
-            "&filter_estimate=" + window.btoa(filter_estimate) +
-            "&filter_purchase_invoice_number=" + window.btoa(filter_purchase_invoice_number) +
-            "&filter_supplier=" + window.btoa(filter_supplier);
+        // var url = "?filter_from=" + window.btoa(filter_from) +
+        //     "&filter_to=" + window.btoa(filter_to) +
+        //     "&filter_number=" + window.btoa(filter_number) +
+        //     "&filter_category=" + window.btoa(filter_category) +
+        //     "&filter_estimate=" + window.btoa(filter_estimate) +
+        //     "&filter_purchase_invoice_number=" + window.btoa(filter_purchase_invoice_number) +
+        //     "&filter_supplier=" + window.btoa(filter_supplier);
 
-        window.location.assign('<?= base_url('assets/fixeds/print/excel') ?>' + url);
+        // window.location.assign('<?= base_url('assets/fixeds/print/excel') ?>' + url);
+
+        $('#dg').datagrid('toExcel','fixed_assets.xls');
     }
 
     function reload() {
         window.location.reload();
     }
     $(function() {
+        // $('#dg').datagrid({
+        //     url: '<?= base_url('assets/fixeds/datatables') ?>',
+        //     pagination: true,
+        //     clientPaging: false,
+        //     remoteFilter: true,
+        //     rownumbers: true,
+        //     fit: true,
+        // });
+
         $('#dg').datagrid({
-            url: '<?= base_url('assets/fixeds/datatables') ?>',
+            // url: '<?= base_url('assets/fixeds/datatables') ?>',
             pagination: true,
-            clientPaging: false,
-            remoteFilter: true,
+            clientPaging: true,
+            // remoteFilter: true,
             rownumbers: true,
             fit: true,
-        });
+            pageList: [20, 50, 100, 500, 1000],
+            pageSize: 20,
+        }).datagrid('enableFilter');
 
         //Save Data
         $('#dlg_insert').dialog({

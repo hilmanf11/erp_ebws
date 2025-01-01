@@ -114,6 +114,7 @@
             </div>
         </fieldset>
         <?= $button ?>
+        <a href="javascript:;" class="easyui-linkbutton" onclick="excel_price()" plain="true"><i class="fa fa-file"></i> Export Price History</a>
     </div>
 </div>
 
@@ -462,6 +463,30 @@
             "&filter_check=" + filter_check.checked;
 
         window.location.assign('<?= base_url('master/supplier_items/print/excel') ?>' + url);
+    }
+
+    function excel_price(){
+        var filter_category = $("#filter_category").combobox('getValue');
+        var filter_suppliers = $("#filter_suppliers").combogrid('getValue');
+        var filter_maker = $("#filter_maker").combogrid('getValue');
+        var filter_item_rm = $("#filter_item_rm").combogrid('getValue');
+        var filter_item_vendor = $("#filter_item_vendor").combobox('getValue');
+        var filter_share_order = $("#filter_share_order").combobox('getValue');
+        var filter_status_price = $("#filter_status_price").combobox('getValue');
+        var filter_type = $("#filter_type").combobox('getValue');
+        var filter_check = $("#filter_check").checkbox('options');
+
+        var url = "?filter_suppliers=" + window.btoa(filter_suppliers) +
+            "&filter_item_rm=" + window.btoa(filter_item_rm) +
+            "&filter_category=" + window.btoa(filter_category) +
+            "&filter_maker=" + window.btoa(filter_maker) +
+            "&filter_item_vendor=" + window.btoa(filter_item_vendor) +
+            "&filter_share_order=" + window.btoa(filter_share_order) +
+            "&filter_type=" + window.btoa(filter_type) +
+            "&filter_status_price=" + window.btoa(filter_status_price) +
+            "&filter_check=" + filter_check.checked;
+
+        window.location.assign('<?= base_url('master/supplier_items/excel_price') ?>' + url);
     }
 
     //RELOAD

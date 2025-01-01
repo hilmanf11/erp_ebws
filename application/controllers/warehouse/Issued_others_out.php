@@ -81,7 +81,7 @@ class Issued_others_out extends CI_Controller
         $this->db->join('item_rm b', 'a.item_rm_id = b.id');
         $this->db->where('a.request_no', $request_no);
         $this->db->order_by('b.number', 'DESC');
-        
+
         //Total Data
         $totalRows = $this->db->count_all_results('', false);
         //Get Data Array
@@ -98,9 +98,50 @@ class Issued_others_out extends CI_Controller
         if ($this->input->post()) {
             $item_rm_id   = $this->input->post('item_rm_id');
             $request_no   = $this->input->post('request_no');
+            $trans_date   = $this->input->post('trans_date');
+            $request_name   = $this->input->post('request_name');
+            $location_other_number   = $this->input->post('location_other_number');
+            $stock   = $this->input->post('stock');
+            $qty   = $this->input->post('qty');
+            $balance   = $this->input->post('balance');
+            $remarks   = $this->input->post('remarks');
+            $out_by   = $this->input->post('out_by');
+            $out_date   = $this->input->post('out_date');
+            $status   = $this->input->post('status');
+            $status_store   = $this->input->post('status_store');
 
-            $post = $this->input->post();
-            $send = $this->crud->update('issued_others', ["item_rm_id" => $item_rm_id, "request_no" => $request_no], $post);
+            $postFinal = array(
+                "request_no" => $request_no,
+                "trans_date" => $trans_date,
+                "item_rm_id" => $item_rm_id,
+                "request_name" => $request_name,
+                "location_other_number" => $location_other_number,
+                "out_by" => $out_by,
+                "out_date" => $out_date,
+                "qty" => $qty,
+                "balance" => $balance,
+                "remarks" => $remarks,
+                "status" => $status,
+
+            );
+            $send = $this->crud->update('issued_others', ["item_rm_id" => $item_rm_id, "request_no" => $request_no], $postFinal);
+
+            // Sebagai IN untuk transaksi store
+            $dataInStore =  array(
+                "request_no" => $request_no,
+                "trans_date" => $trans_date,
+                "item_rm_id" => $item_rm_id,
+                "request_name" => $request_name,
+                "location_other_number" => $location_other_number,
+                "stock" => $stock,
+                "qty" => $qty,
+                "balance" => $balance,
+                "remarks" => $remarks,
+                "status" => $status_store,
+            );
+
+            $send2 = $this->crud->create('issued_others_store', $dataInStore);
+
             echo $send;
         } else {
             show_error("Cannot Process your request");
@@ -112,6 +153,7 @@ class Issued_others_out extends CI_Controller
     {
         $data = $this->input->post();
         $send = $this->crud->update('issued_others', $data, ["status" => 0, "reason" => ""]);
+        $send2 = $this->crud->update('issued_others_store_out', $data, ["status" => 0, "reason" => ""]);
 
         echo $send;
     }
@@ -179,11 +221,11 @@ class Issued_others_out extends CI_Controller
             </tr>';
         $no = 1;
         foreach ($records as $data) {
-            if($data['status'] == 0){
+            if ($data['status'] == 0) {
                 $status = "OPEN";
-            }elseif($data['status'] == "1"){
+            } elseif ($data['status'] == "1") {
                 $status = "CLOSED";
-            }else{
+            } else {
                 $status = "CANCEL";
             }
 

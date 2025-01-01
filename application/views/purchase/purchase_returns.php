@@ -2,7 +2,7 @@
     <thead>
         <tr>
             <th rowspan="2" field="ck" checkbox="true"></th>
-            <th rowspan="2" data-options="field:'print_po',width:80,halign:'center',formatter:BtnPrint">Print PO</th>
+            <th rowspan="2" data-options="field:'print_po',width:80,halign:'center',formatter:BtnPrint">Print</th>
             <th rowspan="2" data-options="field:'return_no',width:200,halign:'center'">Return No</th>
             <th rowspan="2" data-options="field:'return_date',width:100,halign:'center'">Return Date</th>
             <th rowspan="2" data-options="field:'return_name',width:150,halign:'center'">Return Name</th>
@@ -36,8 +36,8 @@
             <div style="float: left; width: 50%;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Period</span>
-                    <input style="width:28%;" id="filter_from" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false"> To
-                    <input style="width:28%;" id="filter_to" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
+                    <input style="width:28%;" id="filter_from" class="easyui-datebox" value="<?= date("Y-m-01") ?>" data-options="formatter:myformatter,parser:myparser, editable:false"> To
+                    <input style="width:28%;" id="filter_to" class="easyui-datebox" value="<?= date("Y-m-t") ?>" data-options="formatter:myformatter,parser:myparser, editable:false">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Return No</span>
@@ -414,8 +414,17 @@
 
     function BtnPrint(val, row) {
         if(row.datatable == 1){
-            return '<a class="btn btn-primary w-100" target="_blank" href="<?= base_url('purchase/purchase_returns/print_return/') ?>'+btoa(row.return_no)+'" style="pointer-events: visible; opacity:1;"><i class="fa fa-print"></i> Print</a>';
+            var detail = "printReturn('"+row.return_no+"')";
+            return '<a class="btn btn-primary w-100" onClick="'+detail+'" style="pointer-events: visible; opacity:1;"><i class="fa fa-print"></i> Print</a>';
         }
+    }
+
+    function printReturn(return_no){
+        $.messager.prompt('Print', 'Please input the Password', function(r){
+            if (r == "FNC"){
+                window.open('<?= base_url('purchase/purchase_returns/print_return/') ?>'+btoa(return_no));
+            }
+        });
     }
 
     function filter() {
@@ -428,7 +437,18 @@
         url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_return_no=" + filter_return_no + "&filter_item_id=" + filter_item_id + "&filter_supplier=" + filter_supplier;
         
         $('#dg').treegrid({
-            url: '<?= base_url('purchase/purchase_returns/datatables') ?>' + url
+            url: '<?= base_url('purchase/purchase_returns/datatables') ?>' + url,
+            pagination: true,
+            rownumbers: true,
+            idField: 'id',
+            treeField: 'return_no',
+            fit: true,
+            singleSelect: false,
+            onBeforeLoad: function(row, param) {
+                if (!row) {
+                    param.id = 0;
+                }
+            },
         });
 
         $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
@@ -455,25 +475,7 @@
     }
 
     $(function() {
-        $('#dg').treegrid({
-            url: '<?= base_url('purchase/purchase_returns/datatables') ?>',
-            pagination: true,
-            rownumbers: true,
-            idField: 'id',
-            treeField: 'return_no',
-            fit: true,
-            singleSelect: false,
-            onBeforeLoad: function(row, param) {
-                if (!row) {
-                    param.id = 0;
-                }
-            },
-            // rowStyler: function(row) {
-            //     if (row.state != "closed") {
-            //         return 'background-color:#CFE6FF;font-weight:bold;';
-            //     }
-            // },
-        });
+        filter();
 
         //Save Data
         $('#dlg_insert').dialog({

@@ -50,8 +50,7 @@ class Report_check_serialno_in extends CI_Controller
         $filter_status = $this->input->get("filter_status");
 
         //Details
-        $this->db->select("a.label_no, d.name AS supplier_name, b.item_rm_id, c.number AS item_rm_number, b.po_no, b.bc_document, 
-            a.receipt_id, b.receipt_date, b.qty_receipt, e.warehouse, e.qty, e.created_date, e.created_by, a.status");
+        $this->db->select("a.label_no, d.name AS supplier_name, b.item_rm_id, c.number AS item_rm_number, b.po_no, b.bc_document, a.receipt_id, b.receipt_date, b.qty_receipt, e.warehouse, e.qty, e.created_date, e.created_by, (CASE WHEN b.status = 2 THEN 2 ELSE a.status END) as status");
         $this->db->from('purchase_order_labels a');
         $this->db->join('purchase_order_receipts b', 'a.receipt_id = b.receipt_id');
         $this->db->join('item_rm c', 'b.item_rm_id = c.id');
@@ -61,7 +60,9 @@ class Report_check_serialno_in extends CI_Controller
         $this->db->like('a.label_no', $filter_serial_no);
         $this->db->like('b.supplier_id', $filter_supplier);
         $this->db->like('c.id', $filter_product_no);
-        $this->db->like('a.status', $filter_status);
+        if($filter_status != ""){
+            $this->db->where("(CASE WHEN b.status = 2 THEN 2 ELSE a.status END) = '$filter_status'");
+        }
         $this->db->group_by('a.label_no');
         $this->db->order_by('a.id', 'ASC');
         $records = $this->db->get()->result_array();
@@ -120,6 +121,8 @@ class Report_check_serialno_in extends CI_Controller
 
             if ($data['status'] == 0) {
                 $status = "<b style='color:red;'>NOT SCAN</b>";
+            } else if($data['status'] == 2){
+                $status = "<b style='color:blue;'>CANCEL</b>";
             } else if(count($barcodeDivided) > 0){
                 $status = "<b style='color:red;'>DIVIDED</b>";
             } else {
