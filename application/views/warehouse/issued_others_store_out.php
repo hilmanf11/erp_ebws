@@ -5,11 +5,13 @@
             <th rowspan="2" field="ck" checkbox="true"></th>
             <th rowspan="2" data-options="field:'detail',width:80,halign:'center',formatter:BtnDetail">Process</th>
             <th rowspan="2" data-options="field:'status',width:80,align:'center',formatter:statusFormat,styler:statusStyle">Status</th>
+            <th rowspan="2" data-options="field:'document_in',width:150,halign:'center'">Document IN</th>
             <th rowspan="2" data-options="field:'request_no',width:150,halign:'center'">Request No</th>
             <th rowspan="2" data-options="field:'trans_date',width:120,align:'center'">Request Date</th>
             <th rowspan="2" data-options="field:'request_name',width:200,halign:'center'">Request Name</th>
             <th rowspan="2" data-options="field:'total_qty',width:80,halign:'center',align:'right', formatter:numberformat">Total Qty</th>
             <th rowspan="2" data-options="field:'reason',width:200,halign:'center'">Note</th>
+            <th rowspan="2" data-options="field:'location_other_number',width:100,halign:'center'">Location Store</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
         </tr>
@@ -32,6 +34,10 @@
         <fieldset style="width: 100%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
             <legend><b>Form Detail</b></legend>
             <div style="width: 50%; float: left;">
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Document IN</span>
+                    <input style="width:60%;" id="document_in" class="easyui-textbox" readonly>
+                </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Request No</span>
                     <input style="width:60%;" id="request_no" class="easyui-textbox" readonly>
@@ -159,6 +165,7 @@
                                 var request_name = $("#request_name").textbox('getValue');
                                 var out_date = $("#out_date").datebox('getValue');
                                 var location_other_number = $("#location_other_number").textbox('getValue');
+                                var document_in = $("#document_in").textbox('getValue');
 
                                 $('#dg_detail').datagrid('acceptChanges');
                                 var rows = $('#dg_detail').datagrid('getRows');
@@ -174,6 +181,7 @@
                                                     request_no: request_no,
                                                     trans_date: trans_date,
                                                     request_name: request_name,
+                                                    document_in: document_in,
                                                     location_other_number: location_other_number,
                                                     out_by: "<?= $this->session->name ?>",
                                                     out_date: out_date,
@@ -303,9 +311,10 @@
         });
     });
 
-    function details(request_no, trans_date, request_name, status, location_other_number) {
+    function details(request_no, trans_date, request_name, status, location_other_number, document_in) {
         $("#dlg_detail").dialog('open');
 
+        $("#document_in").textbox('setValue', document_in);
         $("#request_no").textbox('setValue', request_no);
         $("#request_name").textbox('setValue', request_name);
         $("#trans_date").datebox('setValue', trans_date);
@@ -445,7 +454,7 @@
     }
 
     function BtnDetail(val, row) {
-        var details = "details('" + row.request_no + "','" + row.trans_date + "','" + row.request_name + "','" + row.status + "','" + row.location_other_number + "' )";
+        var details = "details('" + row.request_no + "','" + row.trans_date + "','" + row.request_name + "','" + row.status + "','" + row.location_other_number + "' ,'" + row.document_in + "' )";
         return '<a class="btn btn-primary w-100" style="pointer-events: visible; opacity:1;" onClick="' + details + '"><i class="fa fa-eye"></i> View</a>';
     }
 

@@ -35,6 +35,22 @@ class Issued_others_out extends CI_Controller
         echo json_encode($send);
     }
 
+    public function numberDocStore($location = "")
+    {
+
+        $format = $location . date("ym");
+        $sql = $this->db->query("SELECT max(`document_in`) as kode From issued_others_store where `document_in` like '%$format%'");
+        $row = $sql->row();
+        if (empty($row->kode)) {
+            $kode = substr($row->kode, 1);
+            $autoid = $format . sprintf("%08s", $kode + 1);
+        } else {
+            $kode = substr($row->kode, -8);
+            $autoid = $format . sprintf("%08s", $kode + 1);
+        }
+        echo $autoid;
+    }
+
     //GET DATATABLES
     public function datatables()
     {
@@ -101,6 +117,7 @@ class Issued_others_out extends CI_Controller
             $trans_date   = $this->input->post('trans_date');
             $request_name   = $this->input->post('request_name');
             $location_other_number   = $this->input->post('location_other_number');
+            $document_in   = $this->input->post('document_in');
             $stock   = $this->input->post('stock');
             $qty   = $this->input->post('qty');
             $balance   = $this->input->post('balance');
@@ -126,6 +143,25 @@ class Issued_others_out extends CI_Controller
             );
             $send = $this->crud->update('issued_others', ["item_rm_id" => $item_rm_id, "request_no" => $request_no], $postFinal);
 
+            $transaksi_store = $this->crud->query("
+                    select a.id as item_rm_id, COALESCE(b.qty_in,0) - COALESCE(c.qty_out,0) as stock from 
+                    item_rm a 
+                    left join (
+                        select item_rm_id, sum(qty) as qty_in from issued_others_store where location_other_number='$location_other_number' and status <> 2 GROUP BY item_rm_id
+                    ) b on a.id = b.item_rm_id
+                    left join (
+                        select item_rm_id, sum(qty) as qty_out from issued_others_store where location_other_number='$location_other_number' and status = 1 GROUP BY item_rm_id
+                    ) c on a.id = c.item_rm_id
+                    JOIN item_familys d ON a.item_family_id = d.id and d.number != '006'
+                    where a.id='$item_rm_id'
+            ");
+
+            $stock = @$transaksi_store->stock + $qty;
+
+            $balance = $stock - $qty;
+
+            $request_no = str_replace("OUT", "ROU", $request_no);
+
             // Sebagai IN untuk transaksi store
             $dataInStore =  array(
                 "request_no" => $request_no,
@@ -133,6 +169,7 @@ class Issued_others_out extends CI_Controller
                 "item_rm_id" => $item_rm_id,
                 "request_name" => $request_name,
                 "location_other_number" => $location_other_number,
+                "document_in" => $document_in,
                 "stock" => $stock,
                 "qty" => $qty,
                 "balance" => $balance,

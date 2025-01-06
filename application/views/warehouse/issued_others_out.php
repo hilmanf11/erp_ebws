@@ -10,6 +10,7 @@
             <th rowspan="2" data-options="field:'request_name',width:200,halign:'center'">Request Name</th>
             <th rowspan="2" data-options="field:'total_qty',width:80,halign:'center',align:'right', formatter:numberformat">Total Qty</th>
             <th rowspan="2" data-options="field:'reason',width:200,halign:'center'">Note</th>
+            <th rowspan="2" data-options="field:'location_other_number',width:100,halign:'center'">Location Store</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
         </tr>
@@ -160,55 +161,65 @@
                                 var out_date = $("#out_date").datebox('getValue');
                                 var location_other_number = $("#location_other_number").textbox('getValue');
 
-                                $('#dg_detail').datagrid('acceptChanges');
-                                var rows = $('#dg_detail').datagrid('getRows');
-                                var totalrows = rows.length;
+                                $.ajax({
+                                    type: "post",
+                                    url: "<?= base_url('warehouse/issued_others_out/numberDocStore/') ?>" + location_other_number,
+                                    dataType: "html",
+                                    success: function(result) {
+                                        $('#dg_detail').datagrid('acceptChanges');
+                                        var rows = $('#dg_detail').datagrid('getRows');
+                                        var totalrows = rows.length;
 
-                                if (totalrows > 0) {
-                                    for (let i = 0; i < totalrows; i++) {
-                                        if (rows[i].balance >= 0) {
-                                            $.ajax({
-                                                type: "post",
-                                                url: '<?= base_url('warehouse/issued_others_out/update') ?>',
-                                                data: {
-                                                    request_no: request_no,
-                                                    trans_date: trans_date,
-                                                    request_name: request_name,
-                                                    location_other_number: location_other_number,
-                                                    out_by: "<?= $this->session->name ?>",
-                                                    out_date: out_date,
-                                                    item_rm_id: rows[i].item_rm_id,
-                                                    stock: rows[i].stock,
-                                                    qty: rows[i].qty,
-                                                    balance: rows[i].balance,
-                                                    remarks: rows[i].remarks,
-                                                    status: '1',
-                                                    status_store: '0'
-                                                },
-                                                dataType: "json",
-                                                success: function(result) {
-                                                    Swal.fire({
-                                                        title: result.message,
-                                                        icon: result.theme,
-                                                        confirmButtonText: 'Ok',
-                                                        allowOutsideClick: false,
-                                                    }).then((result) => {
-                                                        if (result.isConfirmed) {
-                                                            window.location.reload();
+                                        if (totalrows > 0) {
+                                            for (let i = 0; i < totalrows; i++) {
+                                                if (rows[i].balance >= 0) {
+                                                    $.ajax({
+                                                        type: "post",
+                                                        url: '<?= base_url('warehouse/issued_others_out/update') ?>',
+                                                        data: {
+                                                            request_no: request_no,
+                                                            trans_date: trans_date,
+                                                            request_name: request_name,
+                                                            location_other_number: location_other_number,
+                                                            document_in: result,
+                                                            out_by: "<?= $this->session->name ?>",
+                                                            out_date: out_date,
+                                                            item_rm_id: rows[i].item_rm_id,
+                                                            stock: rows[i].stock,
+                                                            qty: rows[i].qty,
+                                                            balance: rows[i].balance,
+                                                            remarks: rows[i].remarks,
+                                                            status: '1',
+                                                            status_store: '0'
+                                                        },
+                                                        dataType: "json",
+                                                        success: function(result) {
+                                                            Swal.fire({
+                                                                title: result.message,
+                                                                icon: result.theme,
+                                                                confirmButtonText: 'Ok',
+                                                                allowOutsideClick: false,
+                                                            }).then((result) => {
+                                                                if (result.isConfirmed) {
+                                                                    window.location.reload();
+                                                                }
+                                                            });
                                                         }
                                                     });
+                                                } else {
+                                                    toastr.error("Failed to Save Data, Balance cannot empty");
                                                 }
-                                            });
+                                            }
+
+                                            $('#dg').datagrid('reload');
+                                            $('#dlg_detail').dialog('close');
                                         } else {
-                                            toastr.error("Failed to Save Data, Balance cannot empty");
+                                            toastr.warning("Please Select data in the table first!");
                                         }
                                     }
+                                });
 
-                                    $('#dg').datagrid('reload');
-                                    $('#dlg_detail').dialog('close');
-                                } else {
-                                    toastr.warning("Please Select data in the table first!");
-                                }
+
                             }
                         });
                     } else {

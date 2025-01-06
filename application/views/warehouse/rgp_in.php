@@ -28,7 +28,7 @@
 </table>
 
 <!-- TOOLBAR DATAGRID -->
-<div id="toolbar" style="height: 270px; padding: 10px;">
+<div id="toolbar" style="height: 300px; padding: 10px;">
     <!-- <div style="width: 100%; display: grid; grid-template-columns: auto auto auto; grid-gap: 5px; display: flex;"> -->
     <div style="width: 100%;">
         <fieldset style="width: 80%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
@@ -223,8 +223,8 @@
         });
     }
 
-    function addTable(process_type = "", item_category_id = "", link = "") {
-        if (process_type == 'FOC' || process_type == 'NRGP') {
+    function addTable(process_type = "", item_category_id = "", $company_id = "", link = "") {
+        if (process_type == 'FOC' || process_type == 'RGP') {
             var readonly = false;
         } else {
             var readonly = true;
@@ -254,7 +254,7 @@
                         type: 'combogrid',
                         options: {
                             readonly: readonly,
-                            url: '<?= base_url('warehouse/rgp_out/readItemCategory/'); ?>' + item_category_id,
+                            url: '<?= base_url('warehouse/rgp_out/readItemCategory/'); ?>' + item_category_id + "/" + window.btoa($company_id),
                             required: true,
                             panelWidth: 600,
                             idField: 'id',
@@ -510,7 +510,7 @@
 
     function onClickCell(index, field) {
         var process_type = $("#process_type").combobox('getValue');
-        if (process_type != 'FOC' || process_type == 'NRGP') {
+        if (process_type != 'FOC' || process_type == 'RGP') {
             // alert('tidak bisa edit');
         } else {
             if (editIndex != index) {
@@ -535,7 +535,7 @@
         var reference_number = $("#reference_number").textbox('getValue');
         var rgp_number = $("#rgp_number").combobox('getValue');
 
-        if (process_type == 'RGP') {
+        if (process_type == 'NRGP') {
             toastr.error("Can't add or remove for process type RGP/NRGP");
         } else {
             if (process_type != "" && company_id != "" && item_category_id != "" && departement_id != "" && rgp_type_id != "" && reference_number != "") {
@@ -557,7 +557,7 @@
     function removeit() {
         var process_type = $("#process_type").combobox('getValue');
 
-        if (process_type == 'RGP') {
+        if (process_type == 'NRGP') {
             toastr.error("Can't add or remove for process type RGP/NRGP");
         } else {
             if (editIndex == undefined) {
@@ -649,7 +649,7 @@
         $(ed4.target).numberbox('setValue', value);
 
         var item_id = $(ed.target).combobox('getValue');
-        var company_id = $('#company_id').combobox('getValue');
+        var company_id = $('#company_id').combogrid('getValue');
         var plant = $('#plant').combobox('getValue');
         $.ajax({
             type: "post",
@@ -687,7 +687,7 @@
 
             $('#dg2').datagrid('loadData', []);
             setTimeout(function() {
-                addTable(row.process_type, row.item_category_id, '<?= base_url('warehouse/rgp_in/datatableUpdates?rgp_number=') ?>' + window.btoa(row.rgp_number));
+                addTable(row.process_type, row.item_category_id, row.company_id, '<?= base_url('warehouse/rgp_in/datatableUpdates?number=') ?>' + window.btoa(row.number) + '&rgp_number=' + window.btoa(row.rgp_number));
             }, 100);
             $("#process_type").combobox('disable');
             $("#company_id").combogrid('disable');
@@ -1186,8 +1186,10 @@
             onSelect: function(category) {
                 var number = $("#number").textbox('getValue');
                 var process_type = $('#process_type').combobox('getValue');
+                var company_id = $('#company_id').combogrid('getValue');
+                var rgp_number = $('#rgp_number').combobox('getValue');
                 $('#dg2').datagrid('loadData', []);
-                addTable(process_type, category.id, '<?= base_url('warehouse/rgp_in/datatableUpdates?rgp_number=') ?>' + window.btoa(number));
+                addTable(process_type, category.id, company_id, '<?= base_url('warehouse/rgp_in/datatableUpdates?number=') ?>' + window.btoa(number) + '&rgp_number=' + window.btoa(rgp_number));
             }
         });
 
@@ -1203,9 +1205,11 @@
                 }
             }],
             onSelect: function(rgp) {
+                var number = $("#number").textbox('getValue');
                 var process_type = $('#process_type').combobox('getValue');
                 var item_category_id = $('#item_category_id').combobox('getValue');
-                addTable(process_type, item_category_id, '<?= base_url('warehouse/rgp_in/datatableUpdates?rgp_number=') ?>' + window.btoa(rgp.number));
+                var company_id = $('#company_id').combogrid('getValue');
+                addTable(process_type, item_category_id, company_id, '<?= base_url('warehouse/rgp_in/datatableUpdates?number=') ?>' + window.btoa(number) + '&rgp_number=' + window.btoa(rgp.number));
             }
         });
 
@@ -1226,7 +1230,7 @@
                 } else {
                     autonumber("<?= $id_menu ?>");
                 }
-                var company_id = $('#company_id').combobox('getValue');
+                var company_id = $('#company_id').combogrid('getValue');
                 $('#rgp_number').combobox({
                     url: '<?= base_url('warehouse/rgp_in/readDocumentOut?process_type='); ?>' + val.id + '&company_id=' + company_id,
                     valueField: 'number',
@@ -1239,16 +1243,20 @@
                         }
                     }],
                     onSelect: function(rgp) {
+                        var number = $("#number").textbox('getValue');
                         var process_type = $('#process_type').combobox('getValue');
                         var item_category_id = $('#item_category_id').combobox('getValue');
-                        addTable(process_type, item_category_id, '<?= base_url('warehouse/rgp_in/datatableUpdates?rgp_number=') ?>' + window.btoa(rgp.number));
+                        var company_id = $('#company_id').combogrid('getValue');
+                        addTable(process_type, item_category_id, company_id, '<?= base_url('warehouse/rgp_in/datatableUpdates?number=') ?>' + window.btoa(number) + '&rgp_number=' + window.btoa(rgp.number));
                     }
                 });
+                var number = $("#number").textbox('getValue');
                 var rgp_number = $("#rgp_number").combobox('getValue');
                 var item_category_id = $('#item_category_id').combobox('getValue');
+                var company_id = $('#company_id').combogrid('getValue');
 
                 $('#dg2').datagrid('loadData', []);
-                addTable(val.id, item_category_id, '<?= base_url('warehouse/rgp_in/datatableUpdates?rgp_number=') ?>' + window.btoa(rgp_number));
+                addTable(val.id, item_category_id, company_id, '<?= base_url('warehouse/rgp_in/datatableUpdates?number=') ?>' + window.btoa(number) + '&rgp_number=' + window.btoa(rgp_number));
             }
         });
 
@@ -1313,9 +1321,10 @@
                         }
                     }],
                     onSelect: function(rgp) {
+                        var number = $("#number").textbox('getValue');
                         var process_type = $('#process_type').combobox('getValue');
                         var item_category_id = $('#item_category_id').combobox('getValue');
-                        addTable(process_type, item_category_id, '<?= base_url('warehouse/rgp_in/datatableUpdates?rgp_number=') ?>' + window.btoa(rgp.number));
+                        addTable(process_type, item_category_id, rowItem.id, '<?= base_url('warehouse/rgp_in/datatableUpdates?number=') ?>' + window.btoa(number) + '&rgp_number=' + window.btoa(rgp.number));
                     }
                 });
                 // $("#uom").textbox('setValue', rowItem.uom);
@@ -1508,12 +1517,12 @@
     }
 
     function BtnPrint(val, row) {
-        var send = "print_label('" + row.number + "','" + row.item_id + "','" + row.qty + "','" + row.mpq + "','" + row.qty_label + "')";
+        var send = "print_label('" + row.number + "','" + row.item_id + "','" + row.qty + "','" + row.mpq + "','" + row.qty_label + "','" + row.item_category_id + "')";
         return '<a class="btn btn-success w-100" style="pointer-events: visible; opacity:1;" onClick="' + send + '"><i class="fa fa-print"></i> Print</a>';
 
     }
 
-    function print_label(rgp_number, item_id, qty, qty_mpq, qty_label) {
+    function print_label(rgp_number, item_id, qty, qty_mpq, qty_label, category) {
         if (qty_mpq == 'null') {
             toastr.error("Please check MPQ first!");
         } else {
@@ -1577,11 +1586,11 @@
                                                 $("#dlg_label").dialog('close');
                                                 $('#dg').datagrid('reload');
                                                 toastr.success("Create Label Completed");
-                                                window.open("<?= base_url('warehouse/rgp_in/print_label/') ?>" + window.btoa(rgp_number), '_blank');
+                                                window.open("<?= base_url('warehouse/rgp_in/print_label/') ?>" + window.btoa(rgp_number) + "/" + category, '_blank');
                                             }
                                         } else {
                                             $("#dlg_label").dialog('close');
-                                            window.open("<?= base_url('warehouse/rgp_in/print_label/') ?>" + window.btoa(rgp_number), '_blank');
+                                            window.open("<?= base_url('warehouse/rgp_in/print_label/') ?>" + window.btoa(rgp_number) + "/" + category, '_blank');
                                         }
                                     }
                                 }).fail(function(jqXHR, textStatus) {
@@ -1591,7 +1600,7 @@
                             }
                         }
                     } else {
-                        window.open("<?= base_url('warehouse/rgp_in/print_label/') ?>" + window.btoa(rgp_number), '_blank');
+                        window.open("<?= base_url('warehouse/rgp_in/print_label/') ?>" + window.btoa(rgp_number) + "/" + category, '_blank');
                     }
                 }
             });

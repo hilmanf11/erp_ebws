@@ -108,6 +108,7 @@
                 <select style="width:60%;" name="process_type" id="process_type" panelHeight="auto" class="easyui-combobox" required>
                     <option value="RGP">RGP</option>
                     <option value="NRGP">NRGP</option>
+                    <option value="FOC">FOC</option>
                 </select>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Transaction Date</span>
@@ -142,6 +143,10 @@
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Reference Number</span>
                     <input style="width:60%;" name="reference_number" id="reference_number" class="easyui-textbox" required>
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">RGP/NRGP IN No.</span>
+                    <input style="width:60%;" name="rgp_number" id="rgp_number" class="easyui-combobox">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Return Date Estimation</span>
@@ -194,7 +199,6 @@
         let today = myformatter(new Date());
         $('#transaction_date').datebox('setValue', today);
         $('#reference_number').textbox('setValue', '-');
-        autonumber("<?= $id_menu ?>");
         $('#declaration').textbox('setValue', "It is hereby declared that above mentioned material is return after emulation and not for sale and no commercial value.\nHowever, the value for transit purpose is rs.2210000/- (Incl. GST@18%) only.");
     }
 
@@ -213,7 +217,27 @@
         });
     }
 
-    function addTable(item_category_id = "", link = "") {
+    function autonumberFoc() {
+        $.ajax({
+            type: "post",
+            url: "<?= base_url('warehouse/rgp_in/autonumberfoc') ?>",
+            dataType: "html",
+            success: function(result) {
+                if (result == "") {
+                    toastr.info("Please Check Configuration in Serial No First");
+                } else {
+                    $("#number").textbox('setValue', result);
+                }
+            }
+        });
+    }
+
+    function addTable(process_type = "", item_category_id = "", company_id = "", link = "") {
+        if (process_type == 'FOC' || process_type == 'RGP') {
+            var readonly = false;
+        } else {
+            var readonly = true;
+        }
         $('#dg2').datagrid({
             url: link,
             singleSelect: true,
@@ -238,7 +262,8 @@
                     editor: {
                         type: 'combogrid',
                         options: {
-                            url: '<?= base_url('warehouse/rgp_out/readItemCategory/'); ?>' + item_category_id,
+                            readonly: readonly,
+                            url: '<?= base_url('warehouse/rgp_out/readItemCategory/'); ?>' + item_category_id + "/" + window.btoa(company_id),
                             required: true,
                             panelWidth: 600,
                             idField: 'id',
@@ -308,7 +333,7 @@
                     editor: {
                         type: 'textbox',
                         options: {
-                            readonly: true
+                            readonly: readonly
                         }
                     }
                 }, {
@@ -319,7 +344,7 @@
                     editor: {
                         type: 'textbox',
                         options: {
-                            readonly: true
+                            readonly: readonly
                         }
                     }
                 }, {
@@ -330,7 +355,7 @@
                     editor: {
                         type: 'textbox',
                         options: {
-                            readonly: true
+                            readonly: readonly
                         }
                     }
                 }, {
@@ -341,7 +366,7 @@
                     editor: {
                         type: 'textbox',
                         options: {
-                            readonly: true
+                            readonly: readonly
                         }
                     }
                 }, {
@@ -424,7 +449,7 @@
                         type: 'numberbox',
                         options: {
                             precision: 2,
-                            readonly: true
+                            readonly: readonly
                         }
                     }
                 }, {
@@ -436,7 +461,7 @@
                         type: 'numberbox',
                         options: {
                             precision: 2,
-                            readonly: true
+                            readonly: readonly
                         }
                     }
                 }, {
@@ -448,7 +473,7 @@
                         type: 'numberbox',
                         options: {
                             precision: 2,
-                            readonly: true
+                            readonly: readonly
                         }
                     }
                 }, {
@@ -460,7 +485,7 @@
                         type: 'numberbox',
                         options: {
                             precision: 2,
-                            readonly: true
+                            readonly: readonly
                         }
                     }
                 }, {
@@ -472,7 +497,7 @@
                         type: 'numberbox',
                         options: {
                             precision: 2,
-                            readonly: true
+                            readonly: readonly
                         }
                     }
                 }, ]
@@ -506,14 +531,19 @@
     }
 
     function onClickCell(index, field) {
-        if (editIndex != index) {
-            if (endEditing()) {
-                $('#dg2').datagrid('selectRow', index).datagrid('beginEdit', index);
-                editIndex = index;
-            } else {
-                setTimeout(function() {
-                    $('#dg2').datagrid('selectRow', editIndex);
-                }, 0);
+        var process_type = $("#process_type").combobox('getValue');
+        if (process_type != 'FOC' || process_type == 'NRGP') {
+            // alert('tidak bisa edit');
+        } else {
+            if (editIndex != index) {
+                if (endEditing()) {
+                    $('#dg2').datagrid('selectRow', index).datagrid('beginEdit', index);
+                    editIndex = index;
+                } else {
+                    setTimeout(function() {
+                        $('#dg2').datagrid('selectRow', editIndex);
+                    }, 0);
+                }
             }
         }
     }
@@ -526,57 +556,67 @@
         var rgp_type_id = $("#rgp_type_id").combobox('getValue');
         var reference_number = $("#reference_number").textbox('getValue');
         var return_date_estimation = $("#return_date_estimation").datebox('getValue');
-        if (process_type != "" && company_id != "" && item_category_id != "" && departement_id != "" && rgp_type_id != "" && reference_number != "" && return_date_estimation != "") {
-            if (endEditing()) {
-                $('#dg2').datagrid('appendRow', {
-                    currency: 'INR',
-                    // qty: '0',
-                    stock: '0'
-                });
-                editIndex = $('#dg2').datagrid('getRows').length - 1;
-                $('#dg2').datagrid('selectRow', editIndex).datagrid('beginEdit', editIndex);
-            }
+        if (process_type == 'NRGP') {
+            toastr.error("Can't add or remove for process type RGP/NRGP");
         } else {
-            toastr.error("Please Fill Require Field");
+            if (process_type != "" && company_id != "" && item_category_id != "" && departement_id != "" && rgp_type_id != "" && reference_number != "" && return_date_estimation != "") {
+                if (endEditing()) {
+                    $('#dg2').datagrid('appendRow', {
+                        currency: 'INR',
+                        // qty: '0',
+                        stock: '0'
+                    });
+                    editIndex = $('#dg2').datagrid('getRows').length - 1;
+                    $('#dg2').datagrid('selectRow', editIndex).datagrid('beginEdit', editIndex);
+                }
+            } else {
+                toastr.error("Please Fill Require Field");
+            }
         }
     }
 
     function removeit() {
-        if (editIndex == undefined) {
-            return true;
-        }
+        var process_type = $("#process_type").combobox('getValue');
 
-        var dg = $('#dg2');
-        var ed = dg.datagrid('getEditor', {
-            index: editIndex,
-            field: 'item_id'
-        });
-
-        var number = $("#number").textbox('getValue');
-        var item_id = $(ed.target).textbox('getValue');
-
-        $.ajax({
-            method: 'post',
-            url: '<?= base_url('warehouse/rgp_out/delete') ?>',
-            data: {
-                number: number,
-                item_id: item_id
-            },
-            success: function(result) {
-                var result = eval('(' + result + ')');
-                toastr.success(result.message);
-            },
-            error: function(jqXHR, textStatus, errorThrown) {
-                toastr.error("This data is already used in other modules, You must delete it First", "Error");
-
-            },
-            complete: function(data) {
-                $('#dg').datagrid('reload');
+        if (process_type == 'NRGP') {
+            toastr.error("Can't add or remove for process type RGP/NRGP");
+        } else {
+            if (editIndex == undefined) {
+                return true;
             }
-        });
 
-        $('#dg2').datagrid('cancelEdit', editIndex).datagrid('deleteRow', editIndex);
-        editIndex = undefined;
+            var dg = $('#dg2');
+            var ed = dg.datagrid('getEditor', {
+                index: editIndex,
+                field: 'item_id'
+            });
+
+            var number = $("#number").textbox('getValue');
+            var item_id = $(ed.target).textbox('getValue');
+
+            $.ajax({
+                method: 'post',
+                url: '<?= base_url('warehouse/rgp_out/delete') ?>',
+                data: {
+                    number: number,
+                    item_id: item_id
+                },
+                success: function(result) {
+                    var result = eval('(' + result + ')');
+                    toastr.success(result.message);
+                },
+                error: function(jqXHR, textStatus, errorThrown) {
+                    toastr.error("This data is already used in other modules, You must delete it First", "Error");
+
+                },
+                complete: function(data) {
+                    $('#dg').datagrid('reload');
+                }
+            });
+
+            $('#dg2').datagrid('cancelEdit', editIndex).datagrid('deleteRow', editIndex);
+            editIndex = undefined;
+        }
     }
 
     function summaryFormula() {
@@ -678,7 +718,15 @@
                 $('#dlg_insert').dialog('open');
                 $('#frm_insert').form('load', row);
                 $("#number").textbox('disable');
-                addTable(row.item_category_id, '<?= base_url('warehouse/rgp_out/datatableUpdates?number=') ?>' + window.btoa(row.number));
+                $('#dg2').datagrid('loadData', []);
+                setTimeout(function() {
+                    addTable(row.process_type, row.item_category_id, row.company_id, '<?= base_url('warehouse/rgp_out/datatableUpdates?number=') ?>' + window.btoa(row.number) + '&rgp_number=' + window.btoa(row.rgp_number));
+                }, 100);
+                $("#process_type").combobox('disable');
+                $("#company_id").combogrid('disable');
+                $("#plant").combobox('disable');
+                $("#item_category_id").combobox('disable');
+                $("#rgp_number").combobox('disable');
             }
         } else {
             toastr.warning("Please select one of the data in the table first!", "Information");
@@ -1007,6 +1055,7 @@
                     var reference_number = $("#reference_number").textbox('getValue');
                     var return_date_estimation = $("#return_date_estimation").datebox('getValue');
                     var notes = $("#notes").textbox('getValue');
+                    var rgp_number = $("#rgp_number").combobox('getValue');
                     var declaration = $("#declaration").textbox('getValue');
 
                     Swal.fire({
@@ -1043,6 +1092,7 @@
                                     departement_id: departement_id,
                                     rgp_type_id: rgp_type_id,
                                     reference_number: reference_number,
+                                    rgp_number: rgp_number,
                                     return_date_estimation: return_date_estimation,
                                     notes: notes,
                                     declaration: declaration,
@@ -1165,6 +1215,53 @@
             }]
         });
 
+        $('#process_type').combobox({
+            url: '<?= base_url('warehouse/rgp_in/readProcessType'); ?>',
+            valueField: 'id',
+            textField: 'name',
+            prompt: 'Choose Type',
+            icons: [{
+                iconCls: 'icon-clear',
+                handler: function(e) {
+                    $(e.data.target).combobox('clear').combobox('textbox').focus();
+                }
+            }],
+            onSelect: function(val) {
+                if (val.id == 'FOC') {
+                    autonumberFoc();
+                } else {
+                    autonumber("<?= $id_menu ?>");
+                }
+                var company_id = $('#company_id').combogrid('getValue');
+                $('#rgp_number').combobox({
+                    url: '<?= base_url('warehouse/rgp_out/readDocumentIn?process_type='); ?>' + val.id + '&company_id=' + company_id,
+                    valueField: 'number',
+                    textField: 'number',
+                    prompt: 'Choose RGP IN',
+                    icons: [{
+                        iconCls: 'icon-clear',
+                        handler: function(e) {
+                            $(e.data.target).combobox('clear').combobox('textbox').focus();
+                        }
+                    }],
+                    onSelect: function(rgp) {
+                        var number = $("#number").textbox('getValue');
+                        var process_type = $('#process_type').combobox('getValue');
+                        var item_category_id = $('#item_category_id').combobox('getValue');
+                        var company_id = $('#company_id').combogrid('getValue');
+                        addTable(process_type, item_category_id, company_id, '<?= base_url('warehouse/rgp_out/datatableUpdates?number=') ?>' + window.btoa(number) + '&rgp_number=' + window.btoa(rgp.number));
+                    }
+                });
+                var number = $("#number").textbox('getValue');
+                var rgp_number = $("#rgp_number").combobox('getValue');
+                var item_category_id = $('#item_category_id').combobox('getValue');
+                var company_id = $('#company_id').combogrid('getValue');
+
+                $('#dg2').datagrid('loadData', []);
+                addTable(val.id, item_category_id, company_id, '<?= base_url('warehouse/rgp_out/datatableUpdates?number=') ?>' + window.btoa(number) + '&rgp_number=' + window.btoa(rgp_number));
+            }
+        });
+
         $('#item_category_id').combobox({
             url: '<?= base_url('master/item_categories/reads'); ?>',
             valueField: 'id',
@@ -1178,8 +1275,11 @@
             }],
             onSelect: function(category) {
                 var number = $("#number").textbox('getValue');
+                var rgp_number = $("#rgp_number").combobox('getValue');
+                var process_type = $('#process_type').combobox('getValue');
+                var company_id = $('#company_id').combogrid('getValue');
                 $('#dg2').datagrid('loadData', []);
-                addTable(category.id, '<?= base_url('warehouse/rgp_out/datatableUpdates?number=') ?>' + window.btoa(number));
+                addTable(process_type, category.id, company_id, '<?= base_url('warehouse/rgp_out/datatableUpdates?number=') ?>' + window.btoa(number) + '&rgp_number=' + window.btoa(rgp_number));
             }
         });
 
@@ -1210,10 +1310,10 @@
                     width: 100
                 }]
             ],
-            onSelect: function(valItem, rowCompany) {
-                if (rowCompany.type == 'CUSTOMER') {
+            onSelect: function(valItem, rowItem) {
+                if (rowItem.type == 'CUSTOMER') {
                     $('#plant').combobox({
-                        url: '<?= base_url('master/customers/readAddress/') ?>' + window.btoa(rowCompany.id),
+                        url: '<?= base_url('master/customers/readAddress/') ?>' + window.btoa(rowItem.id),
                         valueField: 'plant',
                         textField: 'plant',
                         prompt: "Choose Plant",
@@ -1230,6 +1330,26 @@
                 } else {
                     $("#plant").combobox('clear');
                 }
+
+                var process_type = $('#process_type').combobox('getValue');
+                $('#rgp_number').combobox({
+                    url: '<?= base_url('warehouse/rgp_out/readDocumentIn?process_type='); ?>' + process_type + '&company_id=' + rowItem.id,
+                    valueField: 'number',
+                    textField: 'number',
+                    prompt: 'Choose RGP IN',
+                    icons: [{
+                        iconCls: 'icon-clear',
+                        handler: function(e) {
+                            $(e.data.target).combobox('clear').combobox('textbox').focus();
+                        }
+                    }],
+                    onSelect: function(rgp) {
+                        var number = $("#number").textbox('getValue');
+                        var process_type = $('#process_type').combobox('getValue');
+                        var item_category_id = $('#item_category_id').combobox('getValue');
+                        addTable(process_type, item_category_id, rowItem.id, '<?= base_url('warehouse/rgp_out/datatableUpdates?number=') ?>' + window.btoa(number) + '&rgp_number=' + window.btoa(rgp.number));
+                    }
+                });
                 // $("#uom").textbox('setValue', rowItem.uom);
             }
         });

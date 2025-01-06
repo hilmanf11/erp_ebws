@@ -334,7 +334,12 @@ class Report_history_transactions_rgp extends CI_Controller
                     $working_date = date('Y-m-d', $i);
 
                     $transactions = $this->crud->query("SELECT
-                    a.*,
+                        a.process_type,a.created_by,
+                        a.transaction_date,
+                        a.return_date_estimation,
+                        a.number,
+                        a.reference_number,a.rgp_number,a.type,
+                        a.value,
                         SUM(a.qty) as qty,
                         (CASE 
                             WHEN b.id is not null THEN b.name
@@ -353,7 +358,7 @@ class Report_history_transactions_rgp extends CI_Controller
                     LEFT JOIN departements e on a.departement_id = e.id
                     LEFT JOIN rgp_types f on a.rgp_type_id = f.id
                     WHERE a.item_id = '$item_id' and a.transaction_date = '$working_date'
-                    GROUP BY a.item_id");
+                    GROUP BY a.transaction_date, a.process_type, a.item_id");
 
                     foreach ($transactions as $transaction) {
                         if ($transaction->type == "IN") {
@@ -369,7 +374,7 @@ class Report_history_transactions_rgp extends CI_Controller
                             $qty_out = $transaction->qty;
                             $out_value = $transaction->value;
                             $balance = ($begin - $transaction->qty);
-                            $balance_value = ($begin - $transaction->value);
+                            $balance_value = ($begin_value - $transaction->value);
                         }
                         $html .= '  <tr>
                                             <td></td>

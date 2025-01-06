@@ -52,22 +52,24 @@ class Rgp_in extends CI_Controller
         $post = isset($_POST['q']) ? $_POST['q'] : "";
         $process_type = isset($_GET['process_type']) ? $_GET['process_type'] : "";
         $company_id = isset($_GET['company_id']) ? $_GET['company_id'] : "";
-        if ($process_type == 'FOC') {
-            $process = " and a.process_type like '%$process_type%'";
-        } else {
-            $process = "";
-        }
+
         if (!empty($company_id)) {
             $company = " and a.company_id = '$company_id'";
         } else {
             $company = "";
         }
-        $send = $this->crud->query("
-        select a.number 
-        from rgp_transactions a
-        left join (select rgp_number from rgp_transactions group by rgp_number) b on a.number=b.rgp_number
-        where a.type='OUT' and a.number LIKE '%$post%' and b.rgp_number is null $process $company group by number
-        ");
+
+        if ($process_type == 'NRGP') {
+            $send = $this->crud->query("
+            select a.number 
+            from rgp_transactions a
+            left join (select rgp_number from rgp_transactions group by rgp_number) b on a.number=b.rgp_number
+            where a.type='OUT' and a.number LIKE '%$post%' and b.rgp_number is null and a.process_type = 'RGP' $company group by number
+            ");
+        } else {
+            $send = [];
+        }
+
         echo json_encode($send);
     }
 
@@ -362,6 +364,7 @@ class Rgp_in extends CI_Controller
             g.name as item_category_name,
             h.name as departement_name,
             i.name as rgp_type_name,
+            a.item_category_id,
             (CASE 
                 WHEN b.id  is not null THEN k.mpq
                 ELSE c.qty_box
@@ -394,6 +397,7 @@ class Rgp_in extends CI_Controller
     public function datatableUpdates()
     {
         if ($this->input->get()) {
+            $number = base64_decode($this->input->get('number'));
             $rgp_number = base64_decode($this->input->get('rgp_number'));
 
             $this->db->select("
@@ -426,10 +430,15 @@ class Rgp_in extends CI_Controller
             $this->db->join('departements h', 'a.departement_id = h.id', 'left');
             $this->db->join('rgp_types i', 'a.rgp_type_id = i.id', 'left');
             $this->db->join('item_familys j', 'b.item_family_id = j.id', 'left');
-            $this->db->where('a.number', $rgp_number);
+            if (!empty($rgp_number)) {
+                $this->db->where('a.number', $rgp_number);
+            } else {
+                $this->db->where('a.number', $number);
+            }
             $this->db->order_by('a.item_id', 'ASC');
             $records = $this->db->get()->result_array();
 
+            // die($this->db->last_query());
             echo json_encode($records);
         }
     }
@@ -814,7 +823,7 @@ class Rgp_in extends CI_Controller
         die($send);
     }
 
-    public function print_label($rgp_number)
+    public function print_label($rgp_number, $item_category_id)
     {
         //Config
         $this->db->select('*');
@@ -836,12 +845,18 @@ class Rgp_in extends CI_Controller
                 WHEN c.id is not null THEN c.name
                 ELSE d.name
             END) as item_name,
-            b.uom, a.qty,a.label_no,b.transaction_date
+            b.uom, a.qty,a.label_no,b.transaction_date,b.company_id,
+            (CASE 
+                WHEN e.id is not null THEN e.name
+                ELSE f.name
+            END) as company_name
         ");
         $this->db->from('rgp_transaction_labels a');
         $this->db->join('rgp_transactions b', 'a.rgp_number = b.number');
         $this->db->join('item_rm c', 'b.item_id = c.id', 'left');
         $this->db->join('item_fg d', 'b.item_id = d.id', 'left');
+        $this->db->join('suppliers e', 'b.company_id = e.id', 'left');
+        $this->db->join('customers f', 'b.company_id = f.id', 'left');
         $this->db->where('a.deleted', 0);
         //$this->db->where('a.status', 0);
         $this->db->group_by('a.label_no');
@@ -857,68 +872,119 @@ class Rgp_in extends CI_Controller
                     </head>
                     <style>body {font-family: Arial, Helvetica, sans-serif; margin:5px;}#customers {border-collapse: collapse; width: 100%; font-size: 9px;}#customers td, #customers th {border: 1px solid black;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: #ddd;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: center;color: black;}</style><body>';
         if ($records) {
-            $html .= '<div style="width: 44mm;">';
-            $no = 1;
-            foreach ($records as $record) {
-                if ($no == 3) {
-                    $no = 1;
+            if ($item_category_id != "C08") { // JIKA Bukan finish good
+                $html .= '<div style="width: 44mm;">';
+                $no = 1;
+                foreach ($records as $record) {
+                    if ($no == 3) {
+                        $no = 1;
+                    }
+                    if ($no == 1) {
+                        $padding = "padding:2mm 3mm 3mm 2mm;";
+                    } else {
+                        $padding = "padding:2mm 3mm 3mm 2mm;";
+                    }
+                    //Generate QRcode
+                    $this->createQrcode($record->label_no, "assets/image/qrcode/");
+                    $html .= '  <div style="width: 44mm; max-height:40mm; float:left; ' . $padding . '">
+                                    <table id="customers" border="1" style="margin-bottom:20px;">
+                                        <tr>
+                                            <th colspan="3" style="font-size:7px; text-align:center;"><b>' . $config->name . '</b></th>
+                                        </tr>
+                                        <tr>
+                                            <td colspan="3" style="height:35px;">
+                                                <div style="float:left;">
+                                                    <small style="font-size:7px;"><b>' . $record->item_number . '</b></small><br>
+                                                    <small style="font-size:12px;"><b>' . $record->item_id . '</b></small>
+                                                    <br>
+                                                    <b style="font-size:7px;"></b>
+                                                </div>
+                                                
+                                                <div style="float:right;">
+                                                    <small style="font-size:15px;"><b></b></small><small style="font-size:10px;"><b></b></small>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th style="text-align:left">
+                                                <small>Quantity</small><br><b style="font-size:20px;">' . number_format($record->qty, 2) . '</b></small><br>
+                                                <small style="font-size:15px; float: right;"><b>' . $record->uom . '</b></small>
+                                            </th>
+                                            <th style="text-align:left">
+                                                <small>Location</small><br><b style="font-size:15px;">-</b><br>
+                                            </th>
+                                        </tr>
+                                        
+                                        <tr>
+                                            <th style="text-align:left">
+                                                <div style="display: inline-block;">
+                                                    <small>Date :</small><br> 
+                                                    <b style="font-size:8px;">' . $record->transaction_date . '</b>
+                                                </div>
+                                                <div style="display: inline-block;">
+                                                    <small>Label No :</small><br>
+                                                    <b style="font-size:8px;">' . $record->label_no . '</b>
+                                                </div>
+                                            </th>
+                                            <th style="text-align:center;">
+                                                <img src="' . base_url('assets/image/qrcode/' . $record->label_no . '.png') . '" width="50"/>
+                                            </th>
+                                        </tr>
+                                    </table>
+                                </div>';
+                    $no++;
                 }
-                if ($no == 1) {
-                    $padding = "padding:2mm 3mm 3mm 2mm;";
-                } else {
-                    $padding = "padding:2mm 3mm 3mm 2mm;";
-                }
-                //Generate QRcode
-                $this->createQrcode($record->label_no, "assets/image/qrcode/");
-                $html .= '  <div style="width: 44mm; max-height:40mm; float:left; ' . $padding . '">
-                                <table id="customers" border="1" style="margin-bottom:20px;">
+                $html .= '</div><script>window.print()</script>';
+            } else {
+                $this->createQrcode($rgp_number, "assets/image/qrcode/");
+                $no = 1;
+                foreach ($records as $record) {
+                    $qrcodes = $record->label_no;
+                    $this->createQrcode($qrcodes, "assets/image/qrcode/", $record->label_no);
+                    $html .= '  <div style="width: 70mm; max-height:90mm; border:1px solid black; margin-bottom:5px;">
+                                <table id="customers" border="1">
                                     <tr>
-                                        <th colspan="3" style="font-size:7px; text-align:center;"><b>' . $config->name . '</b></th>
+                                        <td style="width:15mm; height: 9mm; font-size:12px; text-align:center;">
+                                            <img src="' . base_url('assets/image/qrcode/' . $rgp_number . '.png') . '" width="50"/>
+                                        </td>
+                                        <td colspan="2" style="font-size:15px; text-align:left;"><span style="font-size:10px;">Checksheet ID</span><br><b>' . $rgp_number . '</b></td>
                                     </tr>
                                     <tr>
-                                        <td colspan="3" style="height:35px;">
-                                            <div style="float:left;">
-                                                <small style="font-size:7px;"><b>' . $record->item_number . '</b></small><br>
-                                                <small style="font-size:12px;"><b>' . $record->item_id . '</b></small>
-                                                <br>
-                                                <b style="font-size:7px;"></b>
-                                            </div>
-                                            
-                                            <div style="float:right;">
-                                                <small style="font-size:15px;"><b></b></small><small style="font-size:10px;"><b></b></small>
-                                            </div>
+                                        <td style="width:15mm; height: 9mm; font-size:12px; text-align:center;">Cust. Name.</td>
+                                        <td colspan="2"><small style="font-size:12px;"><span style="font-size:10px;">' . $record->company_id . '</span><br><b>' . $record->company_name . '</b></small></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="width:15mm; height: 9mm; font-size:14px; text-align:center;">EBWS P/N</td>
+                                        <td colspan="2"><small style="font-size:30px;"><b>' . $record->item_id . '</b></small></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="width:15mm; height: 9mm; font-size:12px; text-align:center;">Cust P/N</td>
+                                        <td colspan="2"><small style="font-size:14px;"><b>' . $record->item_number . '</b></small></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="width:15mm; height: 9mm; font-size:12px; text-align:center;">Label. No</td>
+                                        <td colspan="2"><small style="font-size:14px;"><b>' . $record->label_no . '</b></small></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="width:15mm; height: 9mm; font-size:12px; text-align:center;">Quantity</td>
+                                        <td style="width:25mm;"><small style="font-size:20px;"><b>' . number_format($record->qty, 2) . '</b></small></td>
+                                        <td style="text-align:center;" style="width:25mm" rowspan="3">
+                                            <img src="' . base_url('assets/image/qrcode/' . $record->label_no . '.png') . '" width="100"/>
                                         </td>
                                     </tr>
                                     <tr>
-                                        <th style="text-align:left">
-                                            <small>Quantity</small><br><b style="font-size:20px;">' . number_format($record->qty, 2) . '</b></small><br>
-                                            <small style="font-size:15px; float: right;"><b>' . $record->uom . '</b></small>
-                                        </th>
-                                        <th style="text-align:left">
-                                            <small>Location</small><br><b style="font-size:15px;">-</b><br>
-                                        </th>
+                                        <td style="width:15mm; height: 9mm; font-size:12px; text-align:center;">Date</td>
+                                        <td><small style="font-size:16px;"><b>' . $record->transaction_date . '</b></small></td>
                                     </tr>
-                                    
                                     <tr>
-                                        <th style="text-align:left">
-                                            <div style="display: inline-block;">
-                                                <small>Date :</small><br> 
-                                                <b style="font-size:8px;">' . $record->transaction_date . '</b>
-                                            </div>
-                                            <div style="display: inline-block;">
-                                                <small>Label No :</small><br>
-                                                <b style="font-size:8px;">' . $record->label_no . '</b>
-                                            </div>
-                                        </th>
-                                        <th style="text-align:center;">
-                                            <img src="' . base_url('assets/image/qrcode/' . $record->label_no . '.png') . '" width="50"/>
-                                        </th>
+                                        <td colspan="2" style="text-align:center;"><img src="' . $config->favicon . '" width="60"/></td>
                                     </tr>
                                 </table>
                             </div>';
-                $no++;
+                    $no++;
+                }
+                $html .= '</div><script>window.print()</script>';
             }
-            $html .= '</div><script>window.print()</script>';
         } else {
             $html .= "<br><br><br><center><h3>Data not found or data has been scanned</h3></center>";
         }

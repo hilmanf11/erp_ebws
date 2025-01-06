@@ -46,6 +46,32 @@ class Rgp_out extends CI_Controller
         echo json_encode($send);
     }
 
+    public function readDocumentIn()
+    {
+        $post = isset($_POST['q']) ? $_POST['q'] : "";
+        $process_type = isset($_GET['process_type']) ? $_GET['process_type'] : "";
+        $company_id = isset($_GET['company_id']) ? $_GET['company_id'] : "";
+
+        if (!empty($company_id)) {
+            $company = " and a.company_id = '$company_id'";
+        } else {
+            $company = "";
+        }
+
+        if ($process_type == 'NRGP') {
+            $send = $this->crud->query("
+            select a.number 
+            from rgp_transactions a
+            left join (select rgp_number from rgp_transactions group by rgp_number) b on a.number=b.rgp_number
+            where a.type='IN' and a.number LIKE '%$post%' and b.rgp_number is null and a.process_type = 'RGP' $company group by number
+            ");
+        } else {
+            $send = [];
+        }
+
+        echo json_encode($send);
+    }
+
     public function readCompany()
     {
         $post = isset($_POST['q']) ? $_POST['q'] : "";
@@ -59,7 +85,7 @@ class Rgp_out extends CI_Controller
         echo json_encode($send);
     }
 
-    public function readItemCategory($item_category = "")
+    public function readItemCategory($item_category = "", $company_id = "")
     {
 
         $trans_date = date("Y-m-d");
@@ -112,6 +138,12 @@ class Rgp_out extends CI_Controller
                 GROUP BY a.id");
             }
         } else { // FG
+            $company_id = base64_decode($company_id);
+            if ($company_id != '') {
+                $whereCompany = "and a.customer_id='$company_id'";
+            } else {
+                $whereCompany = "";
+            }
             $send = $this->crud->query("SELECT a.number as id, a.number_customer as number, a.name, a.uom, a.hsn_code,
             (COALESCE(b.qty_sto, 0) + COALESCE(d.sto_qty_in, 0) + COALESCE(c.qty_wip, 0) - COALESCE(g.qty, 0) - COALESCE(d.sto_qty_out, 0)) as stock 
             FROM item_fg a 
@@ -121,7 +153,7 @@ class Rgp_out extends CI_Controller
             LEFT JOIN (SELECT a.item_fg_id, (CASE WHEN a.type = 'IN' THEN COALESCE(SUM(a.qty), 0) ELSE 0 END) as sto_qty_in, (CASE WHEN a.type = 'OUT' THEN COALESCE(SUM(a.qty), 0) ELSE 0 END) as sto_qty_out FROM sto_fg a WHERE a.trans_date <= '$trans_date' and (a.approved_to = '' or a.approved_to is null) GROUP BY item_fg_id) d ON a.id = d.item_fg_id
             LEFT JOIN (SELECT item_fg_id, delivery_note_date, COALESCE(SUM(qty), 0) as qty FROM delivery_notes WHERE DATE_FORMAT(created_date, '%Y-%m-%d') <= '$trans_date' GROUP BY item_fg_id) g ON a.id = g.item_fg_id
             
-            WHERE a.id like '%$post%' or a.number like '%$post%' or a.name like '%$post%'
+            WHERE (a.id like '%$post%' or a.number like '%$post%' or a.name like '%$post%') $whereCompany
             GROUP BY a.id");
         }
         echo json_encode($send);
@@ -392,6 +424,7 @@ class Rgp_out extends CI_Controller
     {
         if ($this->input->get()) {
             $number = base64_decode($this->input->get('number'));
+            $rgp_number = base64_decode($this->input->get('rgp_number'));
 
             $this->db->select("
             (CASE 
@@ -435,10 +468,15 @@ class Rgp_out extends CI_Controller
             $this->db->join('departements h', 'a.departement_id = h.id', 'left');
             $this->db->join('rgp_types i', 'a.rgp_type_id = i.id', 'left');
             $this->db->join('item_familys j', 'b.item_family_id = j.id', 'left');
-            $this->db->where('a.number', $number);
+            if (!empty($rgp_number) && $rgp_number != "null") {
+                $this->db->where('a.number', $rgp_number);
+            } else {
+                $this->db->where('a.number', $number);
+            }
             $this->db->order_by('a.item_id', 'ASC');
             $records = $this->db->get()->result_array();
 
+            // die($this->db->last_query());
             echo json_encode($records);
         }
     }
@@ -467,6 +505,7 @@ class Rgp_out extends CI_Controller
                 "rgp_type_id" => $post['rgp_type_id'],
                 "reference_number" => $post['reference_number'],
                 "return_date_estimation" => $post['return_date_estimation'],
+                "rgp_number" => $post['rgp_number'],
                 "notes" => $post['notes'],
                 "item_id" => $item_id,
                 "uom" => $post['uom'],
