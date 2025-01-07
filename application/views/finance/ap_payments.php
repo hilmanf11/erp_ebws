@@ -1650,9 +1650,13 @@
                         textField: 'number',
                         mode: 'remote',
                         fitColumns: true,
+                        multiple: true,
                         prompt: "Choose Purchase invoice No",
                         columns: [
                             [{
+                                field: 'ck',
+                                checkbox: true,
+                            },{
                                 field: 'number',
                                 title: 'Purchase Invoice No',
                                 width: 200

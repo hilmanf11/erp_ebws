@@ -404,7 +404,7 @@
 
                                         if (i == rows.length) {
                                             Swal.close();
-                                            $('#dg').datagrid('reload');
+                                            filter();
                                         }
                                     },
                                     error: function(jqXHR, textStatus, errorThrown) {
@@ -504,14 +504,7 @@
         window.location.reload();
     }
     $(function() {
-        // $('#dg').datagrid({
-        //     url: '<?= base_url('assets/fixeds/datatables') ?>',
-        //     pagination: true,
-        //     clientPaging: false,
-        //     remoteFilter: true,
-        //     rownumbers: true,
-        //     fit: true,
-        // });
+        filter();
 
         $('#dg').datagrid({
             // url: '<?= base_url('assets/fixeds/datatables') ?>',
@@ -568,7 +561,7 @@
                                         toastr.error(result.message, result.title);
                                     }
 
-                                    $('#dg').datagrid('reload');
+                                    filter();
                                 }
                             });
                         }

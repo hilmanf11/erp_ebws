@@ -51,6 +51,19 @@ class Journal_posting_banks extends CI_Controller
         echo json_encode($records);
     }
 
+    public function readVoucher()
+    {
+        $this->db->select('number');
+        $this->db->from('journal_postings');
+        $this->db->where("modul", 'BANK STATEMENT');
+        $this->db->group_by('number');
+        $this->db->order_by('number', 'desc');
+        $this->db->limit(1000);
+        $records = $this->db->get()->result_array();
+
+        echo json_encode($records);
+    }
+
     public function number($id_menu)
     {
         $datenow = date("Y-m-d");

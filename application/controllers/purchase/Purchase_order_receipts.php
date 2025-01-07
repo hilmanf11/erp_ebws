@@ -197,6 +197,12 @@ class Purchase_order_receipts extends CI_Controller
             $filter_doc_no = $this->input->get('filter_doc_no');
             $filter_status = $this->input->get('filter_status');
 
+            if ($filter_item_rm != "") {
+                $where_item_rm_id = "WHERE item_rm_id = '$filter_item_rm'";
+            }else{
+                $where_item_rm_id = "";
+            }
+
             $page = $this->input->post('page');
             $rows = $this->input->post('rows');
             //Pagination 1-10
@@ -208,7 +214,7 @@ class Purchase_order_receipts extends CI_Controller
             $id = $_POST['id'];
             if ($id === "0") {
                 $this->db->select('a.po_no, a.receipt_no, a.receipt_date, a.awb_no, a.awb_date, a.bc_kind, a.bc_document, a.bc_aju, a.bc_date, b.id as supplier_id, b.name as supplier_name, a.total_receipt as qty_receipt, a.total_label as qty_label, a.status');
-                $this->db->from('(SELECT *, sum(qty_label) as total_label, sum(qty_receipt) as total_receipt FROM purchase_order_receipts GROUP BY receipt_no ORDER BY status asc) a');
+                $this->db->from('(SELECT *, sum(qty_label) as total_label, sum(qty_receipt) as total_receipt FROM purchase_order_receipts '.$where_item_rm_id.' GROUP BY receipt_no ORDER BY status asc) a');
                 $this->db->join('suppliers b', 'a.supplier_id = b.id');
                 $this->db->join('purchase_orders c', 'a.po_no = c.po_no and a.item_rm_id = c.item_rm_id');
                 $this->db->where('a.deleted', 0);

@@ -332,25 +332,26 @@
                     editor: {
                         type: 'combogrid',
                         options: {
-                            url: '<?= base_url('master/supplier_items/readItem') ?>?supplier_id=' + supplier_id,
+                            // url: '<?= base_url('master/supplier_items/readItem') ?>?supplier_id=' + supplier_id,
+                            url: '<?= base_url('master/item_rm/readNotHsn') ?>',
                             required: true,
                             panelWidth: 550,
-                            idField: 'item_rm_id',
-                            textField: 'item_number',
+                            idField: 'id',
+                            textField: 'number',
                             mode: 'remote',
                             fitColumns: true,
                             prompt: 'Choose Part',
                             columns: [
                                 [{
-                                    field: 'item_rm_id',
+                                    field: 'id',
                                     title: 'Part No EBWS',
                                     width: 100
                                 }, {
-                                    field: 'item_number',
+                                    field: 'number',
                                     title: 'Part No Supplier',
                                     width: 200
                                 }, {
-                                    field: 'item_name',
+                                    field: 'name',
                                     title: 'Description',
                                     width: 200
                                 }]
@@ -380,8 +381,8 @@
                                 //     field: 'total'
                                 // });
 
-                                $(ed.target).textbox('setValue', rows.item_number);
-                                $(ed2.target).textbox('setValue', rows.item_name);
+                                $(ed.target).textbox('setValue', rows.number);
+                                $(ed2.target).textbox('setValue', rows.name);
                                 // $(ed3.target).numberbox('setValue', rows.price);
                                 // $(ed4.target).numberbox('setValue', 0);
                             }

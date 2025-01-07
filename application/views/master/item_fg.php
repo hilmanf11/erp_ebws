@@ -370,6 +370,7 @@
         $('#box_label').combobox('setValue', 'YES');
         $('#status').combobox('setValue', '0');
         $('#type').combobox('setValue', 'FG');
+        $('#account_number').combogrid('setValue', '30000001');
     }
 
     //EDIT DATA

@@ -34,6 +34,24 @@ class Purchase_orders extends CI_Controller
         }
     }
 
+    public function readRevision(){
+        $p_month = $this->input->post('p_month');
+        $p_year = $this->input->post('p_year');
+
+        $this->db->select('max(revision) as revision');
+        $this->db->from('generate_mrp');
+        $this->db->where('p_month', $p_month);
+        $this->db->where('p_year', $p_year);
+        $this->db->group_by('revision');
+        $rev = $this->db->get()->row();
+
+        // die(json_encode($rev));
+
+        $revision = @$rev->revision;
+
+        echo json_encode(array("rev" => $revision));
+    }
+
     function readPoSearch(){
         $filter_month = base64_decode($this->input->get('filter_month'));
         $filter_year = base64_decode($this->input->get('filter_year'));
@@ -1153,7 +1171,7 @@ class Purchase_orders extends CI_Controller
                             <div style="padding:10px;">
                                 <center>
                                     <br>
-                                    <h3 style="margin:0;">DELIVERY CONFIRMATION</h3>
+                                    <h3 style="margin:0;">DELIVERY SCHEDULE</h3>
                                 </center>
                                 <br>
                                 <div style="width:45%; float:left;">
@@ -1192,7 +1210,7 @@ class Purchase_orders extends CI_Controller
                                         <th style="text-align:center;">Part No EBWS</th>
                                         <th style="text-align:center;">Part No Supplier</th>
                                         <th style="text-align:center;">Part Name</th>
-                                        <th style="text-align:center;">ETA</th>
+                                        <th style="text-align:center;">ETD</th>
                                         <th style="text-align:center;">Currency</th>
                                         <th style="text-align:center;">Price</th>
                                         <th style="text-align:center;">Qty</th>

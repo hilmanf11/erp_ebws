@@ -389,6 +389,19 @@
                     rownumbers: true,
                     columns: [
                         [{
+                            field: 'status',
+                            title: '#',
+                            halign: 'center',
+                            width: 100,
+                            formatter: function(val, row){
+                                if(val == 0){
+                                    var details = "cancelDo('"+row.item_fg_id+"','"+row.delivery_order_no+"')";
+                                    return '<a class="btn btn-danger w-100" style="pointer-events: visible; opacity:1;" onclick="'+details+'">Cancel</a>';
+                                }else{
+                                    return "-";
+                                }
+                            }
+                        },{
                             field: 'item_fg_number',
                             title: 'Product No EBWS',
                             halign: 'center',
@@ -510,6 +523,23 @@
     //RELOAD
     function reload() {
         window.location.reload();
+    }
+
+    function cancelDo(item_fg_id, delivery_order_no){
+        $.messager.prompt('Cancel DO', 'Please input The Password', function(r){
+            if (r == "CANCELDO"){
+                $.ajax({
+                    type: "post",
+                    url: "<?= base_url("sales/delivery_orders/cancelDo"); ?>",
+                    data: "item_fg_id=" + item_fg_id + "&delivery_order_no=" + delivery_order_no,
+                    dataType: "json",
+                    success: function (response) {
+                        toastr.success(response.message, response.title);
+                        $('#dg').datagrid('reload');
+                    }
+                });
+            }
+        });
     }
 
     $(function() {

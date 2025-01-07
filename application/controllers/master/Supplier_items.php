@@ -204,16 +204,11 @@ class Supplier_items extends CI_Controller
         $offset = ($page - 1) * $rows;
         $result = array();
 
-        $this->db->select('a.*, c.number as item_rm_number, c.name as item_rm_name, c.uom, a.item_supplier, 
-            b.number as supplier_number, b.origin, e.name as pfm_name, b.name as supplier_name, b.type, 
-            f.name as maker_name, f.type as maker_type');
-        $this->db->from('supplier_item_histories a');
-        $this->db->join('suppliers b', 'b.id = a.supplier_id');
-        $this->db->join('item_rm c', 'c.id = a.item_rm_id');
-        $this->db->join('item_familys e', 'c.item_family_id = e.id', 'left');
-        $this->db->join('makers f', 'c.maker_id = f.id', 'left');
+        $this->db->select('a.*');
+        $this->db->from('(SELECT * FROM supplier_item_histories ORDER BY created_date DESC) a');
         $this->db->where('a.supplier_id', $supplier_id);
         $this->db->where('a.item_rm_id', $item_rm_id);
+        $this->db->group_by('a.price');
         $this->db->order_by('a.created_date', 'DESC');
         //Total Data
         $totalRows = $this->db->count_all_results('', false);
@@ -249,7 +244,6 @@ class Supplier_items extends CI_Controller
                 "item_rm_id" => $post['item_rm_id'],
                 "item_supplier" => $post['item_supplier'],
                 "maker_id" => $post['maker_id'],
-                "type" => $post['type'],
                 "mpq" => $post['mpq'],
                 "moq" => $post['moq'],
                 "share_order" => $post['share_order'],
@@ -263,7 +257,7 @@ class Supplier_items extends CI_Controller
                 "remarks" => $post['remarks'],
             );
 
-            if((@$rowSupItm->share_order + $post['share_order']) <= 100){
+            if((@$rowSupItm->share_order + $post['share_order']) <= 100 || (@$rowSupItm->share_order + $post['share_order']) != 0){
                 if($post['mpq'] > 0 && $post['moq'] > 0){
                     if (!$supplier_items) {
                         $attachment = $this->crud->upload('attachment', ["jpg", "png", "jpeg", "pdf", "xls", "xlsx", "docx"], 'assets/documents/supplier_items/', [], "supplier_items", "attachment");
@@ -353,11 +347,14 @@ class Supplier_items extends CI_Controller
     public function delete()
     {
         $data = $this->input->post();
-        $this->crud->delete('supplier_item_histories', ["supplier_id" => $data['supplier_id'], "item_rm_id" => $data['item_rm_id']]);
-        $this->crud->delete('supplier_item_prices', ["supplier_id" => $data['supplier_id'], "item_rm_id" => $data['item_rm_id']]);
-
-        $send = $this->crud->delete('supplier_items', $data);
-        echo $send;
+        $po = $this->crud->reads("purchase_orders", [], ["supplier_id" => $data['supplier_id'], "item_rm_id" => $data['item_rm_id']]);
+        if(empty($po)){
+            $this->crud->delete('supplier_item_histories', ["supplier_id" => $data['supplier_id'], "item_rm_id" => $data['item_rm_id']]);
+            $send = $this->crud->delete('supplier_items', $data);
+            echo $send;
+        }else{
+            echo json_encode(array("title" => "PO Register", "message" => "Data Cannot Delete, because the data already created in PO", "theme" => "error"));
+        }
     }
 
     //UPLOAD DATA
@@ -462,7 +459,7 @@ class Supplier_items extends CI_Controller
                 echo json_encode(array("title" => "Not Found", "message" => "Part No " . $data['item_rm_id'] . " Not Found", "theme" => "error"));
             }elseif(($rowSupItm->share_order + $data['share_order']) > 100){
                 echo json_encode(array("title" => "Share Order", "message" => "Share Order for Part No " . $post['item_rm_id'] . " Cannot >= 100", "theme" => "error"));
-            }elseif($data['mpq'] <= 0 || $data['moq'] <= 0){
+            }elseif($data['mpq'] <= 0 || $data['moq'] <= 0 || $data['share_order'] <= 0 || $data['leadtime'] <= 0){
                 echo json_encode(array("title" => "MPQ 0", "message" => "MPQ or MOQ for Part No " . $data['item_rm_id'] . " Cannot <= 0", "theme" => "error"));
             }elseif(@$supplier_items->supplier_id != "") {
                 if(@$supplier_items->price == $data['price']){
@@ -683,34 +680,24 @@ class Supplier_items extends CI_Controller
         $this->db->from('config');
         $config = $this->db->get()->row();
 
-        $this->db->select('a.item_rm_id, c.number as item_rm_number, c.name as item_rm_name, d.name as item_family_name, a.supplier_id, b.name as supplier_name, b.type, b.currency, a.price, a.valid_date, a.remarks, a.created_by, a.created_date');
-        $this->db->from('supplier_item_histories a');
-        $this->db->join('suppliers b', 'b.id = a.supplier_id');
-        $this->db->join('item_rm c', 'c.id = a.item_rm_id');
-        $this->db->join('item_familys d', "c.item_family_id = d.id and d.item_category_id IN ('C01')");
-        if($filter_category != ""){
-            $this->db->like('c.item_family_id', $filter_category);
-        }
-        if($filter_suppliers != ""){
-            $this->db->like('a.supplier_id', $filter_suppliers);
-        }
-        if($filter_item_rm != ""){
-            $this->db->like('a.item_rm_id', $filter_item_rm);
-        }
-        if($filter_maker != ""){
-            $this->db->like('e.number', $filter_maker);
-        }
-        if($filter_item_vendor != ""){
-            $this->db->like('a.item_supplier', $filter_item_vendor);
-        }
-        if($filter_type != ""){
-            $this->db->like('b.type', $filter_type);
-        }
-        $this->db->group_by('a.item_rm_id');
-        $this->db->group_by('a.supplier_id');
-        $this->db->group_by('a.price');
-        $this->db->order_by('c.number', 'ASC');
-        $records = $this->db->get()->result_array();
+        $sql = $this->db->query("SELECT z.* FROM 
+            (SELECT a.item_rm_id, c.number as item_rm_number, c.name as item_rm_name, d.name as item_family_name, a.supplier_id, b.name as supplier_name, b.type, b.currency, a.price, a.valid_date, a.remarks, a.created_by, a.created_date
+             FROM supplier_item_histories a 
+             JOIN suppliers b ON a.supplier_id = b.id
+             JOIN item_rm c ON a.item_rm_id = c.id
+             JOIN item_familys d ON c.item_family_id = d.id and d.item_category_id IN ('C01')
+             WHERE c.item_family_id like '%$filter_category%' AND a.supplier_id like '%$filter_suppliers%' AND a.item_rm_id like '%$filter_item_rm%' and b.type like '%$filter_type%'
+             UNION
+             SELECT a.item_rm_id, c.number as item_rm_number, c.name as item_rm_name, d.name as item_family_name, a.supplier_id, b.name as supplier_name, b.type, b.currency, a.price, a.valid_date, a.remarks, (CASE WHEN a.updated_by is null THEN a.created_by ELSE a.updated_by END) as created_by, (CASE WHEN a.updated_date is null THEN a.created_date ELSE a.updated_date END) as created_date
+             FROM supplier_items a 
+             JOIN suppliers b ON a.supplier_id = b.id
+             JOIN item_rm c ON a.item_rm_id = c.id
+             JOIN item_familys d ON c.item_family_id = d.id and d.item_category_id IN ('C01')
+             WHERE c.item_family_id like '%$filter_category%' AND a.supplier_id like '%$filter_suppliers%' AND a.item_rm_id like '%$filter_item_rm%' and b.type like '%$filter_type%') z
+             GROUP BY z.supplier_id, z.item_rm_number, z.price
+             ORDER BY z.supplier_id, z.item_rm_number, z.created_date DESC");
+        $records = $sql->result_array();
+
         $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#supplier_items {border-collapse: collapse;width: 100%;font-size: 12px;}#supplier_items td, #supplier_items th {border: 1px solid #ddd;padding: 2px;}#supplier_items tr:nth-child(even){background-color: #f2f2f2;}#supplier_items tr:hover {background-color: #ddd;}#supplier_items th {padding-top: 2px;padding-bottom: 2px;text-align: left;color: black;}</style><body>
         <center>
             <div style="float: left; font-size: 12px; text-align: left;">

@@ -286,19 +286,20 @@ class purchase_returns extends CI_Controller
             d.gst, 
             d.address,
             d.state,
-            e.price,
+            (CASE WHEN e.price is null THEN g.price ELSE e.price END) as price,
             f.invoice_no,
-            (a.qty * e.price) as value,
-            (((a.qty * e.price) * c.igst) / 100) as igst,
-            (((a.qty * e.price) * c.sgst) / 100) as sgst,
-            (((a.qty * e.price) * c.cgst) / 100) as cgst');
+            (a.qty * (CASE WHEN e.price is null THEN g.price ELSE e.price END)) as value,
+            (((a.qty * (CASE WHEN e.price is null THEN g.price ELSE e.price END)) * c.igst) / 100) as igst,
+            (((a.qty * (CASE WHEN e.price is null THEN g.price ELSE e.price END)) * c.sgst) / 100) as sgst,
+            (((a.qty * (CASE WHEN e.price is null THEN g.price ELSE e.price END)) * c.cgst) / 100) as cgst');
             // b.specification,
         $this->db->from('purchase_returns a');
         $this->db->join('item_rm b', 'a.item_rm_id = b.id');
         $this->db->join('hsn c', 'b.hsn_code = c.number', 'left');
         $this->db->join('suppliers d', 'a.supplier_id = d.id');
-        $this->db->join('purchase_orders e', 'a.item_rm_id = e.item_rm_id and a.supplier_id = e.supplier_id and a.po_no = e.po_no');
-        $this->db->join('purchase_confirm f', 'a.item_rm_id = f.item_rm_id and a.supplier_id = f.supplier_id and a.po_no = f.po_no');
+        $this->db->join('purchase_orders e', 'a.item_rm_id = e.item_rm_id and a.supplier_id = e.supplier_id and a.po_no = e.po_no', 'left');
+        $this->db->join('purchase_confirm f', 'a.item_rm_id = f.item_rm_id and a.supplier_id = f.supplier_id and a.po_no = f.po_no', 'left');
+        $this->db->join('supplier_items g', 'a.item_rm_id = g.item_rm_id and a.supplier_id = g.supplier_id', 'left');
         $this->db->where('a.deleted', 0);
         $this->db->where('a.return_no', $return_no);
         $this->db->group_by('a.id');

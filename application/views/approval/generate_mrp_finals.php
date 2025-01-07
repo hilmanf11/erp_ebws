@@ -14,6 +14,8 @@
             <th data-options="field:'type',width:120,halign:'center'">Supplier Type</th>
             <th data-options="field:'state',width:120,halign:'center'">State</th>
             <th data-options="field:'currency',width:80,align:'center'">Currency</th>
+            <th data-options="field:'total_qty',width:100,align:'right',halign:'center',formatter:numberformat">Total Qty</th>
+            <!-- <th data-options="field:'total_amount',width:120,align:'right',halign:'center',formatter:numberformatPrice">Total Amount</th> -->
             <!-- <th data-options="field:'remarks1',width:200,halign:'center'">Remarks Approval 1</th>
             <th data-options="field:'remarks2',width:200,halign:'center'">Remarks Approval 2</th>
             <th data-options="field:'remarks3',width:200,halign:'center'">Remarks Approval 3</th> -->
@@ -56,18 +58,21 @@
                 <th data-options="field:'qty_vendor',width:80,halign:'center',align:'right',formatter: numberformat">OS PO</th>
                 <th data-options="field:'qty_supply',width:80,halign:'center',align:'right',formatter: numberformat">OS Supply</th>
                 <th data-options="field:'qty_wo',width:80,halign:'center',align:'right',formatter: numberformat">OS WO</th>
-                <th data-options="field:'balance_1',width:120,halign:'center',align:'right',formatter: numberformat">NEED 1</th>
-                <th data-options="field:'balance_2',width:120,halign:'center',align:'right',formatter: numberformat">NEED 2</th>
-                <th data-options="field:'balance_3',width:120,halign:'center',align:'right',formatter: numberformat">NEED 3</th>
-                <th data-options="field:'balance_4',width:120,halign:'center',align:'right',formatter: numberformat">NEED 4</th>
-                <th data-options="field:'balance_5',width:120,halign:'center',align:'right',formatter: numberformat">NEED 5</th>
-                <th data-options="field:'balance_6',width:120,halign:'center',align:'right',formatter: numberformat">NEED 6</th>
+                <th data-options="field:'balance_1',width:120,halign:'center',align:'right',formatter: numberformat">BALANCE 1</th>
+                <th data-options="field:'balance_2',width:120,halign:'center',align:'right',formatter: numberformat">BALANCE 2</th>
+                <th data-options="field:'balance_3',width:120,halign:'center',align:'right',formatter: numberformat">BALANCE 3</th>
+                <th data-options="field:'balance_4',width:120,halign:'center',align:'right',formatter: numberformat">BALANCE 4</th>
+                <th data-options="field:'balance_5',width:120,halign:'center',align:'right',formatter: numberformat">BALANCE 5</th>
+                <th data-options="field:'balance_6',width:120,halign:'center',align:'right',formatter: numberformat">BALANCE 6</th>
                 <th data-options="field:'share_order',width:80,halign:'center',align:'right',formatter: numberformat">Share Order<br>(%)</th>
                 <th data-options="field:'safety_stock_persen',width:80,halign:'center',align:'right',formatter: numberformat">Safety Stock<br>(%)</th>
                 <th data-options="field:'safety_stock',width:80,halign:'center',align:'right',formatter: numberformat">Safety Stock</th>
                 <th data-options="field:'share_order_qty',width:120,halign:'center',align:'right',formatter: numberformat">Share Order</th>
                 <th data-options="field:'total_need',width:120,halign:'center',align:'right',formatter: numberformat">Total Need</th>
                 <th data-options="field:'mrp_result',width:120,halign:'center',align:'right',formatter: numberformat">MRP Result</th>
+                <th data-options="field:'currency',width:80,halign:'center',align:'center'">Currency</th>
+                <th data-options="field:'price',width:100,halign:'center',align:'right',formatter: numberformatPrice2">Price</th>
+                <th data-options="field:'total_amount',width:120,halign:'center',align:'right',formatter: numberformatPrice">Total Amount</th>
                 <th data-options="field:'created_by',width:120,halign:'center'">Create By</th>
                 <th data-options="field:'created_date',width:150,halign:'center'">Create Date</th>
             </tr>
@@ -231,9 +236,25 @@
 		return formatter.format(value);
 	}
 
-	function numberformatPrice(value, row){
+	function numberformatPrice2(value, row){
+        var digit = 4;
+
         const formatter = new Intl.NumberFormat('ja-JP', {
-            minimumFractionDigits: 4
+            minimumFractionDigits: digit
+        });
+
+        return formatter.format(value);
+    }
+
+	function numberformatPrice(value, row){
+        if(row.currency == "INR"){
+            var digit = 2;
+        }else{
+            var digit = 4;
+        }
+
+        const formatter = new Intl.NumberFormat('ja-JP', {
+            minimumFractionDigits: digit
         });
 
         return formatter.format(value);

@@ -112,13 +112,13 @@ class Delivery_confirm_others extends CI_Controller
             $offset = ($page - 1) * $rows;
             $result = array();
             //Select Query
-            // $this->db->select("a.*, b.name as supplier_name, c.number as item_rm_number, c.name as item_rm_name, d.name as item_family_name, e.receipt");
-            $this->db->select("a.*, b.name as supplier_name, c.number as item_rm_number, c.name as item_rm_name, d.name as item_family_name, '0' as receipt");
+            $this->db->select("a.*, b.name as supplier_name, c.number as item_rm_number, c.name as item_rm_name, d.name as item_family_name, f.qty_confirm, (e.qty + (f.qty_confirm - a.delivery)) as qty_remain, e.qty as qty_po, (e.qty + (f.qty_confirm - a.delivery) - a.delivery) as balance");
             $this->db->from('purchase_confirm_others a');
             $this->db->join('suppliers b', 'a.supplier_id = b.id');
             $this->db->join('item_rm c', 'a.item_rm_id = c.id');
             $this->db->join('item_familys d', 'c.item_family_id = d.id');
-            // $this->db->join("(SELECT po_no, bc_document, item_rm_id, supplier_id, SUM(qty_receipt) as receipt FROM purchase_order_receipts GROUP BY po_no, bc_document, item_rm_id, supplier_id) e", 'a.po_no = e.po_no and a.invoice_no = e.bc_document and a.item_rm_id = e.item_id and a.supplier_id = e.supplier_id', 'left');            
+            $this->db->join('purchase_order_others e', 'a.supplier_id = e.supplier_id and a.item_rm_id = e.item_rm_id and a.po_no = e.po_no');
+            $this->db->join("(SELECT supplier_id, item_rm_id, po_no, SUM(delivery) as qty_confirm FROM purchase_confirm_others GROUP BY supplier_id, item_rm_id, po_no) f", 'a.supplier_id = f.supplier_id and a.item_rm_id = f.item_rm_id and a.po_no = f.po_no');
             if($filter_po_date != ""){
                 $this->db->where('a.po_date', $filter_po_date);
             }
@@ -129,6 +129,7 @@ class Delivery_confirm_others extends CI_Controller
             $this->db->like('a.po_no', $filter_po_no);
             $this->db->like('c.item_family_id', $filter_product_family);
             $this->db->like('a.item_rm_id', $filter_item_rm_id);
+            $this->db->group_by('a.id');
             $this->db->order_by('a.status', 'ASC');
             $this->db->order_by('a.supplier_id', 'ASC');
             $this->db->order_by('a.delivery_no', 'ASC');
@@ -240,9 +241,9 @@ class Delivery_confirm_others extends CI_Controller
     public function update()
     {
         if ($this->input->post()) {
-            $id   = base64_decode($this->input->get('id'));
+            // $id   = base64_decode($this->input->get('id'));
             $post = $this->input->post();
-            $send = $this->crud->update('purchase_confirm_others', ["id" => $id], $post);
+            $send = $this->crud->update('purchase_confirm_others', ["id" => $post['id']], $post);
             echo $send;
         } else {
             show_error("Cannot Process your request");
@@ -403,6 +404,7 @@ class Delivery_confirm_others extends CI_Controller
         $this->db->like('a.po_no', $filter_po_no);
         $this->db->like('c.item_family_id', $filter_product_family);
         $this->db->like('a.item_rm_id', $filter_item_rm_id);
+        $this->db->group_by('a.id');
         $this->db->order_by('a.supplier_id', 'ASC');
         $this->db->order_by('a.delivery_no', 'ASC');
         $this->db->order_by('a.item_rm_id', 'ASC');

@@ -213,7 +213,8 @@ class purchase_orders_2 extends CI_Controller
                 $result = array_merge($result, ['rows' => @$arr]);
                 echo json_encode($result);
             } else {
-                $this->db->select('a.*, 
+                $this->db->select('a.*,
+                    a.po_no as supplier_po,
                     b.number as item_rm_number, 
                     b.name as item_rm_name,
                     c.name as item_family_name, 

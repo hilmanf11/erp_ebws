@@ -941,7 +941,7 @@
                                             $.ajax({
                                                 type: "post",
                                                 url: '<?= base_url('finance/sales_invoices/updateIrn') ?>',
-                                                data: {irn: msg.response.irn, barcode: msg.response.qrCode, number: msg.response.no},
+                                                data: {irn: msg.response.irn, barcode: msg.response.qrCode, ack_no: msg.response.ackNo, ack_date: msg.response.ackDt, number: msg.response.no},
                                                 dataType: "json",
                                                 success: function (si) {
                                                     $('#dg').datagrid('reload');

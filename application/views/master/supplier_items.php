@@ -215,33 +215,21 @@
     </form>
 </div>
 
-<div id="dlg_history" class="easyui-dialog" title="History Supplier Contract" data-options="closed: true,modal:true" style="width: 90%; height: 500px; top: 0px; left: 0px;">
+<div id="dlg_history" class="easyui-dialog" title="History Supplier Contract" data-options="closed: true,modal:true" style="width: 60%; height: 500px; top: 0px; left: 0px;">
     <table id="dg_history" class="easyui-datagrid" style="width:100%;">
         <thead>
             <tr>
-                <!-- <th data-options="field:'plant',width:80,halign:'center'">Plant</th> -->
                 <th data-options="field:'created_date',width:150,halign:'center'">Created Date</th>
                 <th data-options="field:'created_by',width:150,halign:'center'">Created By</th>
-                <!-- <th data-options="field:'supplier_name',width:250,halign:'center'">Supplier Name</th> -->
-                <!-- <th data-options="field:'type',width:100,align:'center'">Supplier Type</th> -->
-                <!-- <th data-options="field:'origin',width:120,halign:'center'">Supplier Origin</th> -->
-                <th data-options="field:'item_rm_number',width:200,halign:'center'">Part No</th>
-                <!-- <th data-options="field:'item_rm_name',width:100,halign:'center'">Part Name</th> -->
-                <!-- <th data-options="field:'item_supplier',width:150,halign:'center'">Part Supplier</th> -->
-                <!-- <th data-options="field:'item_supplier',width:150,halign:'center'">Item Supplier</th>
-                <th data-options="field:'pfm_name',width:120,halign:'center'">Product Family</th> -->
-                <!-- <th data-options="field:'maker_name',width:150,halign:'center'">Maker</th> -->
-                <!-- <th data-options="field:'maker_type',width:100,halign:'center'">Maker Type</th> -->
-                <!-- <th data-options="field:'landed_cost',width:100,halign:'center'">Landed Cost</th>
-                <th data-options="field:'import_duty',width:100,halign:'center'">Import Duty</th> -->
-                <th data-options="field:'mpq',width:80,halign:'center',align:'right',formatter:numberformatComa">MPQ</th>
-                <th data-options="field:'moq',width:80,halign:'center',align:'right',formatter:numberformatComa">MOQ</th>
-                <th data-options="field:'uom',width:80,align:'center'">UoM</th>
+                <!-- <th data-options="field:'item_rm_number',width:200,halign:'center'">Part No</th> -->
+                <!-- <th data-options="field:'mpq',width:80,halign:'center',align:'right',formatter:numberformatComa">MPQ</th> -->
+                <!-- <th data-options="field:'moq',width:80,halign:'center',align:'right',formatter:numberformatComa">MOQ</th> -->
+                <!-- <th data-options="field:'uom',width:80,align:'center'">UoM</th> -->
                 <th data-options="field:'price',width:80,halign:'center',align:'right',formatter:numberformat">Price</th>
                 <th data-options="field:'currency',width:80,align:'center'">Currency</th>
                 <th data-options="field:'valid_date',width:120,align:'center'">Valid Date</th>
-                <th data-options="field:'leadtime',width:80,align:'center'">Leadtime</th>
-                <th data-options="field:'share_order',width:80,align:'center'">Share Order</th>
+                <!-- <th data-options="field:'leadtime',width:80,align:'center'">Leadtime</th> -->
+                <!-- <th data-options="field:'share_order',width:80,align:'center'">Share Order</th> -->
                 <th data-options="field:'remarks',width:200,halign:'center'">Remarks</th>
             </tr>
         </thead>
@@ -604,59 +592,60 @@
                 handler: function() {
                     var valid_date2 = $("#valid_date").datebox('getValue');
                     
-                    if(valid_date <= valid_date2 || valid_date == ""){
-                        $('#frm_insert').form('submit', {
-                            url: url_save,
-                            onSubmit: function() {
-                                if($(this).form('validate') === true){
-                                    var valid_date = $("#valid_date").datebox('getValue');
-                                    var mpq = $("#mpq").numberbox('getValue');
-                                    var moq = $("#moq").numberbox('getValue');
-                                    var price = $("#moq").numberbox('getValue');
-                                    var leadtime = $("#leadtime").numberbox('getValue');
-                                    var transit = $("#transit").numberbox('getValue');
-
-                                    if(mpq <= 0 || moq <= 0 || price <= 0 || leadtime <= 0 || transit <= 0){
-                                        toastr.error("MPQ, MOQ, Price, Leadtime / Transit Cannot be 0");
-                                        return false;
-                                    }
-
-                                    $('#dlg_insert').dialog('close');
-                                    
-                                    Swal.fire({
-                                        title: 'Please Wait...',
-                                        showConfirmButton: false,
-                                        allowOutsideClick: false,
-                                        allowEscapeKey: false,
-                                        didOpen: () => {
-                                            Swal.showLoading();
-                                        },
-                                    });
-                                }else{
-                                    return $(this).form('validate');
-                                }
-                            },
-                            success: function(result) {
-                                var result = eval('(' + result + ')');
-
-                                if (result.theme == "success") {
-                                    toastr.success(result.message, result.title);
-                                } else {
-                                    toastr.error(result.message, result.title);
-                                }
-
-                                $('#dg').datagrid('reload');
-                                Swal.close();
-                            },
-                            error: function(){
-                                toastr.error("Failed to save data, please check your data requirements again", "error");
-                                $('#dg').datagrid('reload');
-                                Swal.close();
-                            }
-                        });
-                    }else{
-                        toastr.error("Valid Date Cannot <= Valid Date Before");
+                    if(valid_date > valid_date2){
+                        toastr.error("Valid Date Cannot < Valid Date Before");
+                        return false;
                     }
+
+                    $('#frm_insert').form('submit', {
+                        url: url_save,
+                        onSubmit: function() {
+                            if($(this).form('validate') === true){
+                                var valid_date = $("#valid_date").datebox('getValue');
+                                var mpq = $("#mpq").numberbox('getValue');
+                                var moq = $("#moq").numberbox('getValue');
+                                var price = $("#moq").numberbox('getValue');
+                                var leadtime = $("#leadtime").numberbox('getValue');
+                                var transit = $("#transit").numberbox('getValue');
+
+                                if(mpq <= 0 || moq <= 0 || price <= 0 || leadtime <= 0 || transit <= 0){
+                                    toastr.error("MPQ, MOQ, Price, Leadtime / Transit Cannot be 0");
+                                    return false;
+                                }
+
+                                $('#dlg_insert').dialog('close');
+                                
+                                Swal.fire({
+                                    title: 'Please Wait...',
+                                    showConfirmButton: false,
+                                    allowOutsideClick: false,
+                                    allowEscapeKey: false,
+                                    didOpen: () => {
+                                        Swal.showLoading();
+                                    },
+                                });
+                            }else{
+                                return $(this).form('validate');
+                            }
+                        },
+                        success: function(result) {
+                            var result = eval('(' + result + ')');
+
+                            if (result.theme == "success") {
+                                toastr.success(result.message, result.title);
+                            } else {
+                                toastr.error(result.message, result.title);
+                            }
+
+                            $('#dg').datagrid('reload');
+                            Swal.close();
+                        },
+                        error: function(){
+                            toastr.error("Failed to save data, please check your data requirements again", "error");
+                            $('#dg').datagrid('reload');
+                            Swal.close();
+                        }
+                    });
                 }
             }]
         });

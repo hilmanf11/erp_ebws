@@ -44,6 +44,20 @@ class Item_rm extends CI_Controller
         echo json_encode($send);
     }
 
+    public function readNotHsn($item_family_id = "")
+    {
+        //master/bom
+        //planning/where_used
+        $post = isset($_POST['q']) ? $_POST['q'] : "";
+        $send = $this->crud->query("SELECT a.*, b.name as item_family_name 
+            FROM item_rm a 
+            JOIN item_familys b ON a.item_family_id = b.id
+            JOIN item_categories c ON a.item_category_id = c.id 
+            WHERE b.id like '%$item_family_id%' and a.status = 0 and c.id IN ('C01') and a.hsn_code != '-'
+            and (a.id like '%$post%' or a.number like '%$post%' or a.name like '%$post%')");
+        echo json_encode($send);
+    }
+
     public function readItemCategory($item_category = "")
     {
         if($item_category == "ASSET"){

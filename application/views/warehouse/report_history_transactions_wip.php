@@ -10,7 +10,17 @@
                 <input style="width:28%;" id="filter_to" class="easyui-datebox" value="<?= date("Y-m-t") ?>" data-options="formatter:myformatter,parser:myparser, editable:false">
             </div>
             <div class="fitem">
-                <span style="width:35%; display:inline-block;">Product No</span>
+                <span style="width:35%; display:inline-block;">Product Family</span>
+                <input style="width:60%;" id="filter_item_family" class="easyui-combobox">
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;"></span>
+                <a href="javascript:;" class="easyui-linkbutton" onclick="filter()"><i class="fa fa-search"></i> Filter Data</a>
+            </div>
+        </div>
+        <div style="width: 50%; float:left;">
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Part No</span>
                 <input style="width:60%;" id="filter_items" class="easyui-combogrid">
             </div>
             <div class="fitem">
@@ -19,10 +29,6 @@
                     <option value="RECAP">RECAP</option>
                     <option value="DETAIL">DETAIL</option>
                 </select>
-            </div>
-            <div class="fitem">
-                <span style="width:35%; display:inline-block;"></span>
-                <a href="javascript:;" class="easyui-linkbutton" onclick="filter()"><i class="fa fa-search"></i> Filter Data</a>
             </div>
         </div>
     </fieldset>
@@ -43,10 +49,11 @@
     function filter() {
         var filter_from = $("#filter_from").datebox('getValue');
         var filter_to = $("#filter_to").datebox('getValue');
+        var filter_item_family = $("#filter_item_family").combobox('getValue');
         var filter_items = $("#filter_items").combogrid('getValue');
         var filter_display = $("#filter_display").combobox('getValue');
 
-        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_items=" + filter_items + "&filter_display=" + filter_display;
+        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_items=" + filter_items + "&filter_item_family=" + filter_item_family + "&filter_display=" + filter_display;
         $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
         $("#printout").attr('src', '<?= base_url('warehouse/report_history_transactions_wip/print') ?>' + url);
     }
@@ -54,28 +61,61 @@
     function excel() {
         var filter_from = $("#filter_from").datebox('getValue');
         var filter_to = $("#filter_to").datebox('getValue');
+        var filter_item_family = $("#filter_item_family").combobox('getValue');
         var filter_items = $("#filter_items").combogrid('getValue');
         var filter_display = $("#filter_display").combobox('getValue');
 
-        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_items=" + filter_items + "&filter_display=" + filter_display;
+        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_items=" + filter_items + "&filter_item_family=" + filter_item_family + "&filter_display=" + filter_display;
         window.location.assign('<?= base_url('warehouse/report_history_transactions_wip/print/excel') ?>' + url);
     }
     $(function() {
-        $("#filter_transtype").combobox({
-            url: '<?= base_url('master/transaction_types/reads') ?>',
+        $("#filter_item_family").combobox({
+            url: '<?= base_url('warehouse/report_history_transactions/readItemFamily') ?>',
             valueField: 'number',
             textField: 'name',
-            prompt: "Select Transaction Type",
+            prompt: "Select Product Family",
             icons: [{
                 iconCls: 'icon-clear',
                 handler: function(e) {
                     $(e.data.target).combobox('clear').combobox('textbox').focus();
                 }
             }],
+            onSelect: function(row) {
+                $('#filter_items').combogrid({
+                    url: '<?= base_url('master/item_rm/reads/') ?>' + row.id,
+                    panelWidth: 550,
+                    idField: 'id',
+                    textField: 'number',
+                    mode: 'remote',
+                    fitColumns: true,
+                    prompt: "Select Part No",
+                    icons: [{
+                        iconCls: 'icon-clear',
+                        handler: function(e) {
+                            $(e.data.target).combogrid('clear').combogrid('textbox').focus();
+                        }
+                    }],
+                    columns: [
+                        [{
+                            field: 'id',
+                            title: 'Part No EBWS',
+                            width: 150
+                        },{
+                            field: 'number',
+                            title: 'Part No Supplier',
+                            width: 200
+                        }, {
+                            field: 'name',
+                            title: 'Description',
+                            width: 200
+                        }, ]
+                    ]
+                });
+            }
         });
 
         $('#filter_items').combogrid({
-            url: '<?= base_url('master/item_fg/reads') ?>',
+            url: '<?= base_url('master/item_rm/reads') ?>',
             panelWidth: 550,
             idField: 'id',
             textField: 'number',
@@ -90,12 +130,12 @@
             }],
             columns: [
                 [{
-                    field: 'number',
-                    title: 'Product No EBWS',
+                    field: 'id',
+                    title: 'Part No EBWS',
                     width: 150
-                }, {
-                    field: 'number_customer',
-                    title: 'Product No Customer',
+                },{
+                    field: 'number',
+                    title: 'Part No Supplier',
                     width: 200
                 }, {
                     field: 'name',

@@ -17,7 +17,7 @@
             <th rowspan="2" data-options="field:'uom',width:80,halign:'center'">UoM</th>
             <th rowspan="2" data-options="field:'qty',width:100,halign:'center',align:'right',formatter:numberformat">Qty PO</th>
             <th rowspan="2" data-options="field:'delivery',width:100,halign:'center',align:'right',formatter:numberformat">Plan Delivery</th>
-            <th rowspan="2" data-options="field:'receipt',width:100,halign:'center',align:'right',formatter:numberformat">Receipt</th>
+            <!-- <th rowspan="2" data-options="field:'receipt',width:100,halign:'center',align:'right',formatter:numberformat">Receipt</th> -->
             <th rowspan="2" data-options="field:'etd',width:100,align:'center'">ETD</th>
             <th rowspan="2" data-options="field:'eta',width:100,align:'center'">ETA</th>
             <th rowspan="2" data-options="field:'attachment',width:100,halign:'center', formatter:btnAttachment">Attahment</th>
@@ -132,6 +132,86 @@
             </div>
         </fieldset>
         <table id="dg2" class="easyui-datagrid" style="width:100%;" title="Delivery Confirmation Lists" toolbar="#toolbar2"></table>
+    </form>
+</div>
+
+<div id="dlg_update" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 60%; max-height: 550px; padding:10px; top: 10px; left: 10px;">
+    <form id="frm_update" method="post" enctype="multipart/form-data" novalidate>
+        <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
+            <legend><b>Form Data</b></legend>
+            <div style="width: 50%; float: left;">
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">ID</span>
+                    <input style="width:60%;" name="id" id="id" readonly class="easyui-textbox">
+                </div>
+                <div class="fitem" hidden>
+                    <span style="width:35%; display:inline-block;">Supplier ID</span>
+                    <input style="width:60%;" name="supplier_id" id="supplier_id" disabled class="easyui-textbox">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Supplier name</span>
+                    <input style="width:60%;" name="supplier_name" id="supplier_name" disabled class="easyui-textbox">
+                </div>
+                <div class="fitem" hidden>
+                    <span style="width:35%; display:inline-block;">Part No EBWS</span>
+                    <input style="width:60%;" name="item_rm_id" id="item_rm_id" disabled class="easyui-textbox">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Part No Supplier</span>
+                    <input style="width:60%;" name="item_rm_number" id="item_rm_number" disabled class="easyui-textbox">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Invoice No</span>
+                    <input style="width:60%;" name="invoice_no" id="invoice_no" class="easyui-textbox">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Invoice Date</span>
+                    <input style="width:60%;" name="invoice_date" id="invoice_date" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">PO No</span>
+                    <input style="width:60%;" name="po_no" id="po_no" readonly class="easyui-textbox">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">PO Date</span>
+                    <input style="width:60%;" name="po_date" id="invoice_date" readonly class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
+                </div>
+            </div>
+            <div style="width: 50%; float: left;">
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Delivery No</span>
+                    <input style="width:60%;" name="delivery_no" id="delivery_no" class="easyui-textbox">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">BOE No</span>
+                    <input style="width:60%;" name="awb_no" id="awb_no" class="easyui-textbox">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">BOE Date</span>
+                    <input style="width:60%;" name="awb_date" id="awb_date" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Uom</span>
+                    <input style="width:60%;" name="uom" id="uom" readonly class="easyui-textbox">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Qty PO</span>
+                    <input style="width:60%;" name="qty_po" id="qty_po" class="easyui-numberbox" disabled data-options="precision: 2">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Qty Remain</span>
+                    <input style="width:60%;" name="qty_remain" id="qty_remain" class="easyui-numberbox" disabled data-options="precision: 2">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Invoice Qty</span>
+                    <input style="width:60%;" name="delivery" id="delivery" class="easyui-numberbox" data-options="precision: 2">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Balance Qty</span>
+                    <input style="width:60%;" name="balance" id="balance" class="easyui-numberbox" disabled data-options="precision: 2">
+                </div>
+            </div>
+        </fieldset>
     </form>
 </div>
 
@@ -496,14 +576,30 @@
             if(row.status == "1"){
                 toastr.error("Cannot Update for this data because the status is CLOSED");
             }else{
-                $('#dlg_insert').dialog('open');
-                $('#frm_insert').form('load', row);
-                $("#supplier_id").combogrid('disable');
-                $("#delivery_no").textbox('disable');
+                // $('#dlg_insert').dialog('open');
+                // $('#frm_insert').form('load', row);
+                // $("#supplier_id").combogrid('disable');
+                // $("#delivery_no").textbox('disable');
                 // $("#invoice_no").textbox('disable');
                 // $("#invoice_date").datebox('disable');
 
-                addTable(row.supplier_id, '<?= base_url('purchase/delivery_confirm_others/datatableUpdates?delivery_no=') ?>' + window.btoa(row.delivery_no));
+                // addTable(row.supplier_id, '<?= base_url('purchase/delivery_confirm_others/datatableUpdates?delivery_no=') ?>' + window.btoa(row.delivery_no));
+
+                $('#dlg_update').dialog('open');
+                $('#frm_update').form('load', row);
+
+                $("#delivery").numberbox({
+                    onChange: function(val){
+                        var qty_remain = $("#qty_remain").numberbox('getValue');
+
+                        if((parseFloat(qty_remain) - parseFloat(val)) >= 0){
+                            $("#balance").numberbox("setValue", (parseFloat(qty_remain) - parseFloat(val)));
+                        }else{
+                            toastr.error("Qty Cannot > Qty Remain");
+                            $("#delivery").numberbox('setValue', 0);
+                        }
+                    }
+                });
             }
         } else {
             toastr.warning("Please select one of the data in the table first!", "Information");
@@ -756,6 +852,53 @@
                         }
                     }else{
                         toastr.error("Please Complete Your input");    
+                    }
+                }
+            }]
+        });
+
+        $('#dlg_update').dialog({
+            buttons: [{
+                text: 'Update Data',
+                iconCls: 'icon-ok',
+                handler: function() {
+                    var delivery = $("#delivery").numberbox("getValue");
+
+                    if(delivery > 0){
+                        $('#frm_update').form('submit', {
+                            url: '<?= base_url('purchase/delivery_confirm_others/update') ?>',
+                            onSubmit: function() {
+                                if($(this).form('validate') === true){
+                                    $('#dlg_update').dialog('close');
+                                    
+                                    Swal.fire({
+                                        title: 'Please Wait...',
+                                        showConfirmButton: false,
+                                        allowOutsideClick: false,
+                                        allowEscapeKey: false,
+                                        didOpen: () => {
+                                            Swal.showLoading();
+                                        },
+                                    });
+                                }else{
+                                    return $(this).form('validate');
+                                }
+                            },
+                            success: function(result) {
+                                var result = eval('(' + result + ')');
+
+                                if (result.theme == "success") {
+                                    toastr.success(result.message, result.title);
+                                } else {
+                                    toastr.error(result.message, result.title);
+                                }
+
+                                $('#dg').datagrid('reload');
+                                Swal.close();
+                            }
+                        });
+                    }else{
+                        toastr.error("Qty Delivery Cannot 0");
                     }
                 }
             }]

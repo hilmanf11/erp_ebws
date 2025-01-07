@@ -169,7 +169,6 @@ class Purchase_order_closing extends CI_Controller
                 $this->db->join('item_rm b', 'a.item_rm_id = b.id');
                 $this->db->join('item_familys c', 'b.item_family_id = c.id');
                 $this->db->join('suppliers d', 'a.supplier_id = d.id');
-                $this->db->join('supplier_items e', "a.item_rm_id = e.item_rm_id and a.supplier_id = e.supplier_id and e.approved_to = ''");
                 $this->db->join('(SELECT po_no, COUNT(status) as total_status_close FROM purchase_orders WHERE status = 1 GROUP BY po_no) g', 'a.po_no = g.po_no', 'left');
                 $this->db->where('a.deleted', 0);
                 $this->db->where('a.type', 'CL');
@@ -232,7 +231,6 @@ class Purchase_order_closing extends CI_Controller
                 $this->db->join('item_rm b', 'a.item_rm_id = b.id');
                 $this->db->join('item_familys c', 'b.item_family_id = c.id');
                 $this->db->join('suppliers d', 'a.supplier_id = d.id');
-                $this->db->join('supplier_items e', 'a.item_rm_id = e.item_rm_id and a.supplier_id = e.supplier_id');
                 $this->db->where('a.deleted', 0);
                 $this->db->where('a.type', 'CL');
                 if ($filter_from != "" or $filter_to != "") {
@@ -405,7 +403,6 @@ class Purchase_order_closing extends CI_Controller
             $this->db->select('a.*,
                 b.number as item_rm_number, 
                 b.name as item_rm_name,
-                c.item_supplier,
                 d.currency,
                 b.uom,
                 d.type,
@@ -415,7 +412,6 @@ class Purchase_order_closing extends CI_Controller
                 d.state');
             $this->db->from('purchase_orders a');
             $this->db->join('item_rm b', 'a.item_rm_id = b.id');
-            $this->db->join('supplier_items c', 'a.supplier_id = c.supplier_id and a.item_rm_id = c.item_rm_id');
             $this->db->join('suppliers d', 'a.supplier_id = d.id');
             $this->db->join('hsn e', "b.hsn_code = e.number", 'left');
             $this->db->where('a.po_no', base64_decode($po_no));
@@ -658,7 +654,6 @@ class Purchase_order_closing extends CI_Controller
         $this->db->join('item_rm b', 'a.item_rm_id = b.id');
         $this->db->join('item_familys c', 'b.item_family_id = c.id');
         $this->db->join('suppliers d', 'a.supplier_id = d.id');
-        $this->db->join('supplier_items e', 'a.item_rm_id = e.item_rm_id and a.supplier_id = e.supplier_id');
         $this->db->where('a.deleted', 0);
         $this->db->where('a.type', "CL");
         if ($filter_from != "" or $filter_to != "") {

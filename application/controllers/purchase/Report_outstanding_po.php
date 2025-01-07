@@ -239,15 +239,15 @@ class Report_outstanding_po extends CI_Controller
                     GROUP BY a.id");
                     
                     foreach ($purchases as $purchase) {
-                        if($record['status'] == 0){
+                        // if($record['status'] == 0){
                             $qty = $purchase->qty;
-                        }else{
-                            if($record['complete'] == 0){
-                                $qty = $purchase->qty;
-                            }else{
-                                $qty = 0;
-                            }
-                        }
+                        // }else{
+                        //     if($record['complete'] == 0){
+                        //         $qty = $purchase->qty;
+                        //     }else{
+                        //         $qty = 0;
+                        //     }
+                        // }
 
                         $balance = ($begin + $qty);
                         $html .= '  <tr>

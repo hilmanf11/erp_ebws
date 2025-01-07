@@ -31,18 +31,33 @@ class Generate_mrp extends CI_Controller
         }
     }
 
+    public function readRevisions(){
+        $filter_month = base64_decode($this->input->get('filter_month'));
+        $filter_year = base64_decode($this->input->get('filter_year'));
+
+        //Select Query
+        $this->db->select('revision');
+        $this->db->from('generate_mrp');
+        $this->db->where('p_month', $filter_month);
+        $this->db->where('p_year', $filter_year);
+        $this->db->group_by('revision');
+        $records = $this->db->get()->result_array();
+
+        die(json_encode($records));
+    }
+
     public function checkMps()
     {
         $filter_month = base64_decode($this->input->get('filter_month'));
         $filter_year = base64_decode($this->input->get('filter_year'));
-        $filter_revision = base64_decode($this->input->get('filter_revision'));
+        // $filter_revision = base64_decode($this->input->get('filter_revision'));
 
         //Select Query
         $this->db->select('*');
         $this->db->from('generate_mps_details');
         $this->db->where('p_month', $filter_month);
         $this->db->where('p_year', $filter_year);
-        $this->db->like('revision', $filter_revision);
+        $this->db->like('revision', "0");
         $this->db->group_by('item_fg_id');
         $records = $this->db->get()->result_array();
 
@@ -57,8 +72,8 @@ class Generate_mrp extends CI_Controller
     {
         $filter_month = base64_decode($this->input->get('filter_month'));
         $filter_year = base64_decode($this->input->get('filter_year'));
-        $filter_revision = base64_decode($this->input->get('filter_revision'));
-        $filter_cutoff = base64_decode($this->input->get('filter_cutoff'));
+        // $filter_revision = base64_decode($this->input->get('filter_revision'));
+        // $filter_cutoff = base64_decode($this->input->get('filter_cutoff'));
 
         //Select Query
         // $this->db->select('*');
@@ -88,8 +103,8 @@ class Generate_mrp extends CI_Controller
     {
         $filter_month = base64_decode($this->input->get('filter_month'));
         $filter_year = base64_decode($this->input->get('filter_year'));
-        $filter_revision = base64_decode($this->input->get('filter_revision'));
-        $filter_cutoff = base64_decode($this->input->get('filter_cutoff'));
+        // $filter_revision = base64_decode($this->input->get('filter_revision'));
+        // $filter_cutoff = base64_decode($this->input->get('filter_cutoff'));
 
         //Select Query
         // $sql = $this->db->query("SELECT a.item_rm_id, COALESCE(SUM(a.qty_act) - SUM(c.qty), 0) AS qty
@@ -112,8 +127,8 @@ class Generate_mrp extends CI_Controller
     {
         $filter_month = base64_decode($this->input->get('filter_month'));
         $filter_year = base64_decode($this->input->get('filter_year'));
-        $filter_revision = base64_decode($this->input->get('filter_revision'));
-        $filter_cutoff = base64_decode($this->input->get('filter_cutoff'));
+        // $filter_revision = base64_decode($this->input->get('filter_revision'));
+        // $filter_cutoff = base64_decode($this->input->get('filter_cutoff'));
 
         //Select Query
         // $this->db->select('*');
@@ -141,8 +156,9 @@ class Generate_mrp extends CI_Controller
     {
         $filter_month = base64_decode($this->input->get('filter_month'));
         $filter_year = base64_decode($this->input->get('filter_year'));
-        $filter_revision = base64_decode($this->input->get('filter_revision'));
-        $filter_cutoff = base64_decode($this->input->get('filter_cutoff'));
+        // $filter_revision = base64_decode($this->input->get('filter_revision'));
+        // $filter_cutoff = base64_decode($this->input->get('filter_cutoff'));
+        $filter_cutoff = $filter_year."-".$filter_month."-01";
 
         //Select Query
         // $this->db->select('*');
@@ -349,19 +365,32 @@ class Generate_mrp extends CI_Controller
             $filter_part_no = base64_decode($this->input->get('filter_part_no'));
             $filter_product_family = base64_decode($this->input->get('filter_product_family'));
 
+            $this->db->select('max(revision) as revision');
+            $this->db->from('generate_mrp');
+            $this->db->where('p_month', $filter_month);
+            $this->db->where('p_year', $filter_year);
+            $this->db->like('revision', $filter_revision);
+            $this->db->group_by('revision');
+            $rev = $this->db->get()->row();
+            if($filter_revision == ""){
+                $revision = empty($rev->revision) ? 0 : ($rev->revision + 1);
+            }else{
+                $revision = $filter_revision;
+            }
+
             //Select Query
-            $this->db->select('b.p_month, b.p_year, b.revision, 
+            $this->db->select("b.p_month, b.p_year, '$revision' as revision,
                 a.item_rm_id,
                 b.ltpp_month2 as period, 
                 SUM(b.prod_plan) as prodplan,
                 a.composition as qpa, 
-                ROUND(SUM(b.prod_plan * a.composition), 2) as qty');
+                ROUND(SUM(b.prod_plan * a.composition), 2) as qty");
             $this->db->from('bom a');
             $this->db->join('generate_mps_details b', 'a.item_fg_id = b.item_fg_id');
             $this->db->join('item_rm c', 'a.item_rm_id = c.id');
             $this->db->where('b.p_month', $filter_month);
             $this->db->where('b.p_year', $filter_year);
-            $this->db->where('b.revision', $filter_revision);
+            $this->db->where('b.revision', 0);
             // $this->db->where('product_no', 'ZYM024-081C');
             // $this->db->where('prod_plan >', 0);
             if($filter_product_family != ""){
@@ -390,10 +419,11 @@ class Generate_mrp extends CI_Controller
             //Filter Data
             $filter_month = base64_decode($this->input->get('filter_month'));
             $filter_year = base64_decode($this->input->get('filter_year'));
-            $filter_revision = base64_decode($this->input->get('filter_revision'));
+            $revision = base64_decode($this->input->get('filter_revision'));
             $filter_product_family = base64_decode($this->input->get('filter_product_family'));
             $filter_part_no = base64_decode($this->input->get('filter_part_no'));
             $filter_cutoff = base64_decode($this->input->get('filter_cutoff'));
+            $month1 = date("Y-m-01", strtotime("-1 month", strtotime($filter_cutoff)));
             $month3 = date("Y-m-01", strtotime("-3 month", strtotime($filter_cutoff)));
             $month_3 = date("m", strtotime("-3 month", strtotime($filter_year."-".$filter_month."-01")));
             $year_3 = date("Y", strtotime("-3 month", strtotime($filter_year."-".$filter_month."-01")));
@@ -404,6 +434,20 @@ class Generate_mrp extends CI_Controller
 
             $cutoffDate = date("j", strtotime($filter_cutoff));
 
+            $this->db->select('max(revision) as revision');
+            $this->db->from('generate_mrp');
+            $this->db->where('p_month', $filter_month);
+            $this->db->where('p_year', $filter_year);
+            $this->db->like('revision', $revision);
+            $this->db->group_by('revision');
+            $rev = $this->db->get()->row();
+
+            if($revision == ""){
+                $filter_revision = empty($rev->revision) ? 0 : ($rev->revision + 1);
+            }else{
+                $filter_revision = $revision;
+            }
+
             //Select Query
             $this->db->select('a.item_rm_id, b.supplier_id, b.share_order, b.safety_stock,
                 coalesce(b.mpq, 0) as mpq, 
@@ -411,6 +455,7 @@ class Generate_mrp extends CI_Controller
                 h.type as supplier_type,
                 coalesce((b.leadtime + b.transit), 0) as leadtime,
                 coalesce(c.end_stock, 0) as qty_rm, 
+                coalesce(d.balance, 0) as qty_wip, 
                 (CASE WHEN e.actual >= 0 THEN coalesce(e.actual, 0) ELSE 0 END) as qty_vendor,
                 coalesce(f.actual, 0) as qty_issued');
             $this->db->from('generate_mrp a');
@@ -418,27 +463,24 @@ class Generate_mrp extends CI_Controller
             $this->db->join('supplier_items b', 'a.item_rm_id = b.item_rm_id', 'left');
             $this->db->join("(SELECT
                 a.id,
-                a.number, 
-                a.name, 
-                b.name as prodfam, 
-                a.uom, 
-                COALESCE(0,0) as begin_stock,
-                (COALESCE(SUM(c.qty_sto),0) + COALESCE(e.qty_receipt, 0)) as qty_in,
-                f.qty as qty_out,
-                ((COALESCE(SUM(c.qty_sto),0) + COALESCE(e.qty_receipt, 0) + COALESCE(g.return_qty, 0)) - COALESCE(f.qty, 0)) as end_stock
-            FROM item_rm a 
-            JOIN item_familys b ON a.item_family_id = b.id and b.number != '006'
-            LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) as qty_sto FROM os_rm a JOIN scan_item_receipts b ON a.id  = b.receipt_id WHERE a.trans_date <= '$filter_cutoff' GROUP BY item_rm_id) c ON a.id = c.item_rm_id
-            LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) as qty_receipt FROM purchase_order_receipts a JOIN scan_item_receipts b ON a.receipt_id  = b.receipt_id WHERE a.receipt_date <= '$filter_cutoff' GROUP BY item_rm_id) e ON a.id = e.item_rm_id
-            LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as qty FROM issued_material_details WHERE DATE_FORMAT(created_date, '%Y-%m-%d') <= '$filter_cutoff' GROUP BY item_rm_id) f ON a.id = f.item_rm_id
-            LEFT JOIN (SELECT a.item_rm_id, SUM(c.qty) as return_qty
+                ((COALESCE(SUM(c.qty_sto),0) + COALESCE(dd.sto_qty_in, 0) + COALESCE(j.qty_rgp_in, 0) + COALESCE(e.qty_receipt, 0) + COALESCE(g.return_qty, 0)) - COALESCE(f.qty, 0) - COALESCE(d.sto_qty_out, 0) - COALESCE(k.qty_rgp_out, 0) - COALESCE(h.qty_reject, 0)) AS end_stock
+                FROM item_rm a 
+                JOIN item_familys b ON a.item_family_id = b.id AND b.number != '006'
+                LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) AS qty_sto FROM os_rm a JOIN scan_item_receipts b ON a.id  = b.receipt_id WHERE a.trans_date <= '$filter_cutoff' GROUP BY item_rm_id) c ON a.id = c.item_rm_id
+                LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(a.qty), 0) as sto_qty_out FROM sto_rm a WHERE a.type = 'OUT' and a.trans_date <= '$filter_cutoff' and a.approved_to = '' GROUP BY item_rm_id) d ON a.id = d.item_rm_id
+                LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(a.qty), 0) as sto_qty_in FROM sto_rm a WHERE a.type = 'IN' and a.trans_date <= '$filter_cutoff' and a.approved_to = '' GROUP BY item_rm_id) dd ON a.id = dd.item_rm_id
+                LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) AS qty_receipt FROM purchase_order_receipts a JOIN scan_item_receipts b ON a.receipt_id  = b.receipt_id WHERE a.receipt_date <= '$filter_cutoff' GROUP BY item_rm_id) e ON a.id = e.item_rm_id
+                LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) AS qty FROM issued_material_details WHERE DATE_FORMAT(created_date, '%Y-%m-%d') <= '$filter_cutoff' GROUP BY item_rm_id) f ON a.id = f.item_rm_id
+                LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) AS qty_reject FROM purchase_order_receipts a JOIN scan_item_rejections b ON a.receipt_id  = b.receipt_id WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') <= '$filter_cutoff' GROUP BY item_rm_id) h ON a.id = h.item_rm_id
+                LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_in FROM rgp_transactions WHERE type = 'IN' and transaction_date <= '$filter_cutoff' GROUP BY item_id) j ON a.id = j.item_id
+                LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_out FROM rgp_transactions WHERE type = 'OUT' and transaction_date <= '$filter_cutoff' GROUP BY item_id) k ON a.id = k.item_id
+                LEFT JOIN (SELECT a.item_rm_id, SUM(c.qty) AS return_qty
                 FROM return_materials a 
                 JOIN return_material_labels b ON a.return_id = b.return_id
-                JOIN scan_item_receipts c ON a.return_id = c.receipt_id and b.label_no = c.label_no
+                JOIN scan_item_receipts c ON a.return_id = c.receipt_id AND b.label_no = c.label_no
                 WHERE a.return_date <= '$filter_cutoff'
                 GROUP BY a.item_rm_id) g ON a.id = g.item_rm_id
-            GROUP BY a.id
-            ORDER BY a.number) c", 'a.item_rm_id = c.id', 'left');
+                GROUP BY a.id) c", 'a.item_rm_id = c.id', 'left');
             $this->db->join("(SELECT z.id, SUM(z.begin_stock) AS actual FROM (
                 SELECT a.id, b.po_no, (COALESCE(SUM(b.qty), 0) - COALESCE(c.qty_receipt, 0)) AS begin_stock
                 FROM item_rm a
@@ -451,6 +493,17 @@ class Generate_mrp extends CI_Controller
                 FROM issued_material_details
                 WHERE created_date between '$month3' and '$filter_cutoff'
                 GROUP BY item_rm_id) f", 'a.item_rm_id = f.item_rm_id', 'left');
+            $this->db->join("(SELECT a.item_rm_id, (COALESCE(b.issued, 0) - SUM(a.total)) AS balance FROM (
+                    SELECT b.item_rm_id, a.item_fg_id, SUM(a.qty), b.composition, (SUM(a.qty) * b.composition) AS total
+                    FROM production_schedules a
+                    JOIN bom b ON a.item_fg_id = b.item_fg_id
+                    WHERE a.trans_date BETWEEN '$month1' AND '$filter_cutoff' 
+                    GROUP BY a.item_fg_id, b.item_rm_id) a
+                LEFT JOIN (SELECT item_rm_id, SUM(qty) AS issued FROM issued_material_details WHERE DATE_FORMAT(created_date, '%Y-%m-%d') BETWEEN '$month1' AND '$filter_cutoff' GROUP BY item_rm_id) b ON a.item_rm_id = b.item_rm_id
+                JOIN item_rm c ON a.item_rm_id = c.id
+                JOIN item_familys d ON c.item_family_id = d.id
+                GROUP BY a.item_rm_id
+                ORDER BY c.item_family_id, c.id asc) d", "a.item_rm_id = d.item_rm_id", "left");
             $this->db->join('suppliers h', 'b.supplier_id = h.id and h.status = 0');
             //$this->db->where('assy_no', 'ZYM024-081C');
             $this->db->where('a.status', 0);
@@ -481,22 +534,29 @@ class Generate_mrp extends CI_Controller
                 $this->db->order_by('period', 'asc');
                 $periods = $this->db->get()->result_array();
 
-                $mpp_m3 = $this->getDataMpp($month_3, $year_3, $filter_cutoff, $generate['item_rm_id'], "BF");
-                $mpp_m2 = $this->getDataMpp($month_2, $year_2, $filter_cutoff, $generate['item_rm_id'], "BF");
-                $mpp_m1 = $this->getDataMpp($month_1, $year_1, $filter_cutoff, $generate['item_rm_id'], "BF");
-                $mpp = $this->getDataMpp($filter_month, $filter_year, $filter_cutoff, $generate['item_rm_id'], "NOW");
-                $qty_wo = $this->getDataMpp($filter_month, $filter_year, $filter_cutoff, $generate['item_rm_id'], "WO");
+                // $mpp_m3 = $this->getDataMpp($month_3, $year_3, $filter_cutoff, $generate['item_rm_id'], "BF");
+                // $mpp_m2 = $this->getDataMpp($month_2, $year_2, $filter_cutoff, $generate['item_rm_id'], "BF");
+                // $mpp_m1 = $this->getDataMpp($month_1, $year_1, $filter_cutoff, $generate['item_rm_id'], "BF");
+                // $mpp = $this->getDataMpp($filter_month, $filter_year, $filter_cutoff, $generate['item_rm_id'], "NOW");
+                // $qty_wo = $this->getDataMpp($filter_month, $filter_year, $filter_cutoff, $generate['item_rm_id'], "WO");
 
                 //WIP BANSHU
-                $balance_wip = $this->crud->read("balance_wip", [], ["item_rm_id" => $generate['item_rm_id'], "p_month" => $filter_month, "p_year" => $filter_year]);
+                // $balance_wip = $this->crud->read("balance_wip", [], ["item_rm_id" => $generate['item_rm_id'], "p_month" => $filter_month, "p_year" => $filter_year]);
 
-                $supply = ($mpp_m3 + $mpp_m2 + $mpp_m1 + $mpp + @$balance_wip->qty) - $generate['qty_issued'];
-                if($supply > 0){
-                    $qty_supply = round($supply);
-                    $qty_wip = 0;
-                }else{
+                // $supply = ($mpp_m3 + $mpp_m2 + $mpp_m1 + $mpp + @$balance_wip->qty) - $generate['qty_issued'];
+                // if($supply > 0){
+                //     $qty_supply = round($supply);
+                //     $qty_wip = 0;
+                // }else{
+                //     $qty_wip = abs(round($supply));
+                // }
+
+                if($generate['qty_wip'] > 0){
+                    $qty_wip = $generate['qty_wip'];
                     $qty_supply = 0;
-                    $qty_wip = abs(round($supply));
+                }else{
+                    $qty_wip = 0;
+                    $qty_supply = abs($generate['qty_wip']);
                 }
 
                 $total_stock = ($generate['qty_rm'] + $qty_wip + $generate['qty_vendor']);
@@ -771,9 +831,22 @@ class Generate_mrp extends CI_Controller
             //Filter Data
             $filter_month = base64_decode($this->input->get('filter_month'));
             $filter_year = base64_decode($this->input->get('filter_year'));
-            $filter_revision = base64_decode($this->input->get('filter_revision'));
+            $revision = base64_decode($this->input->get('filter_revision'));
             $filter_product_family = base64_decode($this->input->get('filter_product_family'));
             $filter_part_no = base64_decode($this->input->get('filter_part_no'));
+
+            $this->db->select('max(revision) as revision');
+            $this->db->from('generate_mrp');
+            $this->db->where('p_month', $filter_month);
+            $this->db->where('p_year', $filter_year);
+            $this->db->like('revision', $revision);
+            $this->db->group_by('revision');
+            $rev = $this->db->get()->row();
+            if($revision == ""){
+                $filter_revision = empty($rev->revision) ? 0 : ($rev->revision + 1);
+            }else{
+                $filter_revision = $revision;
+            }
 
             //Select Query
             $this->db->select('a.*, b.item_family_id');

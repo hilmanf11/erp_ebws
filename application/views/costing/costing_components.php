@@ -87,8 +87,8 @@
                                 var result = eval('(' + result + ')');
                             },
                             error: function(jqXHR, textStatus, errorThrown) {
-                                toastr.error("This data is already used in other modules, You must delete it First", "Error");
-                                
+                                toastr.error(jqXHR.statusText);
+                                $.messager.alert("Error", jqXHR.statusText, 'error');
                             },
                             complete: function(data) {
                                 $('#dg').datagrid('reload');

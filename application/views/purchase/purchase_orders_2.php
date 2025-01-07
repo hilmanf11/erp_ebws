@@ -8,11 +8,11 @@
             <th rowspan="2" data-options="field:'po_date',width:100,align:'center'">Del. Sch Date</th>
             <th rowspan="2" data-options="field:'supplier_po',width:150,halign:'center'">PO No</th>
             <th rowspan="2" data-options="field:'supplier_name',width:250,halign:'center'">Supplier</th>
-            <th rowspan="2" data-options="field:'item_rm_number',width:150,halign:'center'">Part No EBWS</th>
+            <th rowspan="2" data-options="field:'item_rm_id',width:100,halign:'center'">Part No EBWS</th>
             <th rowspan="2" data-options="field:'item_rm_number',width:150,halign:'center'">Part No Supplier</th>
             <th rowspan="2" data-options="field:'item_rm_name',width:200,halign:'center'">Description</th>
             <th rowspan="2" data-options="field:'asset_code',width:100,halign:'center'">Asset Code</th>
-            <th rowspan="2" data-options="field:'qty',width:80,halign:'center',align:'right',formatter:numberformatDefault">Qty</th>
+            <th rowspan="2" data-options="field:'qty',width:100,halign:'center',align:'right',formatter:numberformatDefault">Qty</th>
             <th rowspan="2" data-options="field:'uom',width:80,align:'center'">UoM</th>
             <th rowspan="2" data-options="field:'price',width:100,halign:'center',align:'right',formatter:numberformat">Price</th>
             <th rowspan="2" data-options="field:'total_price',width:120,halign:'center',align:'right',formatter:numberformatPrice2">Total</th>

@@ -120,11 +120,13 @@ class Delivery_confirm extends CI_Controller
             $result = array();
             //Select Query
             // $this->db->select("a.*, b.name as supplier_name, c.number as item_rm_number, c.name as item_rm_name, d.name as item_family_name, e.receipt");
-            $this->db->select("a.*, b.name as supplier_name, c.number as item_rm_number, c.name as item_rm_name, d.name as item_family_name, '0' as receipt");
+            $this->db->select("a.*, b.name as supplier_name, c.number as item_rm_number, c.name as item_rm_name, d.name as item_family_name, f.qty_confirm, (e.qty + (f.qty_confirm - a.delivery)) as qty_remain, e.qty as qty_po, (e.qty + (f.qty_confirm - a.delivery) - a.delivery) as balance");
             $this->db->from('purchase_confirm a');
             $this->db->join('suppliers b', 'a.supplier_id = b.id');
             $this->db->join('item_rm c', 'a.item_rm_id = c.id');
             $this->db->join('item_familys d', 'c.item_family_id = d.id');
+            $this->db->join('purchase_orders e', 'a.supplier_id = e.supplier_id and a.item_rm_id = e.item_rm_id and a.po_no = e.po_no');
+            $this->db->join("(SELECT supplier_id, item_rm_id, po_no, SUM(delivery) as qty_confirm FROM purchase_confirm GROUP BY supplier_id, item_rm_id, po_no) f", 'a.supplier_id = f.supplier_id and a.item_rm_id = f.item_rm_id and a.po_no = f.po_no');
             // $this->db->join("(SELECT po_no, bc_document, item_rm_id, supplier_id, SUM(qty_receipt) as receipt FROM purchase_order_receipts GROUP BY po_no, bc_document, item_rm_id, supplier_id) e", 'a.po_no = e.po_no and a.invoice_no = e.bc_document and a.item_rm_id = e.item_id and a.supplier_id = e.supplier_id', 'left');            
             if($filter_po_date != ""){
                 $this->db->where('a.po_date', $filter_po_date);
@@ -154,22 +156,22 @@ class Delivery_confirm extends CI_Controller
     }
 
     // UPDATE DATA
-    public function datatableUpdates()
-    {
-        if ($this->input->get()) {
-            $delivery_no = base64_decode($this->input->get('delivery_no'));
+    // public function datatableUpdates()
+    // {
+    //     if ($this->input->get()) {
+    //         $delivery_no = base64_decode($this->input->get('delivery_no'));
 
-            $this->db->select("a.*, b.name as supplier_name, c.number as item_rm_number, '0' as actual, (a.qty - a.delivery) as balance, c.name as item_rm_name, d.name as item_family_name");
-            $this->db->from('purchase_confirm a');
-            $this->db->join('suppliers b', 'a.supplier_id = b.id');
-            $this->db->join('item_rm c', 'a.item_rm_id = c.id');
-            $this->db->join('item_familys d', 'c.item_family_id = d.id');
-            $this->db->where('a.delivery_no', $delivery_no);
-            $records = $this->db->get()->result_array();
+    //         $this->db->select("a.*, b.name as supplier_name, c.number as item_rm_number, '0' as actual, (a.qty - a.delivery) as balance, c.name as item_rm_name, d.name as item_family_name");
+    //         $this->db->from('purchase_confirm a');
+    //         $this->db->join('suppliers b', 'a.supplier_id = b.id');
+    //         $this->db->join('item_rm c', 'a.item_rm_id = c.id');
+    //         $this->db->join('item_familys d', 'c.item_family_id = d.id');
+    //         $this->db->where('a.delivery_no', $delivery_no);
+    //         $records = $this->db->get()->result_array();
 
-            echo json_encode($records);
-        }
-    }
+    //         echo json_encode($records);
+    //     }
+    // }
 
     //UPLOAD IMAGE
     public function uploadAttachment($file_bf = ""){
@@ -247,9 +249,9 @@ class Delivery_confirm extends CI_Controller
     public function update()
     {
         if ($this->input->post()) {
-            $id   = base64_decode($this->input->get('id'));
+            // $id   = base64_decode($this->input->get('id'));
             $post = $this->input->post();
-            $send = $this->crud->update('purchase_confirm', ["id" => $id], $post);
+            $send = $this->crud->update('purchase_confirm', ["id" => $post['id']], $post);
             echo $send;
         } else {
             show_error("Cannot Process your request");

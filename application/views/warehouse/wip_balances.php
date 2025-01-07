@@ -160,8 +160,8 @@
             // "&updated_by=" + window.btoa(updated_by.value) +
             // "&updated_date=" + window.btoa(updated_date.value);
 
-        // $('#dg').datagrid('toExcel','wip_balances.xls');
-        window.location.assign('<?= base_url('warehouse/wip_balances/print/excel') ?>');
+        $('#dg').datagrid('toExcel','wip_balances.xls');
+        // window.location.assign('<?= base_url('warehouse/wip_balances/print/excel') ?>');
     }
     //RELOAD
     function reload() {

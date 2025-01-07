@@ -426,7 +426,7 @@ class Purchase_request_others extends CI_Controller
         }
 
         //Config Page
-        $rows = 15;
+        $rows = 30;
         $page = ceil(count($purchase_request_total) / $rows);
         //Generate QRcode
         // $this->createQrcode($request_no, "assets/image/qrcode/");
@@ -454,7 +454,7 @@ class Purchase_request_others extends CI_Controller
             $this->db->where('a.deleted', 0);
             $this->db->where('a.request_no', $request_no);
             $this->db->order_by('b.number', 'asc');
-            $this->db->limit(15, ($i * 15));
+            $this->db->limit(30, ($i * 30));
             $records = $this->db->get()->result_array();
 
             $html .= '  <div style="border: 1px solid black; width:100%; float:left;">
@@ -504,11 +504,11 @@ class Purchase_request_others extends CI_Controller
                                 <table id="customers">
                                     <tr>
                                         <th width="20">No</th>
-                                        <th width="120">Part No EBWS</th>
-                                        <th width="120">Part No Supplier</th>
+                                        <th width="80">Part No EBWS</th>
+                                        <th width="200">Part No Supplier</th>
                                         <th width="50">Qty</th>
                                         <th width="50">Uom</th>
-                                        <th width="100">Remarks</th>
+                                        <th width="150">Remarks</th>
                                     </tr>';
             foreach ($records as $record) {
                 $html .= '  <tr>
@@ -556,11 +556,11 @@ class Purchase_request_others extends CI_Controller
                                 </table>
                             </div>';
             }else{
-                $html .= "</div></div>";
-            }
+                if (($i + 1) != $page) {
+                    $html .= '<div style="page-break-after:always;"></div>';
+                }
 
-            if (($i + 1) != $page) {
-                $html .= '<div style="page-break-after:always;"></div>';
+                // $html .= "</div></div>";
             }
         }
 

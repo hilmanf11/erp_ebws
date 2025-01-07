@@ -1032,22 +1032,26 @@
     function BtnDeleteLabel(val, row) {
         if (row.state != "closed") {
             if(parseInt(row.qty_mpq) == parseInt(row.mpq)){
-                if (row.total_scan == row.qty_label) {
+                if (row.total_scan > 0) {
                     return "-";
                 } else {
                     var onClick = "deleteLabel('"+row.receipt_id+"')";
                     return '<a class="btn btn-success w-100" style="pointer-events: visible; opacity:1;" target="_blank" onClick="'+onClick+'"><i class="fa fa-rotate-left"></i> Sync</a>';
                 }
             }else{
-                var onClick = "deleteLabel('"+row.receipt_id+"')";
-                return '<a class="btn btn-success w-100" style="pointer-events: visible; opacity:1;" target="_blank" onClick="'+onClick+'"><i class="fa fa-rotate-left"></i> Sync</a>';
+                if (row.total_scan > 0) {
+                    return "-";
+                } else {
+                    var onClick = "deleteLabel('"+row.receipt_id+"')";
+                    return '<a class="btn btn-success w-100" style="pointer-events: visible; opacity:1;" target="_blank" onClick="'+onClick+'"><i class="fa fa-rotate-left"></i> Sync</a>';
+                }
             }
         }
     }
 
     function BtnCancel(val, row) {
         if (row.state != "closed") {
-            if (row.total_scan == row.qty_label) {
+            if (row.total_scan > 0) {
                 return "-";
             } else if(row.status == "2"){
                 var onClick = "cancelLabel('"+row.receipt_id+"')";

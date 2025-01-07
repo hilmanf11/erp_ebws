@@ -313,7 +313,28 @@ class Delivery_orders extends CI_Controller
             ]);
         }
 
+        $this->db->delete('shipping_orders', $data);
         $send = $this->crud->delete('delivery_orders', $data);
+        echo $send;
+    }
+
+    public function cancelDo(){
+        $data = $this->input->post();
+        $delivery_orders = $this->crud->reads("delivery_orders", [], $data);
+        $send = $this->db->update('delivery_orders', ["status" => 2], $data);
+
+        foreach ($delivery_orders as $delivery_order) {
+            $this->crud->update("sales_order_deliveries", [
+                "item_fg_id" => $delivery_order->item_fg_id,
+                "customer_id" => $delivery_order->customer_id,
+                "trans_date" => $delivery_order->delivery_date
+            ], [
+                "status" => 0
+            ]);
+
+        }
+
+        $this->db->delete('shipping_orders', $data);
         echo $send;
     }
 

@@ -49,7 +49,10 @@ class Assets extends CI_Controller
             GROUP BY a.request_no 
             ORDER BY a.request_no");
         $datas = $sql->result_array();
-        echo json_encode($datas);
+
+        $additional[] = array("request_no" => "Additional");
+        
+        echo json_encode(array_merge($additional, $datas));
     }
 
     public function readPrDetails()
@@ -141,14 +144,19 @@ class Assets extends CI_Controller
         if ($this->input->post()) {
             if ($this->form_validation->run() == TRUE) {
                 $post = $this->input->post();
-                $reads = $this->crud->reads("assets", [], ["number" => $post['number']]);
-                
-                if(count($reads) == 0){
-                    $send = $this->crud->create('assets', $post);
-                }
+                $reads = $this->crud->reads("assets", [], ["number" => $post['number'], "request_no" => $post['request_no']]);
 
-                $this->db->update('purchase_request_others', ["asset_code" => $post['number']], ["request_no" => $post['request_no'], "item_rm_id" => $post['item_rm_id']]);
-                echo json_encode(array("title" => "Good Job", "message" => "Asset Code Save Data", "theme" => "success"));
+                if($post['request_no'] == "Additional"){
+                    $send = $this->crud->create('assets', $post);
+                    echo $send;
+                }else{
+                    if(count($reads) == 0){
+                        $send = $this->crud->create('assets', $post);
+                    }
+    
+                    $this->db->update('purchase_request_others', ["asset_code" => $post['number']], ["request_no" => $post['request_no'], "item_rm_id" => $post['item_rm_id']]);
+                    echo json_encode(array("title" => "Good Job", "message" => "Asset Code Save Data", "theme" => "success"));
+                }
             } else {
                 show_error(validation_errors());
             }

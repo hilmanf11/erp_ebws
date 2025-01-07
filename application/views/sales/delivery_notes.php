@@ -147,6 +147,8 @@
                         <option value="SEA">SEA</option>
                         <option value="AIR">AIR</option>
                         <option value="TRUCK">TRUCK</option>
+                        <option value="SHIP">SHIP</option>
+                        <option value="ROAD">ROAD</option>
                     </select>
                 </div>
                 <div class="fitem">
@@ -734,9 +736,9 @@
             // addTable(customer.id);
 
             if(customer.type=="LOCAL"){
-                var origin = "INDONESIA";
+                var origin = "INDIA";
                 var sailing = "-";
-                var ship_by = "TRUCK";
+                var ship_by = "ROAD";
                 var incoterm = "NONE";
             }else{
                 var origin ="";

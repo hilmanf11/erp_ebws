@@ -89,7 +89,7 @@
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Line 1 Color</span>
-                    <input style="width:60%;" name="line_color" id="line_color" required="true" class="easyui-textbox">
+                    <input style="width:60%;" name="line_color" id="line_color" class="easyui-textbox">
                 </div>
             </div>
             <div style="width: 50%; float: left;">

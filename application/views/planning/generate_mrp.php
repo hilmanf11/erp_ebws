@@ -341,14 +341,14 @@
         }
     }
 
-    function componentCheck(filter_month, filter_year, filter_revision, filter_cutoff) {
+    function componentCheck(filter_month, filter_year) {
         $.ajax({
             type: "get",
             url: "<?= base_url('planning/generate_mrp/checkMps') ?>",
             data: "filter_month=" + window.btoa(filter_month) +
-                "&filter_year=" + window.btoa(filter_year) +
-                "&filter_revision=" + window.btoa(filter_revision) +
-                "&filter_cutoff=" + window.btoa(filter_cutoff),
+                "&filter_year=" + window.btoa(filter_year),
+                // "&filter_revision=" + window.btoa(filter_revision) +
+                // "&filter_cutoff=" + window.btoa(filter_cutoff),
             dataType: "json",
             success: function(mps) {
                 if (mps.theme == "success") {
@@ -367,9 +367,9 @@
             type: "get",
             url: "<?= base_url('planning/generate_mrp/checkOspo') ?>",
             data: "filter_month=" + window.btoa(filter_month) +
-                "&filter_year=" + window.btoa(filter_year) +
-                "&filter_revision=" + window.btoa(filter_revision) +
-                "&filter_cutoff=" + window.btoa(filter_cutoff),
+                "&filter_year=" + window.btoa(filter_year),
+                // "&filter_revision=" + window.btoa(filter_revision) +
+                // "&filter_cutoff=" + window.btoa(filter_cutoff),
             dataType: "json",
             success: function(ospo) {
                 if (ospo.theme == "success") {
@@ -388,9 +388,9 @@
             type: "get",
             url: "<?= base_url('planning/generate_mrp/checkWip') ?>",
             data: "filter_month=" + window.btoa(filter_month) +
-                "&filter_year=" + window.btoa(filter_year) +
-                "&filter_revision=" + window.btoa(filter_revision) +
-                "&filter_cutoff=" + window.btoa(filter_cutoff),
+                "&filter_year=" + window.btoa(filter_year),
+                // "&filter_revision=" + window.btoa(filter_revision) +
+                // "&filter_cutoff=" + window.btoa(filter_cutoff),
             dataType: "json",
             success: function(wip) {
                 if (wip.theme == "success") {
@@ -409,9 +409,9 @@
             type: "get",
             url: "<?= base_url('planning/generate_mrp/checkRm') ?>",
             data: "filter_month=" + window.btoa(filter_month) +
-                "&filter_year=" + window.btoa(filter_year) +
-                "&filter_revision=" + window.btoa(filter_revision) +
-                "&filter_cutoff=" + window.btoa(filter_cutoff),
+                "&filter_year=" + window.btoa(filter_year),
+                // "&filter_revision=" + window.btoa(filter_revision) +
+                // "&filter_cutoff=" + window.btoa(filter_cutoff),
             dataType: "json",
             success: function(rm) {
                 if (rm.theme == "success") {
@@ -430,9 +430,9 @@
             type: "get",
             url: "<?= base_url('planning/generate_mrp/checkMpp') ?>",
             data: "filter_month=" + window.btoa(filter_month) +
-                "&filter_year=" + window.btoa(filter_year) +
-                "&filter_revision=" + window.btoa(filter_revision) +
-                "&filter_cutoff=" + window.btoa(filter_cutoff),
+                "&filter_year=" + window.btoa(filter_year),
+                // "&filter_revision=" + window.btoa(filter_revision) +
+                // "&filter_cutoff=" + window.btoa(filter_cutoff),
             dataType: "json",
             success: function(mpp) {
                 if (mpp.theme == "success") {
@@ -451,9 +451,9 @@
             type: "get",
             url: "<?= base_url('planning/generate_mrp/checkSupply') ?>",
             data: "filter_month=" + window.btoa(filter_month) +
-                "&filter_year=" + window.btoa(filter_year) +
-                "&filter_revision=" + window.btoa(filter_revision) +
-                "&filter_cutoff=" + window.btoa(filter_cutoff),
+                "&filter_year=" + window.btoa(filter_year),
+                // "&filter_revision=" + window.btoa(filter_revision) +
+                // "&filter_cutoff=" + window.btoa(filter_cutoff),
             dataType: "json",
             success: function(supply) {
                 if (supply.theme == "success") {
@@ -533,6 +533,25 @@
             }],
             onSelect: function(month){
                 $("#filter_cutoff").datebox('clear');
+                var filter_year = $("#filter_year").combobox('getValue');
+                
+                componentCheck(month.id, filter_year);
+
+                $('#filter_revision').combobox({
+                    url: '<?php echo base_url('planning/generate_mrp/readRevisions?filter_month='); ?>' + btoa(month.id) + "&filter_year=" + btoa(filter_year),
+                    valueField: 'revision',
+                    textField: 'revision',
+                    prompt: 'Select Revision',
+                    formatter: function(val){
+                        return "Revision " + val.revision; 
+                    },
+                    icons: [{
+                        iconCls: 'icon-clear',
+                        handler: function(e) {
+                            $(e.data.target).combobox('clear').combobox('textbox').focus();
+                        }
+                    }],
+                });
             }
         });
 
@@ -549,28 +568,25 @@
             }],
             onSelect: function(year){
                 $("#filter_cutoff").datebox('clear');
-            }
-        });
-
-        $('#filter_revision').combobox({
-            url: '<?php echo base_url('planning/mst_data/readRevisions'); ?>',
-            valueField: 'id',
-            textField: 'name',
-            prompt: 'Select Revision',
-            icons: [{
-                iconCls: 'icon-clear',
-                handler: function(e) {
-                    $(e.data.target).combobox('clear').combobox('textbox').focus();
-                }
-            }],
-            onSelect: function(rev){
                 var filter_month = $("#filter_month").combobox('getValue');
-                var filter_year = $("#filter_year").combobox('getValue');
-                var filter_cutoff = $("#filter_cutoff").datebox('getValue');
+                
+                componentCheck(filter_month, year.id);
 
-                if(filter_month != "" && filter_year != ""){
-                    componentCheck(filter_month, filter_year, rev.id, filter_cutoff);
-                }
+                $('#filter_revision').combobox({
+                    url: '<?php echo base_url('planning/generate_mrp/readRevisions?filter_month='); ?>' + btoa(filter_month) + "&filter_year=" + btoa(year.id),
+                    valueField: 'revision',
+                    textField: 'revision',
+                    prompt: 'Select Revision',
+                    formatter: function(val){
+                        return "Revision " + val.revision; 
+                    },
+                    icons: [{
+                        iconCls: 'icon-clear',
+                        handler: function(e) {
+                            $(e.data.target).combobox('clear').combobox('textbox').focus();
+                        }
+                    }],
+                });
             }
         });
 

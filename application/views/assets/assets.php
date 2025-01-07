@@ -287,69 +287,121 @@
                     var rows = $('#dg2').datagrid('getSelections');
                     var totalrows = rows.length;
 
-                    if (rows.length > 0) {
-                        $.messager.confirm('Warning', 'Are you sure you want to save this data?', function(r) {
-                            if (r) {
-                                Swal.fire({
-                                    title: 'Please Wait for Saving Data',
-                                    showConfirmButton: false,
-                                    allowOutsideClick: false,
-                                    allowEscapeKey: false,
-                                    didOpen: () => {
-                                        Swal.showLoading();
-                                    },
-                                });
+                    if(number != "" && name != "" && qty != "" && uom != ""){
+                        if (rows.length > 0) {
+                            $.messager.confirm('Warning', 'Are you sure you want to save this data?', function(r) {
+                                if (r) {
+                                    Swal.fire({
+                                        title: 'Please Wait for Saving Data',
+                                        showConfirmButton: false,
+                                        allowOutsideClick: false,
+                                        allowEscapeKey: false,
+                                        didOpen: () => {
+                                            Swal.showLoading();
+                                        },
+                                    });
 
-                                if (totalrows > 0) {
-                                    requestData(totalrows, rows);
-                                    $('#dlg_insert').dialog('close');
+                                    if (totalrows > 0) {
+                                        requestData(totalrows, rows);
+                                        $('#dlg_insert').dialog('close');
 
-                                    function requestData(total, json, jml = 1, value = 0) {
-                                        if (value < 100) {
-                                            value = Math.floor((jml / total) * 100);
-                                            var i = (jml - 1);
+                                        function requestData(total, json, jml = 1, value = 0) {
+                                            if (value < 100) {
+                                                value = Math.floor((jml / total) * 100);
+                                                var i = (jml - 1);
 
-                                            $.ajax({
-                                                type: "post",
-                                                url: url_save,
-                                                data: {
-                                                    item_family_id: item_family_id,
-                                                    number: number,
-                                                    name: name,
-                                                    qty: qty,
-                                                    uom: uom,
-                                                    request_no: request_no,
-                                                    description: description,
-                                                    item_rm_id: json[i].item_rm_id
-                                                },
-                                                dataType: "json",
-                                                success: function(result) {
-                                                    requestData(total, json, jml + 1, value);
+                                                $.ajax({
+                                                    type: "post",
+                                                    url: url_save,
+                                                    data: {
+                                                        item_family_id: item_family_id,
+                                                        number: number,
+                                                        name: name,
+                                                        qty: qty,
+                                                        uom: uom,
+                                                        request_no: request_no,
+                                                        description: description,
+                                                        item_rm_id: json[i].item_rm_id
+                                                    },
+                                                    dataType: "json",
+                                                    success: function(result) {
+                                                        requestData(total, json, jml + 1, value);
 
-                                                    if (i == (totalrows - 1)) {
-                                                        Swal.close();
+                                                        if (i == (totalrows - 1)) {
+                                                            Swal.close();
 
-                                                        Swal.fire({
-                                                            title: result.message,
-                                                            icon: result.theme,
-                                                            confirmButtonText: 'Ok',
-                                                            allowOutsideClick: false,
-                                                        }).then((result) => {
-                                                            if (result.isConfirmed) {
-                                                                // window.location.reload();
-                                                                $("#dg").datagrid('reload');
-                                                            }
-                                                        });
+                                                            Swal.fire({
+                                                                title: result.message,
+                                                                icon: result.theme,
+                                                                confirmButtonText: 'Ok',
+                                                                allowOutsideClick: false,
+                                                            }).then((result) => {
+                                                                if (result.isConfirmed) {
+                                                                    // window.location.reload();
+                                                                    $("#dg").datagrid('reload');
+                                                                }
+                                                            });
+                                                        }
                                                     }
-                                                }
-                                            });
+                                                });
+                                            }
                                         }
                                     }
                                 }
+                            });
+                        } else {
+                            if(request_no == "Additional"){
+                                $.messager.confirm('Warning', 'Are you sure you want to save this data?', function(r) {
+                                    if (r) {
+                                        $('#dlg_insert').dialog('close');
+                                        
+                                        Swal.fire({
+                                            title: 'Please Wait for Saving Data',
+                                            showConfirmButton: false,
+                                            allowOutsideClick: false,
+                                            allowEscapeKey: false,
+                                            didOpen: () => {
+                                                Swal.showLoading();
+                                            },
+                                        });
+
+                                        $.ajax({
+                                            type: "post",
+                                            url: url_save,
+                                            data: {
+                                                item_family_id: item_family_id,
+                                                number: number,
+                                                name: name,
+                                                qty: qty,
+                                                uom: uom,
+                                                request_no: request_no,
+                                                description: description
+                                            },
+                                            dataType: "json",
+                                            success: function(result) {
+                                                Swal.close();
+
+                                                Swal.fire({
+                                                    title: result.message,
+                                                    icon: result.theme,
+                                                    confirmButtonText: 'Ok',
+                                                    allowOutsideClick: false,
+                                                }).then((result) => {
+                                                    if (result.isConfirmed) {
+                                                        // window.location.reload();
+                                                        $("#dg").datagrid('reload');
+                                                    }
+                                                });
+                                            }
+                                        });
+                                    }
+                                });
+                            }else{
+                                toastr.info("Request No must be Additional");
                             }
-                        });
-                    } else {
-                        toastr.info("Please Checklist Data");
+                        }
+                    }else{
+                        toastr.info("Please Completed Your Data Asset");
                     }
                 }
             }]
@@ -477,6 +529,12 @@
                 }, ]
             ],
             onSelect: function(val, row){
+                if(row.number == "CW"){ 
+                    $("#number").textbox('readonly', false); 
+                } else { 
+                    $("#number").textbox('readonly', true); 
+                }
+
                 number(row.number);
             }
         });

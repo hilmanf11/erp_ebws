@@ -187,14 +187,7 @@
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Revision</span>
-                    <select style="width:60%;" id="mrp_revision" class="easyui-combobox" panelHeight="auto">
-                        <option value="0">0</option>
-                        <option value="1">1</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                        <option value="4">4</option>
-                        <option value="5">5</option>
-                    </select>
+                    <input style="width:60%;" id="mrp_revision" class="easyui-textbox" readonly required>
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;"></span>
@@ -517,6 +510,19 @@
                     $(e.data.target).combobox('clear').combobox('textbox').focus();
                 }
             }],
+            onSelect: function(row){
+                var p_year = $('#mrp_year').combobox('getValue');
+
+                $.ajax({
+                    type: "post",
+                    url: '<?php echo base_url('purchase/purchase_orders/readRevision'); ?>',
+                    data: "p_month=" + row.id + "&p_year=" + p_year,
+                    dataType: "json",
+                    success: function (response) {
+                        $("#mrp_revision").textbox('setValue', response.rev);
+                    }
+                });
+            }
         });
 
         $('#mrp_year').combobox({
@@ -530,19 +536,19 @@
                     $(e.data.target).combobox('clear').combobox('textbox').focus();
                 }
             }],
-        });
+            onSelect: function(row){
+                var p_month = $('#mrp_month').combobox('getValue');
 
-        $('#mrp_revision').combobox({
-            url: '<?php echo base_url('planning/mst_data/readRevisions'); ?>',
-            valueField: 'id',
-            textField: 'name',
-            prompt: 'Select Revision',
-            icons: [{
-                iconCls: 'icon-clear',
-                handler: function(e) {
-                    $(e.data.target).combobox('clear').combobox('textbox').focus();
-                }
-            }],
+                $.ajax({
+                    type: "post",
+                    url: '<?php echo base_url('purchase/purchase_orders/readRevision'); ?>',
+                    data: "p_month=" + p_month + "&p_year=" + row.id,
+                    dataType: "json",
+                    success: function (response) {
+                        $("#mrp_revision").textbox('setValue', response.rev);
+                    }
+                });
+            }
         });
 
         $('#mrp_profam').combobox({
@@ -621,12 +627,12 @@
     function filterMrp(){
         var mrp_month = $("#mrp_month").combobox('getValue');
         var mrp_year = $("#mrp_year").combobox('getValue');
-        var mrp_revision = $("#mrp_revision").combobox('getValue');
+        var mrp_revision = $("#mrp_revision").textbox('getValue');
         var mrp_profam = $("#mrp_profam").combobox('getValue');
         var mrp_item_rm_id = $("#mrp_item_rm_id").combogrid('getValue');
         var mrp_supplier = $("#mrp_supplier").combogrid('getValue');
 
-        if(mrp_supplier != ""){
+        if(mrp_supplier != "" || mrp_revision != ""){
             $('#dg_mrp').datagrid({
                 url: '<?= base_url('purchase/purchase_orders/datatableMrp?mrp_month=') ?>' + btoa(mrp_month) + "&mrp_year=" + btoa(mrp_year) + "&mrp_revision=" + btoa(mrp_revision) + "&mrp_profam=" + btoa(mrp_profam) + "&mrp_supplier=" + btoa(mrp_supplier) + "&mrp_item_rm_id=" + btoa(mrp_item_rm_id),
                 // clientPaging: false,
@@ -636,7 +642,7 @@
                 fit:true,
             }).datagrid('enableFilter');
         }else{
-            toastr.info("Please Select Supplier");
+            toastr.info("Please Select Revision & Supplier");
         }
     }
 

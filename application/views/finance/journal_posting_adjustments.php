@@ -63,12 +63,13 @@
             </div>
         </fieldset>
         <?= $button ?>
+        <a href="javascript:void(0)" class="easyui-linkbutton" id="reverse" data-options="plain:true" onclick="reverse()"><i class="fa fa-rotate-left"></i> Reversal</a>
     </div>
 </div>
 
 <div id="toolbar2">
-    <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="append()"><i class="fa fa-plus"></i> Add</a>
-    <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="preview()"><i class="fa fa-eye"></i> Preview Journal</a>
+    <a href="javascript:void(0)" class="easyui-linkbutton" id="append" data-options="plain:true" onclick="append()"><i class="fa fa-plus"></i> Add</a>
+    <a href="javascript:void(0)" class="easyui-linkbutton" id="preview" data-options="plain:true" onclick="preview()"><i class="fa fa-eye"></i> Preview Journal</a>
 </div>
 
 <!-- Insert -->
@@ -96,6 +97,7 @@
                         <option value="GL - SUPPLIER">GL - SUPPLIER</option>
                         <option value="GL - CUSTOMER">GL - CUSTOMER</option>
                         <option value="GL - BANK">GL - BANK</option>
+                        <option value="GL - ASSET">GL - ASSET</option>
                     </select>
                 </div>
                 <div class="fitem">
@@ -157,8 +159,8 @@
                     <th data-options="field:'description',width:200,editor: {type: 'textbox', options: {required: true}}">Description</th>
                     <th data-options="field:'account_number',width:100, halign:'center', editor: {type: 'combogrid'}">Account No</th>
                     <th data-options="field:'account_name',width:180, editor: {type: 'textbox', options: {readonly: true}}">Account Name</th>
-                    <th hidden data-options="field:'company_id',width:100,editor: {type: 'textbox', options: {readonly: true}}">Company ID</th>
-                    <th hidden data-options="field:'company_name',width:200,editor: {type: 'textbox', options: {readonly: true}}">Company Name</th>
+                    <th hidden data-options="field:'company_id',width:100,editor: {type: 'textbox', options: {readonly: true}}">Code</th>
+                    <th hidden data-options="field:'company_name',width:200,editor: {type: 'textbox', options: {readonly: true}}">Name</th>
                     <th data-options="field:'currency',width:80,editor: {type: 'textbox', options: {required: true, readonly: true}}">Currency</th>
                     <th data-options="field:'amount',width:100,halign:'center',align:'right',formatter:numberformatDefaultIdr,editor: {type: 'numberbox', options: {required: true, precision:2}}">Taxable<br>Amount</th>
                     <th data-options="field:'taxes',width:100, halign:'center', editor: {type: 'combogrid', options: {
@@ -359,15 +361,18 @@
         $('#dg2').datagrid('loadData', []);
         $('#frm_insert').form('clear');
 
-        $("#journal_date").datebox('setValue', "<?= date("Y-m-d") ?>");
-        $("#modul").textbox('setValue', "ADJUSTMENT");
+        proses = "ADD";
+
         $("#journal_date").datebox('enable');
         $("#modul").textbox('enable');
         $("#journal_type").combogrid('enable');
         $("#journal_category").combobox('enable');
-        $("#document_no").combobox('enable');
+        $("#document_no").textbox('enable');
         $("#number").textbox('enable');
+        $("#append").linkbutton('enable');
         
+        $("#modul").textbox('setValue', "ADJUSTMENT");
+        $("#journal_date").datebox('setValue', "<?= date("Y-m-d") ?>");
         $("#journal_category").combobox('setValue', 'GL - GL');
         $("#journal_type").combogrid('setValue', '20241120000001');
 
@@ -628,6 +633,58 @@
         $("#local_credit").numberbox('setValue', local_credit);
     }
 
+    function reverse(){
+        var row = $('#dg').datagrid('getSelected');
+        if (row) {
+            // toastr.warning("Not Available");
+            $('#dlg_insert').dialog('open');
+            // $('#frm_insert').form('load', row);
+            $('#frm_insert').form('clear');
+
+            proses = "REVERSE";
+
+            $("#modul").textbox('setValue', "ADJUSTMENT");
+            $("#journal_date").datebox('setValue', row.journal_date);
+            $("#journal_category").combobox('setValue', row.modul);
+            $("#journal_type").combogrid('setValue', '20241120000001');
+            $("#document_no").textbox('setValue', row.document_no);
+            $("#document_date").datebox('setValue', row.document_date);
+            $("#remarks").textbox('setValue', row.remarks);
+
+            $("#journal_date").datebox('enable');
+            $("#modul").textbox('enable');
+            $("#journal_type").combogrid('enable');
+            $("#company_name").combobox('enable');
+            $("#document_no").textbox('enable');
+            $("#number").textbox('enable');
+            $("#append").linkbutton('disable');
+
+            var lastIndex;
+            $('#dg2').datagrid({
+                url: '<?= base_url('finance/journal_posting_adjustments/reverse') ?>?number=' + window.btoa(row.number),
+                onLoadSuccess: function(data){
+                    $("#local_debit").numberbox('setValue', data['footer'][0].local_debit);
+                    $("#local_credit").numberbox('setValue', data['footer'][0].local_credit);
+                },
+                onBeforeEdit: function(index, row) {
+                    row.editing = true;
+                    $(this).datagrid('refreshRow', index);
+                },
+                onAfterEdit: function(index, row) {
+                    row.editing = false;
+                    $(this).datagrid('refreshRow', index);
+                },
+                onCancelEdit: function(index, row) {
+                    row.editing = false;
+                    $(this).datagrid('refreshRow', index);
+                },
+            });
+
+        } else {
+            toastr.warning("Please select one of the data in the table first!", "Information");
+        }
+    }
+
     function cancelrow(target) {
         $('#dg2').datagrid('cancelEdit', getRowIndex(target));
     }
@@ -681,6 +738,8 @@
             // toastr.warning("Not Available");
             $('#dlg_insert').dialog('open');
             $('#frm_insert').form('load', row);
+            
+            proses = "UPDATE";
 
             $("#journal_date").datebox('disable');
             $("#modul").textbox('disable');
@@ -688,6 +747,7 @@
             $("#company_name").combobox('disable');
             $("#document_no").combobox('disable');
             $("#number").textbox('disable');
+            $("#append").linkbutton('enable');
 
             setTimeout(function() {
                 $("#number").textbox('setValue', row.number);
@@ -939,6 +999,7 @@
                                                                 journal_type_id: journal_type,
                                                                 number: number,
                                                                 remarks: remarks,
+                                                                proses: proses,
                                                                 id: json[i].id,
                                                                 document_no: document_no,
                                                                 document_date: document_date,

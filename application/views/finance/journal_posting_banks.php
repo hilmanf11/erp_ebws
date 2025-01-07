@@ -5,11 +5,11 @@
             <th rowspan="2" data-options="field:'details',width:90,align:'center', formatter:btnDetails">Detail</th>
             <th rowspan="2" data-options="field:'journal_date',width:100,align:'center'">Journal Date</th>
             <th rowspan="2" data-options="field:'number',width:140,align:'center'">GL No</th>
-            <th rowspan="2" data-options="field:'journal_type_name',width:200,halign:'center'">Journal Type</th>
+            <!-- <th rowspan="2" data-options="field:'journal_type_name',width:200,halign:'center'">Journal Type</th> -->
             <!-- <th rowspan="2" data-options="field:'modul',width:150,halign:'center'">Modul</th> -->
             <th hidden colspan="3" data-options="field:'',width:200,halign:'center'">Original Currency</th>
             <th colspan="3" data-options="field:'',width:200,halign:'center'">Local Currency</th>
-            <th rowspan="2" data-options="field:'remarks',width:100,halign:'center'">Remarks</th>
+            <th rowspan="2" data-options="field:'remarks',width:200,halign:'center'">Remarks</th>
             <th colspan="3" data-options="field:'',width:100,halign:'center'"> Approval</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
@@ -19,8 +19,8 @@
             <th hidden data-options="field:'original_credit',width:100,halign:'center',align:'right',formatter:numberformatDefault">Credit</th>
             <th hidden data-options="field:'rates',width:80,halign:'center',align:'right',formatter:numberformatDefault">Rates</th>
             <th data-options="field:'currency',width:80,align:'center'">Currency</th>
-            <th data-options="field:'local_debit',width:100,halign:'center',align:'right',formatter:numberformatDefault">Debit</th>
-            <th data-options="field:'local_credit',width:100,halign:'center',align:'right',formatter:numberformatDefault">Credit</th>
+            <th data-options="field:'local_debit',width:120,halign:'center',align:'right',formatter:numberformatDefault">Debit</th>
+            <th data-options="field:'local_credit',width:120,halign:'center',align:'right',formatter:numberformatDefault">Credit</th>
             <th data-options="field:'approved_by',width:100,align:'center'"> By</th>
             <th data-options="field:'approved',width:100,align:'center', styler:approvedStyle, formatter:approvedFormat"> Status</th>
             <th data-options="field:'approved_date',width:150,align:'center'"> Date</th>
@@ -32,7 +32,7 @@
     </thead>
 </table>
 
-<div id="toolbar" style="height: 200px; padding: 10px;">
+<div id="toolbar" style="height: 160px; padding: 10px;">
     <!-- <div style="width: 100%; display: grid; grid-template-columns: auto auto auto; grid-gap: 5px; display: flex;"> -->
     <div style="width: 100%;">
         <fieldset style="width: 80%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
@@ -43,7 +43,7 @@
                     <input style="width:28%;" id="filter_from" class="easyui-datebox" value="<?= date("Y-m-01") ?>" data-options="formatter:myformatter,parser:myparser, editable:false"> To
                     <input style="width:28%;" id="filter_to" class="easyui-datebox" value="<?= date("Y-m-t") ?>" data-options="formatter:myformatter,parser:myparser, editable:false">
                 </div>
-                <div class="fitem">
+                <div class="fitem" hidden>
                     <span style="width:35%; display:inline-block;">Journal Type</span>
                     <input style="width:60%;" id="filter_journal_type" class="easyui-combogrid">
                 </div>
@@ -740,6 +740,13 @@
             onChange: function(val) {
                 number("<?= $menus_id ?>");
             }
+        });
+
+        $("#filter_voucher").combobox({
+            url: '<?= base_url('finance/journal_posting_banks/readVoucher') ?>',
+            valueField: 'number',
+            textField: 'number',
+            prompt: "Choose Voucher No"
         });
     });
 
