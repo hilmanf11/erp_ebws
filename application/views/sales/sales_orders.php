@@ -20,13 +20,14 @@
             <!-- <th rowspan="2" data-options="field:'total_grand2',width:100,halign:'center',align:'right',formatter: numberFormat">Grand Total</th> -->
             <th rowspan="2" data-options="field:'remarks',width:150,halign:'center'">Remarks</th>
             <th rowspan="2" data-options="field:'attachment',width:80,align:'center',formatter: btnDetails">Attachment</th>
-            <th colspan="3" data-options="field:'',width:100,halign:'center'">Approved</th>
+            <th colspan="4" data-options="field:'',width:100,halign:'center'">Approved</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
         </tr>
         <tr>
-            <th data-options="field:'approved_to',width:80,align:'center', styler:cellStylerApproval, formatter:cellFormatterApproval">Status</th>
+            <th data-options="field:'status_approved',width:80,align:'center', styler:cellStylerApproval, formatter:cellFormatterApproval">Status</th>
             <th data-options="field:'approved_by',width:120,align:'center'">By</th>
+            <th data-options="field:'approved_to',width:120,halign:'center'">Next</th>
             <th data-options="field:'approved_date',width:120,align:'center'">Date</th>
             <th data-options="field:'created_by',width:120,align:'center'"> By</th>
             <th data-options="field:'created_date',width:150,align:'center'"> Date</th>
@@ -40,9 +41,9 @@
 <div id="toolbar" style="height: 200px; padding: 10px;">
     <!-- <div style="width: 100%; display: grid; grid-template-columns: auto auto auto; grid-gap: 5px; display: flex;"> -->
     <div style="width: 100%;">
-        <fieldset style="width: 80%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
+        <fieldset style="width: 100%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
             <legend><b>Form Filter Data</b></legend>
-            <div style="width: 50%; float: left;">
+            <div style="width: 35%; float: left;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Sales Order Date</span>
                     <input style="width:30%;" id="filter_from" value="<?= date("Y-m-01") ?>" data-options="formatter:myformatter,parser:myparser,editable:false" class="easyui-datebox">
@@ -57,11 +58,17 @@
                     <a href="javascript:;" class="easyui-linkbutton" onclick="filter()"><i class="fa fa-search"></i> Filter Data</a>
                 </div>
             </div>
-            <div style="width: 50%; float: left;">
+            <div style="width: 35%; float: left;">
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Product No</span>
+                    <input style="width:60%;" id="filter_item_fg" class="easyui-combogrid">
+                </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Sales Order No</span>
                     <input style="width:60%;" id="filter_sales_order_no" class="easyui-combobox">
                 </div>
+            </div>
+            <div style="width: 30%; float: left;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Customer Order No</span>
                     <input style="width:60%;" id="filter_customer_order_no" class="easyui-combobox">
@@ -87,7 +94,7 @@
 </div>
 
 <!-- Insert & Update -->
-<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 1100px; height: 90%; padding:10px; top: 20px;">
+<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 1100px; height: 550px; padding:10px; top: 10px;">
     <form id="frm_insert" method="post" novalidate>
         <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
             <legend><b>Form Data</b></legend>
@@ -807,11 +814,13 @@
         var filter_from = $("#filter_from").datebox('getValue');
         var filter_to = $("#filter_to").datebox('getValue');
         var filter_customer_id = $("#filter_customer_id").combobox('getValue');
+        var filter_item_fg = $("#filter_item_fg").combogrid('getValue');
         var filter_sales_order_no = $("#filter_sales_order_no").combobox('getValue');
         var filter_status = $("#filter_status").combobox('getValue');
 
         var url = "?filter_from=" + window.btoa(filter_from) +
             "&filter_to=" + window.btoa(filter_to) +
+            "&filter_item_fg=" + window.btoa(filter_item_fg) +
             "&filter_customer_id=" + window.btoa(filter_customer_id) +
             "&filter_sales_order_no=" + window.btoa(filter_sales_order_no) +
             "&filter_status=" + window.btoa(filter_status);
@@ -831,7 +840,7 @@
                 var ddv = $(this).datagrid('getRowDetail', index).find('table.ddv');
 
                 ddv.datagrid({
-                    url: '<?= base_url('sales/sales_orders/datatableDetails?sales_order_no=') ?>' + window.btoa(row.sales_order_no) + "&filter_from=" + btoa(filter_from) + "&filter_to=" + btoa(filter_to),
+                    url: '<?= base_url('sales/sales_orders/datatableDetails?sales_order_no=') ?>' + window.btoa(row.sales_order_no) + "&filter_item_fg=" + btoa(filter_item_fg),
                     singleSelect: true,
                     rownumbers: true,
                     columns: [
@@ -933,11 +942,13 @@
         var filter_from = $("#filter_from").datebox('getValue');
         var filter_to = $("#filter_to").datebox('getValue');
         var filter_customer_id = $("#filter_customer_id").combobox('getValue');
+        var filter_item_fg = $("#filter_item_fg").combogrid('getValue');
         var filter_sales_order_no = $("#filter_sales_order_no").combobox('getValue');
         var filter_status = $("#filter_status").combobox('getValue');
 
         var url = "?filter_from=" + window.btoa(filter_from) +
             "&filter_to=" + window.btoa(filter_to) +
+            "&filter_item_fg=" + window.btoa(filter_item_fg) +
             "&filter_customer_id=" + window.btoa(filter_customer_id) +
             "&filter_sales_order_no=" + window.btoa(filter_sales_order_no) +
             "&filter_status=" + window.btoa(filter_status);
@@ -1192,6 +1203,37 @@
                 }],
             });
         }
+    });
+
+    $('#filter_item_fg').combogrid({
+        url: '<?= base_url("master/item_fg/reads") ?>',
+        panelWidth: 550,
+        idField: 'id',
+        textField: 'number',
+        mode: 'remote',
+        fitColumns: true,
+        prompt: "Select Product No",
+        icons: [{
+            iconCls: 'icon-clear',
+            handler: function(e) {
+                $(e.data.target).combogrid('clear').combogrid('textbox').focus();
+            }
+        }],
+        columns: [
+            [{
+                field: 'number',
+                title: 'Product No EBWS',
+                width: 150
+            }, {
+                field: 'number_customer',
+                title: 'Product No Customer',
+                width: 200
+            }, {
+                field: 'name',
+                title: 'Description',
+                width: 200
+            }]
+        ],
     });
 
     //CELLSTYLE STATUS

@@ -77,93 +77,89 @@
                     return false;
                 }
 
-                if(filter_item_family != ""){
-                    $.messager.confirm('Warning', 'Are you sure you want to save this data?', function(r) {
-                        if (r) {
-                            Swal.fire({
-                                title: 'Please Wait for Save Inventory Data',
-                                showConfirmButton: false,
-                                allowOutsideClick: false,
-                                allowEscapeKey: false,
-                                didOpen: () => {
-                                    Swal.showLoading();
-                                },
-                            });
+                $.messager.confirm('Warning', 'Are you sure you want to save this data?', function(r) {
+                    if (r) {
+                        Swal.fire({
+                            title: 'Please wait, the system is generate a lot of data, it may take a long time.',
+                            showConfirmButton: false,
+                            allowOutsideClick: false,
+                            allowEscapeKey: false,
+                            didOpen: () => {
+                                Swal.showLoading();
+                            },
+                        });
 
-                            $("#p_remarks").html("");
+                        $("#p_remarks").html("");
 
-                            $.ajax({
-                                type: "post",
-                                url: '<?= base_url('costing/inventory_rm/getData') ?>',
-                                data: {
-                                    filter_from: filter_from,
-                                    filter_to: filter_to,
-                                    filter_item_family: filter_item_family,
-                                    filter_items: filter_items,
-                                },
-                                dataType: "json",
-                                success: function(data) {
-                                    Swal.close();
+                        $.ajax({
+                            type: "post",
+                            url: '<?= base_url('costing/inventory_rm/getData') ?>',
+                            data: {
+                                filter_from: filter_from,
+                                filter_to: filter_to,
+                                filter_item_family: filter_item_family,
+                                filter_items: filter_items,
+                            },
+                            dataType: "json",
+                            success: function(data) {
+                                Swal.close();
 
-                                    if(data.total > 0){
-                                        requestData(data.total, data.rows);
-                                        $('#dlg_generate').dialog('open');
+                                if(data.total > 0){
+                                    requestData(data.total, data.rows);
+                                    $('#dlg_generate').dialog('open');
 
-                                        function requestData(total, json, jml = 1, value = 0) {
-                                            if (value < 100) {
-                                                value = Math.floor((jml / total) * 100);
-                                                var i = (jml - 1);
+                                    function requestData(total, json, jml = 1, value = 0) {
+                                        if (value < 100) {
+                                            value = Math.floor((jml / total) * 100);
+                                            var i = (jml - 1);
 
-                                                $('#p_upload').progressbar('setValue', value);
-                                                $('#p_start').html(jml);
-                                                $('#p_finish').html(data.total);
+                                            $('#p_upload').progressbar('setValue', value);
+                                            $('#p_start').html(jml);
+                                            $('#p_finish').html(data.total);
 
-                                                $.ajax({
-                                                    type: "post",
-                                                    url: '<?= base_url('costing/inventory_rm/create') ?>',
-                                                    data: {
-                                                        data: json[i]
-                                                    },
-                                                    dataType: "json",
-                                                    success: function(result) {
-                                                        requestData(total, json, jml + 1, value);
+                                            $.ajax({
+                                                type: "post",
+                                                url: '<?= base_url('costing/inventory_rm/create') ?>',
+                                                data: {
+                                                    data: json[i]
+                                                },
+                                                dataType: "json",
+                                                success: function(result) {
+                                                    requestData(total, json, jml + 1, value);
 
-                                                        if (result.theme == "success") {
-                                                            var title = "<b style='color: green;'>" + result.title + "</b> | " + result.message;
-                                                        } else {
-                                                            var title = "<b style='color: red;'>" + result.title + "</b> | " + result.message;
-                                                        }
-
-                                                        $("#p_remarks").append(title + "<br>");
-
-                                                        if (i == (data.total - 1)) {
-                                                            $('#dlg_generate').dialog('close');
-
-                                                            Swal.fire({
-                                                                title: result.message,
-                                                                icon: result.theme,
-                                                                confirmButtonText: 'Ok',
-                                                                allowOutsideClick: false,
-                                                            }).then((result) => {
-                                                                // if (result.isConfirmed) {
-                                                                //     window.location.reload();
-                                                                // }
-                                                            });
-                                                        }
+                                                    if (result.theme == "success") {
+                                                        var title = "<b style='color: green;'>" + result.title + "</b> | " + result.message;
+                                                    } else {
+                                                        var title = "<b style='color: red;'>" + result.title + "</b> | " + result.message;
                                                     }
-                                                });
-                                            }
+
+                                                    $("#p_remarks").append(title + "<br>");
+
+                                                    if (i == (data.total - 1)) {
+                                                        $('#dlg_generate').dialog('close');
+
+                                                        Swal.fire({
+                                                            title: result.message,
+                                                            icon: result.theme,
+                                                            confirmButtonText: 'Ok',
+                                                            allowOutsideClick: false,
+                                                        }).then((result) => {
+                                                            // if (result.isConfirmed) {
+                                                            //     window.location.reload();
+                                                            // }
+                                                        });
+                                                    }
+                                                }
+                                            });
                                         }
-                                    }else{
-                                        toastr.warning("Data not Found!");
                                     }
+                                }else{
+                                    toastr.warning("Data not Found!");
                                 }
-                            });
-                        }
-                    });
-                }else{
-                    toastr.warning("Please select Product Family!");
-                }
+                            }
+                        });
+                    }
+                });
             }
         });
     }
@@ -184,13 +180,9 @@
         var filter_display = $("#filter_display").combobox('getValue');
         var filter_transtype = $("#filter_transtype").combobox('getValue');
 
-        if(filter_item_family != ""){
-            url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_item_family=" + filter_item_family + "&filter_items=" + filter_items + "&filter_display=" + filter_display + "&filter_transtype=" + filter_transtype;
-            $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
-            $("#printout").attr('src', '<?= base_url('costing/inventory_rm/print') ?>' + url);
-        }else{
-            toastr.warning("Please select Product Family!");
-        }
+        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_item_family=" + filter_item_family + "&filter_items=" + filter_items + "&filter_display=" + filter_display + "&filter_transtype=" + filter_transtype;
+        $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
+        $("#printout").attr('src', '<?= base_url('costing/inventory_rm/print') ?>' + url);
     }
 
     function excel() {
@@ -200,13 +192,9 @@
         var filter_items = $("#filter_items").combogrid('getValue');
         var filter_display = $("#filter_display").combobox('getValue');
         var filter_transtype = $("#filter_transtype").combobox('getValue');
-
-        if(filter_item_family != ""){
-            url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_item_family=" + filter_item_family + "&filter_items=" + filter_items + "&filter_display=" + filter_display + "&filter_transtype=" + filter_transtype;
-            window.location.assign('<?= base_url('costing/inventory_rm/print/excel') ?>' + url);
-        }else{
-            toastr.warning("Please select Product Family!");
-        }
+        
+        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_item_family=" + filter_item_family + "&filter_items=" + filter_items + "&filter_display=" + filter_display + "&filter_transtype=" + filter_transtype;
+        window.location.assign('<?= base_url('costing/inventory_rm/print/excel') ?>' + url);
     }
 
     $(function() {
@@ -226,8 +214,8 @@
         });
 
         $("#filter_item_family").combobox({
-            url: '<?= base_url('costing/inventory_rm/readItemFamily/001') ?>',
-            valueField: 'number',
+            url: '<?= base_url('costing/inventory_rm/readItemFamily') ?>',
+            valueField: 'id',
             textField: 'name',
             prompt: "Select Product Family",
             icons: [{
@@ -238,13 +226,13 @@
             }],
             onSelect: function(row) {
                 $('#filter_items').combogrid({
-                    url: '<?= base_url('master/items/reads/') ?>' + row.number,
-                    panelWidth: 420,
+                    url: '<?= base_url('master/item_rm/reads/') ?>' + row.id,
+                    panelWidth: 500,
                     idField: 'id',
                     textField: 'number',
                     mode: 'remote',
                     fitColumns: true,
-                    prompt: "Select Product No",
+                    prompt: "Select Part No",
                     icons: [{
                         iconCls: 'icon-clear',
                         handler: function(e) {
@@ -253,13 +241,17 @@
                     }],
                     columns: [
                         [{
-                            field: 'number',
-                            title: 'Product No',
+                            field: 'id',
+                            title: 'Part No EBWS',
                             width: 100
                         }, {
-                            field: 'name',
-                            title: 'Product Name',
+                            field: 'number',
+                            title: 'Part No Supplier',
                             width: 200
+                        }, {
+                            field: 'name',
+                            title: 'Part Name',
+                            width: 150
                         }, ]
                     ]
                 });
@@ -267,13 +259,13 @@
         });
 
         $('#filter_items').combogrid({
-            url: '<?= base_url('master/items/readNotFg') ?>',
+            url: '<?= base_url('master/item_rm/reads') ?>',
             panelWidth: 420,
             idField: 'id',
             textField: 'number',
             mode: 'remote',
             fitColumns: true,
-            prompt: "Select Product No",
+            prompt: "Select Part No",
             icons: [{
                 iconCls: 'icon-clear',
                 handler: function(e) {
@@ -282,13 +274,17 @@
             }],
             columns: [
                 [{
-                    field: 'number',
-                    title: 'Product No',
+                    field: 'id',
+                    title: 'Part No EBWS',
                     width: 100
                 }, {
-                    field: 'name',
-                    title: 'Product Name',
+                    field: 'number',
+                    title: 'Part No Supplier',
                     width: 200
+                }, {
+                    field: 'name',
+                    title: 'Part Name',
+                    width: 150
                 }, ]
             ]
         });

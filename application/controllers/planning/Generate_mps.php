@@ -81,7 +81,7 @@ class Generate_mps extends CI_Controller
             $monthBack = date('F Y', strtotime('-1 month', strtotime($filter_year . "-" . $filter_month . "-01")));
             $varBackYear = date('Y', strtotime('+1 month', strtotime($filter_year . "-" . $filter_month . "-01")));
             $varBackMonth = date('m', strtotime('+1 month', strtotime($filter_year . "-" . $filter_month . "-01")));
-            $period = date("Y-m-t", strtotime("-1 month", strtotime($filter_year . "-" . $filter_month."-01")));
+            $period = date("Y-m-t", strtotime("-1 month", strtotime($filter_cutoff)));
             $period2 = $filter_year.$filter_month;
 
             //Configuration Planning
@@ -92,7 +92,7 @@ class Generate_mps extends CI_Controller
             //Select Query
             $this->db->select('a.id, a.number, a.name, a.leadtime, b.customer_id, a.number_customer, a.safety_stock,
                 COALESCE(c.qty, 0) as total_wip,
-                COALESCE(f.outstanding, 0) as os_so');
+                (CASE WHEN COALESCE(f.outstanding, 0) > 0 THEN COALESCE(f.outstanding, 0) ELSE 0 END) as os_so');
             $this->db->from('item_fg a');
             $this->db->join('customer_items b', 'a.id = b.item_fg_id');
             $this->db->join("(SELECT z.item_fg_id, SUM(z.qty) as qty, SUM(z.qty_scan) as qty_scan, (SUM(z.qty) - SUM(z.qty_scan)) as balance FROM (
@@ -106,11 +106,19 @@ class Generate_mps extends CI_Controller
             // $this->db->join("(SELECT DATE_FORMAT(a.created_date, '%Y%m') as period, b.item_fg_id, b.customer_id, SUM(a.qty) as qty FROM scan_item_receipts_fg a JOIN wip_receipts b ON a.checksheet_number = b.checksheet_number WHERE a.status = 0 GROUP BY b.period, b.item_fg_id) d", "a.id = d.item_fg_id and b.customer_id = d.customer_id and d.period = '$period2'", "left");
             // $this->db->join("(SELECT b.item_fg_id, SUM(a.qty) as qty FROM scan_item_receipts_fg a JOIN os_fg b ON a.workorder = b.id WHERE a.status = 0 GROUP BY b.item_fg_id) g", "a.id = g.item_fg_id", "left");
             // $this->db->join("(SELECT DATE_FORMAT(a.trans_date_from, '%Y%m') as period, item_fg_id, customer_id, SUM(qty) as qty FROM wip_receipts a GROUP BY DATE_FORMAT(a.trans_date_from, '%Y%m')) e", "a.id = e.item_fg_id and b.customer_id = e.customer_id and e.period = '$period2'", "left");
-            $this->db->join("(SELECT a.item_fg_id, c.number_customer, COALESCE(a.qty_so, 0) as qty_so, COALESCE(b.qty_delivery, 0) as qty_delivery, (COALESCE(a.qty_so, 0) - COALESCE(b.qty_delivery, 0)) as outstanding
-                FROM (SELECT item_fg_id, SUM(qty) as qty_so FROM `sales_orders` WHERE delivery_date < '$filter_cutoff' and status = 0 GROUP BY item_fg_id) a 
-                JOIN (SELECT item_fg_id, SUM(qty) as qty_delivery FROM delivery_notes WHERE delivery_note_date < '$filter_cutoff' GROUP BY item_fg_id) b ON a.item_fg_id = b.item_fg_id 
-                JOIN item_fg c ON a.item_fg_id = c.id 
-                GROUP BY a.item_fg_id) f", "a.id = f.item_fg_id", "left");
+            // $this->db->join("(SELECT c.id as item_fg_id, c.number_customer, COALESCE(a.qty_so, 0) as qty_so, COALESCE(b.qty_delivery, 0) as qty_delivery, (COALESCE(a.qty_so, 0) - COALESCE(b.qty_delivery, 0)) as outstanding
+            //     FROM item_fg c
+            //     JOIN (SELECT item_fg_id, SUM(qty) as qty_so FROM `sales_orders` WHERE delivery_date < '$filter_cutoff' and status = 0 GROUP BY item_fg_id) a ON a.item_fg_id = c.id
+            //     JOIN (SELECT item_fg_id, SUM(qty) as qty_delivery FROM delivery_notes WHERE delivery_note_date < '$filter_cutoff' GROUP BY item_fg_id) b ON b.item_fg_id = c.id 
+            //     GROUP BY c.id) f", "a.id = f.item_fg_id", "left");
+            $this->db->join("(SELECT z.id, SUM(z.qty_outstanding) AS outstanding FROM (
+                SELECT b.id, b.number_customer, a.qty_so, COALESCE(c.qty_delivery, 0) AS qty_delivery, (a.qty_so - COALESCE(c.qty_delivery, 0)) AS qty_outstanding
+                FROM (SELECT *, SUM(qty) AS qty_so FROM sales_orders WHERE `status` = 0 GROUP BY sales_order_no, item_fg_id) a
+                JOIN item_fg b ON a.item_fg_id = b.id
+                LEFT JOIN (SELECT sales_order_no, item_fg_id, SUM(qty) AS qty_delivery FROM delivery_notes GROUP BY sales_order_no, item_fg_id) c ON a.sales_order_no = c.sales_order_no AND a.item_fg_id = c.item_fg_id
+                WHERE a.sales_order_date < '$period'
+                GROUP BY a.sales_order_no, a.item_fg_id) z
+                GROUP BY z.id) f", "a.id = f.id", "left");
             if ($filter_customer != "") {
                 $this->db->where('b.customer_id', $filter_customer);
             }
@@ -123,7 +131,6 @@ class Generate_mps extends CI_Controller
             $records = $this->db->get()->result_array();
 
             foreach ($records as $data) {
-
                 $filter_cutoff_start = date("Y-m-01", strtotime($filter_cutoff));
                 $filter_cutoff_start2 = date("Y-m-01", strtotime("-1 month", strtotime($filter_cutoff)));
                 $filter_cutoff_end = date("Y-m-d", strtotime("-1 day", strtotime($filter_cutoff)));
@@ -187,12 +194,13 @@ class Generate_mps extends CI_Controller
 
                 $stockFg = $this->crud->query("SELECT
                     a.id,
-                    (COALESCE(b.qty_sto, 0) + COALESCE(d.sto_qty_in, 0) + COALESCE(c.qty_wip, 0) - COALESCE(g.qty, 0) - COALESCE(e.sto_qty_out, 0)) as end_stock
+                    (COALESCE(b.qty_sto, 0) + COALESCE(d.sto_qty_in, 0) + COALESCE(c.qty_wip, 0) + COALESCE(e.qty_rgp_in, 0) - COALESCE(g.qty, 0) - COALESCE(d.sto_qty_out, 0) - COALESCE(f.qty_rgp_out, 0)) as end_stock
                 FROM item_fg a 
                 LEFT JOIN (select a.item_fg_id, COALESCE(SUM(b.qty), 0) as qty_sto FROM os_fg a JOIN scan_item_receipts_fg b ON a.id = b.workorder WHERE a.trans_date < '$filter_cutoff' GROUP BY a.item_fg_id) b ON a.id = b.item_fg_id
                 LEFT JOIN (select a.item_fg_id, COALESCE(SUM(b.qty), 0) as qty_wip FROM wip_receipts a JOIN scan_item_receipts_fg b ON a.workorder = b.workorder and a.checksheet_number = b.checksheet_number WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') < '$filter_cutoff' GROUP BY a.item_fg_id) c ON a.id = c.item_fg_id
-                LEFT JOIN (SELECT a.item_fg_id, COALESCE(SUM(a.qty), 0) as sto_qty_in  FROM sto_fg a WHERE a.type = 'IN' and a.trans_date < '$filter_cutoff' and (a.approved_to = '' or a.approved_to is null) GROUP BY item_fg_id) d ON a.id = d.item_fg_id
-                LEFT JOIN (SELECT a.item_fg_id, COALESCE(SUM(a.qty), 0) as sto_qty_out FROM sto_fg a WHERE a.type = 'OUT' and a.trans_date < '$filter_cutoff' and (a.approved_to = '' or a.approved_to is null) GROUP BY item_fg_id) e ON a.id = e.item_fg_id
+                LEFT JOIN (SELECT a.item_fg_id, (CASE WHEN a.type = 'IN' THEN COALESCE(SUM(a.qty), 0) ELSE 0 END) as sto_qty_in, (CASE WHEN a.type = 'OUT' THEN COALESCE(SUM(a.qty), 0) ELSE 0 END) as sto_qty_out FROM sto_fg a WHERE a.trans_date < '$filter_cutoff' and (a.approved_to = '' or a.approved_to is null) GROUP BY item_fg_id) d ON a.id = d.item_fg_id
+                LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_in FROM rgp_transactions WHERE type = 'IN' and transaction_date < '$filter_cutoff' GROUP BY item_id) e ON a.id = e.item_id
+                LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_out FROM rgp_transactions WHERE type = 'OUT' and transaction_date < '$filter_cutoff' GROUP BY item_id) f ON a.id = f.item_id
                 LEFT JOIN (SELECT item_fg_id, delivery_note_date, COALESCE(SUM(qty), 0) as qty FROM delivery_notes WHERE DATE_FORMAT(created_date, '%Y-%m-%d') < '$filter_cutoff' GROUP BY item_fg_id) g ON a.id = g.item_fg_id
                 WHERE a.id = '$item_fg_id'
                 GROUP BY a.id
@@ -202,10 +210,10 @@ class Generate_mps extends CI_Controller
                 $p_year = date("Y", strtotime($filter_cutoff));
                 $osMpp = $this->crud->query("SELECT
                     a.id,
-                    ((c.date_1 + c.date_2 + c.date_3 + c.date_4 + c.date_5 + c.date_6 + c.date_7 + c.date_8 + c.date_9 + c.date_10 + c.date_11 + c.date_12 + c.date_13 + c.date_14 + c.date_15 + c.date_16 + c.date_17 + c.date_18 + c.date_19 + c.date_20 + c.date_21 + c.date_22 + c.date_23 + c.date_24 + c.date_25 + c.date_26 + c.date_27 + c.date_28 + c.date_29 + c.date_30 + c.date_31) - SUM(b.qty)) as os_mpp
+                    ((c.date_1 + c.date_2 + c.date_3 + c.date_4 + c.date_5 + c.date_6 + c.date_7 + c.date_8 + c.date_9 + c.date_10 + c.date_11 + c.date_12 + c.date_13 + c.date_14 + c.date_15 + c.date_16 + c.date_17 + c.date_18 + c.date_19 + c.date_20 + c.date_21 + c.date_22 + c.date_23 + c.date_24 + c.date_25 + c.date_26 + c.date_27 + c.date_28 + c.date_29 + c.date_30 + c.date_31) - COALESCE(SUM(b.qty), 0)) as os_mpp
                 FROM item_fg a 
-                JOIN production_schedules b ON a.id = b.item_fg_id and b.trans_date between '$filter_cutoff_start' and '$filter_cutoff_end2'
                 JOIN generate_mpp c ON a.id = c.item_fg_id and c.p_month = '$p_month' and c.p_year = '$p_year'
+                LEFT JOIN production_schedules b ON a.id = b.item_fg_id and b.trans_date between '$filter_cutoff_start' and '$filter_cutoff_end2'
                 WHERE a.id = '$item_fg_id'
                 GROUP BY a.id");
 
@@ -385,7 +393,7 @@ class Generate_mps extends CI_Controller
                     "p_month" => $filter_month,
                     "p_year" => $filter_year,
                     "revision" => $filter_revision,
-                    "cutoff" => date("Y-m-d H:i:s", strtotime($filter_cutoff)),
+                    "cutoff" => $filter_cutoff . " " . date("H:i:s"),
                     "customer_id" => $data['customer_id'],
                     "item_fg_id" => $data['id'],
                     "wip_month" => strtoupper($monthBack),

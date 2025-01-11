@@ -39,12 +39,13 @@ class Shipping_orders extends CI_Controller
             $this->db->from('delivery_orders a');
             $this->db->join('item_fg b', 'a.item_fg_id = b.id');
             $this->db->join('customers c', 'a.customer_id = c.id');
-            $this->db->join("(SELECT z.* FROM ((SELECT a.checksheet_label, b.item_fg_id, a.workorder, a.checksheet_number FROM scan_item_receipts_fg a 
-                JOIN wip_receipts b ON a.checksheet_number = b.checksheet_number AND a.workorder = b.workorder)
+            $this->db->join("(SELECT z.* FROM (
+                (SELECT a.checksheet_label, b.item_fg_id, a.workorder, a.checksheet_number FROM scan_item_receipts_fg a JOIN wip_receipts b ON a.checksheet_number = b.checksheet_number AND a.workorder = b.workorder)
                 UNION 
-                (SELECT a.checksheet_label, b.item_fg_id, a.workorder, a.checksheet_number FROM scan_item_receipts_fg a 
-                JOIN os_fg b ON a.workorder = b.id)) z ) d", 'a.item_fg_id = d.item_fg_id');
-            // $this->db->join('shipping_orders e', 'a.item_fg_id = e.item_fg_id and a.delivery_order_no = e.delivery_order_no', 'left');
+                (SELECT a.checksheet_label, b.item_fg_id, a.workorder, a.checksheet_number FROM scan_item_receipts_fg a JOIN os_fg b ON a.workorder = b.id)
+                UNION
+                (SELECT a.checksheet_label, b.item_id as item_fg_id, a.workorder, a.checksheet_number FROM scan_item_receipts_fg a JOIN rgp_transactions b ON a.workorder = b.id)
+            ) z ) d", 'a.item_fg_id = d.item_fg_id');
             $this->db->join('shipping_orders e', 'a.delivery_order_no = e.delivery_order_no AND d.checksheet_label = e.checksheet_label', 'left');
             $this->db->where('a.delivery_order_no', $delivery_order_no);
             $this->db->where('a.status', 0);
@@ -65,10 +66,8 @@ class Shipping_orders extends CI_Controller
         if ($this->input->post()) {
             $checksheet_label = $this->input->post('checksheet_label');
 
-            // $this->db->select("d.*, (CASE WHEN b.item_fg_id is null THEN c.item_fg_id ELSE b.item_fg_id END) as item_fg_id");
             $this->db->select("d.*, a.id as item_fg_id");
             $this->db->from('item_fg a');
-            // $this->db->join('os_fg b', 'a.id = b.item_fg_id', 'left');
             $this->db->join('wip_receipts c', 'a.id = c.item_fg_id', 'left');
             $this->db->join('scan_item_receipts_fg d', '(c.checksheet_number = d.checksheet_number)');
             $this->db->where('d.checksheet_label', $checksheet_label);
@@ -79,12 +78,23 @@ class Shipping_orders extends CI_Controller
             if(empty($records)){
                 $this->db->select("d.*, a.id as item_fg_id");
                 $this->db->from('item_fg a');
-                $this->db->join('os_fg c', 'a.id = c.item_fg_id', 'left');
-                $this->db->join('scan_item_receipts_fg d', '(c.id = d.workorder)');
+                $this->db->join('rgp_transactions c', 'a.id = c.item_id', 'left');
+                $this->db->join('scan_item_receipts_fg d', 'c.id = d.workorder');
                 $this->db->where('d.checksheet_label', $checksheet_label);
                 $this->db->where('d.status', '0');
                 $totalRows = $this->db->count_all_results('', false);
                 $records = $this->db->get()->result_array();
+
+                if(empty($records)){
+                    $this->db->select("d.*, a.id as item_fg_id");
+                    $this->db->from('item_fg a');
+                    $this->db->join('os_fg c', 'a.id = c.item_fg_id', 'left');
+                    $this->db->join('scan_item_receipts_fg d', '(c.id = d.workorder)');
+                    $this->db->where('d.checksheet_label', $checksheet_label);
+                    $this->db->where('d.status', '0');
+                    $totalRows = $this->db->count_all_results('', false);
+                    $records = $this->db->get()->result_array();
+                }
             }
             
             //Mapping Data
@@ -106,7 +116,8 @@ class Shipping_orders extends CI_Controller
                 $shipping_orders = $this->crud->read("shipping_orders", [], ["delivery_order_no" => $post['delivery_order_no'], "checksheet_label" => $post['checksheet_label']]);
                 $delivery_orders = $this->crud->read("delivery_orders", [], ["delivery_order_no" => $delivery_order_no, "item_fg_id" => $item_fg_id]);
 
-                $shipping = $this->db->query("SELECT a.item_fg_id, a.qty_do, SUM(b.qty) AS qty_shipping, (a.qty_do - SUM(b.qty)) as balance FROM delivery_orders a 
+                $shipping = $this->db->query("SELECT a.item_fg_id, a.qty_do, SUM(b.qty) AS qty_shipping, (a.qty_do - SUM(b.qty)) as balance 
+                    FROM delivery_orders a 
                     JOIN shipping_orders b ON a.delivery_order_no = b.delivery_order_no AND a.item_fg_id = b.item_fg_id
                     WHERE a.delivery_order_no = '$delivery_order_no' and a.item_fg_id = '$item_fg_id'
                     GROUP BY a.item_fg_id");

@@ -166,7 +166,7 @@
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Currency</span>
-                    <input style="width:60%;" name="currency" id="currency" required panelHeight="auto" class="easyui-combobox">
+                    <input style="width:60%;" name="currency" id="currency" readonly panelHeight="auto" class="easyui-combobox">
                 </div>
             </div>
 

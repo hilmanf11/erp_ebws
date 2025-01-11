@@ -7,17 +7,18 @@
             <th rowspan="2" data-options="field:'plant',width:100,halign:'center'">Plant</th>
             <th rowspan="2" data-options="field:'type',width:100,align:'center'">Type</th>
             <th rowspan="2" data-options="field:'status',width:100,halign:'center', styler:cellStyler, formatter:cellFormatter">Status</th>
-            <th colspan="3" data-options="field:'',width:100,align:'center'">Approved</th>
+            <th colspan="4" data-options="field:'',width:100,align:'center'">Approved</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
         </tr>
         <tr>
-            <th data-options="field:'approved_to',width:100,align:'center', styler:styleApproved, formatter:formatApproved"> Status</th>
-            <th data-options="field:'approved_by',width:100,align:'center'"> By</th>
+            <th data-options="field:'status_approved',width:100,align:'center', styler:styleApproved, formatter:formatApproved"> Status</th>
+            <th data-options="field:'approved_by',width:100,halign:'center'"> By</th>
+            <th data-options="field:'approved_to',width:150,halign:'center'">Next</th>
             <th data-options="field:'approved_date',width:150,align:'center'"> Date</th>
-            <th data-options="field:'created_by',width:120,align:'center'"> By</th>
+            <th data-options="field:'created_by',width:120,halign:'center'"> By</th>
             <th data-options="field:'created_date',width:150,align:'center'"> Date</th>
-            <th data-options="field:'updated_by',width:120,align:'center'"> By</th>
+            <th data-options="field:'updated_by',width:120,halign:'center'"> By</th>
             <th data-options="field:'updated_date',width:150,align:'center'"> Date</th>
         </tr>
     </thead>
@@ -787,15 +788,15 @@
 
     //CELLSTYLE APPROVE
     function styleApproved(value, row, index) {
-        if (value == "" || value === null ) {
+        if(row.approved_to == "" || row.approved_to == null){
             return 'background: #53D636; color:white;';
         } else {
             return 'background: #FF5F5F; color:white;';
         }
     }
     //FORMATTER APPROVE
-    function formatApproved(value) {
-        if (value == "" || value === null ) {
+    function formatApproved(value, row) {
+        if(row.approved_to == "" || row.approved_to == null){
             return 'Approved';
         } else {
             return 'Checking';

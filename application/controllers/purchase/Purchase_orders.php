@@ -70,7 +70,7 @@ class Purchase_orders extends CI_Controller
             JOIN suppliers b ON a.supplier_id = b.id 
             JOIN item_rm c ON a.item_rm_id = c.id
             JOIN item_familys d ON c.item_family_id = d.id
-            WHERE a.p_month = '$p_month' and a.p_year = '$p_year' and a.revision = '$revision' and d.id = '$product_family' and a.type = 'PO'
+            WHERE a.p_month = '$p_month' and a.p_year = '$p_year' and a.revision = '$revision' and d.id = '$product_family'
             and (a.po_no like '%$post%' or b.name like '%$post%' or d.name like '%$post%')");
         echo json_encode($datas);
     }
@@ -78,13 +78,13 @@ class Purchase_orders extends CI_Controller
     function readPono(){
         $post = isset($_POST['q']) ? $_POST['q'] : "";
         $supplier_id = base64_decode($this->input->get('supplier_id'));
-        $datas = $this->crud->query("SELECT DISTINCT a.po_no, a.po_date FROM purchase_orders a WHERE a.supplier_id = '$supplier_id' and a.type = 'PO' and a.status = 0 and (a.approved_to = '' or a.approved_to is null) and (po_date like '%$post%' or po_no like '%$post%') ORDER BY a.po_date, a.po_no ASC");
+        $datas = $this->crud->query("SELECT DISTINCT a.po_no, a.po_date FROM purchase_orders a WHERE a.supplier_id = '$supplier_id' and a.status = 0 and (a.approved_to = '' or a.approved_to is null) and (po_date like '%$post%' or po_no like '%$post%') ORDER BY a.po_date, a.po_no ASC");
         echo json_encode($datas);
     }
 
     public function readSupplier(){
         $post = isset($_POST['q']) ? $_POST['q'] : "";
-        $data = $this->crud->query("SELECT DISTINCT b.id, b.number, b.name FROM purchase_orders a JOIN suppliers b ON a.supplier_id = b.id WHERE a.status = 0 and a.type = 'PO' and b.name like '%$post%' ORDER BY b.name asc");
+        $data = $this->crud->query("SELECT DISTINCT b.id, b.number, b.name FROM purchase_orders a JOIN suppliers b ON a.supplier_id = b.id WHERE a.status = 0 and b.name like '%$post%' ORDER BY b.name asc");
         echo json_encode($data);
     }
 

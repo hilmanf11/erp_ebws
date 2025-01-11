@@ -641,8 +641,11 @@ class Purchase_request_others extends CI_Controller
                 <th>Asset Code</th>
                 <th>Asset Code Sub</th>
                 <th>Product Family</th>
-                <th>Qty</th>
                 <th>Uom</th>
+                <th>Qty</th>
+                <th>Currency</th>
+                <th>Est. Price</th>
+                <th>Total</th>
                 <th>Status</th>
                 <th>PO No</th>
                 <th>Remarks</th>
@@ -671,8 +674,11 @@ class Purchase_request_others extends CI_Controller
                         <td>' . $data['asset_code'] . '</td>
                         <td>' . $data['asset_code_sub'] . '</td>
                         <td>' . $data['item_family_name'] . '</td>
-                        <td>' . number_format($data['qty'], 2) . '</td>
                         <td>' . $data['uom'] . '</td>
+                        <td>' . $data['qty'] . '</td>
+                        <td>' . $data['currency'] . '</td>
+                        <td>' . $data['price'] . '</td>
+                        <td>' . $data['total'] . '</td>
                         <td>' . $status . '</td>
                         <td>' . $data['po_no'] . '</td>
                         <td>' . $data['remarks'] . '</td>

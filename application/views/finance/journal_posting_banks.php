@@ -667,8 +667,10 @@
                         }, ]
                     ],
                     onSelect: function(index, bank){
+                        var journal_date = $("#journal_date").datebox('getValue');
+
                         $("#document_no").combogrid({
-                            url: '<?= base_url('finance/journal_posting_banks/readModul?trans_type=') ?>' + btoa(trans_type) + "&account_number=" + btoa(bank.account_number),
+                            url: '<?= base_url('finance/journal_posting_banks/readModul?trans_type=') ?>' + btoa(trans_type) + "&account_number=" + btoa(bank.account_number) + "&journal_date=" + btoa(journal_date),
                             panelWidth: 800,
                             idField: 'number',
                             textField: 'number',

@@ -115,7 +115,7 @@ class Report_check_serialno extends CI_Controller
                 f.qty as scan_out,
                 f.created_date as scan_out_date,
                 f.created_by as scan_out_by,
-                (CASE WHEN h.id is not null THEN 3 WHEN g.id is not null THEN 2 WHEN f.request_no is null THEN 0 ELSE 1 END) as status
+                (CASE WHEN h.id is not null THEN 3 WHEN g.id is not null THEN 2 WHEN a.status = 1 THEN 1 WHEN f.request_no is null THEN 0 ELSE 1 END) as status
             ');
             $this->db->from('scan_item_receipts a');
             $this->db->join('purchase_order_labels b', 'a.label_no = b.label_no');
@@ -299,7 +299,11 @@ class Report_check_serialno extends CI_Controller
             if ($data['status'] == 0) {
                 $status = "<b style='color:green;'>OPEN</b>";
             } else if ($data['status'] == 1) {
-                $status = "<b style='color:red;'>CLOSE</b>";
+                if($data['request_no'] == ""){
+                    $status = "<b style='color:red;'>CLOSE<br>MANUAL</br>";
+                }else{
+                    $status = "<b style='color:red;'>CLOSE</b>";
+                }
             } else if ($data['status'] == 2) {
                 $status = "<b style='color:red;'>CLOSE<br>REJECTION</br>";
             } else if ($data['status'] == 3) {

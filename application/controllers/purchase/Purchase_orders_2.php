@@ -161,7 +161,14 @@ class purchase_orders_2 extends CI_Controller
                     SUM(a.price) as price, 
                     SUM(a.total) as total_price,
                     COUNT(a.status) as total_status,
-                    g.total_status_close');
+                    g.total_status_close,
+                    a.approved_by,
+                    a.approved_date,
+                    a.approved_to,
+                    a.created_by,
+                    a.created_date,
+                    a.updated_by,
+                    a.updated_date');
                 $this->db->from('purchase_order_others a');
                 $this->db->join('item_rm b', 'a.item_rm_id = b.id');
                 $this->db->join('item_familys c', 'b.item_family_id = c.id');
@@ -205,6 +212,13 @@ class purchase_orders_2 extends CI_Controller
                         "qty" => $record['qty'],
                         "price" => $record['price'],
                         "total_price" => $record['total_price'],
+                        "approved_by" => $record['approved_by'],
+                        "approved_to" => $record['approved_to'],
+                        "approved_date" => $record['approved_date'],
+                        "created_by" => $record['created_by'],
+                        "created_date" => $record['created_date'],
+                        "updated_by" => $record['updated_by'],
+                        "updated_date" => $record['updated_date'],
                         "state" => "closed",
                         "datatable" => 1
                     );
@@ -242,6 +256,15 @@ class purchase_orders_2 extends CI_Controller
                 echo json_encode($records);
             }
         }
+    }
+
+    public function changePrice(){
+        $id = $this->input->post("id");
+        $po = $this->crud->read("purchase_order_others", [], ["id" => $id]);
+
+        $sql = $this->db->query("SELECT * FROM supplier_items WHERE supplier_id = '$po->supplier_id' and item_rm_id = '$po->item_rm_id' and approved_to = ''");
+        $row = $sql->row_array();
+        echo json_encode(array("price" => @$row['price']));
     }
 
     public function create()
@@ -673,7 +696,7 @@ class purchase_orders_2 extends CI_Controller
             $this->db->where('a.po_date <=', $filter_to);
         }
         $this->db->like('a.po_no', $filter_po_no);
-        $this->db->like('d.number', $filter_suppliers);
+        $this->db->like('d.id', $filter_suppliers);
         $this->db->order_by('a.po_date', 'DESC');
         $records = $this->db->get()->result_array();
         $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#customers {border-collapse: collapse;width: 100%;font-size: 12px;}#customers td, #customers th {border: 1px solid black;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: black;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: center;color: black;}</style><body>
@@ -748,9 +771,9 @@ class purchase_orders_2 extends CI_Controller
                         <td>' . $data['item_rm_id'] . '</td>
                         <td>' . $data['item_rm_number'] . '</td>
                         <td>' . $data['item_rm_name'] . '</td>
-                        <td>' . number_format($data['qty'], 2) . '</td>
-                        <td>' . number_format($data['price'], 4, ",", ".") . '</td>
-                        <td>' . number_format(($data['total']), 2, ",", ".") . '</td>
+                        <td>' . $data['qty'] . '</td>
+                        <td>' . $data['price'] . '</td>
+                        <td>' . $data['total'] . '</td>
                         <td>' . $data['currency'] . '</td>
                         <td>' . $data['uom'] . '</td>
                         <td>' . $data['delivery_date'] . '</td>

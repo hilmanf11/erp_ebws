@@ -43,9 +43,9 @@ class Report_general_ledgers extends CI_Controller
 
         $period = date("Ym", strtotime($filter_from));
 
-        if($filter_account == ""){
+        if ($filter_account == "") {
             $filter_account_explode = explode(",", $filter_account_category);
-        }else{
+        } else {
             $filter_account_explode = explode(",", $filter_account);
         }
 
@@ -59,7 +59,7 @@ class Report_general_ledgers extends CI_Controller
 
         $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#customers {border-collapse: collapse;width: 100%;font-size: 12px;}#customers td, #customers th {border: 1px solid #ddd;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: #ddd;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: center;color: black;}</style><body>';
 
-        for ($i=0; $i < count($filter_account_explode); $i++) {
+        for ($i = 0; $i < count($filter_account_explode); $i++) {
             $filter_account = $filter_account_explode[$i];
 
             // $this->db->select('*');
@@ -73,12 +73,12 @@ class Report_general_ledgers extends CI_Controller
 
             $query = $this->db->query("SELECT a.*
                 FROM (
-                    (SELECT journal_date, `number`, account_number, account_name, modul, `description`, currency, local_debit, local_credit
+                    (SELECT journal_date, `number`, document_no, invoice_no, company_name, account_number, account_name, modul, `description`, currency, local_debit, local_credit
                     FROM journal_postings
                     WHERE journal_date between '$filter_from' and '$filter_to' and account_number = '$filter_account' and modul != 'BANK STATEMENT'
                     ) 
                 UNION 
-                    (SELECT journal_date, `number`, account_number, account_name, modul, `description`, currency, 
+                    (SELECT journal_date, `number`, document_no, invoice_no, company_name, account_number, account_name, modul, `description`, currency, 
                     (CASE WHEN SUM(local_credit) > 0 THEN SUM(local_credit) ELSE 0 END) as local_credit,
                     (CASE WHEN SUM(local_debit) > 0 THEN SUM(local_debit) ELSE 0 END) as local_debit
                     FROM journal_postings
@@ -93,7 +93,7 @@ class Report_general_ledgers extends CI_Controller
             $this->db->where("account_number", $filter_account);
             $account_coa = $this->db->get()->row();
 
-            $html .='
+            $html .= '
                     <center>
                         <div style="float: left; font-size: 12px; text-align: left;">
                             <table style="width: 100%;">
@@ -122,12 +122,12 @@ class Report_general_ledgers extends CI_Controller
                         <tr>
                             <td width="100">Account No</td>
                             <td>:</td>
-                            <td style="mso-number-format:\@;">'.$account_coa->account_number.'</td>
+                            <td style="mso-number-format:\@;">' . $account_coa->account_number . '</td>
                         </tr>
                         <tr>
                             <td>Account Name</td>
                             <td>:</td>
-                            <td>'.$account_coa->account_name.'</td>
+                            <td>' . $account_coa->account_name . '</td>
                         </tr>
                     </table>
                     <br><br>
@@ -135,8 +135,11 @@ class Report_general_ledgers extends CI_Controller
                     <table id="customers" border="1">
                         <tr>
                             <th rowspan="2" width="20">No</th>
-                            <th rowspan="2">Voucher Date</th>
-                            <th rowspan="2">Voucher No</th>
+                            <th rowspan="2">Posting Date</th>
+                            <th rowspan="2">Posting No</th>
+                            <th rowspan="2">Document No</th>
+                            <th rowspan="2">Invoice No</th>
+                            <th rowspan="2">Company Name</th>
                             <th rowspan="2">Account No</th>
                             <th rowspan="2">Account Name</th>
                             <th rowspan="2">Description</th>
@@ -144,123 +147,124 @@ class Report_general_ledgers extends CI_Controller
                             <th colspan="3">LOCAL CURRENCY</th>
                         </tr>
                         <tr>
-                            <th>Balance</th>
                             <th>Debit</th>
                             <th>Credit</th>
+                            <th>Balance</th>
                         </tr>';
 
-                $this->db->select('b.account_number, b.account_name, (COALESCE(a.original_debit, 0) + b.original_debit) as begin_debit, (COALESCE(a.original_credit, 0) + b.original_kredit) as begin_credit');
-                $this->db->from('account_coa b');
-                $this->db->join("(SELECT account_number, SUM(original_debit) as original_debit, SUM(original_credit) as original_credit FROM journal_postings WHERE journal_date < '$filter_from' GROUP BY account_number) a", "a.account_number = b.account_number", 'left');
-                $this->db->where("b.account_number", $filter_account);
-                $this->db->group_by('b.account_number');
-                $begin_ori_tb = $this->db->get()->row();
+            $this->db->select('b.account_number, b.account_name, (COALESCE(a.original_debit, 0) + b.original_debit) as begin_debit, (COALESCE(a.original_credit, 0) + b.original_kredit) as begin_credit');
+            $this->db->from('account_coa b');
+            $this->db->join("(SELECT account_number, SUM(original_debit) as original_debit, SUM(original_credit) as original_credit FROM journal_postings WHERE journal_date < '$filter_from' GROUP BY account_number) a", "a.account_number = b.account_number", 'left');
+            $this->db->where("b.account_number", $filter_account);
+            $this->db->group_by('b.account_number');
+            $begin_ori_tb = $this->db->get()->row();
 
-                $this->db->select('account_number, account_name, header,
+            $this->db->select('account_number, account_name, header,
                     SUM(begin_debit) as begin_debit, 
                     SUM(begin_credit) as begin_credit');
-                $this->db->from('trial_balances');
-                $this->db->where('period =', $period);
-                $this->db->where('account_number', $filter_account);
-                $this->db->order_by('id', 'asc');
-                $this->db->group_by('account_number', 'asc');
-                $begin_tb = $this->db->get()->row();
+            $this->db->from('trial_balances');
+            $this->db->where('period =', $period);
+            $this->db->where('account_number', $filter_account);
+            $this->db->order_by('id', 'asc');
+            $this->db->group_by('account_number', 'asc');
+            $begin_tb = $this->db->get()->row();
 
-                $no = 1;
-                $ori_balance = abs(@$begin_ori_tb->begin_debit - @$begin_ori_tb->begin_credit);
-                $ori_debit = 0;
-                $ori_credit = 0;
-                $local_balance = abs(@$begin_tb->begin_debit - @$begin_tb->begin_credit);
-                $local_debit = 0;
-                $local_credit = 0;
+            $no = 1;
+            $ori_balance = abs(@$begin_ori_tb->begin_debit - @$begin_ori_tb->begin_credit);
+            $ori_debit = 0;
+            $ori_credit = 0;
+            $local_balance = (@$begin_tb->begin_debit - @$begin_tb->begin_credit);
+            $local_debit = 0;
+            $local_credit = 0;
 
-                $html .= '  <tr>
+            if($local_balance > 0){
+                $hstyle = "color:green;";
+            }else{
+                $hstyle = "color:red;";
+            }
+
+            $html .= '  <tr>
                                 <td style="text-align:center">-</td>
                                 <td>' . $filter_from . '</td>
                                 <td></td>
                                 <td></td>
                                 <td></td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
                                 <td>BALANCE</td>
                                 <td style="text-align:center;">' . $account_coa->original_currency . '</td>
-                                <td style="text-align:right;font-weight:bold;">' . number_format($local_balance, 2) . '</td>
                                 <td style="text-align:right;font-weight:bold;">' . number_format(0, 2) . '</td>
                                 <td style="text-align:right;font-weight:bold;">' . number_format(0, 2) . '</td>
+                                <td style="text-align:right;font-weight:bold;'.$hstyle.'">' . number_format(abs($local_balance), 2) . '</td>
                             </tr>';
 
-                foreach ($journals as $journal) {
-                    $account_no = $journal['account_number'];
+            foreach ($journals as $journal) {
+                $account_no = $journal['account_number'];
 
-                    // $this->db->select('e.number');
-                    // $this->db->from('account_coa b');
-                    // $this->db->join('account_group_details d', 'b.account_group_detail_id = d.id');
-                    // $this->db->join('account_groups e', 'd.account_group_id = e.id');
-                    // $this->db->where('b.account_number', $account_no);
-                    // $group = $this->db->get()->row();
-                    
-                    // if($ori_balance > 0){
-                    //     $ori_style = "color:green;";
-                    // }else{
-                    //     $ori_style = "color:red;";
-                    // }
+                $this->db->select('e.number');
+                $this->db->from('account_coa b');
+                $this->db->join('account_group_details d', 'b.account_group_detail_id = d.id');
+                $this->db->join('account_groups e', 'd.account_group_id = e.id');
+                $this->db->where('b.account_number', $account_no);
+                $group = $this->db->get()->row();
 
-                    if($local_balance > 0){
-                        $local_style = "color:green;";
-                    }else{
-                        $local_style = "color:red;";
-                    }
+                // if($ori_balance > 0){
+                //     $ori_style = "color:green;";
+                // }else{
+                //     $ori_style = "color:red;";
+                // }
 
-                    $html .= '  <tr>
+                // if (in_array(@$group->number, ["3"])) {
+                //     $local_balance += ($journal['local_credit'] - $journal['local_debit']);
+                // } else {
+                    $local_balance += ($journal['local_debit'] - $journal['local_credit']);
+                // }
+
+                if ($local_balance > 0) {
+                    $local_style = "color:green;";
+                } else {
+                    $local_style = "color:red;";
+                }
+
+                $html .= '  <tr>
                                     <td style="text-align:center">' . $no . '</td>
                                     <td>' . $journal['journal_date'] . '</td>
                                     <td>' . $journal['number'] . '</td>
+                                    <td>' . $journal['document_no'] . '</td>
+                                    <td>' . $journal['invoice_no'] . '</td>
+                                    <td>' . $journal['company_name'] . '</td>
                                     <td style="mso-number-format:\@;">' . $journal['account_number'] . '</td>
                                     <td>' . $journal['account_name'] . '</td>
                                     <td>' . $journal['description'] . '</td>
                                     <td style="text-align:center;">' . $journal['currency'] . '</td>
-                                    <td style="text-align:right;font-weight:bold;'.$local_style.'">' . number_format($local_balance, 2) . '</td>
                                     <td style="text-align:right;font-weight:bold;color:green;">' . number_format($journal['local_debit'], 2) . '</td>
                                     <td style="text-align:right;font-weight:bold;color:red;">' . number_format($journal['local_credit'], 2) . '</td>
+                                    <td style="text-align:right;font-weight:bold;' . $local_style . '">' . number_format(abs($local_balance), 2) . '</td>
                                 </tr>';
 
-                    // if(in_array(@$group->number, ["1","3"])){
-                    //     $ori_balance += ($journal['original_credit'] - $journal['original_debit']);
-                    //     $local_balance += ($journal['local_credit'] - $journal['local_debit']);
-                    // }else{
-                    //     $ori_balance += ($journal['original_debit'] - $journal['original_credit']);
-                    //     $local_balance += ($journal['local_debit'] - $journal['local_credit']);
-                    // }
-                    
-                    // if($journal['modul'] == "BANK STATEMENT"){
+                $local_debit += $journal['local_debit'];
+                $local_credit += $journal['local_credit'];
+                $no++;
+            }
 
-                    // }else{
-                        
-                    // }
-                    $local_balance += ($journal['local_debit'] - $journal['local_credit']);
-
-                    // $ori_debit += $journal['original_debit'];
-                    // $ori_credit += $journal['original_credit'];
-                    $local_debit += $journal['local_debit'];
-                    $local_credit += $journal['local_credit'];
-                    $no++;
-                }
-
-                $html .= '  <tr style="background:#DEDEDE;">
-                                <th style="text-align:right;" colspan="7"><b>ENDING BALANCE</b></th>
+            $html .= '  <tr style="background:#DEDEDE;">
+                                <th style="text-align:right;" colspan="10"><b>ENDING BALANCE</b></th>
+                                <th style="text-align:right;">-</th>
+                                <th style="text-align:right;">-</th>
                                 <th style="text-align:right;">' . number_format(abs($local_balance), 2) . '</th>
-                                <th style="text-align:right;">-</th>
-                                <th style="text-align:right;">-</th>
                             </tr>';
 
-                $html .= '  <tr style="background:#DEDEDE;">
-                                <th style="text-align:right;" colspan="7"><b>GRAND TOTAL</b></th>
-                                <th style="text-align:right;"></th>
+            $html .= '  <tr style="background:#DEDEDE;">
+                                <th style="text-align:right;" colspan="10"><b>GRAND TOTAL</b></th>
                                 <th style="text-align:right;">' . number_format(abs($local_debit), 2) . '</th>
                                 <th style="text-align:right;">' . number_format(abs($local_credit), 2) . '</th>
+                                <th style="text-align:right;"></th>
                             </tr>';
 
-                $html .= '</table><br><br><div style="page-break-after:always;"></div>';
+            $html .= '</table><br><br><div style="page-break-after:always;"></div>';
         }
 
-        echo $html."</body></html>";
+        echo $html . "</body></html>";
     }
 }

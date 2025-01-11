@@ -39,6 +39,13 @@ class item_fg extends CI_Controller
         echo json_encode($send);
     }
 
+    public function readSupplement()
+    {
+        $post = isset($_POST['q']) ? $_POST['q'] : "";
+        $send = $this->crud->query("SELECT * FROM item_fg WHERE customer_id = 'CUS-01-06' and (`number` like '%$post%' or number_customer like '%$post%' or `name` like '%$post%')");
+        echo json_encode($send);
+    }
+
     //GET DATATABLES
     public function datatables()
     {

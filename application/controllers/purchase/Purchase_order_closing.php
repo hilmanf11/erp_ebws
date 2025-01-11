@@ -176,8 +176,12 @@ class Purchase_order_closing extends CI_Controller
                     $this->db->where('a.po_date >=', $filter_from);
                     $this->db->where('a.po_date <=', $filter_to);
                 }
-                $this->db->like('a.po_no', $filter_po_no);
-                $this->db->like('d.id', $filter_suppliers);
+                if($filter_po_no != ""){
+                    $this->db->where('a.po_no', $filter_po_no);
+                }
+                if($filter_suppliers != ""){
+                    $this->db->where('d.id', $filter_suppliers);
+                }
                 $this->db->group_by('a.po_no');
                 $this->db->order_by('a.status', 'ASC');
                 $this->db->order_by('a.po_date', 'DESC');

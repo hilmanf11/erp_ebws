@@ -135,7 +135,7 @@
             textField: 'account_number',
             mode: 'remote',
             fitColumns: true,
-            // multiple: true,
+            multiple: true,
             prompt: 'Choose Account No',
             columns: [
                 [{

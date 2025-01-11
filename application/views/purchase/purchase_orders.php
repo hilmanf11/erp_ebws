@@ -40,7 +40,7 @@
             <th hidden colspan="3" data-options="field:'Send_mail',width:100,halign:'center'">Send Mail</th>
             <th hidden colspan="2" data-options="field:'Send_mail',width:100,halign:'center'">Vendor Confirm</th>
             <!-- <th rowspan="2" data-options="field:'note',width:200,halign:'center'">Note</th> -->
-            <th colspan="3" data-options="field:'Send_mail',width:100,halign:'center'">Approved</th>
+            <th colspan="4" data-options="field:'Send_mail',width:100,halign:'center'">Approved</th>
             <th colspan="2" data-options="field:'Send_mail',width:100,halign:'center'">Created</th>
         </tr>
         <tr>
@@ -51,8 +51,9 @@
             <th hidden data-options="field:'email_date',width:130,align:'center'">Date</th>
             <th hidden data-options="field:'confirm',width:100,align:'center', styler:cellStylerConfirm, formatter:cellFormatterConfirm">Status</th>
             <th hidden data-options="field:'confirm_date',width:120,align:'center'">Date</th>
-            <th data-options="field:'approved_to',width:80,align:'center', styler:cellStylerApproval, formatter:cellFormatterApproval">Status</th>
+            <th data-options="field:'status_approved',width:80,align:'center', styler:cellStylerApproval, formatter:cellFormatterApproval">Status</th>
             <th data-options="field:'approved_by',width:120,align:'center'">By</th>
+            <th data-options="field:'approved_to',width:120,align:'center'">Next</th>
             <th data-options="field:'approved_date',width:120,align:'center'">Date</th>
             <th data-options="field:'created_by',width:80,align:'center'">By</th>
             <th data-options="field:'created_date',width:120,align:'center'">Date</th>
@@ -1670,7 +1671,11 @@
     }
 
     function BtnPrint(val, row) {
-        return '<a class="btn btn-primary w-100" target="_blank" href="<?= base_url('purchase/purchase_orders/print_po/') ?>'+btoa(row.po_no)+'" style="pointer-events: visible; opacity:1;"><i class="fa fa-print"></i> Print</a>';
+        if(row.approved_to == ""){
+            return '<a class="btn btn-primary w-100" target="_blank" href="<?= base_url('purchase/purchase_orders/print_po/') ?>'+btoa(row.po_no)+'" style="pointer-events: visible; opacity:1;"><i class="fa fa-print"></i> Print</a>';
+        }else{
+            return "-";
+        }
     }
 
     function BtnCreateSd(val, row) {

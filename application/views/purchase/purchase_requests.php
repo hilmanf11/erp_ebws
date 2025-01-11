@@ -400,14 +400,14 @@
             columns: [
                 [{
                     field: 'item_rm_id',
-                    width: 200,
+                    width: 120,
                     halign: 'center',
                     title: "Part No",
                     editor: {
                         type: 'combogrid',
                         options: {
                             url: '<?= base_url('purchase/purchase_requests/readParts/') ?>' + btoa(supplier_id) + "/" + btoa(item_family_id),
-                            panelWidth: 400,
+                            panelWidth: 550,
                             idField: 'id',
                             textField: 'number',
                             mode: 'remote',
@@ -415,8 +415,12 @@
                             prompt: "Select Part No",
                             columns: [
                                 [{
+                                    field: 'id',
+                                    title: 'Part No EBWS',
+                                    width: 120
+                                },{
                                     field: 'number',
-                                    title: 'Part No',
+                                    title: 'Part No Supplier',
                                     width: 200
                                 }, {
                                     field: 'name',
@@ -430,7 +434,7 @@
                                 var rowIndex = dg.datagrid('getRowIndex', row);
                                 var ed = dg.datagrid('getEditor', {
                                     index: rowIndex,
-                                    field: 'name'
+                                    field: 'number'
                                 });
                                 var ed2 = dg.datagrid('getEditor', {
                                     index: rowIndex,
@@ -452,27 +456,44 @@
                                     index: rowIndex,
                                     field: 'qty'
                                 });
+                                var ed7 = dg.datagrid('getEditor', {
+                                    index: rowIndex,
+                                    field: 'price'
+                                });
+                                var ed8 = dg.datagrid('getEditor', {
+                                    index: rowIndex,
+                                    field: 'total'
+                                });
+                                var ed9 = dg.datagrid('getEditor', {
+                                    index: rowIndex,
+                                    field: 'currency'
+                                });
 
                                 $(ed6.target).numberbox({
                                     onChange: function(val){
                                         var result = (Math.ceil(val / rows.mpq) * rows.mpq);
+                                        
+                                        
                                         $(ed6.target).numberbox('setValue', result);
+                                        $(ed8.target).numberbox('setValue', Math.round(parseFloat(result) * parseFloat(rows.price), 2));
                                     }
                                 });
 
-                                $(ed.target).textbox('setValue', rows.name);
+                                $(ed.target).textbox('setValue', rows.number);
                                 $(ed2.target).numberbox('setValue', rows.mpq);
                                 $(ed3.target).numberbox('setValue', rows.moq);
                                 $(ed4.target).numberbox('setValue', rows.share_order);
                                 $(ed5.target).numberbox('setValue', rows.leadtime);
+                                $(ed7.target).numberbox('setValue', rows.price);
+                                $(ed9.target).textbox('setValue', rows.currency);
                             }
                         }
                     }
                 }, {
-                    field: 'name',
-                    width: 150,
+                    field: 'number',
+                    width: 200,
                     halign: 'center',
-                    title: "Part Name",
+                    title: "Part No Supplier",
                     editor: {
                         type: 'textbox',
                         options: {
@@ -529,13 +550,48 @@
                     }
                 }, {
                     field: 'qty',
-                    width: 100,
+                    width: 80,
                     halign: 'center',
                     title: "Qty",
                     editor: {
                         type: 'numberbox',
                         options: {
                             required: true,
+                        }
+                    }
+                }, {
+                    field: 'currency',
+                    width: 80,
+                    halign: 'center',
+                    title: "Currency",
+                    editor: {
+                        type: 'textbox',
+                        options: {
+                            readonly: true,
+                        }
+                    }
+                }, {
+                    field: 'price',
+                    width: 100,
+                    halign: 'center',
+                    title: "Price",
+                    editor: {
+                        type: 'numberbox',
+                        options: {
+                            readonly: true,
+                            precision: 2
+                        }
+                    }
+                }, {
+                    field: 'total',
+                    width: 100,
+                    halign: 'center',
+                    title: "Total",
+                    editor: {
+                        type: 'numberbox',
+                        options: {
+                            readonly: true,
+                            precision: 2
                         }
                     }
                 }, {
@@ -1183,7 +1239,8 @@
                                         // mpq: rows[i].mpq,
                                         // moq: rows[i].moq,
                                         // share_order: rows[i].share_order,
-                                        // leadtime: rows[i].leadtime,
+                                        price: rows[i].price,
+                                        total: rows[i].total,
                                         qty: rows[i].qty,
                                         remarks: rows[i].remarks,
                                         status_data: "MANUAL"

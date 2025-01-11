@@ -56,10 +56,10 @@ class Delivery_confirm_others extends CI_Controller
         $post = isset($_POST['q']) ? $_POST['q'] : "";
         $po_no = base64_decode($po_no);
 
-        $data = $this->crud->query("SELECT b.id, b.number, b.name, SUM(a.qty) as qty_po, (SUM(a.qty) - COALESCE(SUM(c.delivery), 0)) as qty, b.uom, a.delivery_date, DATE_FORMAT(now(), '%Y-%m-%d') as today, (SUM(a.qty) - COALESCE(SUM(c.delivery), 0)) as delivery, COALESCE(SUM(c.delivery), 0) as actual
+        $data = $this->crud->query("SELECT b.id, b.number, b.name, SUM(a.qty) as qty_po, (SUM(a.qty) - COALESCE(c.delivery, 0)) as qty, b.uom, a.delivery_date, DATE_FORMAT(now(), '%Y-%m-%d') as today, (SUM(a.qty) - COALESCE(c.delivery, 0)) as delivery, COALESCE(c.delivery, 0) as actual
             FROM purchase_order_others a 
             JOIN item_rm b ON a.item_rm_id = b.id
-            LEFT JOIN purchase_confirm_others c ON a.po_no = c.po_no and a.item_rm_id = c.item_rm_id and a.supplier_id = c.supplier_id
+            LEFT JOIN (SELECT po_no, item_rm_id, supplier_id, SUM(delivery) as delivery FROM purchase_confirm_others GROUP BY po_no, item_rm_id, supplier_id) c ON a.po_no = c.po_no and a.item_rm_id = c.item_rm_id and a.supplier_id = c.supplier_id
             WHERE a.po_no = '$po_no' and a.status = 0 and (b.number LIKE '%$post%' and b.id like '%$post%')
             GROUP BY a.item_rm_id
             ORDER BY b.number asc");

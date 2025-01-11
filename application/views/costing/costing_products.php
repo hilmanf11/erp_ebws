@@ -2,33 +2,34 @@
 <table id="dg" class="easyui-datagrid" style="width:100%; height: 630px;" toolbar="#toolbar" showFooter="true">
     <thead>
         <tr>
-            <th rowspan="3" field="ck" checkbox="true"></th>
-            <th rowspan="3" data-options="field:'history',width:100,halign:'center',formatter:btnWorkorder">Detail</th>
-            <th rowspan="3" data-options="field:'item_no',width:150,halign:'center'">Product No</th>
-            <th rowspan="3" data-options="field:'item_name',width:200,halign:'center'">Product Name</th>
-            <th rowspan="3" data-options="field:'total_qty',width:100,halign:'center', align:'right',formatter:priceformat">Quantity</th>
-            <th rowspan="3" data-options="field:'umh',width:100,halign:'center', align:'right',formatter:priceformat">UMH</th>
-            <th colspan="10" data-options="field:'',width:100,halign:'center'">Total Manufacture Cost</th>
-            <th rowspan="3" data-options="field:'direct_total',width:100,halign:'center', align:'right',formatter:priceformat">Cost Product</th>
-            <th rowspan="2" colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
-            <th rowspan="2" colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
+            <th rowspan="2" field="ck" checkbox="true"></th>
+            <th rowspan="2" data-options="field:'history',width:100,halign:'center',formatter:btnWorkorder">Detail</th>
+            <th rowspan="2" data-options="field:'item_fg_number',width:120,halign:'center'">Product No EBWS</th>
+            <th rowspan="2" data-options="field:'number_customer',width:150,halign:'center'">Product No Customer</th>
+            <th rowspan="2" data-options="field:'item_fg_name',width:200,halign:'center'">Product Name</th>
+            <th rowspan="2" data-options="field:'total_qty',width:100,halign:'center', align:'right',formatter:priceformat">Quantity</th>
+            <th rowspan="2" data-options="field:'umh',width:100,halign:'center', align:'right',formatter:priceformat">UMH</th>
+            <th colspan="4" data-options="field:'',width:100,halign:'center'">Total Manufacture Cost</th>
+            <th rowspan="2" data-options="field:'direct_total',width:100,halign:'center', align:'right',formatter:priceformat">Cost Product</th>
+            <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
+            <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
         </tr>
-        <tr>
+        <!-- <tr>
             <th colspan="4" data-options="field:'',width:100,halign:'center'"> Direct Material</th>
             <th colspan="4" data-options="field:'',width:100,halign:'center'"> Direct Labor</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> FOH</th>
-        </tr>
+        </tr> -->
         <tr>
             <th data-options="field:'direct_material',width:100,halign:'center',align:'right',formatter:priceformat">Supply</th>
             <th data-options="field:'direct_requestion',width:100,halign:'center',align:'right',formatter:priceformat">Material<br>Requestion</th>
             <th data-options="field:'direct_material_total',width:100,halign:'center',align:'right',formatter:priceformat">Total</th>
             <th data-options="field:'direct_material_pcs',width:100,halign:'center',align:'right',formatter:priceformat">Pcs</th>
-            <th data-options="field:'direct_labor',width:100,halign:'center',align:'right',formatter:priceformat">Regular</th>
+            <!-- <th data-options="field:'direct_labor',width:100,halign:'center',align:'right',formatter:priceformat">Regular</th>
             <th data-options="field:'direct_overtime',width:100,halign:'center',align:'right',formatter:priceformat">Overtime</th>
             <th data-options="field:'direct_labor_total',width:100,halign:'center',align:'right',formatter:priceformat">Total</th>
             <th data-options="field:'direct_labor_pcs',width:100,halign:'center',align:'right',formatter:priceformat">Pcs</th>
             <th data-options="field:'direct_foh',width:100,halign:'center',align:'right',formatter:priceformat">FOH</th>
-            <th data-options="field:'direct_foh_pcs',width:100,halign:'center',align:'right',formatter:priceformat">Pcs</th>
+            <th data-options="field:'direct_foh_pcs',width:100,halign:'center',align:'right',formatter:priceformat">Pcs</th> -->
             <th data-options="field:'created_by',width:100,align:'center'"> By</th>
             <th data-options="field:'created_date',width:150,align:'center'"> Date</th>
             <th data-options="field:'updated_by',width:100,align:'center'"> By</th>
@@ -82,11 +83,11 @@
                 <div style="margin:12px;">
                     <input class="easyui-checkbox" id="check_si" value="on" readonly="true"> &nbsp; Sales Invoicing
                 </div>
-                <div style="margin:12px;">
+                <!-- <div style="margin:12px;">
                     <input class="easyui-checkbox" id="check_ap" value="on" readonly="true"> &nbsp; AP Payment
-                </div>
+                </div> -->
             </div>
-            <div style="width:50%; float: left;">
+            <!-- <div style="width:50%; float: left;">
                 <div style="margin:12px;">
                     <input class="easyui-checkbox" id="check_ar" value="on" readonly="true"> &nbsp; AR Receipt
                 </div>
@@ -96,7 +97,7 @@
                 <div style="margin:12px;">
                     <input class="easyui-checkbox" id="check_cr" value="on" readonly="true"> &nbsp; Currency Revaluation
                 </div>
-            </div>
+            </div> -->
         </fieldset>
     </div>
     <?= $button ?>
@@ -111,16 +112,17 @@
                 <th data-options="field:'periode',width:80,halign:'center'">Period</th>
                 <th data-options="field:'wp',width:40,halign:'center'">WP</th>
                 <th data-options="field:'workorder',width:150,halign:'center'">Workorder</th>
-                <th data-options="field:'item_number',width:150,halign:'center'">Product No</th>
-                <th data-options="field:'item_name',width:150,halign:'center'">Product Name</th>
+                <!-- <th data-options="field:'item_fg_number',width:120,halign:'center'">Product No EBWS</th> -->
+                <!-- <th data-options="field:'number_customer',width:200,halign:'center'">Product No Customer</th> -->
+                <!-- <th data-options="field:'item_fg_name',width:150,halign:'center'">Description</th> -->
                 <th data-options="field:'qty',width:100,halign:'center',align:'right',formatter:priceformat">WO Qty</th>
-                <th data-options="field:'umh',width:60,halign:'center',align:'right',formatter:priceformat">UMH</th>
-                <th data-options="field:'total_umh',width:100,halign:'center',align:'right',formatter:priceformat">Total UMH</th>
-                <th data-options="field:'direct_labor',width:100,halign:'center',align:'right',formatter:priceformat">Direct Labor</th>
-                <th data-options="field:'direct_overtime',width:100,halign:'center',align:'right',formatter:priceformat">Direct Overtime</th>
-                <th data-options="field:'direct_foh',width:100,halign:'center',align:'right',formatter:priceformat">Direct FOH</th>
-                <th data-options="field:'direct_material',width:100,halign:'center',align:'right',formatter:priceformat">Direct Material</th>
-                <th data-options="field:'direct_requestion',width:100,halign:'center',align:'right',formatter:priceformat">Direct Requestion</th>
+                <!-- <th data-options="field:'umh',width:60,halign:'center',align:'right',formatter:priceformat">UMH</th> -->
+                <!-- <th data-options="field:'total_umh',width:100,halign:'center',align:'right',formatter:priceformat">Total UMH</th> -->
+                <!-- <th data-options="field:'direct_labor',width:100,halign:'center',align:'right',formatter:priceformat">Direct Labor</th> -->
+                <!-- <th data-options="field:'direct_overtime',width:100,halign:'center',align:'right',formatter:priceformat">Direct Overtime</th> -->
+                <!-- <th data-options="field:'direct_foh',width:100,halign:'center',align:'right',formatter:priceformat">Direct FOH</th> -->
+                <th data-options="field:'direct_material',width:120,halign:'center',align:'right',formatter:priceformat">Direct Material</th>
+                <th data-options="field:'direct_requestion',width:120,halign:'center',align:'right',formatter:priceformat">Direct Requestion</th>
             </tr>
         </thead>
     </table>
@@ -131,8 +133,9 @@
     <table id="dg_details" class="easyui-datagrid" style="width:100%;">
         <thead>
             <tr>
-                <th data-options="field:'item_number',width:150,halign:'center'">Component No</th>
-                <th data-options="field:'item_name',width:150,halign:'center'">Component Name</th>
+                <th data-options="field:'item_rm_id',width:120,halign:'center'">Part No EBWS</th>
+                <th data-options="field:'item_rm_number',width:200,halign:'center'">Part No Supplier</th>
+                <th data-options="field:'item_rm_name',width:150,halign:'center'">Description</th>
                 <th data-options="field:'uom',width:80,align:'center'">Uom</th>
                 <th data-options="field:'supply_type',width:150,halign:'center'">Supply Type</th>
                 <th data-options="field:'supply_date',width:100,halign:'center'">Supply Date</th>
@@ -190,81 +193,81 @@
             }
         });
 
-        $.ajax({
-            type: "post",
-            url: "<?= base_url('costing/costing_products/checkApPayment') ?>",
-            data: "filter_month=" + filter_month +
-                "&filter_year=" + filter_year,
-            dataType: "json",
-            success: function(pi) {
-                if (pi > 0) {
-                    $('#check_ap').checkbox({
-                        checked: true
-                    });
-                } else {
-                    $('#check_ap').checkbox({
-                        checked: false
-                    });
-                }
-            }
-        });
+        // $.ajax({
+        //     type: "post",
+        //     url: "<?= base_url('costing/costing_products/checkApPayment') ?>",
+        //     data: "filter_month=" + filter_month +
+        //         "&filter_year=" + filter_year,
+        //     dataType: "json",
+        //     success: function(pi) {
+        //         if (pi > 0) {
+        //             $('#check_ap').checkbox({
+        //                 checked: true
+        //             });
+        //         } else {
+        //             $('#check_ap').checkbox({
+        //                 checked: false
+        //             });
+        //         }
+        //     }
+        // });
 
-        $.ajax({
-            type: "post",
-            url: "<?= base_url('costing/costing_products/checkArReceipt') ?>",
-            data: "filter_month=" + filter_month +
-                "&filter_year=" + filter_year,
-            dataType: "json",
-            success: function(pi) {
-                if (pi > 0) {
-                    $('#check_ar').checkbox({
-                        checked: true
-                    });
-                } else {
-                    $('#check_ar').checkbox({
-                        checked: false
-                    });
-                }
-            }
-        });
+        // $.ajax({
+        //     type: "post",
+        //     url: "<?= base_url('costing/costing_products/checkArReceipt') ?>",
+        //     data: "filter_month=" + filter_month +
+        //         "&filter_year=" + filter_year,
+        //     dataType: "json",
+        //     success: function(pi) {
+        //         if (pi > 0) {
+        //             $('#check_ar').checkbox({
+        //                 checked: true
+        //             });
+        //         } else {
+        //             $('#check_ar').checkbox({
+        //                 checked: false
+        //             });
+        //         }
+        //     }
+        // });
 
-        $.ajax({
-            type: "post",
-            url: "<?= base_url('costing/costing_products/checkAsset') ?>",
-            data: "filter_month=" + filter_month +
-                "&filter_year=" + filter_year,
-            dataType: "json",
-            success: function(pi) {
-                if (pi > 0) {
-                    $('#check_as').checkbox({
-                        checked: true
-                    });
-                } else {
-                    $('#check_as').checkbox({
-                        checked: false
-                    });
-                }
-            }
-        });
+        // $.ajax({
+        //     type: "post",
+        //     url: "<?= base_url('costing/costing_products/checkAsset') ?>",
+        //     data: "filter_month=" + filter_month +
+        //         "&filter_year=" + filter_year,
+        //     dataType: "json",
+        //     success: function(pi) {
+        //         if (pi > 0) {
+        //             $('#check_as').checkbox({
+        //                 checked: true
+        //             });
+        //         } else {
+        //             $('#check_as').checkbox({
+        //                 checked: false
+        //             });
+        //         }
+        //     }
+        // });
 
-        $.ajax({
-            type: "post",
-            url: "<?= base_url('costing/costing_products/checkCurrency') ?>",
-            data: "filter_month=" + filter_month +
-                "&filter_year=" + filter_year,
-            dataType: "json",
-            success: function(pi) {
-                if (pi > 0) {
-                    $('#check_cr').checkbox({
-                        checked: true
-                    });
-                } else {
-                    $('#check_cr').checkbox({
-                        checked: false
-                    });
-                }
-            }
-        });
+        // $.ajax({
+        //     type: "post",
+        //     url: "<?= base_url('costing/costing_products/checkCurrency') ?>",
+        //     data: "filter_month=" + filter_month +
+        //         "&filter_year=" + filter_year,
+        //     dataType: "json",
+        //     success: function(pi) {
+        //         if (pi > 0) {
+        //             $('#check_cr').checkbox({
+        //                 checked: true
+        //             });
+        //         } else {
+        //             $('#check_cr').checkbox({
+        //                 checked: false
+        //             });
+        //         }
+        //     }
+        // });
     };
 
     //ADD DATA
@@ -275,10 +278,10 @@
 
         var check_pi = $("#check_pi").checkbox('options');
         var check_si = $("#check_si").checkbox('options');
-        var check_ap = $("#check_ap").checkbox('options');
-        var check_ar = $("#check_ar").checkbox('options');
-        var check_as = $("#check_as").checkbox('options');
-        var check_cr = $("#check_cr").checkbox('options');
+        // var check_ap = $("#check_ap").checkbox('options');
+        // var check_ar = $("#check_ar").checkbox('options');
+        // var check_as = $("#check_as").checkbox('options');
+        // var check_cr = $("#check_cr").checkbox('options');
 
         $.ajax({
             type: "post",
@@ -291,7 +294,8 @@
                     return false;
                 }
 
-                if (check_pi.checked == true && check_si.checked == true && check_ap.checked == true && check_ar.checked == true && check_as.checked == true == check_cr.checked == true) {
+                // if (check_pi.checked == true && check_si.checked == true && check_ap.checked == true && check_ar.checked == true && check_as.checked == true == check_cr.checked == true) {
+                if (check_pi.checked == true && check_si.checked == true) {
                     $.messager.confirm('Warning', 'Are you sure you want to Generate this data?', function(r) {
                         if (r) {
                             Swal.fire({
@@ -307,7 +311,7 @@
                             $.ajax({
                                 type: "post",
                                 url: "<?= base_url('costing/costing_products/getData') ?>",
-                                data: "month=" + filter_month + "&year=" + filter_year + "&item_id=" + filter_item,
+                                data: "month=" + filter_month + "&year=" + filter_year + "&item_fg_id=" + filter_item,
                                 dataType: "json",
                                 success: function(get) {
                                     Swal.close();
@@ -378,7 +382,7 @@
         $.ajax({
             type: "post",
             url: "<?= base_url('costing/costing_products/getDataProducts') ?>",
-            data: "month=" + filter_month + "&year=" + filter_year + "&item_id=" + filter_item,
+            data: "month=" + filter_month + "&year=" + filter_year + "&item_fg_id=" + filter_item,
             dataType: "json",
             success: function(get) {
                 Swal.close();
@@ -526,7 +530,7 @@
 
     function btnWorkorder(val, row) {
         if(val != "Grand Total"){
-            var workorder = "viewWorkorder('" + row.periode + "','" + row.item_id + "')";
+            var workorder = "viewWorkorder('" + row.periode + "','" + row.item_fg_id + "','" + row.number_customer + "')";
             return '<a class="btn btn-primary w-100" onClick="' + workorder + '" style="pointer-events: visible; opacity:1;"><i class="fa fa-eye"></i> View</a>';
         }else{
             return val;
@@ -538,8 +542,10 @@
         return '<a class="btn btn-primary w-100" onClick="' + details + '" style="pointer-events: visible; opacity:1;"><i class="fa fa-eye"></i> View</a>';
     }
 
-    function viewWorkorder(periode, item_id) {
+    function viewWorkorder(periode, item_id, number_customer) {
         $("#dlg_workorder").window('open');
+        $("#dlg_workorder").window("setTitle", "Detail Workorder " + number_customer);
+
         $('#dg_workorder').datagrid({
             url: '<?= base_url('costing/costing_products/datatableWorkorders?periode=') ?>' + btoa(periode) + "&item_id=" + btoa(item_id),
             pagination: false,
@@ -625,10 +631,10 @@
         });
 
         $('#filter_item').combogrid({
-            url: '<?= base_url('master/item_fg/reads') ?>',
+            url: '<?= base_url('costing/costing_products/readProduct') ?>',
             panelWidth: 600,
             idField: 'id',
-            textField: 'number_customer',
+            textField: 'number',
             mode: 'remote',
             fitColumns: true,
             prompt: "Select Product No",
@@ -640,16 +646,16 @@
             }],
             columns: [
                 [{
-                    field: 'number',
-                    title: 'Product No EBWS',
+                    field: 'id',
+                    title: 'ID',
                     width: 100
                 }, {
-                    field: 'number_customer',
-                    title: 'Product No Customer',
+                    field: 'number',
+                    title: 'No',
                     width: 200
                 }, {
                     field: 'name',
-                    title: 'Description',
+                    title: 'Name',
                     width: 150
                 },]
             ]

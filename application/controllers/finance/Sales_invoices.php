@@ -118,7 +118,6 @@ class Sales_invoices extends CI_Controller
         $post = isset($_POST['q']) ? $_POST['q'] : "";
 
         $journal_type_id = base64_decode($journal_type_id);
-
         $journals = $this->crud->query("SELECT a.*, a.flag, b.account_name FROM journal_setups a 
             JOIN account_coa b ON a.account_number = b.account_number 
             WHERE a.account_number LIKE '%$post%' and a.journal_type_id = '$journal_type_id' ORDER BY a.flag ASC");
@@ -134,6 +133,39 @@ class Sales_invoices extends CI_Controller
         }
 
         echo json_encode($arr);
+    }
+
+    public function readGst(){
+        $post = $this->input->post();
+        $customer_id = $post['customer_id'];
+        $plant = $post['plant'];
+        $item_fg_id = $post['item_fg_id'];
+
+        $this->db->select('*');
+        $this->db->from('config');
+        $config = $this->db->get()->row();
+
+        $customer_address = $this->crud->read("customer_address", [], ["customer_id" => $customer_id, "plant" => $plant]);
+        $item_fg = $this->crud->read("item_fg", [], ["id" => $item_fg_id]);
+        $hsn = $this->crud->read("hsn", [], ["number" => $item_fg->hsn_code]);
+
+        if($customer_address->bill_state == ""){
+            $igst = 0;
+            $cgst = 0;
+            $sgst = 0;
+        }elseif($customer_address->bill_state == $config->state){
+            $igst = 0;
+            $cgst = ($hsn->cgst / 100);
+            $sgst = ($hsn->sgst / 100);
+        }else{
+            $igst = ($hsn->igst / 100);
+            $cgst = 0;
+            $sgst = 0;
+        }
+
+        die(json_encode(
+            array("igst" => $igst, "cgst" => $cgst, "sgst" => $sgst, "account_number" => $item_fg->account_number, "account_name" => $item_fg->account_name)
+        ));
     }
 
     // public function readJournalDetail($journal_type_id, $account_number)
@@ -616,7 +648,7 @@ class Sales_invoices extends CI_Controller
         $imgIrn = "";
         if($sales_invoice->barcode != ""){
             $this->createQrcodeIrn($sales_invoice->barcode, "assets/image/qrcode/", $sales_invoice->number);
-            $imgIrn = '<img src="' . base_url('assets/image/qrcode/' . $sales_invoice->number . '.png?'.time()) . '" width="200"/>';
+            $imgIrn = '<img src="' . base_url('assets/image/qrcode/' . $sales_invoice->number . '.png?'.time()) . '" width="170"/>';
         }
 
         //Header Print

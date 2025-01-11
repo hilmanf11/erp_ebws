@@ -39,6 +39,13 @@ class Rgp_in extends CI_Controller
         echo json_encode($send);
     }
 
+    public function readItemCategories($type = "")
+    {
+        $post = isset($_POST['q']) ? $_POST['q'] : "";
+        $send = $this->crud->query("SELECT * FROM item_categories WHERE name LIKE '%$post%' AND number in ('RM','FG','OT')");
+        echo json_encode($send);
+    }
+
     public function readDocument()
     {
         $post = isset($_POST['q']) ? $_POST['q'] : "";
@@ -83,28 +90,6 @@ class Rgp_in extends CI_Controller
         select id, number, name, 'SUPPLIER' as type from suppliers
         ) a
         where a.name LIKE '%$post%' or a.id like '%$post%' or number like '%$post%'");
-        echo json_encode($send);
-    }
-
-    public function readItemCategory($item_category = "")
-    {
-
-        $trans_date = date("Y-m-d");
-        //master/bom
-        //planning/where_used
-        $post = isset($_POST['q']) ? $_POST['q'] : "";
-        if ($item_category != 'C08') { // bukan finish good
-            $send = $this->crud->query("SELECT a.*,b.name as item_family_name
-            FROM item_rm a 
-            JOIN item_familys b ON a.item_family_id = b.id
-            JOIN item_categories c ON a.item_category_id = c.id
-            WHERE a.status = 0 and c.id = '$item_category'
-            and (a.id like '%$post%' or a.number like '%$post%' or a.name like '%$post%')");
-        } else {
-            $send = $this->crud->query("SELECT a.number as id, a.number_customer as number, a.name, a.uom
-            FROM item_fg a 
-            WHERE a.id like '%$post%' or a.number like '%$post%' or a.name like '%$post%'");
-        }
         echo json_encode($send);
     }
 
@@ -351,7 +336,7 @@ class Rgp_in extends CI_Controller
                 ELSE null
             END) as item_family_name,
 
-            a.uom, a.qty, a.currency, a.price, a.value, a.igst_value, a.sgst_value, a.cgst_value, a.total,a.number,
+            a.uom, a.qty, a.currency, a.price, a.value, a.igst_value, a.sgst_value, a.cgst_value, a.total,a.number,a.rgp_id,
             
             (CASE 
                 WHEN d.id is not null THEN d.name
@@ -456,6 +441,12 @@ class Rgp_in extends CI_Controller
                 $item_id = $post['item_id'];
             }
 
+            if (!empty($post['rgp_number'])) {
+                $status = 1;
+            } else {
+                $status = 0;
+            }
+
             $postFinal = array(
                 "process_type" => $post['process_type'],
                 "transaction_date" => $post['transaction_date'],
@@ -480,13 +471,24 @@ class Rgp_in extends CI_Controller
                 "cgst_value" => $post['cgst_value'],
                 "total" => $post['total'],
                 "type" => "IN",
+                "status" => $status,
             );
+
             $rgp_transactions = $this->crud->read("rgp_transactions", [], ["number" => $post['number'], "item_id" => $item_id, "type" => "IN"]);
             if (@$rgp_transactions->number != "") {
                 $send = $this->crud->update('rgp_transactions', ["number" => $post['number'], "item_id" => $item_id, "type" => "IN"], $postFinal);
                 $this->db->update('rgp_transactions', ["status" => 1], ["number" => $post['rgp_number'], "item_id" => $item_id]);
             } else {
-                $send = $this->crud->create('rgp_transactions', $postFinal);
+                $sqlGetID = $this->db->query("SELECT max(rgp_id) as kode FROM rgp_transactions WHERE `number` = '" . $post['number'] . "'");
+                $rowID = $sqlGetID->row();
+                $id = $rowID->kode;
+                if ($id == NULL) {
+                    $rgp_id = $post['number'] . "-" . sprintf("%03s", $id + 1);
+                } else {
+                    $urutan = (int) substr($id, -3);
+                    $rgp_id = $post['number'] . "-" . sprintf("%03s", $urutan + 1);
+                }
+                $send = $this->crud->create('rgp_transactions', array_merge($postFinal, ["rgp_id" => $rgp_id]));
                 $this->db->update('rgp_transactions', ["status" => 1], ["number" => $post['rgp_number'], "item_id" => $item_id]);
             }
             echo $send;
@@ -792,7 +794,13 @@ class Rgp_in extends CI_Controller
     public function create_check_label()
     {
         $post = $this->input->post();
-        $rgp_transaction_labels = $this->crud->reads('rgp_transaction_labels', [], ["rgp_number" => $post['number']]);
+        $item_fg = $this->crud->read("item_fg", [], ["number" => $post['item_id']]);
+        if (!empty(@$item_fg->id)) {
+            $item_id = @$item_fg->id;
+        } else {
+            $item_id = $post['item_id'];
+        }
+        $rgp_transaction_labels = $this->crud->reads('rgp_transaction_labels', [], ["rgp_number" => $post['number'], "item_id" => $item_id]);
         die(json_encode(array("total" => count($rgp_transaction_labels))));
     }
 
@@ -812,10 +820,21 @@ class Rgp_in extends CI_Controller
             $autoID = $rgp_number . sprintf("%04s", $urutan + 1);
         }
 
+        $item_fg = $this->crud->read("item_fg", [], ["number" => $post['item_id']]);
+        if (!empty(@$item_fg->id)) {
+            $item_id = @$item_fg->id;
+        } else {
+            $item_id = $post['item_id'];
+        }
+
+        $rgp_transactions = $this->crud->read("rgp_transactions", [], ["number" => $post['rgp_number'], "item_id" => $item_id]);
+
         //Simpan Label
         $arrLabel = [
             "rgp_number" => strtoupper($rgp_number),
+            "rgp_id" => strtoupper(@$rgp_transactions->rgp_id),
             "label_no" => strtoupper($autoID),
+            "item_id" => $item_id,
             "qty" => $qty,
         ];
 
@@ -823,13 +842,20 @@ class Rgp_in extends CI_Controller
         die($send);
     }
 
-    public function print_label($rgp_number, $item_category_id)
+    public function print_label($rgp_number, $item_category_id, $item_id)
     {
         //Config
         $this->db->select('*');
         $this->db->from('config');
         $config = $this->db->get()->row();
         $rgp_number = base64_decode($rgp_number);
+
+        $item_fg = $this->crud->read("item_fg", [], ["number" => base64_decode($item_id)]);
+        if (!empty(@$item_fg->id)) {
+            $item_id = @$item_fg->id;
+        } else {
+            $item_id = base64_decode($item_id);
+        }
         //Cek Label
 
         $this->db->select("
@@ -858,6 +884,7 @@ class Rgp_in extends CI_Controller
         $this->db->join('suppliers e', 'b.company_id = e.id', 'left');
         $this->db->join('customers f', 'b.company_id = f.id', 'left');
         $this->db->where('a.deleted', 0);
+        $this->db->where('a.item_id', $item_id);
         //$this->db->where('a.status', 0);
         $this->db->group_by('a.label_no');
         $this->db->where('a.rgp_number', $rgp_number);

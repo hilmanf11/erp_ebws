@@ -119,6 +119,8 @@ class Approvals extends CI_Controller
                 }else{
                     die(json_encode(array("title" => "Already In PO", "message" => "Data Cannot Disaapprove", "theme" => "error")));
                 }
+            }else{
+                $this->db->delete($tablename, ["id" => $id]);
             }
         }else{
             $send = $this->db->update($tablename, $data, ["id" => $id]);

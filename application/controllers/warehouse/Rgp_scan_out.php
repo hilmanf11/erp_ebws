@@ -44,6 +44,7 @@ class Rgp_scan_out extends CI_Controller
         if ($this->input->post()) {
             $label_no = $this->input->post('label_no');
 
+            // cek ke receipt RM
             $this->db->select('b.po_no, b.receipt_no, b.receipt_id, a.label_no, a.qty, b.item_rm_id as item_id');
             $this->db->from('scan_item_receipts a');
             $this->db->join('purchase_order_receipts b', 'a.receipt_id = b.receipt_id');
@@ -52,13 +53,24 @@ class Rgp_scan_out extends CI_Controller
             $totalRows = $this->db->count_all_results('', false);
             $records = $this->db->get()->result_array();
             if ($records == []) {
-                $this->db->select("b.item_fg_id as item_id, a.checksheet_label as label_no,a.qty");
-                $this->db->from('scan_item_receipts_fg a');
-                $this->db->join('wip_receipts b', 'a.workorder = b.workorder and a.checksheet_number = b.checksheet_number');
-                $this->db->where('a.checksheet_label', $label_no);
-                $this->db->where('a.status', 0);
+                // cek ke sto
+                $this->db->select('b.label_no, a.item_rm_id as item_id, b.qty');
+                $this->db->from('os_rm a');
+                $this->db->join('scan_item_receipts b', 'a.id = b.receipt_id');
+                $this->db->where('b.label_no', $label_no);
                 $totalRows = $this->db->count_all_results('', false);
                 $records = $this->db->get()->result_array();
+
+                if ($records == []) {
+                    // cek ke receipt FG
+                    $this->db->select("b.item_fg_id as item_id, a.checksheet_label as label_no,a.qty");
+                    $this->db->from('scan_item_receipts_fg a');
+                    $this->db->join('wip_receipts b', 'a.workorder = b.workorder and a.checksheet_number = b.checksheet_number');
+                    $this->db->where('a.checksheet_label', $label_no);
+                    $this->db->where('a.status', 0);
+                    $totalRows = $this->db->count_all_results('', false);
+                    $records = $this->db->get()->result_array();
+                }
             }
 
             //Mapping Data

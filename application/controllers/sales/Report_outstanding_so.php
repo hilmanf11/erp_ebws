@@ -147,7 +147,7 @@ class Report_outstanding_so extends CI_Controller
                     (COALESCE(d.begin_stock, 0) + COALESCE(b.qty_so, 0) - COALESCE(c.qty_delivery, 0)) AS outstanding
                 FROM item_fg a
                 JOIN (SELECT item_fg_id, sales_order_no, SUM(qty) AS qty_so FROM `sales_orders` 
-                    WHERE sales_order_date BETWEEN '$filter_so_date_from' AND '$filter_so_date_to'
+                    WHERE `status` = 0 and sales_order_date BETWEEN '$filter_so_date_from' AND '$filter_so_date_to'
                     AND customer_id LIKE '%$filter_customer_name%'
                     AND item_fg_id LIKE '%$filter_item_fg%'
                     AND customer_order_no LIKE '%$filter_customer_order_no%'
@@ -158,7 +158,7 @@ class Report_outstanding_so extends CI_Controller
                     (COALESCE(b.qty_so, 0) - COALESCE(c.qty_delivery, 0)) AS begin_stock
                     FROM item_fg a
                     LEFT JOIN (SELECT item_fg_id, sales_order_no, SUM(qty) AS qty_so FROM `sales_orders` 
-                        WHERE sales_order_date < '$filter_so_date_from'
+                        WHERE `status` = 0 and sales_order_date < '$filter_so_date_from'
                         AND customer_id LIKE '%$filter_customer_name%'
                         AND item_fg_id LIKE '%$filter_item_fg%'
                         AND customer_order_no LIKE '%$filter_customer_order_no%'

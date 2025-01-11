@@ -16,16 +16,20 @@
             <th rowspan="2" data-options="field:'asset_code',width:120,halign:'center'">Asset Code</th>
             <th rowspan="2" data-options="field:'uom',width:80,align:'center'">UoM</th>
             <th rowspan="2" data-options="field:'qty',width:80,halign:'center',align:'right',formatter:numberformat">Qty</th>
+            <th rowspan="2" data-options="field:'currency',width:80,align:'center'">Currency</th>
+            <th rowspan="2" data-options="field:'price',width:100,halign:'center',align:'right',formatter:numberformat">Est. Price</th>
+            <th rowspan="2" data-options="field:'total',width:100,halign:'center',align:'right',formatter:numberformat">Total</th>
             <th rowspan="2" data-options="field:'remarks',width:200,halign:'center'">Remarks</th>
             <th rowspan="2" data-options="field:'po_no',width:120,align:'center'">Po No</th>
-            <th colspan="3" data-options="field:'',width:100,halign:'center'">Approved</th>
+            <th colspan="4" data-options="field:'',width:100,halign:'center'">Approved</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
         </tr>
         <tr>
-            <th data-options="field:'approved_to',width:80,align:'center', styler:cellStylerApproval, formatter:cellFormatterApproval">Status</th>
-            <th data-options="field:'approved_by',width:100,align:'center'">By</th>
-            <th data-options="field:'approved_date',width:120,align:'center'">Date</th>
+            <th data-options="field:'status_approved',width:80,align:'center', styler:cellStylerApproval, formatter:cellFormatterApproval">Status</th>
+            <th data-options="field:'approved_by',width:120,align:'center'">By</th>
+            <th data-options="field:'approved_to',width:120,align:'center'">Next</th>
+            <th data-options="field:'approved_date',width:150,align:'center'">Date</th>
             <th data-options="field:'created_by',width:100,align:'center'"> By</th>
             <th data-options="field:'created_date',width:150,align:'center'"> Date</th>
             <th data-options="field:'updated_by',width:100,align:'center'"> By</th>
@@ -360,25 +364,65 @@
                         options: {
                             required: true,
                             precision: 2,
-                            // onChange: function(val){
-                            //     if(item_category_id == "ASSET"){
-                            //         var dg = $('#dg2');
-                            //         var row = dg.datagrid('getSelected');
-                            //         var rowIndex = dg.datagrid('getRowIndex', row);
+                            onChange: function(val){
+                                var dg = $('#dg2');
+                                var row = dg.datagrid('getSelected');
+                                var rowIndex = dg.datagrid('getRowIndex', row);
 
-                            //         var ed = dg.datagrid('getEditor', {
-                            //             index: rowIndex,
-                            //             field: 'qty'
-                            //         });
+                                var dgprice = dg.datagrid('getEditor', { index: rowIndex, field: 'price'});
+                                var dgtotal = dg.datagrid('getEditor', { index: rowIndex, field: 'total'});
+                                var price = $(dgprice.target).numberbox("getValue");
+                                $(dgtotal.target).numberbox("setValue", (parseFloat(price) * parseFloat(val)));
+                            }
+                        }
+                    }
+                }, {
+                    field: 'currency',
+                    width: 80,
+                    halign: 'center',
+                    title: "Currency",
+                    editor: {
+                        type: 'combobox',
+                        options: {
+                            url: '<?= base_url('master/currencies/reads') ?>',
+                            valueField: 'number',
+                            textField: 'number',
+                            panelHeight: 'auto',
+                            prompt: "Select Currency",
+                        }
+                    }
+                }, {
+                    field: 'price',
+                    width: 80,
+                    halign: 'center',
+                    title: "Est. Price",
+                    editor: {
+                        type: 'numberbox',
+                        options: {
+                            required: true,
+                            precision: 2,
+                            onChange: function(val){
+                                var dg = $('#dg2');
+                                var row = dg.datagrid('getSelected');
+                                var rowIndex = dg.datagrid('getRowIndex', row);
 
-                            //         var asset_qty = $("#asset_qty").numberbox("getValue");
-                                    
-                            //         if(val > asset_qty){
-                            //             $(ed.target).numberbox('clear');
-                            //             toastr.error("Qty Cannot Increase from Asset Qty, Please Confirm Finance Departement");
-                            //         }
-                            //     }
-                            // }
+                                var dgqty = dg.datagrid('getEditor', { index: rowIndex, field: 'qty'});
+                                var dgtotal = dg.datagrid('getEditor', { index: rowIndex, field: 'total'});
+                                var qty = $(dgqty.target).numberbox("getValue");
+                                $(dgtotal.target).numberbox("setValue", (parseFloat(qty) * parseFloat(val)));
+                            }
+                        }
+                    }
+                }, {
+                    field: 'total',
+                    width: 100,
+                    halign: 'center',
+                    title: "Total",
+                    editor: {
+                        type: 'numberbox',
+                        options: {
+                            readonly: true,
+                            precision: 2
                         }
                     }
                 }, {
@@ -471,7 +515,10 @@
                     $('#dg2').datagrid('appendRow', {
                         qty: '0',
                         stock: '0',
-                        po: '0'
+                        po: '0',
+                        price: '0',
+                        total: '0',
+                        currency: 'INR',
                     });
                     editIndex = $('#dg2').datagrid('getRows').length - 1;
                     $('#dg2').datagrid('selectRow', editIndex).datagrid('beginEdit', editIndex);
@@ -723,6 +770,9 @@
                                             item_family_id: rows[i].item_family_id,
                                             item_rm_id: rows[i].item_rm_id,
                                             qty: rows[i].qty,
+                                            price: rows[i].price,
+                                            total: rows[i].total,
+                                            currency: rows[i].currency,
                                             forecast_m1: rows[i].forecast_m1,
                                             forecast_m2: rows[i].forecast_m2,
                                             forecast_m3: rows[i].forecast_m3,
@@ -994,9 +1044,9 @@
     }
 
     function cellFormatterApproval(val, row) {
-        if(val == ""){
+        if(row.approved_to == ""){
             return 'Approved';
-        } else if(val == null){
+        } else if(row.approved_to == null){
             return '-';
         } else {
             return 'Checking';
@@ -1004,9 +1054,9 @@
     };
 
     function cellStylerApproval(value, row, index) {
-        if(value == ""){
+        if(row.approved_to == ""){
             return 'background: #53D636; color:white;';
-        } else if(value == null){
+        } else if(row.approved_to == null){
             return '';
         } else {
             return 'background: #FF5F5F; color:white;';

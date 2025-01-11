@@ -38,6 +38,13 @@ class Rgp_out extends CI_Controller
         echo json_encode($send);
     }
 
+    public function readItemCategories($type = "")
+    {
+        $post = isset($_POST['q']) ? $_POST['q'] : "";
+        $send = $this->crud->query("SELECT * FROM item_categories WHERE name LIKE '%$post%' AND number in ('RM','FG','OT')");
+        echo json_encode($send);
+    }
+
     public function readDocument()
     {
         $post = isset($_POST['q']) ? $_POST['q'] : "";
@@ -94,6 +101,12 @@ class Rgp_out extends CI_Controller
         $post = isset($_POST['q']) ? $_POST['q'] : "";
         if ($item_category != 'C08') { // bukan finish good
             if ($item_category == 'C03') { // JIKA CONSUMABLE
+                $company_id = base64_decode($company_id);
+                if ($company_id != '') {
+                    $whereCompany = "and e.supplier_id='$company_id'";
+                } else {
+                    $whereCompany = "";
+                }
                 $send = $this->crud->query("SELECT a.*,b.name as item_family_name,
                 (COALESCE(f.begin_stock,0) + COALESCE(d.qty_receipt,0) - COALESCE(e.qty,0)) AS stock 
                 FROM item_rm a 
@@ -111,10 +124,17 @@ class Rgp_out extends CI_Controller
                     LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as qty FROM issued_others WHERE trans_date <= '$trans_date' and `status` = '1' GROUP BY item_rm_id) d ON a.id = d.item_rm_id
                     GROUP BY a.id) f on a.id = f.id
                 
+                JOIN supplier_items e ON a.id = e.item_rm_id 
                 WHERE a.status = 0 and c.id = '$item_category'
                 and (a.id like '%$post%' or a.number like '%$post%' or a.name like '%$post%')
                 GROUP BY a.id");
             } else {
+                $company_id = base64_decode($company_id);
+                if ($company_id != '') {
+                    $whereCompany = "and j.supplier_id='$company_id'";
+                } else {
+                    $whereCompany = "";
+                }
                 $send = $this->crud->query("SELECT a.*,b.name as item_family_name,
                 ((COALESCE(SUM(d.qty_sto),0) + COALESCE(e.sto_qty_in, 0) + COALESCE(f.qty_receipt, 0) + COALESCE(h.return_qty, 0)) - COALESCE(g.qty, 0) - COALESCE(e.sto_qty_out, 0) - COALESCE(i.qty_reject, 0)) AS stock
                 FROM item_rm a 
@@ -133,6 +153,7 @@ class Rgp_out extends CI_Controller
                             GROUP BY a.item_rm_id) h ON a.id = h.item_rm_id
                 LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) as qty_reject FROM purchase_order_receipts a JOIN scan_item_rejections b ON a.receipt_id  = b.receipt_id WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') <= '$trans_date' GROUP BY item_rm_id) i ON a.id = i.item_rm_id
 
+                JOIN supplier_items j ON a.id = j.item_rm_id
                 WHERE a.status = 0 and c.id = '$item_category'
                 and (a.id like '%$post%' or a.number like '%$post%' or a.name like '%$post%')
                 GROUP BY a.id");
@@ -153,7 +174,7 @@ class Rgp_out extends CI_Controller
             LEFT JOIN (SELECT a.item_fg_id, (CASE WHEN a.type = 'IN' THEN COALESCE(SUM(a.qty), 0) ELSE 0 END) as sto_qty_in, (CASE WHEN a.type = 'OUT' THEN COALESCE(SUM(a.qty), 0) ELSE 0 END) as sto_qty_out FROM sto_fg a WHERE a.trans_date <= '$trans_date' and (a.approved_to = '' or a.approved_to is null) GROUP BY item_fg_id) d ON a.id = d.item_fg_id
             LEFT JOIN (SELECT item_fg_id, delivery_note_date, COALESCE(SUM(qty), 0) as qty FROM delivery_notes WHERE DATE_FORMAT(created_date, '%Y-%m-%d') <= '$trans_date' GROUP BY item_fg_id) g ON a.id = g.item_fg_id
             
-            WHERE (a.id like '%$post%' or a.number like '%$post%' or a.name like '%$post%') $whereCompany
+            WHERE (a.id like '%$post%' or a.number like '%$post%' or a.name like '%$post%')
             GROUP BY a.id");
         }
         echo json_encode($send);
@@ -299,8 +320,7 @@ class Rgp_out extends CI_Controller
             END) as plant_number,
             g.name as item_category_name,
             h.name as departement_name,
-            i.name as rgp_type_name,
-            j.rgp_in_number
+            i.name as rgp_type_name
             ");
             $this->db->from('rgp_transactions a');
             $this->db->join('item_rm b', 'a.item_id = b.id', 'left');
@@ -311,7 +331,6 @@ class Rgp_out extends CI_Controller
             $this->db->join('item_categories g', 'a.item_category_id = g.id', 'left');
             $this->db->join('departements h', 'a.departement_id = h.id', 'left');
             $this->db->join('rgp_types i', 'a.rgp_type_id = i.id', 'left');
-            $this->db->join("(select number as rgp_in_number, rgp_number from rgp_transactions group by number) j", 'a.number = j.rgp_number', 'left');
             $this->db->where('a.type', 'OUT');
             if ($filter_from != "" or $filter_to != "") {
                 $this->db->where('a.transaction_date >=', $filter_from);
@@ -494,6 +513,12 @@ class Rgp_out extends CI_Controller
                 $item_id = $post['item_id'];
             }
 
+            if (!empty($post['rgp_number'])) {
+                $status = 1;
+            } else {
+                $status = 0;
+            }
+
             $postFinal = array(
                 "process_type" => $post['process_type'],
                 "transaction_date" => $post['transaction_date'],
@@ -521,12 +546,15 @@ class Rgp_out extends CI_Controller
                 "total" => $post['total'],
                 "type" => "OUT",
                 "declaration" => $post['declaration'],
+                "status" => $status,
             );
             $rgp_transactions = $this->crud->read("rgp_transactions", [], ["number" => $post['number'], "item_id" => $item_id, "type" => "OUT"]);
-            if (@$rgp_transactions->number != "") {
+            if (!empty(@$rgp_transactions->number)) {
                 $send = $this->crud->update('rgp_transactions', ["number" => $post['number'], "item_id" => $item_id, "type" => "OUT"], $postFinal);
+                $this->db->update('rgp_transactions', ["status" => 1], ["number" => $post['rgp_number'], "item_id" => $item_id]);
             } else {
                 $send = $this->crud->create('rgp_transactions', $postFinal);
+                $this->db->update('rgp_transactions', ["status" => 1], ["number" => $post['rgp_number'], "item_id" => $item_id]);
             }
             echo $send;
         } else {

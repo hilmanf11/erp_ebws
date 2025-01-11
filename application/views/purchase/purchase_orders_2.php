@@ -21,13 +21,14 @@
             <th rowspan="2" data-options="field:'revision',width:80,align:'center'">Revision</th>
             <th rowspan="2" data-options="field:'remarks',width:100,halign:'center'">Remarks</th>
             <th rowspan="2" data-options="field:'terms',width:100,halign:'center',formatter:btnTerms">Terms<br>Condition</th>
-            <th colspan="3" data-options="field:'',width:100,halign:'center'">Approved</th>
+            <th colspan="4" data-options="field:'',width:100,halign:'center'">Approved</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
         </tr>
         <tr>
-            <th data-options="field:'approved_to',width:80,align:'center', styler:cellStylerApproval, formatter:cellFormatterApproval">Status</th>
+            <th data-options="field:'status_approved',width:80,align:'center', styler:cellStylerApproval, formatter:cellFormatterApproval">Status</th>
             <th data-options="field:'approved_by',width:120,align:'center'">By</th>
+            <th data-options="field:'approved_to',width:120,align:'center'">Next</th>
             <th data-options="field:'approved_date',width:120,align:'center'">Date</th>
             <th data-options="field:'created_by',width:100,align:'center'"> By</th>
             <th data-options="field:'created_date',width:150,align:'center'"> Date</th>
@@ -274,9 +275,13 @@
             data: "id=" + id,
             dataType: "json",
             success: function(json) {
-                toastr.success("Price Changed!");
-                $("#price").numberbox('setValue', json.price);
-                $("#total").numberbox('setValue', (parseInt(qty) * parseInt(json.price)));
+                if(parseFloat(json.price) > 0){
+                    toastr.success("Price Changed!");
+                    $("#price").numberbox('setValue', json.price);
+                    $("#total").numberbox('setValue', (parseFloat(qty) * parseFloat(json.price)));
+                }else{
+                    toastr.error("Price Cannot Change, Please cek data in Master Supplier Contract");
+                }
             }
         });
     }
@@ -674,8 +679,10 @@
     }
 
     function btnTerms(val, row) {
-        var details = "terms('"+row.po_no+"')";
-        return '<a class="btn btn-primary w-100" style="pointer-events: visible; opacity:1;" onClick="'+details+'"><i class="fa fa-edit"></i> Edit</a>';
+        if(row.datatable == 1){
+            var details = "terms('"+row.po_no+"')";
+            return '<a class="btn btn-primary w-100" style="pointer-events: visible; opacity:1;" onClick="'+details+'"><i class="fa fa-edit"></i> Edit</a>';
+        }
     }
 
     function terms(po_no) {
@@ -822,7 +829,11 @@
     function print_po() {
         var rows = $('#dg').treegrid('getSelected');
         if (rows) {
-            window.open("<?= base_url('purchase/purchase_orders_2/print_po/') ?>" + window.btoa(rows.po_no), "_blank");
+            if(rows.approved_to == ""){
+                window.open("<?= base_url('purchase/purchase_orders_2/print_po/') ?>" + window.btoa(rows.po_no), "_blank");
+            }else{
+                toastr.error("Approval Still Checking!!");
+            }
         } else {
             toastr.warning("Please select data in the table first!");
         }

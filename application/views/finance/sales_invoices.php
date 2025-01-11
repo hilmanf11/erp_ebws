@@ -113,6 +113,14 @@
                 <legend><b>Form Data</b></legend>
                 <div style="width: 50%; float: left;">
                     <div class="fitem">
+                        <span style="width:35%; display:inline-block;">Sales Invoice Type</span>
+                        <select style="width:60%;" required="" name="type" id="type" panelHeight="auto" class="easyui-combobox">
+                            <option value="SALES">SALES INVOICE</option>
+                            <option value="SUPPLEMENTARY">SUPPLEMENTARY INVOICE</option>
+                            <!-- <option value="SCRAP">SCRAP INVOICE</option> -->
+                        </select>
+                    </div>
+                    <div class="fitem">
                         <span style="width:35%; display:inline-block;">Sales Invoice Date</span>
                         <input style="width:60%;" id="trans_date" name="trans_date" required="" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
                     </div>
@@ -176,11 +184,11 @@
                     <th hidden rowspan="2" data-options="field:'id',width:150,editor: {type: 'textbox'}">ID</th>
                     <th rowspan="2" data-options="field:'dn_number',width:150,editor: {type: 'textbox', options: {required: true}}">Delivery Note</th>
                     <th rowspan="2" data-options="field:'so_number',width:160,editor: {type: 'textbox', options: {required: true}}">SO. No</th>
-                    <th rowspan="2" data-options="field:'customer_po',width:120,editor: {type: 'textbox', options: {required: true}}">Customer PO</th>
-                    <th rowspan="2" data-options="field:'item_fg_id',width:150" hidden>Product Id</th>
-                    <th rowspan="2" data-options="field:'item_fg_number',width:150,editor: {type: 'textbox', options: {required: true}}">Product No EBWS</th>
+                    <th rowspan="2" data-options="field:'customer_po',width:120, editor: {type: 'textbox', options: {required: true}}">Customer PO</th>
+                    <th rowspan="2" data-options="field:'item_fg_id',width:150, editor: {type: 'textbox', options: {required: true}}" hidden>Product Id</th>
+                    <th rowspan="2" data-options="field:'item_fg_number',width:170,editor: {type: 'textbox', options: {required: true}}">Product No EBWS</th>
                     <th rowspan="2" data-options="field:'number_customer',width:200,editor: {type: 'textbox', options: {required: true}}">Product No Customer</th>
-                    <th rowspan="2" data-options="field:'item_fg_name',width:200,editor: {type: 'textbox', options: {required: true}}">Description</th>
+                    <th rowspan="2" data-options="field:'item_fg_name',width:150,editor: {type: 'textbox', options: {required: true}}">Description</th>
                     <th rowspan="2" data-options="field:'hsn_code',width:100,editor: {type: 'textbox', options: {readonly: true}}">HSN Code</th>
                     <th rowspan="2" data-options="field:'uom',width:80, editor: {
                         type: 'combobox',
@@ -286,18 +294,47 @@
                                 var row = dg.datagrid('getSelected');
                                 var rowIndex = dg.datagrid('getRowIndex', row);
 
-                                var ed = dg.datagrid('getEditor', {
-                                    index: rowIndex,
-                                    field: 'total'
-                                });
+                                var ed = dg.datagrid('getEditor', {index: rowIndex,field: 'total'});
+                                var ed2 = dg.datagrid('getEditor', {index: rowIndex,field: 'qty'});
+                                var item_fg_id = dg.datagrid('getEditor', {index: rowIndex, field: 'item_fg_id'});
+                                var hsn_code = dg.datagrid('getEditor', {index: rowIndex, field: 'hsn_code'});
+                                var igst = dg.datagrid('getEditor', {index: rowIndex, field: 'igst'});
+                                var sgst = dg.datagrid('getEditor', {index: rowIndex, field: 'sgst'});
+                                var cgst = dg.datagrid('getEditor', {index: rowIndex, field: 'cgst'});
+                                var total2 = dg.datagrid('getEditor', {index: rowIndex, field: 'total2'});
+                                var rate = dg.datagrid('getEditor', {index: rowIndex, field: 'rate'});
+                                var account_number = dg.datagrid('getEditor', {index: rowIndex, field: 'account_number'});
+                                var account_name = dg.datagrid('getEditor', {index: rowIndex, field: 'account_name'});
+                                var account_type = dg.datagrid('getEditor', {index: rowIndex, field: 'account_type'});
 
-                                var ed2 = dg.datagrid('getEditor', {
-                                    index: rowIndex,
-                                    field: 'qty'
-                                });
-
+                                var item_fg_id = $(item_fg_id.target).textbox('getValue');
                                 var qty = $(ed2.target).numberbox('getValue');
-                                $(ed.target).textbox('setValue', (parseFloat(value) * parseFloat(qty)));
+                                var total = (parseFloat(value) * parseFloat(qty));
+                                var customer_id = $('#customer_id').combogrid('getValue');
+                                var plant = $('#plant').combobox('getValue');
+
+                                $(ed.target).textbox('setValue', total);
+
+                                $.ajax({
+                                    type: 'post',
+                                    url: '<?= base_url("finance/sales_invoices/readGst") ?>',
+                                    data: {
+                                        customer_id: customer_id,
+                                        plant: plant,
+                                        item_fg_id: item_fg_id
+                                    },
+                                    dataType: 'json',
+                                    success: function (gst) {
+                                        $(igst.target).numberbox('setValue', (parseFloat(total) * parseFloat(gst.igst)));
+                                        $(sgst.target).numberbox('setValue', (parseFloat(total) * parseFloat(gst.sgst)));
+                                        $(cgst.target).numberbox('setValue', (parseFloat(total) * parseFloat(gst.cgst)));
+                                        $(total2.target).numberbox('setValue', ((parseFloat(total) * parseFloat(gst.igst)) + (parseFloat(total) * parseFloat(gst.sgst)) + (parseFloat(total) * parseFloat(gst.cgst)) + parseFloat(total)));
+                                        $(account_number.target).combogrid('setValue', gst.account_number);
+                                        $(account_name.target).textbox('setValue', gst.account_name);
+                                        $(account_type.target).combobox('setValue', 'CREDIT');
+                                        $(rate.target).numberbox('setValue', 1);
+                                    }
+                                });
                             }
                         }}">Price</th>
                     <th data-options="field:'total',width:120, formatter:priceformat,halign:'center',align:'right',editor: {type: 'numberbox', options: {readonly: true, precision: 2}}">Amount</th>
@@ -400,6 +437,7 @@
         $('#dlg_insert').dialog('open');
         $('#dg2').datagrid('loadData', []);
         $('#frm_insert').form('clear');
+        $("#type").combobox('setValue', 'SALES');
 
         $('#dg2').datagrid({
             onBeforeEdit: function(index, row) {
@@ -463,27 +501,31 @@
                     textField: 'plant',
                     prompt: "Choose Plant",
                     onSelect: function(plant){
-                        $("#dn_number").combobox({
-                            url: '<?= base_url('finance/sales_invoices/readDelivery?customer_id=') ?>' + btoa(row.id) + "&plant=" + btoa(plant.plant),
-                            valueField: 'delivery_note_no',
-                            textField: 'delivery_note_no',
-                            prompt: "Choose Delivery Note",
-                            onSelect: function(plant){
-                                $("#plant").textbox('setValue', plant.plant);
-                                $("#vehicle_no").textbox('setValue', plant.vehicle_no);
-                                $("#payment_term").numberbox("setValue", plant.payment_term);
-                                $("#taxes").numberbox("setValue", 0);
+                        $("#payment_term").numberbox("setValue", plant.payment_term);
+                        var type = $('#type').combobox('getValue');
 
-                                $.ajax({
-                                    type: "post",
-                                    url: "<?= base_url('finance/sales_invoices/readDueDate/') ?>" + window.btoa(trans_date) + "/" + plant.payment_term,
-                                    dataType: "text",
-                                    success: function(due_date) {
-                                        $("#due_date").datebox('setValue', due_date);
-                                    }
-                                });
+                        $.ajax({
+                            type: "post",
+                            url: "<?= base_url('finance/sales_invoices/readDueDate/') ?>" + window.btoa(trans_date) + "/" + plant.payment_term,
+                            dataType: "text",
+                            success: function(due_date) {
+                                $("#due_date").datebox('setValue', due_date);
                             }
                         });
+
+                        if(type != "SUPPLEMENTARY"){
+                            $("#dn_number").combobox({
+                                url: '<?= base_url('finance/sales_invoices/readDelivery?customer_id=') ?>' + btoa(row.id) + "&plant=" + btoa(plant.plant),
+                                valueField: 'delivery_note_no',
+                                textField: 'delivery_note_no',
+                                prompt: "Choose Delivery Note",
+                                onSelect: function(plant){
+                                    $("#plant").textbox('setValue', plant.plant);
+                                    $("#vehicle_no").textbox('setValue', plant.vehicle_no);
+                                    $("#taxes").numberbox("setValue", 0);
+                                }
+                            });
+                        }
                     }
                 });
             }
@@ -505,6 +547,9 @@
             var data_array2 = [];
             var total_sub = 0;
             var total_local = 0;
+            var total_igst = 0;
+            var total_sgst = 0;
+            var total_cgst = 0;
 
             for (let i = 0; i < totalrows; i++) {
                 var data = {
@@ -513,6 +558,10 @@
                     account_type: rows[i].account_type,
                     total: rows[i].total
                 }
+
+                total_igst += Math.abs(parseFloat(rows[i].igst));
+                total_sgst += Math.abs(parseFloat(rows[i].sgst));
+                total_cgst += Math.abs(parseFloat(rows[i].cgst));
 
                 if(rows[i].account_type == "DEBIT"){
                     total_sub -= Math.abs(parseFloat(rows[i].total));
@@ -526,12 +575,15 @@
             }
 
             $("#total_sub").numberbox('setValue', Math.abs(total_sub));
-            var total_igst = $("#total_igst").numberbox('getValue');
-            var total_cgst = $("#total_cgst").numberbox('getValue');
-            var total_sgst = $("#total_sgst").numberbox('getValue');
+
+            $("#total_igst").numberbox('setValue', total_igst);
+            $("#total_cgst").numberbox('setValue', total_cgst);
+            $("#total_sgst").numberbox('setValue', total_sgst);
+
             var total_tcs = $("#tcs").numberbox('getValue');
             var total_freight = $("#total_freight").numberbox('getValue');
             var total_grand = (parseFloat(total_sub) + parseFloat(total_igst) + parseFloat(total_cgst) + parseFloat(total_sgst) - parseFloat(total_tcs) - parseFloat(total_freight));
+
             $("#total_grand").numberbox('setValue', (total_grand));
             $("#total_grand_local").numberbox('setValue', Math.abs(total_local));
 
@@ -758,6 +810,10 @@
 
     function append() {
         if (endEditing()) {
+            var type = $("#type").combobox('getValue');
+            var customer_id = $("#customer_id").combogrid('getValue');
+            var plant = $("#plant").combobox('getValue');
+
             $('#dg2').datagrid('appendRow', {
                 "action": 0
             });
@@ -769,18 +825,61 @@
             var row = dg.datagrid('getSelected');
             var rowIndex = dg.datagrid('getRowIndex', row);
 
-            var qty = dg.datagrid('getEditor', {
-                index: rowIndex,
-                field: 'qty'
-            });
-
-            var price = dg.datagrid('getEditor', {
-                index: rowIndex,
-                field: 'price'
-            });
+            var dn_number = dg.datagrid('getEditor', {index: rowIndex, field: 'dn_number'});
+            var so_number = dg.datagrid('getEditor', {index: rowIndex, field: 'so_number'});
+            var customer_po = dg.datagrid('getEditor', {index: rowIndex, field: 'customer_po'});
+            var item_fg_id = dg.datagrid('getEditor', {index: rowIndex, field: 'item_fg_id'});
+            var item_fg_number = dg.datagrid('getEditor', {index: rowIndex, field: 'item_fg_number'});
+            var number_customer = dg.datagrid('getEditor', {index: rowIndex, field: 'number_customer'});
+            var item_fg_name = dg.datagrid('getEditor', {index: rowIndex, field: 'item_fg_name'});
+            var hsn_code = dg.datagrid('getEditor', {index: rowIndex, field: 'hsn_code'});
+            var currency = dg.datagrid('getEditor', {index: rowIndex, field: 'currency'});
+            var uom = dg.datagrid('getEditor', {index: rowIndex, field: 'uom'});
+            var qty = dg.datagrid('getEditor', {index: rowIndex, field: 'qty'});
+            var price = dg.datagrid('getEditor', {index: rowIndex, field: 'price'});
 
             $(qty.target).numberbox('readonly', false);
             $(price.target).numberbox('readonly', false);
+            $(currency.target).combobox('setValue', "INR");
+            $(qty.target).numberbox('setValue', 1);
+            
+            if(type == "SUPPLEMENTARY"){
+                $(dn_number.target).textbox('setValue', '-');
+                $(so_number.target).textbox('setValue', '-');
+                $(customer_po.target).textbox('setValue', '-');
+
+                $(item_fg_number.target).combogrid({
+                    url: "<?= base_url("master/item_fg/readSupplement") ?>",
+                    panelWidth: 550,
+                    idField: 'number',
+                    textField: 'number',
+                    mode: 'remote', 
+                    fitColumns: true,
+                    prompt: 'Choose Product No',
+                    columns: [
+                        [{
+                            field: 'number',
+                            title: 'Product No EBWS',
+                            width: 150
+                        },{
+                            field: 'number_customer',
+                            title: 'Product No Customer',
+                            width: 250
+                        },{
+                            field: 'name',
+                            title: 'Description',
+                            width: 150
+                        }]
+                    ],
+                    onSelect: function(value, rows) {
+                        $(item_fg_id.target).textbox('setValue', rows.id);
+                        $(number_customer.target).textbox('setValue', rows.number_customer);
+                        $(item_fg_name.target).textbox('setValue', rows.name);
+                        $(hsn_code.target).textbox('setValue', rows.hsn_code);
+                        $(uom.target).combobox('setValue', rows.uom);
+                    }
+                });
+            }
         }
     }
 
@@ -941,7 +1040,7 @@
                                             $.ajax({
                                                 type: "post",
                                                 url: '<?= base_url('finance/sales_invoices/updateIrn') ?>',
-                                                data: {irn: msg.response.irn, barcode: msg.response.qrCode, ack_no: msg.response.ackNo, ack_date: msg.response.ackDt, number: msg.response.no},
+                                                data: {irn: msg.response.irn, barcode: msg.response.signedQrCode, ack_no: msg.response.ackNo, ack_date: msg.response.ackDt, number: msg.response.no},
                                                 dataType: "json",
                                                 success: function (si) {
                                                     $('#dg').datagrid('reload');
@@ -1571,6 +1670,7 @@
                     var vehicle_no = $("#vehicle_no").textbox('getValue');
                     var remarks = $("#remarks").textbox('getValue');
                     var journal_type_id = $("#journal_type").combobox('getValue');
+                    var type = $("#type").combobox('getValue');
 
                     var balance_debit = $("#balance_debit").numberbox('getValue');
                     var balance_credit = $("#balance_credit").numberbox('getValue');
@@ -1636,6 +1736,7 @@
                                                             url: '<?= base_url('finance/sales_invoices/create') ?>',
                                                             data: {
                                                                 trans_date: trans_date,
+                                                                type: type,
                                                                 number: number,
                                                                 customer_id: customer_id,
                                                                 plant: plant,
@@ -1738,6 +1839,20 @@
                     // });
                 }
             }]
+        });
+
+        $("#type").combobox({
+            onChange: function(val){
+                if(val == "SUPPLEMENTARY"){
+                    $("#dn_number").combobox('setValue', '-');
+                    $("#dn_number").combobox('readonly', true);
+                    $("#preview").linkbutton('disable');
+                }else{
+                    $("#dn_number").combobox('clear');
+                    $("#dn_number").combobox('readonly', false);
+                    $("#preview").linkbutton('enable');
+                }
+            }
         });
 
         $("#filter_type").combobox({

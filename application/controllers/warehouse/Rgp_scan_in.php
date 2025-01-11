@@ -44,9 +44,9 @@ class Rgp_scan_in extends CI_Controller
         if ($this->input->post()) {
             $label_no = $this->input->post('label_no');
 
-            $this->db->select('a.label_no,a.rgp_number,b.item_id,a.qty');
+            $this->db->select('a.label_no,a.rgp_number,b.item_id,a.qty,a.rgp_id');
             $this->db->from('rgp_transaction_labels a');
-            $this->db->join("(select number, item_id from rgp_transactions where type='IN' group by number, item_id) b", 'a.rgp_number = b.number');
+            $this->db->join("(select number, item_id from rgp_transactions where type='IN' group by number, item_id) b", 'a.rgp_number = b.number and a.item_id = b.item_id', 'left');
             $this->db->where('a.label_no', $label_no);
             $totalRows = $this->db->count_all_results('', false);
             $records = $this->db->get()->result_array();
@@ -86,7 +86,7 @@ class Rgp_scan_in extends CI_Controller
         $this->db->from('scan_item_rgp a');
         $this->db->join('item_rm b', 'a.item_id = b.id', 'left');
         $this->db->join('item_fg c', 'a.item_id = c.id', 'left');
-        $this->db->join('rgp_transactions d', 'a.rgp_number = d.number');
+        $this->db->join('rgp_transactions d', 'a.rgp_number = d.number and a.item_id = d.item_id', 'left');
         $this->db->join('item_categories e', 'd.item_category_id = e.id', 'left');
         $this->db->join('item_familys f', 'b.item_family_id = f.id', 'left');
         $this->db->where('d.number', @$rgp_transaction->rgp_number);
@@ -115,7 +115,7 @@ class Rgp_scan_in extends CI_Controller
                         $send   = $this->crud->create('scan_item_rgp', $post);
                         if ($send) {
                             $postItemReceipts = array(
-                                "receipt_id" => $post['rgp_number'],
+                                "receipt_id" => $post['rgp_id'],
                                 "label_no" => $post['label_no'],
                                 "qty" => $post['qty'],
                                 "status" => 0,
@@ -125,6 +125,20 @@ class Rgp_scan_in extends CI_Controller
                             echo $send;
                         }
                     } else { // jika FG
+                        $send   = $this->crud->create('scan_item_rgp', $post);
+                        $rgp_transactions = $this->crud->read("rgp_transactions", [], ["number" => $post['rgp_number'], "item_id" => $post['item_id']]);
+                        if ($send) {
+                            $postItemReceipts = array(
+                                "checksheet_number" => $post['rgp_id'],
+                                "checksheet_label" => $post['label_no'],
+                                "workorder" => @$rgp_transactions->id,
+                                "qty" => $post['qty'],
+                                "status" => 0,
+                            );
+                            $this->crud->update('rgp_transaction_labels', ["label_no" => $post['label_no']], ["status" => 1]);
+                            $this->crud->create('scan_item_receipts_fg', $postItemReceipts);
+                            echo $send;
+                        }
                     }
                 } else {
                     echo json_encode(array("title" => "Available", "message" => "Data Label No has been Scanned", "theme" => "error"));

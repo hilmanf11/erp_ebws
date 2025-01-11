@@ -30,53 +30,11 @@ class Inventory_rm extends CI_Controller
         }
     }
 
-    public function readEndingStock()
-    {
-        if ($this->input->post()) {
-            $item_id = $this->input->post('item_id');
-            $trans_date = @$this->input->post('trans_date');
-
-            if (@$trans_date == "") {
-                $date = date("Y-m-d");
-            } else {
-                $date = $trans_date;
-            }
-
-            $records = $this->crud->query("SELECT
-                a.id,
-                a.number, 
-                a.name, 
-                b.name as prodfam, 
-                c.name as uom, 
-                COALESCE(0,0) as begin_stock,
-                (COALESCE(SUM(e.qty),0) + COALESCE(g.return_qty, 0)) as qty_in,
-                f.qty as qty_out,
-                (COALESCE(SUM(e.qty),0) - COALESCE(f.qty, 0) + COALESCE(g.return_qty, 0)) as end_stock
-            FROM items a 
-            JOIN item_familys b ON a.item_family_id = b.id
-            JOIN uom c ON a.uom_id = c.id
-            LEFT JOIN purchase_order_receipts d ON a.id = d.item_id and d.receipt_date <= '$date'
-            LEFT JOIN scan_item_receipts e ON d.receipt_id = e.receipt_id
-            LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty FROM issued_material_details WHERE DATE_FORMAT(created_date, '%Y-%m-%d') <= '$date' GROUP BY item_id) f ON a.id = f.item_id
-            LEFT JOIN (SELECT a.item_id, SUM(c.qty) as return_qty
-                FROM return_materials a 
-                JOIN return_material_labels b ON a.return_id = b.return_id
-                JOIN scan_item_receipts c ON a.return_id = c.receipt_id and b.label_no = c.label_no
-                WHERE a.return_date <=  '$date'
-                GROUP BY a.item_id) g ON a.id = g.item_id
-            WHERE a.id like '$item_id'
-            GROUP BY a.id
-            ORDER BY a.number");
-
-            echo json_encode($records);
-        }
-    }
-
     public function readBalanceWip()
     {
         if ($this->input->post()) {
-            $item_id = $this->input->post('item_id');
-            $wip_balances = $this->crud->read("wip_balances", [], ["item_id" => $item_id], "", "id", "desc");
+            $item_rm_id = $this->input->post('item_rm_id');
+            $wip_balances = $this->crud->read("wip_balances", [], ["item_rm_id" => $item_rm_id], "", "id", "desc");
 
             echo json_encode($wip_balances);
         }
@@ -87,11 +45,7 @@ class Inventory_rm extends CI_Controller
         $this->db->select('*');
         $this->db->from('item_familys');
         $this->db->where('deleted', 0);
-        if ($number != "001") {
-            $this->db->where("number", $number);
-        } else {
-            $this->db->where("number !=", $number);
-        }
+        $this->db->where("item_category_id", "C01");
         $this->db->order_by('name', 'ASC');
         $records = $this->db->get()->result_array();
         echo json_encode($records);
@@ -102,203 +56,70 @@ class Inventory_rm extends CI_Controller
         $filter_to   = $this->input->post('filter_to');
         $filter_item_family = $this->input->post('filter_item_family');
         $filter_items = $this->input->post('filter_items');
-        $period = date("Y-m", strtotime($filter_from));
+        $period = date("Ym", strtotime($filter_from));
 
         $start = strtotime($filter_from);
         $finish = strtotime($filter_to);
 
+        $this->db->query("DELETE FROM inventory_rm WHERE trans_date between '$filter_from' and '$filter_to'");
+
         //Item Receipts
-        $itemReceipts = $this->crud->query("SELECT
-            a.id, a.number, a.name, c.name as uom, b.name as prodfam, b.id as prodfam_id, COALESCE(d.qty, 0) as qty, COALESCE(d.amount, 0) as amount
-        FROM items a 
-        JOIN item_familys b ON a.item_family_id = b.id and b.number != '006'
-        JOIN uom c ON a.uom_id = c.id
-        LEFT JOIN (SELECT item_id, SUM(qty) as qty, SUM(amount) as amount FROM inventory_rm WHERE trans_date < '$filter_from' GROUP BY item_id) d ON a.id = d.item_id
-        WHERE a.id like '%$filter_items%' and b.number like '%$filter_item_family%'
+        $itemReceipts = $this->crud->query("SELECT * FROM (SELECT
+            DATE_FORMAT(a.receipt_date, '%Y%m') AS `period`,
+            a.item_rm_id,
+            f.item_family_id,
+            'RECEIPT' AS trans_type,
+            c.name AS created_name,
+            d.po_date,
+            a.receipt_date AS trans_date,
+            a.receipt_id AS custom_kind, 
+            a.po_no AS custom_no,
+            a.bc_document AS document_no, 
+            a.bc_date AS custom_date,
+            f.uom, 
+            SUM(b.qty) AS qty,
+            d.currency,
+            d.price,
+            (SUM(b.qty) * d.price) AS amount
+        FROM item_rm f
+        JOIN purchase_order_receipts a ON a.item_rm_id = f.id
+        JOIN scan_item_receipts b ON a.receipt_id = b.receipt_id
+        JOIN users c ON a.created_by = c.username
+        LEFT JOIN purchase_orders d ON a.item_rm_id = d.item_rm_id AND a.po_no = d.po_no
+        LEFT JOIN suppliers e ON d.supplier_id = e.id
         GROUP BY a.id
-        ORDER BY a.number");
+        UNION
+        SELECT 
+            DATE_FORMAT(a.created_date, '%Y%m') AS `period`,
+            a.item_rm_id, 
+            g.item_family_id, 
+            'ISSUED' AS trans_type,
+            h.name AS created_name,
+            d.po_date,
+            DATE_FORMAT(a.created_date, '%Y-%m-%d') AS trans_date,
+            b.receipt_id AS custom_kind,
+            a.request_no AS custom_no,
+            a.label_no AS document_no,
+            DATE_FORMAT(a.created_date, '%Y-%m-%d') AS custom_date,
+            g.uom,
+            (a.qty * -1),
+            d.currency,
+            d.price,
+            ((a.qty * price) * -1) AS amount
+        FROM item_rm g
+        JOIN issued_material_details a ON g.id = a.item_rm_id
+        LEFT JOIN purchase_order_labels b ON a.label_no = b.label_no
+        LEFT JOIN barcode_divides f ON a.label_no = f.label_divided
+        LEFT JOIN purchase_order_receipts c ON a.item_rm_id = c.item_rm_id AND (b.receipt_id = c.receipt_id OR f.reff = c.receipt_id) 
+        LEFT JOIN purchase_orders d ON a.item_rm_id = d.item_rm_id AND c.po_no = d.po_no
+        LEFT JOIN suppliers e ON d.supplier_id = e.id
+        JOIN users h ON a.created_by = h.username
+        GROUP BY a.id) z
+        WHERE z.trans_date BETWEEN '$filter_from' and '$filter_to' and z.item_family_id like '%$filter_item_family%' and z.item_rm_id like '%$filter_items%'
+        ORDER BY z.item_rm_id, z.trans_date");
 
-        $data = array();
-        foreach ($itemReceipts as $itemReceipt) {
-            $item_id = $itemReceipt->id;
-            $prodfam_id = $itemReceipt->prodfam_id;
-
-            if($itemReceipt->qty > 0){
-                $receipt_qty = $itemReceipt->qty;
-            }else{
-                $receipt_qty = 1;
-            }
-
-            $price = $itemReceipt->amount / $receipt_qty;
-            $begin = $itemReceipt->qty;
-            $begin_price = @$price;
-            $begin_amount = $itemReceipt->amount;
-
-            //RECEIPT
-            $receipts = $this->crud->query("SELECT
-                    a.receipt_date, 
-                    a.bc_kind, 
-                    a.bc_aju, 
-                    a.bc_document, 
-                    a.bc_date, 
-                    SUM(b.qty) as qty_receipt,
-                    c.name as username,
-                    d.po_date,
-                    d.price, e.currency
-                FROM purchase_order_receipts a 
-                JOIN scan_item_receipts b ON a.receipt_id = b.receipt_id
-                JOIN users c ON a.created_by = c.username
-                LEFT JOIN purchase_orders d ON a.item_id = d.item_id and a.po_no = d.po_no
-                LEFT JOIN suppliers e ON d.supplier_id = e.id
-                WHERE a.item_id = '$item_id' and a.receipt_date BETWEEN '$filter_from' and '$filter_to'
-                GROUP BY a.bc_kind, a.bc_aju, a.bc_document, a.bc_date");
-
-            //ISSUED
-            $issueds = $this->crud->query("SELECT a.*, d.po_date, d.price, e.currency, c.receipt_date
-                FROM issued_material_details a
-                LEFT JOIN purchase_order_labels b ON a.label_no = b.label_no
-                LEFT JOIN barcode_divides f ON a.label_no = f.label_divided
-                LEFT JOIN purchase_order_receipts c ON a.item_id = c.item_id and (b.receipt_id = c.receipt_id or f.reff = c.receipt_id) 
-                LEFT JOIN purchase_orders d ON a.item_id = d.item_id and c.po_no = d.po_no
-                LEFT JOIN suppliers e ON d.supplier_id = e.id
-                WHERE a.item_id = '$item_id' 
-                and DATE_FORMAT(a.created_date, '%Y-%m-%d') BETWEEN '$filter_from' and '$filter_to'
-                GROUP BY a.label_no");
-
-            $returns = $this->crud->query("SELECT
-                    a.return_no,
-                    a.return_id,
-                    a.return_name,
-                    a.return_date,
-                    b.label_no,
-                    b.qty,
-                    d.name as username
-                FROM return_materials a 
-                JOIN return_material_labels b ON a.return_id = b.return_id
-                JOIN scan_item_receipts c ON a.return_id = c.receipt_id
-                JOIN users d ON a.created_by = d.username
-                WHERE a.item_id = '$item_id' and a.return_date BETWEEN '$filter_from' and '$filter_to'
-                GROUP BY b.label_no");
-
-         for ($i = $start; $i <= $finish; $i += (60 * 60 * 24)) {
-            $working_date = date('Y-m-d', $i);
-
-                //Purchase Order Receipt
-                foreach ($receipts as $receipt) {
-                    $currency = @$receipt->currency;
-                    $receipt_date = $receipt->receipt_date;
-                    
-                    if($receipt_date == $working_date){
-                        $search_date = date("d", strtotime(@$receipt_date));
-
-                        if($search_date == "31"){
-                            $receipt_date = date("Y-m-d", strtotime('-10 days', strtotime($receipt_date)));
-                        }
-
-                        $monthBf = date('Y-m-01', strtotime('-1 month', strtotime($receipt_date)));
-                        $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $monthBf, "currency_from" => $currency, "currency_to" => "IDR"]);
-
-                        if ($currency != "IDR") {
-                            if ($exchange) {
-                                $price = (@$receipt->price * @$exchange->middle);
-                            } else {
-                                $price = 0;
-                            }
-                        } else {
-                            $price = @$receipt->price;
-                        }
-
-                        $amount = ($receipt->qty_receipt * $price);
-
-                        $data[] = array(
-                            "period" => $period,
-                            "item_id" => $item_id,
-                            "item_family_id" => $prodfam_id,
-                            "trans_type" => "RECEIPT",
-                            "created_name" => $receipt->username,
-                            "po_date" => $receipt->po_date,
-                            "trans_date" => $receipt->receipt_date,
-                            "custom_kind" => $receipt->bc_kind,
-                            "custom_no" => $receipt->bc_aju,
-                            "document_no" => $receipt->bc_document,
-                            "custom_date" => $receipt->bc_date,
-                            "uom" => $itemReceipt->uom,
-                            "qty" => $receipt->qty_receipt,
-                            "price" => $price,
-                            "amount" => $amount,
-                        );
-
-                        $begin += $receipt->qty_receipt;
-                        $begin_amount += $amount;
-                        $begin_price = ($begin_amount / $begin);
-                    }
-                }
-
-                //Issued Material
-                foreach ($issueds as $issued) {
-                    if(date("Y-m-d", strtotime($issued->created_date)) == $working_date){
-                        $user = $this->crud->read("users", [], ["username" => $issued->created_by]);
-                        $price = $begin_price;
-                        $amount = ($issued->qty * $price);
-
-                        $data[] = array(
-                            "period" => $period,
-                            "item_id" => $item_id,
-                            "item_family_id" => $prodfam_id,
-                            "trans_type" => "ISSUED",
-                            "created_name" => $user->name,
-                            "po_date" => $issued->po_date,
-                            "trans_date" => date("Y-m-d", strtotime($issued->created_date)),
-                            "custom_kind" => "-",
-                            "custom_no" => $issued->label_no,
-                            "document_no" => $issued->request_no,
-                            "custom_date" => "-",
-                            "uom" => $itemReceipt->uom,
-                            "qty" => ($issued->qty * -1),
-                            "price" => $price,
-                            "amount" => ($amount * -1),
-                        );
-
-                        $begin -= $issued->qty;
-                        $begin_amount -= $amount;
-                        $price = $begin_price;
-                    }
-                }
-
-                //Purchase Return
-                foreach ($returns as $return) {
-                    if($return->return_date == $working_date){
-                        $price = $begin_price;
-                        $amount = ($return->qty * $price);
-
-                        $data[] = array(
-                            "period" => $period,
-                            "item_id" => $item_id,
-                            "item_family_id" => $prodfam_id,
-                            "trans_type" => "RECEIPT",
-                            "created_name" => $return->username,
-                            "po_date" => $return->return_date,
-                            "trans_date" => $return->return_date,
-                            "custom_kind" => $return->return_id,
-                            "custom_no" => $return->label_no,
-                            "document_no" => $return->return_no,
-                            "custom_date" => "-",
-                            "uom" => $itemReceipt->uom,
-                            "qty" => $return->qty,
-                            "price" => $price,
-                            "amount" => $amount,
-                        );
-
-                        $begin += $return->qty;
-                        $begin_amount += $amount;
-                        $begin_price = ($begin_amount / $begin);
-                    }
-                }
-            }
-        }
-
-        $result['total'] = count($data);
-        $result = array_merge($result, ['rows' => $data]);
+        $result['total'] = count($itemReceipts);
+        $result = array_merge($result, ['rows' => $itemReceipts]);
         echo json_encode($result);
     }
 
@@ -306,29 +127,23 @@ class Inventory_rm extends CI_Controller
     {
         if ($this->input->post()) {
             $post = $this->input->post('data');
-
-            $inventory_rm = $this->crud->reads("inventory_rm", [], [
-                "period" => $post['period'], 
-                "item_id" => $post['item_id'], 
-                "custom_no" => $post['custom_no'], 
-                "trans_date" => $post['trans_date']
-            ]);
-
-            if(count($inventory_rm) > 0){
-                $send = $this->crud->update('inventory_rm', [
-                    "period" => $post['period'], 
-                    "item_id" => $post['item_id'], 
-                    "custom_no" => $post['custom_no'], 
-                    "trans_date" => $post['trans_date']
-                ], $post);
-
-                echo $send;
+            $data = array_merge($post, array("created_by" => $this->session->username, "created_date" => date("Y-m-d H:i:s")));
+            $send = $this->db->insert('inventory_rm', $data);
+            if($send){
+                echo json_encode(array("title" => "Created", "message" => "Data Created Successfully", "theme" => "success"));
             }else{
-                $send = $this->crud->create('inventory_rm', $post);
-                echo $send;
+                echo json_encode(array("title" => "Failed", "message" => "Data Updated Failed, Try again", "theme" => "error"));
             }
         } else {
             show_error("Cannot Process your request");
+        }
+    }
+
+    public function formatNo($number){
+        if($number >= 0){
+            return "<span>".number_format($number, 2)."</span>";
+        }else{
+            return "<span style='color:red;'>(".number_format(abs($number), 2).")</span>";
         }
     }
 
@@ -382,301 +197,189 @@ class Inventory_rm extends CI_Controller
             </center>
             <br><br><br><br>';
 
-            // if(count($inventory_rm) == 0){
-            //     $html .= "<center><h2>PLEASE GENERATE FIRST</h2></center>";
-
-            //     die($html);
-            // }
-
-        //Item Receipts
-        $itemReceipts = $this->crud->query("SELECT
-            a.id, a.number, a.name, c.name as uom, b.name as prodfam, b.id as prodfam_id, COALESCE(d.qty, 0) as qty, COALESCE(d.amount, 0) as amount
-            FROM items a 
-            JOIN item_familys b ON a.item_family_id = b.id and b.number != '006'
-            JOIN uom c ON a.uom_id = c.id
-            LEFT JOIN (SELECT item_id, SUM(qty) as qty, SUM(amount) as amount FROM inventory_rm WHERE trans_date < '$filter_from' GROUP BY item_id) d ON a.id = d.item_id
-            WHERE a.id like '%$filter_items%' and b.number like '%$filter_item_family%'
-            GROUP BY a.id
-            ORDER BY a.number");
-
         if ($filter_display == "RECAP") {
+            //Item Receipts
+            $itemReceipts = $this->crud->query("SELECT 
+                a.id AS item_rm_id, 
+                a.number AS item_rm_number, 
+                a.name AS item_rm_name, 
+                a.uom, 
+                b.name AS item_family_name, 
+                COALESCE(c.qty, 0) AS begin_qty, 
+                COALESCE((c.amount / c.qty), 0) AS begin_price,
+                COALESCE(c.amount, 0) AS begin_amount,
+                COALESCE(d.qty, 0) AS in_qty,
+                COALESCE((d.amount / d.qty), 0) AS in_price,
+                COALESCE(d.amount, 0) AS in_amount,
+                COALESCE(e.qty, 0) AS out_qty,
+                COALESCE((e.amount / e.qty), 0) AS out_price,
+                COALESCE(e.amount, 0) AS out_amount,
+                COALESCE(f.qty, 0) AS bal_qty,
+                COALESCE((f.amount / f.qty), 0) AS bal_price,
+                COALESCE(f.amount, 0) AS bal_amount
+            FROM item_rm a
+            JOIN item_familys b ON a.item_family_id = b.id
+            LEFT JOIN (SELECT item_rm_id, SUM(qty) AS qty, SUM(amount) AS amount FROM inventory_rm WHERE trans_date < '$filter_from' GROUP BY item_rm_id) c ON a.id = c.item_rm_id
+            LEFT JOIN (SELECT item_rm_id, SUM(qty) AS qty, SUM(amount) AS amount FROM inventory_rm WHERE trans_type = 'RECEIPT' AND trans_date BETWEEN '$filter_from' AND '$filter_to' GROUP BY item_rm_id) d ON a.id = d.item_rm_id
+            LEFT JOIN (SELECT item_rm_id, SUM(qty) AS qty, SUM(amount) AS amount FROM inventory_rm WHERE trans_type = 'ISSUED' AND trans_date BETWEEN '$filter_from' AND '$filter_to' GROUP BY item_rm_id) e ON a.id = e.item_rm_id
+            LEFT JOIN (SELECT item_rm_id, SUM(qty) AS qty, SUM(amount) AS amount FROM inventory_rm WHERE trans_date BETWEEN '$filter_from' AND '$filter_to' GROUP BY item_rm_id) f ON a.id = f.item_rm_id
+            WHERE a.item_category_id = 'C01' and a.item_family_id like '%$filter_item_family%' and a.id like '%$filter_items%'
+            ORDER BY b.number, a.number ASC");
+
             $html .= '<table id="customers" border="1" style="width: 100%">
                             <tr>
-                                <th rowspan="2"width="20">No</th>
-                                <th rowspan="2">Product No</th>
-                                <th rowspan="2">Product Name</th>
-                                <th rowspan="2">Uom</th>
-                                <th rowspan="2">Product Family</th>
-                                <th colspan="2" width="100">Begining Stock</th>
-                                <th colspan="2" width="100">In</th>
-                                <th colspan="2" width="100">Out</th>
-                                <th colspan="2" width="100">Ending Stock</th>
+                                <th width="10" rowspan="2"width="20">No</th>
+                                <th width="100" rowspan="2">Part No EBWS</th>
+                                <th width="200" rowspan="2">Part No Supplier</th>
+                                <th width="200" rowspan="2">Description</th>
+                                <th width="50" rowspan="2">Uom</th>
+                                <th width="100" rowspan="2">Product Family</th>
+                                <th colspan="2">Begin</th>
+                                <th colspan="2">In</th>
+                                <th colspan="2">Out</th>
+                                <th colspan="2">Ending</th>
                             </tr>
                             <tr>
-                                <th>Qty</th>
-                                <th>Amount</th>
-                                <th>Qty</th>
-                                <th>Amount</th>
-                                <th>Qty</th>
-                                <th>Amount</th>
-                                <th>Qty</th>
-                                <th>Amount</th>
+                                <th width="50">Qty</th>
+                                <th width="50">Amount</th>
+                                <th width="50">Qty</th>
+                                <th width="50">Amount</th>
+                                <th width="50">Qty</th>
+                                <th width="50">Amount</th>
+                                <th width="50">Qty</th>
+                                <th width="50">Amount</th>
                             </tr>';
-        } else {
-            $html .= '<table id="customers" style="width: 200%">
-                        <tr>
-                            <th rowspan="2" width="20">No</th>
-                            <th rowspan="2">Product No</th>
-                            <th rowspan="2">Product Name</th>
-                            <th rowspan="2">Trans Type</th>
-                            <th rowspan="2">Created By</th>
-                            <th rowspan="2">PO Date</th>
-                            <th rowspan="2">Receipt Date</th>
-                            <th rowspan="2">Custom. Kind</th>
-                            <th rowspan="2">Custom. No</th>
-                            <th rowspan="2">Doc. No</th>
-                            <th rowspan="2">Custom. Date</th>
-                            <th colspan="3">Begining Stock</th>
-                            <th colspan="3">In</th>
-                            <th colspan="3">Out</th>
-                            <th colspan="3">Ending Stock</th>
-                        </tr>
-                        <tr>
-                            <th>Qty</th>
-                            <th>Price</th>
-                            <th>Amount</th>
-                            <th>Qty</th>
-                            <th>Price</th>
-                            <th>Amount</th>
-                            <th>Qty</th>
-                            <th>Price</th>
-                            <th>Amount</th>
-                            <th>Qty</th>
-                            <th>Price</th>
-                            <th>Amount</th>
-                        </tr>';
-        }
-
-        $noh = 1;
-        $total_begin_recap = 0;
-        $total_begin_amount_recap = 0;
-        $total_in_recap = 0;
-        $total_in_amount_recap = 0;
-        $total_out_recap = 0;
-        $total_out_amount_recap = 0;
-        $total_end_recap = 0;
-        $total_end_recap_amount = 0;
-        foreach ($itemReceipts as $itemReceipt) {
-            $item_id = $itemReceipt->id;
-
-            if($itemReceipt->qty > 0){
-                $receipt_qty = $itemReceipt->qty;
-            }else{
-                $receipt_qty = 1;
-            }
-
-            $begin = @$itemReceipt->qty;
-            $begin_price = (@$itemReceipt->amount / $receipt_qty);
-            $begin_amount = @$itemReceipt->amount;
-
-            //UNTUK REKAP
-            $begin_recap = @$itemReceipt->qty;
-            
-            if($begin_recap > 0){
-                $begin_amount_recap = $itemReceipt->amount;
-            }else{
-                $begin_amount_recap = 0;
-            }
-            
-            $in_recap = 0;
-            $in_amount_recap = 0;
-            $out_recap = 0;
-            $out_amount_recap = 0;
-
-            $end_qty = 0;
-            $balance = 0;
-            $balance_price = 0;
-            $balance_amount = 0;
-
-            if ($filter_display != "RECAP") {
-                $html .= '  <tr style="background:#D8D8D8;">
-                                <td>' . $noh . '</td>
-                                <td>' . $itemReceipt->number . '</td>
-                                <td>' . $itemReceipt->name . '</td>
-                                <td>BEGIN STOCK</td>
-                                <td></td>
-                                <td></td>
-                                <td></td>
-                                <td></td>
-                                <td></td>
-                                <td></td>
-                                <td></td>
-                                <td style="text-align:right;">' . number_format($begin, 2) . '</td>
-                                <td style="text-align:right;">' . number_format($begin_price, 4) . '</td>
-                                <td style="text-align:right;">' . number_format($begin_amount, 2) . '</td>
-                                <td style="text-align:right;">0</td>
-                                <td style="text-align:right;">0</td>
-                                <td style="text-align:right;">0</td>
-                                <td style="text-align:right;">0</td>
-                                <td style="text-align:right;">0</td>
-                                <td style="text-align:right;">0</td>
-                                <td style="text-align:right;">' . number_format($begin, 2)  . '</td>
-                                <td style="text-align:right;">' . number_format($begin_price, 4)  . '</td>
-                                <td style="text-align:right;">' . number_format($begin_amount, 2)  . '</td>
-                            </tr>';
-            }
-
-            $nod = 1;
-            for ($i = $start; $i <= $finish; $i += (60 * 60 * 24)) {
-                $working_date = date('Y-m-d', $i);
-
-                //RECEIPT
-                $receipts = $this->crud->query("SELECT * FROM inventory_rm WHERE item_id = '$item_id' and trans_date = '$working_date' and trans_type = 'RECEIPT' 
-                    ORDER BY custom_no ASC");
-
-                //ISSUED
-                $issueds = $this->crud->query("SELECT * FROM inventory_rm WHERE item_id = '$item_id' and trans_date = '$working_date' and trans_type = 'ISSUED' 
-                    ORDER BY custom_no ASC");
-
-                //Purchase Order Receipt
-                foreach ($receipts as $receipt) {
-                    $balance = ($begin + $receipt->qty);
-                    $balance_price = (($begin_amount + $receipt->amount) / $balance);
-                    $balance_amount = ($begin_amount + abs($receipt->amount));
-
-                    if ($filter_display != "RECAP") {
-                        $html .= '  <tr>
-                                    <td>' . $noh . '.' . $nod . '</td>
-                                    <td>' . $itemReceipt->number . '</td>
-                                    <td>' . $itemReceipt->name . '</td>
-                                    <td>RECEIPT</td>
-                                    <td>' . $receipt->created_name . '</td>
-                                    <td>' . $receipt->po_date . '</td>
-                                    <td>' . $receipt->trans_date . '</td>
-                                    <td>' . $receipt->custom_kind . '</td>
-                                    <td>' . $receipt->custom_no . '</td>
-                                    <td>' . $receipt->document_no . '</td>
-                                    <td>' . $receipt->custom_date . '</td>
-                                    <td style="text-align:right;">' . number_format($begin, 2) . '</td>
-                                    <td style="text-align:right;">' . number_format($begin_price, 4) . '</td>
-                                    <td style="text-align:right;">' . number_format($begin_amount, 2) . '</td>
-                                    <td style="text-align:right; color:green; font-weight:bold;">' . number_format($receipt->qty, 2) . '</td>
-                                    <td style="text-align:right;">' . number_format($receipt->price, 4) . '</td>
-                                    <td style="text-align:right; color:green; font-weight:bold;">' . number_format($receipt->amount, 2) . '</td>
-                                    <td style="text-align:right;">' . number_format(0)  . '</td>
-                                    <td style="text-align:right;">' . number_format(0)  . '</td>
-                                    <td style="text-align:right;">' . number_format(0)  . '</td>
-                                    <td style="text-align:right;">' . number_format($balance, 2)  . '</td>
-                                    <td style="text-align:right;">' . number_format($balance_price, 4)  . '</td>
-                                    <td style="text-align:right;">' . number_format($balance_amount, 2)  . '</td>
-                                </tr>';
-                    }
-
-                    $begin += $receipt->qty;
-                    $begin_price = $receipt->price;
-                    $begin_amount = $balance_amount;
-                    $in_recap += $receipt->qty;
-                    $in_amount_recap += $receipt->amount;
-                    $nod++;
-                }
-
-                //Issued Material
-                foreach ($issueds as $issued) {
-                    $balance = ($begin - abs($issued->qty));
-                    $balance_price = $issued->price;
-                    $balance_amount = ($begin_amount - abs($issued->amount));
-                    $begin_price = $issued->price;
-
-                    if ($filter_display != "RECAP") {
-                        $html .= '  <tr>
-                                    <td>' . $noh . '.' . $nod . '</td>
-                                    <td>' . $itemReceipt->number . '</td>
-                                    <td>' . $itemReceipt->name . '</td>
-                                    <td>ISSUED</td>
-                                    <td>' . $issued->created_name . '</td>
-                                    <td>' . $issued->po_date . '</td>
-                                    <td>' . $issued->trans_date . '</td>
-                                    <td>' . $issued->custom_kind . '</td>
-                                    <td>' . $issued->custom_no . '</td>
-                                    <td>' . $issued->document_no . '</td>
-                                    <td>' . $issued->custom_date . '</td>
-                                    <td style="text-align:right;">' . number_format($begin, 2) . '</td>
-                                    <td style="text-align:right;">' . number_format($begin_price, 4) . '</td>
-                                    <td style="text-align:right;">' . number_format($begin_amount, 2) . '</td>
-                                    <td style="text-align:right;">' . number_format(0) . '</td>
-                                    <td style="text-align:right;">' . number_format(0) . '</td>
-                                    <td style="text-align:right;">' . number_format(0) . '</td>
-                                    <td style="text-align:right; color:red; font-weight:bold;">' . number_format(abs($issued->qty), 2)  . '</td>
-                                    <td style="text-align:right;">' . number_format($issued->price, 4)  . '</td>
-                                    <td style="text-align:right; color:red; font-weight:bold;">' . number_format(abs($issued->amount), 2)  . '</td>
-                                    <td style="text-align:right;">' . number_format($balance, 2)  . '</td>
-                                    <td style="text-align:right;">' . number_format($balance_price, 4)  . '</td>
-                                    <td style="text-align:right;">' . number_format($balance_amount, 2)  . '</td>
-                                </tr>';
-                    }
-
-                    $begin -= abs($issued->qty);
-                    $begin_price = @$issued->price;
-                    $begin_amount -= abs($issued->amount);
-                    //$begin_amount = ($begin * $begin_price);
-
-                    $out_recap += abs($issued->qty);
-                    $out_amount_recap += abs($issued->amount);
-                    $nod++;
-                }
-            }
-            
-            if(($begin_recap + $in_recap - $out_recap) <= 0){
-                $balance_amount_recap = 0;
-            }else{
-                $balance_amount_recap = ($begin_amount_recap + $in_amount_recap - $out_amount_recap);
-            }
-
-            if ($filter_display == "RECAP") {
+            $noh = 1;
+            $total_begin_qty = 0;
+            $total_begin_amount = 0;
+            $total_in_qty = 0;
+            $total_in_amount = 0;
+            $total_out_qty = 0;
+            $total_out_amount = 0;
+            $total_bal_qty = 0;
+            $total_bal_amount = 0;
+            foreach ($itemReceipts as $itemReceipt) {
                 $html .= '  <tr>
                                 <td>' . $noh . '</td>
-                                <td>' . $itemReceipt->number . '</td>
-                                <td>' . $itemReceipt->name . '</td>
+                                <td>' . $itemReceipt->item_rm_id . '</td>
+                                <td>' . $itemReceipt->item_rm_number . '</td>
+                                <td>' . $itemReceipt->item_rm_name . '</td>
                                 <td>' . $itemReceipt->uom . '</td>
-                                <td>' . $itemReceipt->prodfam . '</td>
-                                <td style="text-align:right;">' . number_format($begin_recap, 2) . '</td>
-                                <td style="text-align:right;">' . number_format($begin_amount_recap, 2) . '</td>
-                                <td style="text-align:right; color:green;">' . number_format($in_recap, 2) . '</td>
-                                <td style="text-align:right; color:green;">' . number_format($in_amount_recap, 2) . '</td>
-                                <td style="text-align:right; color:red;">' . number_format($out_recap, 2) . '</td>
-                                <td style="text-align:right; color:red;">' . number_format($out_amount_recap, 2) . '</td>
-                                <td style="text-align:right;">' . number_format(($begin_recap + $in_recap - $out_recap), 2) . '</td>
-                                <td style="text-align:right;">' . number_format($balance_amount_recap, 2) . '</td>
+                                <td>' . $itemReceipt->item_family_name . '</td>
+                                <td style="text-align:right;">' . $this->formatNo($itemReceipt->begin_qty) . '</td>
+                                <td style="text-align:right;">' . $this->formatNo($itemReceipt->begin_amount) . '</td>
+                                <td style="text-align:right;">' . $this->formatNo($itemReceipt->in_qty) . '</td>
+                                <td style="text-align:right;">' . $this->formatNo($itemReceipt->in_amount) . '</td>
+                                <td style="text-align:right;">' . $this->formatNo($itemReceipt->out_qty) . '</td>
+                                <td style="text-align:right;">' . $this->formatNo($itemReceipt->out_amount) . '</td>
+                                <td style="text-align:right;">' . $this->formatNo($itemReceipt->begin_qty + $itemReceipt->bal_qty) . '</td>
+                                <td style="text-align:right;">' . $this->formatNo($itemReceipt->begin_amount + $itemReceipt->bal_amount) . '</td>
                             </tr>';
+
+                $total_begin_qty += $itemReceipt->begin_qty;
+                $total_begin_amount += $itemReceipt->begin_amount;
+                $total_in_qty += $itemReceipt->in_qty;
+                $total_in_amount += $itemReceipt->in_amount;
+                $total_out_qty += $itemReceipt->out_qty;
+                $total_out_amount += $itemReceipt->out_amount;
+                $total_bal_qty += ($itemReceipt->begin_qty + $itemReceipt->bal_qty);
+                $total_bal_amount += ($itemReceipt->begin_amount + $itemReceipt->bal_amount);
+                $noh++;
             }
 
-
-            $total_begin_recap += $begin_recap;
-            $total_begin_amount_recap += number_format($begin_amount_recap, 2, '.', '');
-            $total_in_recap += $in_recap;
-            $total_in_amount_recap += $in_amount_recap;
-            $total_out_recap += $out_recap;
-            $total_out_amount_recap += $out_amount_recap;
-            $total_end_recap += ($begin_recap + $in_recap - $out_recap);
-            $total_end_recap_amount += number_format($balance_amount_recap, 2, '.', '');
-            $noh++;
-        }
-
-        if ($filter_display == "RECAP") {
             $html .= '  <tr>
-                            <td colspan="5" style="text-align:right;"><b>GRAND TOTAL</b></td>
-                            <td style="text-align:right;"><b>' . number_format($total_begin_recap, 2) . '</b></td>
-                            <td style="text-align:right;"><b>' . substr(number_format($total_begin_amount_recap, 3), 0, -1) . '</b></td>
-                            <td style="text-align:right;"><b>' . number_format($total_in_recap, 2) . '</b></td>
-                            <td style="text-align:right;"><b>' . number_format($total_in_amount_recap, 2) . '</b></td>
-                            <td style="text-align:right;"><b>' . number_format($total_out_recap, 2) . '</b></td>
-                            <td style="text-align:right;"><b>' . number_format($total_out_amount_recap, 2) . '</b></td>
-                            <td style="text-align:right;"><b>' . number_format($total_end_recap, 2) . '</b></td>
-                            <td style="text-align:right;"><b>' . substr(number_format($total_end_recap_amount, 3), 0, -1) . '</b></td>
+                            <td colspan="6" style="text-align:right;"><b>GRAND TOTAL</b></td>
+                            <td style="text-align:right;"><b>' . $this->formatNo($total_begin_qty, 2) . '</b></td>
+                            <td style="text-align:right;"><b>' . $this->formatNo($total_begin_amount, 2) . '</b></td>
+                            <td style="text-align:right;"><b>' . $this->formatNo($total_in_qty, 2) . '</b></td>
+                            <td style="text-align:right;"><b>' . $this->formatNo($total_in_amount, 2) . '</b></td>
+                            <td style="text-align:right;"><b>' . $this->formatNo($total_out_qty, 2) . '</b></td>
+                            <td style="text-align:right;"><b>' . $this->formatNo($total_out_amount, 2) . '</b></td>
+                            <td style="text-align:right;"><b>' . $this->formatNo($total_bal_qty, 2) . '</b></td>
+                            <td style="text-align:right;"><b>' . $this->formatNo($total_bal_amount, 2) . '</b></td>
                         </tr>';
-        }
+            $html .= '</table></body></html>';
+        } else {
+            $itemReceipts = $this->crud->query("SELECT 
+	            a.id AS item_rm_id, 
+                a.number AS item_rm_number, 
+                a.name AS item_rm_name, 
+                a.uom, 
+                b.name AS item_family_name, 
+                d.*
+            FROM item_rm a
+            JOIN item_familys b ON a.item_family_id = b.id
+            JOIN inventory_rm d ON a.id = d.item_rm_id
+            WHERE a.item_category_id = 'C01' and d.trans_date BETWEEN '$filter_from' AND '$filter_to' and a.item_family_id like '%$filter_item_family%' and a.id like '%$filter_items%'
+            ORDER BY d.trans_date, b.number, a.number ASC");
 
-        $html .= '</table></body></html>';
+            $html .= '<table id="customers" style="width: 100%">
+                        <tr>
+                            <th width="20">No</th>
+                            <th>Part No EBWS</th>
+                            <th>Part No Supplier</th>
+                            <th>Description</th>
+                            <th>Trans Type</th>
+                            <th>Created By</th>
+                            <th>PO Date</th>
+                            <th>Trans Date</th>
+                            <th>Receipt No</th>
+                            <th>Kanban/PO No</th>
+                            <th>Document No</th>
+                            <th>Document Date</th>
+                            <th>Qty</th>
+                            <th>Price</th>
+                            <th>Amount</th>
+                            <th>Balance</th>
+                        </tr>';
+            $nod = 1;
+            $last_item_rm_id = "";
+            foreach ($itemReceipts as $itemReceipt) {
+                $item_rm_id = $itemReceipt->item_rm_id;
+
+                if($item_rm_id != $last_item_rm_id){
+                    $begin = $this->crud->query("SELECT item_rm_id, SUM(qty) as begin_qty, SUM(amount) as begin_amount FROM inventory_rm WHERE item_rm_id = '$item_rm_id' and trans_date < '$filter_from'");
+                    
+                    if(@$begin[0]->begin_amount > 0){
+                        $begin_price = (@$begin[0]->begin_amount / @$begin[0]->begin_qty);
+                    }else{
+                        $begin_price = 0;
+                    }
+
+                    $html .= '  <tr style="background: #aae9b5;">
+                                    <td colspan="12" style="font-weight:bold;">BEGINING STOCK ('.$itemReceipt->item_rm_number.')</td>
+                                    <td style="text-align:right; font-weight:bold;">' . $this->formatNo(@$begin[0]->begin_qty) . '</td>
+                                    <td style="text-align:right; font-weight:bold;">' . $this->formatNo($begin_price) . '</td>
+                                    <td colspan="2" style="text-align:right; font-weight:bold;">' . $this->formatNo(@$begin[0]->begin_amount) . '</td>
+                                </tr>';
+
+                    $balnce = @$begin[0]->begin_amount;
+                }
+
+                $balnce += $itemReceipt->amount;
+                $html .= '  <tr>
+                                <td>' . $nod . '</td>
+                                <td>' . $itemReceipt->item_rm_id . '</td>
+                                <td>' . $itemReceipt->item_rm_number . '</td>
+                                <td>' . $itemReceipt->item_rm_name . '</td>
+                                <td>' . $itemReceipt->trans_type . '</td>
+                                <td>' . $itemReceipt->created_name . '</td>
+                                <td>' . $itemReceipt->po_date . '</td>
+                                <td>' . $itemReceipt->trans_date . '</td>
+                                <td>' . $itemReceipt->custom_kind . '</td>
+                                <td>' . $itemReceipt->custom_no . '</td>
+                                <td>' . $itemReceipt->document_no . '</td>
+                                <td>' . $itemReceipt->custom_date . '</td>
+                                <td style="text-align:right;">' . $this->formatNo($itemReceipt->qty) . '</td>
+                                <td style="text-align:right;">' . $this->formatNo($itemReceipt->price) . '</td>
+                                <td style="text-align:right;">' . $this->formatNo($itemReceipt->amount) . '</td>
+                                <td style="text-align:right;">' . $this->formatNo($balnce) . '</td>
+                            </tr>';
+
+                $last_item_rm_id = $item_rm_id;
+                $nod++;
+            }
+        }
         echo $html;
     }
 }

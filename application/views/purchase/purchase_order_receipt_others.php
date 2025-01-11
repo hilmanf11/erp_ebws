@@ -174,9 +174,9 @@
                     <th hidden data-options="field:'asset_code_sub',width:150">Asset Code Sub</th>
                     <th data-options="field:'asset_code',width:150">Asset Code</th>
                     <th data-options="field:'uom',width:80">UoM</th>
-                    <th data-options="field:'qty_po',width:80,editor:{type:'numberbox', options:{readonly:true}}">PO</th>
-                    <th data-options="field:'qty_delivery',width:80,editor:{type:'numberbox', options:{readonly:true}}">Delivery</th>
-                    <th data-options="field:'qty_receipt',width:80,editor:{type:'numberbox'}">Receipt</th>
+                    <th data-options="field:'qty_po',width:80,editor:{type:'numberbox', options:{readonly:true, precision: 2}}">PO</th>
+                    <th data-options="field:'qty_delivery',width:80,editor:{type:'numberbox', options:{readonly:true, precision: 2}}">Delivery</th>
+                    <th data-options="field:'qty_receipt',width:80,editor:{type:'numberbox', options:{readonly:true, precision: 2}}">Receipt</th>
                     <th data-options="field:'mpq',width:80,editor:{type:'numberbox', options:{readonly:true}}">MPQ</th>
                     <th hidden data-options="field:'qty_label',width:80,editor:{type:'numberbox', options:{readonly:true}}">Label</th>
                     <!-- <th colspan="3" data-options="field:'t',width:80,halign:'center'">Warehouse</th> -->

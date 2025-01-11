@@ -42,9 +42,9 @@ class Customer_items extends CI_Controller
         }
 
         $post = isset($_POST['q']) ? $_POST['q'] : "";
-        $send = $this->crud->query("SELECT b.id, b.number, b.name, b.number_customer, a.price 
+        $send = $this->crud->query("SELECT b.id, b.number, b.name, b.number_customer, a.price, b.hsn_code
             FROM customer_items a 
-            JOIN item_fg b ON a.item_fg_id = b.id 
+            JOIN item_fg b ON a.item_fg_id = b.id
             WHERE a.customer_id = '$customer_id' $where_plant and (b.number_customer LIKE '%$post%' or b.number LIKE '%$post%')
             GROUP BY b.id");
         echo json_encode($send);

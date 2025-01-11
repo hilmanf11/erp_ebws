@@ -17,6 +17,9 @@
             <th data-options="field:'uom',width:80,halign:'center'">Uom</th>
             <th data-options="field:'supplier_name',width:250,halign:'center'">Supplier</th>
             <th data-options="field:'qty',width:80,halign:'center',align:'right',formatter: numberformat">Qty</th>
+            <th data-options="field:'currency',width:80,halign:'center'">Currency</th>
+            <th data-options="field:'price',width:100,halign:'center',align:'right',formatter: numberformatPrice2">Price</th>
+            <th data-options="field:'total',width:100,halign:'center',align:'right',formatter: numberformatPrice4">Total</th>
             <th data-options="field:'remarks',width:150,halign:'center'">Remarks</th>
             <th data-options="field:'created_by',width:120,halign:'center'">Create By</th>
             <th data-options="field:'created_date',width:150,halign:'center'">Create Date</th>
@@ -184,14 +187,22 @@
 	}
 
     function numberformat(value, row) {
-		const formatter = new Intl.NumberFormat('id-ID');
+		const formatter = new Intl.NumberFormat('ja-JP');
 
 		return "<b>" + formatter.format(value) + "</b>";
 	}
 
-	function numberformatPrice(value, row){
-        const formatter = new Intl.NumberFormat('id-ID', {
+	function numberformatPrice2(value, row){
+        const formatter = new Intl.NumberFormat('ja-JP', {
             minimumFractionDigits: 2
+        });
+
+        return "<b>" + formatter.format(value) + "</b>";
+    }
+
+    function numberformatPrice4(value, row){
+        const formatter = new Intl.NumberFormat('ja-JP', {
+            minimumFractionDigits: 4
         });
 
         return "<b>" + formatter.format(value) + "</b>";

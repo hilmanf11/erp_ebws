@@ -84,6 +84,7 @@
                                     data: "label_no=" + label_no +
                                         "&rgp_number=" + row[i].rgp_number +
                                         "&item_id=" + row[i].item_id +
+                                        "&rgp_id=" + row[i].rgp_id +
                                         // "&receipt_id=" + row[i].receipt_id +
                                         // "&po_no=" + row[i].po_no +
                                         "&qty=" + row[i].qty,

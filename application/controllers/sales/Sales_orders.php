@@ -130,6 +130,7 @@ class Sales_orders extends CI_Controller
             $get = $this->input->get();
             $filter_from = @base64_decode($get['filter_from']);
             $filter_to = @base64_decode($get['filter_to']);
+            $filter_item_fg = @base64_decode($get['filter_item_fg']);
             $filter_customer_id = @base64_decode($get['filter_customer_id']);
             $filter_sales_order_no = @base64_decode($get['filter_sales_order_no']);
             $filter_status = @base64_decode($get['filter_status']);
@@ -150,9 +151,13 @@ class Sales_orders extends CI_Controller
                 $this->db->where('a.sales_order_date >=', $filter_from);
                 $this->db->where('a.sales_order_date <=', $filter_to);
             }
+            $this->db->like('a.item_fg_id', $filter_item_fg);
             $this->db->like('a.customer_id', $filter_customer_id);
             $this->db->like('a.sales_order_no', $filter_sales_order_no);
             $this->db->like('a.status', $filter_status);
+            if($filter_status == "0"){
+                $this->db->where('(a.qty_so - COALESCE(c.qty_delivery, 0)) > 0');
+            }
             $this->db->group_by('a.sales_order_no');
             $this->db->order_by('a.status', 'ASC');
             //Total Data
@@ -173,14 +178,14 @@ class Sales_orders extends CI_Controller
     {
         if ($this->input->get()) {
             $sales_order_no = base64_decode($this->input->get('sales_order_no'));
-            $filter_from = base64_decode($this->input->get('filter_from'));
-            $filter_to = base64_decode($this->input->get('filter_to'));
+            $filter_item_fg = base64_decode($this->input->get('filter_item_fg'));
 
             $this->db->select('a.*, b.number as item_fg_number, b.name as item_fg_name, b.number_customer, COALESCE(c.qty_delivery, 0) as qty_delivery, (a.qty_so - COALESCE(c.qty_delivery, 0)) as qty_outstanding');
             $this->db->from('(select *, SUM(qty) as qty_so from sales_orders GROUP by sales_order_no, item_fg_id) a');
             $this->db->join('item_fg b', 'a.item_fg_id = b.id');
-            $this->db->join("(select sales_order_no, item_fg_id, SUM(qty) as qty_delivery from delivery_notes WHERE delivery_note_date BETWEEN '$filter_from' AND '$filter_to' GROUP by sales_order_no, item_fg_id) c", 'a.sales_order_no = c.sales_order_no AND a.item_fg_id = c.item_fg_id', 'left');
+            $this->db->join("(select sales_order_no, item_fg_id, SUM(qty) as qty_delivery from delivery_notes GROUP by sales_order_no, item_fg_id) c", 'a.sales_order_no = c.sales_order_no AND a.item_fg_id = c.item_fg_id', 'left');
             $this->db->where('a.sales_order_no', $sales_order_no);
+            $this->db->like('a.item_fg_id', $filter_item_fg);
             $this->db->group_by('a.sales_order_no');
             $this->db->group_by('a.item_fg_id');
             $this->db->group_by('a.customer_id');
@@ -517,6 +522,7 @@ class Sales_orders extends CI_Controller
         $filter_from = @base64_decode($get['filter_from']);
         $filter_to = @base64_decode($get['filter_to']);
         $filter_customer_id = @base64_decode($get['filter_customer_id']);
+        $filter_item_fg = @base64_decode($get['filter_item_fg']);
         $filter_sales_order_no = @base64_decode($get['filter_sales_order_no']);
         $filter_status = @base64_decode($get['filter_status']);
 
@@ -536,6 +542,7 @@ class Sales_orders extends CI_Controller
             $this->db->where('a.sales_order_date >=', $filter_from);
             $this->db->where('a.sales_order_date <=', $filter_to);
         }
+        $this->db->like('a.item_fg_id', $filter_item_fg);
         $this->db->like('a.customer_id', $filter_customer_id);
         $this->db->like('a.sales_order_no', $filter_sales_order_no);
         $this->db->like('a.status', $filter_status);
@@ -592,9 +599,16 @@ class Sales_orders extends CI_Controller
                 <th>Currency</th>
                 <th>Price</th>
                 <th>Total</th>
+                <th>Status</th>
             </tr>';
         $no = 1;
         foreach ($records as $data) {
+            if($data['status'] == 0){
+                $status = "OPEN";
+            }else{
+                $status = "CLOSE";
+            }
+
             $html .= '<tr>
                         <td>' . $no . '</td>
                         <td>' . $data['customer_name'] . '</td>
@@ -614,6 +628,7 @@ class Sales_orders extends CI_Controller
                         <td>' . $data['currency'] . '</td>
                         <td>' . $data['price'] . '</td>
                         <td>' . $data['total'] . '</td>
+                        <td>' . $status . '</td>
                     </tr>';
             $no++;
         }

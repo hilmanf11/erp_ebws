@@ -136,11 +136,13 @@ class Delivery_orders extends CI_Controller
         $this->db->join("(SELECT customer_id, item_fg_id, plant, sales_order_no, SUM(qty_do) as qty_do2 FROM delivery_orders GROUP BY customer_id, item_fg_id, sales_order_no, plant) f", 'b.sales_order_no = f.sales_order_no and a.customer_id = f.customer_id and a.item_fg_id = f.item_fg_id and a.plant = f.plant', "LEFT");
         $this->db->join("(SELECT
                 a.id,
-                round(COALESCE(b.qty_sto, 0) + COALESCE(d.sto_qty_in, 0) + COALESCE(c.qty_wip, 0) - COALESCE(g.qty, 0) - COALESCE(d.sto_qty_out, 0)) as stock_fg
+                (COALESCE(b.qty_sto, 0) + COALESCE(d.sto_qty_in, 0) + COALESCE(c.qty_wip, 0) + COALESCE(e.qty_rgp_in, 0) - COALESCE(g.qty, 0) - COALESCE(d.sto_qty_out, 0) - COALESCE(f.qty_rgp_out, 0)) as stock_fg
             FROM item_fg a 
             LEFT JOIN (select a.item_fg_id, COALESCE(SUM(b.qty), 0) as qty_sto FROM os_fg a JOIN scan_item_receipts_fg b ON a.id = b.workorder GROUP BY a.item_fg_id) b ON a.id = b.item_fg_id
             LEFT JOIN (select a.item_fg_id, COALESCE(SUM(b.qty), 0) as qty_wip FROM wip_receipts a JOIN scan_item_receipts_fg b ON a.workorder = b.workorder and a.checksheet_number = b.checksheet_number GROUP BY a.item_fg_id) c ON a.id = c.item_fg_id
             LEFT JOIN (SELECT a.item_fg_id, (CASE WHEN a.type = 'IN' THEN COALESCE(SUM(a.qty), 0) ELSE 0 END) as sto_qty_in, (CASE WHEN a.type = 'OUT' THEN COALESCE(SUM(a.qty), 0) ELSE 0 END) as sto_qty_out FROM sto_fg a WHERE (a.approved_to = '' or a.approved_to is null) GROUP BY item_fg_id) d ON a.id = d.item_fg_id
+            LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_in FROM rgp_transactions WHERE type = 'IN' GROUP BY item_id) e ON a.id = e.item_id
+            LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_out FROM rgp_transactions WHERE type = 'OUT' GROUP BY item_id) f ON a.id = f.item_id
             LEFT JOIN (SELECT item_fg_id, delivery_note_date, COALESCE(SUM(qty), 0) as qty FROM delivery_notes GROUP BY item_fg_id) g ON a.id = g.item_fg_id
             GROUP BY a.id
             ORDER BY a.number) e", 'a.item_fg_id = e.id', "LEFT");
@@ -302,6 +304,15 @@ class Delivery_orders extends CI_Controller
     {
         $data = $this->input->post();
         $delivery_orders = $this->crud->reads("delivery_orders", [], $data);
+        $shipping_orders = $this->crud->reads("shipping_orders", [], $data);
+        
+        foreach ($shipping_orders as $shipping_order) {
+            $this->db->update("scan_item_receipts_fg", [
+                "status" => 0
+            ], [
+                "checksheet_label" => $shipping_order->checksheet_label
+            ]);
+        }
 
         foreach ($delivery_orders as $delivery_order) {
             $this->crud->update("sales_order_deliveries", [
@@ -321,7 +332,16 @@ class Delivery_orders extends CI_Controller
     public function cancelDo(){
         $data = $this->input->post();
         $delivery_orders = $this->crud->reads("delivery_orders", [], $data);
+        $shipping_orders = $this->crud->reads("shipping_orders", [], $data);
         $send = $this->db->update('delivery_orders', ["status" => 2], $data);
+
+        foreach ($shipping_orders as $shipping_order) {
+            $this->db->update("scan_item_receipts_fg", [
+                "status" => 0
+            ], [
+                "checksheet_label" => $shipping_order->checksheet_label
+            ]);
+        }
 
         foreach ($delivery_orders as $delivery_order) {
             $this->crud->update("sales_order_deliveries", [
@@ -331,7 +351,6 @@ class Delivery_orders extends CI_Controller
             ], [
                 "status" => 0
             ]);
-
         }
 
         $this->db->delete('shipping_orders', $data);

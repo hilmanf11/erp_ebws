@@ -23,7 +23,7 @@ class Ar_receipts extends CI_Controller
         } elseif ($this->checkuserAccess($this->id_menu()) > 0) {
             $data['button'] = $this->getbutton($this->id_menu());
             $data['menus_id'] = $this->id_menu();
-            
+
             $this->load->view('template/header', $data);
             $this->load->view('finance/ar_receipts');
         } else {
@@ -43,6 +43,33 @@ class Ar_receipts extends CI_Controller
         die(json_encode($records));
     }
 
+    public function readReverse($number)
+    {
+        $receipt_no = base64_decode($number);
+        $this->db->select('a.*, b.account_name');
+        $this->db->from('ar_receipts a');
+        $this->db->join('account_coa b', 'a.account_number = b.account_number', 'left');
+        $this->db->where('a.receipt_no', $receipt_no);
+        $records = $this->db->get()->result_array();
+
+        $arr = [];
+        foreach ($records as $read) {
+            unset($read['id']);
+
+            if ($read['account_type'] == "DEBIT") {
+                $account_type = "CREDIT";
+            } else {
+                $account_type = "DEBIT";
+            }
+
+            $arr[] = array_merge($read, array(
+                "account_type" => $account_type,
+            ));
+        }
+
+        die(json_encode($arr));
+    }
+
     public function readJournals($number, $journal_type_id = "", $bank_account = "")
     {
         $number = base64_decode($number);
@@ -53,24 +80,47 @@ class Ar_receipts extends CI_Controller
         }
     }
 
+    public function readJournalReverse($number, $journal_type_id = "", $bank_account = "")
+    {
+        $number = base64_decode($number);
+        // $reads = $this->crud->reads("ar_receipt_journals", [], ["receipt_no" => $number], "", "flag", "asc");
+        $sql = $this->db->query("SELECT * FROM ar_receipt_journals WHERE receipt_no = '$number' ORDER BY flag ASC");
+        $reads = $sql->result_array();
+
+        $arr = [];
+        foreach ($reads as $read) {
+            unset($read['id']);
+            $arr[] = array_merge($read, array(
+                "local_debit" => $read['local_credit'],
+                "local_credit" => $read['local_debit'],
+                "debit" => $read['credit'],
+                "credit" => $read['debit'],
+            ));
+        }
+
+        if (count($arr) > 0) {
+            echo json_encode($arr);
+        }
+    }
+
     function readExchangeRate()
     {
         $payment_date = $this->input->post('receipt_date');
         $trans_date = $this->input->post('trans_date');
         $currency = $this->input->post('currency');
-        
+
         $search_date = date("d", strtotime($payment_date));
-        if($search_date == "31"){
-          $payment_date = date("Y-m-d", strtotime('-1 days', strtotime($payment_date)));
+        if ($search_date == "31") {
+            $payment_date = date("Y-m-d", strtotime('-1 days', strtotime($payment_date)));
         }
-        
+
         $monthNow = date('Y-m-01', strtotime($payment_date));
         $monthbf = date('Y-m-01', strtotime($trans_date));
 
-        if($monthNow != $monthbf){
-            if(date("m", strtotime($payment_date)) == "11"){
+        if ($monthNow != $monthbf) {
+            if (date("m", strtotime($payment_date)) == "11") {
                 $monthbf = date('Y-m-t', strtotime('-1 month', strtotime($payment_date)));
-            }else{
+            } else {
                 $monthbf = date('Y-m-01', strtotime('-1 month', strtotime($payment_date)));
             }
         }
@@ -90,7 +140,7 @@ class Ar_receipts extends CI_Controller
             $amount2 = 0;
         }
 
-        echo "Rate $currency to INR : <br> $monthbf | " . number_format($amount2, 4) ."<br> $monthNow | " . number_format($amount, 4);
+        echo "Rate $currency to INR : <br> $monthbf | " . number_format($amount2, 4) . "<br> $monthNow | " . number_format($amount, 4);
     }
 
     public function calculateJournal($journal_type_id = "", $bank_account = "")
@@ -119,14 +169,14 @@ class Ar_receipts extends CI_Controller
             $trans_date = $jsonData['trans_date'];
 
             $search_date = date("d", strtotime($payment_date));
-            if($search_date == "31"){
-              $payment_date = date("Y-m-d", strtotime('-10 days', strtotime($payment_date)));
+            if ($search_date == "31") {
+                $payment_date = date("Y-m-d", strtotime('-10 days', strtotime($payment_date)));
             }
 
             $monthBf = date('Y-m-01', strtotime($trans_date));
             $monthNow = date('Y-m-01', strtotime($payment_date));
 
-            if($monthNow != $monthBf){
+            if ($monthNow != $monthBf) {
                 $monthBf = date('Y-m-01', strtotime("-1 month", strtotime($payment_date)));
             }
 
@@ -212,8 +262,8 @@ class Ar_receipts extends CI_Controller
                 "flag" => $flag,
             );
 
-            if($currency != "INR"){
-                if($amount2 > $grand_total_INR){
+            if ($currency != "INR") {
+                if ($amount2 > $grand_total_INR) {
                     $arr[] = array(
                         "account_number" => "31000002",
                         "account_name" => "Currency Fluction Gain A/c",
@@ -222,9 +272,9 @@ class Ar_receipts extends CI_Controller
                         "rate" => 1,
                         "local_debit" => 0,
                         "local_credit" => abs($amount2 - $grand_total_INR),
-                        "flag" => $flag+1,
+                        "flag" => $flag + 1,
                     );
-                }else{
+                } else {
                     $arr[] = array(
                         "account_number" => "49000001",
                         "account_name" => "Currency Fluction Loss A/c",
@@ -233,7 +283,7 @@ class Ar_receipts extends CI_Controller
                         "rate" => 1,
                         "local_debit" => abs($amount2 - $grand_total_INR),
                         "local_credit" => 0,
-                        "flag" => $flag+1,
+                        "flag" => $flag + 1,
                     );
                 }
             }
@@ -380,7 +430,7 @@ class Ar_receipts extends CI_Controller
         $data = $this->crud->query("SELECT DISTINCT receipt_no FROM ar_receipts WHERE customer_id = '$customer_id' ORDER BY `receipt_no` ASC");
         echo json_encode($data);
     }
-    
+
     public function readInvoices($customer_id, $plant = "")
     {
         $plant = base64_decode($plant);
@@ -431,27 +481,27 @@ class Ar_receipts extends CI_Controller
         $sql_menu = $this->db->query("SELECT * FROM menus_no WHERE menus_id = '$id_menu' and `status` = '0' and `start_date` <= '$datenow' and end_date >= '$datenow'");
         $row_menu = $sql_menu->row();
 
-        if(@$row_menu->number == ""){
+        if (@$row_menu->number == "") {
             //
-        }else{
+        } else {
             $number = @$row_menu->number;
             $yearnow = date("y", strtotime($row_menu->start_date));
             $yearend = date("y", strtotime($row_menu->end_date));
 
-            $whereDate = $number.$yearnow.$yearend."1";
+            $whereDate = $number . $yearnow . $yearend . "1";
 
-            $sqlGetID	= $this->db->query("SELECT max(receipt_no) as kode FROM ar_receipts WHERE receipt_no like '%$whereDate%'");
+            $sqlGetID    = $this->db->query("SELECT max(receipt_no) as kode FROM ar_receipts WHERE receipt_no like '%$whereDate%'");
             $rowID = $sqlGetID->row();
             $kode = $rowID->kode;
-            
+
             if ($kode == NULL) {
-                $autoID = sprintf("%0".$row_menu->sequence."s", $kode + 1);
-                $autoNo = $whereDate.$autoID;
+                $autoID = sprintf("%0" . $row_menu->sequence . "s", $kode + 1);
+                $autoNo = $whereDate . $autoID;
             } else {
                 $urutan = (int) substr($kode, -6);
                 $urutan++;
-                $autoID	= sprintf("%0".$row_menu->sequence."s", $urutan);
-                $autoNo = $whereDate.$autoID;
+                $autoID    = sprintf("%0" . $row_menu->sequence . "s", $urutan);
+                $autoNo = $whereDate . $autoID;
             }
 
             echo $autoNo;
@@ -536,13 +586,13 @@ class Ar_receipts extends CI_Controller
             $this->db->like('a.receipt_type', $filter_receipt_type);
             if ($filter_receipt_date_from != "" && $filter_receipt_date_to != "") {
                 $this->db->where("a.receipt_date between '$filter_receipt_date_from' and '$filter_receipt_date_to'");
-            }else{
+            } else {
                 $this->db->where("a.receipt_date between '$date_from' and '$date_to'");
             }
-            if($filter_status != ""){
+            if ($filter_status != "") {
                 $this->db->like('c.status_bank', $filter_status);
             }
-            if($filter_plant != ""){
+            if ($filter_plant != "") {
                 $this->db->where('a.plant', $filter_plant);
             }
             $this->db->like('a.receipt_no', $filter_receipt_no);
@@ -678,7 +728,7 @@ class Ar_receipts extends CI_Controller
         echo $send;
     }
 
-    public function print_voucher($receipt)
+    public function view_journal($receipt)
     {
         $receipt_no = base64_decode($receipt);
         $this->db->select('a.*, b.name as customer_name');
@@ -963,6 +1013,267 @@ class Ar_receipts extends CI_Controller
                         </tr>
                     </table>
                 </div>';
+
+        $html .= '</table>
+            <br>
+            <table style="width:100%; font-size:12px;">
+                <tr>
+                    <td style="text-align:center;">Prepared By</td>
+                    <td style="text-align:center;">Checked By</td>
+                    <td style="text-align:center;">Approved By</td>
+                </tr>
+                <tr>
+                    <td style="height:60px;"></td>
+                    <td style="height:60px;"></td>
+                    <td style="height:60px;"></td>
+                </tr>
+                <tr>
+                    <th style="height:20px; text-align:center;">' . $this->session->name . '<hr style="width:60%;margin-left:20%;">User Entry</th>
+                    <th style="height:20px; text-align:center;"><br><hr style="width:60%;margin-left:20%;">Accounting Manager</th>
+                    <th style="height:20px; text-align:center;"><br><hr style="width:60%;margin-left:20%;">Director</th>
+                </tr>
+            </table>
+            </div>
+        </div>';
+
+        $html .= "</div></div><script>window.print()</script></body>";
+        die($html);
+    }
+
+    public function print_voucher($receipt)
+    {
+        $receipt_no = base64_decode($receipt);
+        $this->db->select('a.*, b.name as customer_name');
+        $this->db->from('ar_receipts a');
+        $this->db->join('customers b', 'a.customer_id = b.id');
+        $this->db->like('a.receipt_no', $receipt_no);
+        $this->db->order_by('a.status', 'ASC');
+        $this->db->order_by('a.receipt_date', 'DESC');
+        $this->db->group_by('a.receipt_no');
+        $receipt_total = $this->db->get()->result_array();
+
+        $config = $this->db->get('config')->row();
+        $config_iso = $this->db->get('config_iso')->row();
+
+        //Config Page
+        $rows = 10;
+        $page = ceil(count($receipt_total) / $rows);
+        //Generate QRcode
+        $this->createQrcode(@$receipt_no, "assets/image/qrcode/");
+        $html = '<html>
+                    <head>
+                        <title>' . $receipt_no . '</title>
+                        <link rel="icon" href="' . $config->favicon . '" type="image/png" sizes="16x16">
+                    </head>
+                    <style>
+                        body {
+                            font-family: Arial, Helvetica, sans-serif;
+                        }
+                        #customers {
+                            border-collapse: collapse;width: 100%;
+                            font-size: 12px;
+                        }
+                        #customers td, #customers th {
+                            border: 1px solid black;padding: 2px;
+                        }
+                        #customers th {
+                            padding-top: 2px;
+                            padding-bottom: 2px;
+                            text-align: center;color: black;
+                        }
+                        @media screen {
+                            .print {
+                                display: none !important;
+                            }
+                        }
+            
+                        @media print {
+                            .noprint {
+                                display: none !important;
+                            }
+                        }
+                    </style>
+                    <body>
+                    <div style="margin:20%;" class="noprint">
+                        <center>
+                            <h1>Press CTRL + P for Print</h1>
+                            <p>Display pages for 10 rows</p>
+                            <p>Paper Size A5, Layout Landscape</p>
+                            <p>Margin Default, Scale 80</p>
+                        </center>
+                    </div>
+                    <div class="print">';
+        $no = 1;
+        $hal = 1;
+        $subtotal = 0;
+        for ($i = 0; $i < $page; $i++) {
+            $this->db->select('a.*, b.name as customer_name');
+            $this->db->from('ar_receipts a');
+            $this->db->join('customers b', 'a.customer_id = b.id');
+            $this->db->like('a.receipt_no', $receipt_no);
+            $this->db->order_by('a.status', 'ASC');
+            $this->db->order_by('a.receipt_date', 'DESC');
+            $this->db->limit(10, ($i * 10));
+            $records = $this->db->get()->result_array();
+
+            //Exchange Rate
+            $receipt_date = $records[0]['receipt_date'];
+            $currency = $records[0]['currency'];
+            // $monthBf = date('Y-m-01', strtotime($receipt_date));
+            $monthBf = $receipt_date;
+            $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $monthBf, "currency_from" => $currency, "currency_to" => "INR"]);
+
+            if ($exchange) {
+                $amount = $exchange->middle;
+                $hide = "";
+            } else {
+                $amount = 0;
+                $hide = "hidden";
+            }
+
+            $exchangeName = "Rp. " . number_format($amount, 2);
+
+            $html .= '  <table style="width:100%;">
+                            <tr>
+                                <th width="10"><img src="' . $config->favicon . '" width="60" /></th>
+                                <td width="250" style="padding:10px;">
+                                    <b style="font-size:14px;">' . $config->name . '</b><br>
+                                    <span style="font-size:10px;">' . $config->address . '</span><br>
+                                </td>
+                                <td width="100" style="text-align:right;">
+                                    <table style="width:100%; font-size:10px;">
+                                        <tr>
+                                            <td width="50" rowspan="4"><img src="' . base_url('assets/image/qrcode/' . $receipt_no . '.png') . '" width="60"/></td>
+                                            <td width="60">Doc No</td>
+                                            <td width="5">:</td>
+                                            <td width="100">' . $config_iso->doc_ar_receipt . '</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Form</td>
+                                            <td>:</td>
+                                            <td>' . $config_iso->form_ar_receipt . '</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Print Date</td>
+                                            <td>:</td>
+                                            <td>' . date("Y-m-d H:i") . '</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Print By</td>
+                                            <td>:</td>
+                                            <td>' . $this->session->name . '</td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                        </table>
+                        <div style="border: 1px solid black; width:100%;">
+                            <div style="padding:10px;">
+                                <center>
+                                    <h3>RECEIPT VOUCHER</h3>
+                                </center>
+                                <div style="float:left; width:40%;"> 
+                                    <table style="width:100%; font-size:12px; margin-bottom:10px;">
+                                        <tr>
+                                            <td width="80">Receipt From</td>
+                                            <td width="10">:</td>
+                                            <td><b>' . @$records[0]['customer_name'] . '</b></td>
+                                        </tr>
+                                        <tr>
+                                            <td>Receipt By</td>
+                                            <td>:</td>
+                                            <td><b>' . @$records[0]['receipt_by'] . '</b></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                                <div style="float:left; width:40%;"> 
+                                    <table style="width:100%; font-size:12px; margin-bottom:10px;">
+                                        <tr>
+                                            <td width="80">Receipt No</td>
+                                            <td width="10">:</td>
+                                            <td><b>' . @$records[0]['receipt_no'] . '</b></td>
+                                        </tr>
+                                        <tr>
+                                            <td>Receipt Date</td>
+                                            <td>:</td>
+                                            <td><b>' . @date("d F Y", strtotime(@$records[0]['receipt_date'])) . '</b></td>
+                                        </tr>
+                                        <tr>
+                                            <td>Bank Account</td>
+                                            <td>:</td>
+                                            <td><b>' . @$records[0]['bank_account'] . '</b></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                                <div ' . $hide . ' style="float:left; width:15%; border:2px solid black; padding:10px; font-size:12px; margin-left:20px;"> 
+                                    <p style="margin:0;">Rate USD to INR : <b>' . $exchangeName . '</b></p>
+                                </div>
+                                <table id="customers">
+                                    <tr>
+                                        <th>No</th>
+                                        <th>Sales Invoice No</th>
+                                        <th>Description</th>
+                                        <th>Currency</th>
+                                        <th>Amount</th>
+                                        <th>Balance</th>
+                                        <th>Receipt</th>
+                                        <th>Remarks</th>
+                                    </tr>';
+            $grand_total = 0;
+            foreach ($records as $record) {
+                if ($record['account_type'] == "DEBIT") {
+                    $grand_total -= $record['receipt'];
+                    $subtotal -= $record['receipt'];
+                } else {
+                    $grand_total += $record['receipt'];
+                    $subtotal += $record['receipt'];
+                }
+
+                $html .= '  <tr>
+                                <td style="text-align:center">' . $no . '</td>
+                                <td>' . $record['sales_invoice'] . '</td>
+                                <td>' . $record['description'] . '</td>
+                                <td>' . $record['currency'] . '</td>
+                                <td style="text-align:right;">' . @number_format(($record['amount']), 2) . '</td>
+                                <td style="text-align:right;">' . @number_format($record['balance'], 2) . '</td>
+                                <td style="text-align:right;">' . @number_format($record['receipt'], 2) . '</td>
+                                <td>' . $record['remarks'] . '</td>
+                            </tr>';
+                $no++;
+            }
+
+            if (($i + 1) == $page) {
+                $html_grand_total = '<tr>
+                                        <th style="text-align:right" colspan="6">GRAND TOTAL</th>
+                                        <th style="text-align:right;">' . @number_format($subtotal, 2) . '</th>
+                                        <td></td>
+                                    </tr>';
+            } else {
+                $html_grand_total = "";
+            }
+
+            $html .= '  <tr>
+                            <th style="text-align:right" colspan="6">SUB TOTAL</th>
+                            <th style="text-align:right;">' . @number_format($grand_total, 2) . '</th>
+                            <td></td>
+                        </tr>';
+
+            $html .= $html_grand_total;
+
+            if (($i + 1) != $page) {
+                $html .= '<div style="page-break-after:always;"></div>';
+            }
+
+            $hal++;
+        }
+
+        $html .= '  <table id="customers" style="margin-top:10px;">
+                        <tr>
+                            <th style="text-align:center;">Amount in Words</th>
+                            <td>' . $this->convertcurrency->convertCurrencyToWords($grand_total, $records[0]['currency']) . '</td>
+                        </tr>
+                    </table>
+                    <p style="font-size:12px;"><i>*This Receipt Voucher was prepared by ' . $config->name . '</i></p>';
 
         $html .= '</table>
             <br>

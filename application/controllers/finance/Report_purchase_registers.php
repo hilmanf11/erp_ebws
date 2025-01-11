@@ -127,6 +127,7 @@ class Report_purchase_registers extends CI_Controller
                     <th>HSN / SAC</th>
                     <th>Quantity of Good</th>
                     <th>Currency</th>
+                    <th>Unit Price</th>
                     <th>Rate</th>
                     <th>Taxable Value</th>
                     <th>IGST Rate</th>
@@ -181,6 +182,7 @@ class Report_purchase_registers extends CI_Controller
                             <td>' . $data['hsn_code'] . '</td>
                             <td style="text-align:right;">' . $data['qty'] . '</td>
                             <td style="text-align:center;">' . $data['currency'] . '</td>
+                            <td style="text-align:center;">' . $data['price'] . '</td>
                             <td style="text-align:right;">' . $data['rate'] . '</td>
                             <td style="text-align:right;">' . $data['total'] . '</td>
                             <td style="text-align:right;">' . $igst_rate . '</td>

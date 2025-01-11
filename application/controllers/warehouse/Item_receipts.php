@@ -104,21 +104,36 @@ class Item_receipts extends CI_Controller
         $result = array_merge($result, ['rows' => $records]);
         echo json_encode($result);
     }
+    
     public function create()
     {
         if ($this->input->post()) {
             if ($this->form_validation->run() == TRUE) {
-                $post   = $this->input->post();
+                $post = $this->input->post();
                 $item_receipts = $this->crud->read("scan_item_receipts", [], ["label_no" => $post['label_no']]);
-                if (!$item_receipts) {
-                    $send   = $this->crud->create('scan_item_receipts', $post);
-                    if ($send) {
-                        $update   = $this->crud->update('purchase_order_labels', ["label_no" => $post['label_no']], ["status" => 1]);
-                        $update   = $this->crud->update('return_material_labels', ["label_no" => $post['label_no']], ["status" => 1]);
-                        echo $send;
+                $purchase_order_label = $this->crud->read("purchase_order_labels", [], ["label_no" => $post['label_no']]);
+
+                $sql = $this->db->query("SELECT a.receipt_id, a.qty_label, COUNT(b.id) as jumlah 
+                    FROM purchase_order_receipts a 
+                    JOIN purchase_order_labels b ON a.receipt_id = b.receipt_id 
+                    WHERE a.receipt_id = '@$purchase_order_label->receipt_id' 
+                    GROUP BY a.receipt_id 
+                    HAVING a.qty_label != COUNT(b.id)");
+                $row = $sql->row();
+
+                if(@$row->qty_label == @$row->jumlah){
+                    if (!$item_receipts) {
+                        $send   = $this->crud->create('scan_item_receipts', $post);
+                        if ($send) {
+                            $update   = $this->crud->update('purchase_order_labels', ["label_no" => $post['label_no']], ["status" => 1]);
+                            $update   = $this->crud->update('return_material_labels', ["label_no" => $post['label_no']], ["status" => 1]);
+                            echo $send;
+                        }
+                    } else {
+                        echo json_encode(array("title" => "Available", "message" => "Data Label No has been Scanned", "theme" => "error"));
                     }
-                } else {
-                    echo json_encode(array("title" => "Available", "message" => "Data Label No has been Scanned", "theme" => "error"));
+                }else{
+                    echo json_encode(array("title" => "Not Match", "message" => "Gate Entry qty label not match in the total label", "theme" => "error"));
                 }
             } else {
                 show_error(validation_errors());

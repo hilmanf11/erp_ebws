@@ -10,15 +10,16 @@
             <th colspan="2" data-options="field:'',width:200,halign:'center'">Period</th>
             <th rowspan="2" data-options="field:'revision',width:80,align:'center'">Revision</th>
             <th rowspan="2" data-options="field:'reason',width:200,halign:'center'">Reason</th>
-            <th colspan="3" data-options="field:'',width:100,align:'center'">Approved</th>
+            <th colspan="4" data-options="field:'',width:100,align:'center'">Approved</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
         </tr>
         <tr>
             <th data-options="field:'p_month',width:80,align:'center'"> Month</th>
             <th data-options="field:'p_year',width:80,align:'center'"> Year</th>
-            <th data-options="field:'approved_to',width:100,align:'center', styler:styleApproved, formatter:formatApproved"> Status</th>
-            <th data-options="field:'approved_by',width:100,align:'center'"> By</th>
+            <th data-options="field:'status_approved',width:100,align:'center', styler:styleApproved, formatter:formatApproved"> Status</th>
+            <th data-options="field:'approved_by',width:120,align:'center'"> By</th>
+            <th data-options="field:'approved_to',width:120,halign:'center'">Next</th>
             <th data-options="field:'approved_date',width:150,align:'center'"> Date</th>
             <th data-options="field:'created_by',width:100,align:'center'"> By</th>
             <th data-options="field:'created_date',width:150,align:'center'"> Date</th>
@@ -1191,15 +1192,15 @@
 
     //CELLSTYLE APPROVE
     function styleApproved(value, row, index) {
-        if (value == "" || value === null ) {
+        if(row.approved_to == "" || row.approved_to == null){
             return 'background: #53D636; color:white;';
         } else {
             return 'background: #FF5F5F; color:white;';
         }
     }
     //FORMATTER APPROVE
-    function formatApproved(value) {
-        if (value == "" || value === null ) {
+    function formatApproved(value, row) {
+        if(row.approved_to == "" || row.approved_to == null){
             return 'Approved';
         } else {
             return 'Checking';

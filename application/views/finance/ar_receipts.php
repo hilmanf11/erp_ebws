@@ -52,6 +52,7 @@
             <div class="fitem">
                 <span style="width:35%; display:inline-block;"></span>
                 <a href="javascript:;" class="easyui-linkbutton" onclick="filter()"><i class="fa fa-search"></i> Filter Data</a>
+                <a href="javascript:;" class="easyui-linkbutton" onclick="view_journal()"><i class="fa fa-print"></i> View Journal</a>
                 <a href="javascript:;" class="easyui-linkbutton" onclick="print_voucher()"><i class="fa fa-print"></i> Print Voucher</a>
             </div>
         </div>
@@ -95,6 +96,7 @@
     <?= $button ?>
     <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="excelDetail()"><i class="fa fa-file"></i> Export Excel Detail</a>
     <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="excelJournal()"><i class="fa fa-file"></i> Export Excel Journal</a>
+    <a href="javascript:void(0)" class="easyui-linkbutton" id="reverse" data-options="plain:true" onclick="reverse()"><i class="fa fa-rotate-left"></i> Reversal</a>
 </div>
 
 <!-- DIALOG SAVE AND UPDATE -->
@@ -382,6 +384,73 @@
         });
     }
 
+    function reverse() {
+        var row = $('#dg').datagrid('getSelected');
+        if (row) {
+            $('#dlg_insert').dialog('open');
+            $('#frm_insert').form('load', row);
+
+            setTimeout(function() {
+                balance_journal();
+                number("<?= $menus_id ?>");
+            }, 2000);
+
+            $("#receipt_date").datebox('enable');
+            $("#receipt_type").combobox('enable');
+            $("#customer_id").combogrid('enable');
+            $("#plant").combobox('enable');
+            $("#sales_invoice").combobox('enable');
+            $("#showExchange").hide();
+
+            var receipt_by = $("#receipt_by").combobox('getValue');
+
+            if (receipt_by == "CHEQUE") {
+                $("#f_cheque_no").show();
+            } else {
+                $("#f_cheque_no").hide();
+            }
+
+            $("#customer_id").combobox({
+                url: '<?= base_url('master/customers/reads') ?>',
+                valueField: 'id',
+                textField: 'name',
+                prompt: "Choose Customer",
+                onLoadSuccess: function(load_customer) {
+                    $("#customer_id").combobox('setValue', row.customer_id);
+                },
+                onSelect: function(customer) {
+                    $("#plant").combobox({
+                        url: '<?= base_url('master/customers/readAddress/') ?>' + btoa(customer.id),
+                        valueField: 'plant',
+                        textField: 'plant',
+                        prompt: "Choose Plant",
+                        onLoadSuccess: function(load_invoice) {
+                            $("#plant").combobox('setValue', row.plant);
+                        },
+                        onSelect: function(plant) {
+                            $("#sales_invoice").combobox({
+                                url: '<?= base_url('finance/ar_receipts/readInvoices/') ?>' + btoa(customer.id) + "/" + btoa(plant.plant),
+                                valueField: 'sales_invoice',
+                                textField: 'sales_invoice',
+                                multiple: true,
+                                prompt: "Choose Sales Invoice No",
+                                onLoadSuccess: function(load_invoice) {
+                                    $("#sales_invoice").combobox('setValue', row.sales_invoice);
+                                    $("#journal_type").combobox('setValue', row.journal_type_id);
+                                },
+                            });
+                        }
+                    });
+                }
+            });
+
+            preview('<?= base_url('finance/ar_receipts/readReverse/') ?>' + window.btoa(row.receipt_no));
+            addTable2('<?= base_url('finance/ar_receipts/readJournalReverse/') ?>' + window.btoa(row.receipt_no) + "/" + window.btoa(row.journal_type_id) + "/" + window.btoa(row.bank_account));
+        } else {
+            toastr.warning("Please select one of the data in the table first!", "Information");
+        }
+    }
+
     function addJournal() {
         var rows = $('#dg2').datagrid('getRows');
         var totalrows = rows.length;
@@ -550,19 +619,19 @@
             var other_account_name = $("#other_account_name").textbox('getValue');
 
             // if(receipt_type == "OTHERS"){
-                $('#dg2').datagrid('appendRow', {
-                    delete: '0',
-                    amount: '0',
-                    balance: '0',
-                    rate: '0',
-                    currency: 'INR',
-                    account_number: other_account,
-                    account_name: other_account_name,
-                    account_type: 'CREDIT',
-                });
+            $('#dg2').datagrid('appendRow', {
+                delete: '0',
+                amount: '0',
+                balance: '0',
+                rate: '0',
+                currency: 'INR',
+                account_number: other_account,
+                account_name: other_account_name,
+                account_type: 'CREDIT',
+            });
 
-                editIndex = $('#dg2').datagrid('getRows').length - 1;
-                $('#dg2').datagrid('selectRow', editIndex).datagrid('beginEdit', editIndex);
+            editIndex = $('#dg2').datagrid('getRows').length - 1;
+            $('#dg2').datagrid('selectRow', editIndex).datagrid('beginEdit', editIndex);
             // }else{
             //     toastr.warning("Please Change Recepipt Type to OTHERS");
             // }
@@ -714,7 +783,7 @@
         var row = $('#dg').datagrid('getSelected');
         if (row) {
             if (row.status == 0) {
-                if(row.gl_no == null){
+                if (row.gl_no == null) {
                     $('#dlg_insert').dialog('open');
                     $('#frm_insert').form('load', row);
 
@@ -750,9 +819,9 @@
                                 onLoadSuccess: function(load_invoice) {
                                     $("#plant").combobox('setValue', row.plant);
                                 },
-                                onSelect: function(plant){
+                                onSelect: function(plant) {
                                     $("#sales_invoice").combobox({
-                                        url: '<?= base_url('finance/ar_receipts/readInvoices/') ?>' + customer.id + "/" + btoa(plant.plant),
+                                        url: '<?= base_url('finance/ar_receipts/readInvoices/') ?>' + btoa(customer.id) + "/" + btoa(plant.plant),
                                         valueField: 'sales_invoice',
                                         textField: 'sales_invoice',
                                         multiple: true,
@@ -774,7 +843,7 @@
                         balance_journal();
                         $("#receipt_no").textbox('setValue', row.receipt_no);
                     }, 2000);
-                }else{
+                } else {
                     toastr.error("Cannot Update because this AR Receipt has been created in Posting Journal");
                 }
             } else {
@@ -792,9 +861,9 @@
             url: "<?= base_url('finance/ar_receipts/number/') ?>" + id_menu,
             dataType: "html",
             success: function(result) {
-                if(result == ""){
+                if (result == "") {
                     toastr.info("Please Check Configuration in Serial No First");
-                }else{
+                } else {
                     $("#receipt_no").textbox('setValue', result);
                 }
             }
@@ -875,14 +944,14 @@
                             url: "<?= base_url('closing/locks/checkLock') ?>",
                             data: "period=" + row.receipt_date + "&menus_id=<?= $menus_id ?>",
                             dataType: "json",
-                            success: function (lock) {
-                                if(lock.total > 0){
+                            success: function(lock) {
+                                if (lock.total > 0) {
                                     Swal.close();
                                     toastr.error("This module is not active by Accounting");
                                     return false;
                                 }
 
-                                if(row.gl_no == null){
+                                if (row.gl_no == null) {
                                     $.ajax({
                                         method: 'post',
                                         url: '<?= base_url('finance/ar_receipts/delete') ?>',
@@ -896,13 +965,13 @@
                                         },
                                         error: function(jqXHR, textStatus, errorThrown) {
                                             toastr.error("This data is already used in other modules, You must delete it First", "Error");
-                                            
+
                                         },
                                         complete: function(data) {
                                             $('#dg').datagrid('reload');
                                         }
                                     });
-                                }else{
+                                } else {
                                     toastr.error("Cannot Delete because this AR Receipt has been created in Posting Journal");
                                 }
                             }
@@ -1029,6 +1098,17 @@
             "&filter_receipt_by=" + window.btoa(filter_receipt_by);
 
         window.location.assign('<?= base_url('finance/ar_receipts/printJournal/excel') ?>' + url);
+    }
+
+    function view_journal() {
+        var filter_receipt_no = $("#filter_receipt_no").combobox('getValue');
+
+        if (filter_receipt_no == "") {
+            toastr.warning("Please select Receipt No!");
+        } else {
+            //window.open("<?= base_url('finance/ar_receipts/view_journal/') ?>" + window.btoa(filter_receipt_no), "_blank");
+            window.open("<?= base_url('finance/ar_receipts/view_journal/') ?>" + window.btoa(filter_receipt_no), "_blank", 'location=yes,height=600,width=1200,scrollbars=yes,status=yes');
+        }
     }
 
     function print_voucher() {
@@ -1194,8 +1274,8 @@
                         url: "<?= base_url('closing/locks/checkLock') ?>",
                         data: "period=" + receipt_date + "&menus_id=<?= $menus_id ?>",
                         dataType: "json",
-                        success: function (lock) {
-                            if(lock.total > 0){
+                        success: function(lock) {
+                            if (lock.total > 0) {
                                 toastr.error("This module is not active by Accounting");
                                 return false;
                             }
@@ -1403,14 +1483,14 @@
         });
 
         $("#receipt_type").combobox({
-            onChange: function(val){
-                if(val == "OTHERS"){
+            onChange: function(val) {
+                if (val == "OTHERS") {
                     $("#customer_id").combobox('setValue', "CUS-01-06");
                     $("#plant").combobox('setValue', "OTHER");
                     $("#f_account").show();
                     $("#f_customer").hide();
                     $("#f_plant").hide();
-                }else{
+                } else {
                     $("#customer_id").combobox('clear');
                     $("#plant").combobox('clear');
                     $("#f_account").hide();
@@ -1423,11 +1503,11 @@
                     valueField: 'id',
                     textField: 'name',
                     prompt: "Choose Journal Types",
-                    onLoadSuccess: function(receipt){
+                    onLoadSuccess: function(receipt) {
                         $("#journal_type").combobox('setValue', receipt.id);
-                        
+
                     },
-                    onSelect: function(receipt){
+                    onSelect: function(receipt) {
                         $("#other_account").combogrid('setValue', receipt.account_number);
                         $("#other_account_name").textbox('setValue', receipt.account_name);
                     }
@@ -1474,7 +1554,7 @@
             panelWidth: 320,
             idField: 'account_number',
             textField: 'account_number',
-            mode: 'remote', 
+            mode: 'remote',
             fitColumns: true,
             prompt: 'Choose Account No',
             columns: [
@@ -1488,7 +1568,7 @@
                     width: 200
                 }, ]
             ],
-            onSelect: function(val, row){
+            onSelect: function(val, row) {
                 $("#other_account_name").textbox('setValue', row.account_name);
             }
         });
@@ -1595,6 +1675,6 @@
             return 'background-color:#C8FFCC;';
         } else {
             return 'background-color:#ffd495;';
-        } 
+        }
     }
 </script>

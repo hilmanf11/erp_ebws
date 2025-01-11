@@ -55,7 +55,7 @@ class Purchase_requests extends CI_Controller
         $query = $this->db->query("SELECT b.id, b.number, b.name, a.mpq, a.moq, a.share_order, a.leadtime
             FROM supplier_items a 
             JOIN item_rm b ON a.item_rm_id = b.id
-            WHERE a.supplier_id = '$supplier_id' and b.item_family_id = '$item_famiy_id' and b.number like '%$post%'
+            WHERE a.supplier_id = '$supplier_id' and b.item_family_id = '$item_famiy_id' and a.approved_to = '' and (b.number like '%$post%' or b.id like '%$post%')
             ORDER BY b.number ASC
         ");
         $records = $query->result_array();

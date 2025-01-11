@@ -70,13 +70,14 @@ class Report_outstanding_po2 extends CI_Controller
         $this->db->from('config');
         $config = $this->db->get()->row();
         
-        $sql = $this->db->query("SELECT a.id AS item_rm_id, a.number AS item_rm_number, a.name AS item_rm_name, a.uom, b.po_no,
+        $sql = $this->db->query("SELECT a.id AS item_rm_id, a.number AS item_rm_number, a.name AS item_rm_name, a.uom, b.po_no, e.id as supplier_id, e.name as supplier_name,
             COALESCE(d.begin_stock, 0) AS begin_stock,
             COALESCE(SUM(b.qty), 0) AS qty_po, 
             COALESCE(c.qty_receipt, 0) AS qty_receipt, 
             (COALESCE(d.begin_stock, 0) + COALESCE(SUM(b.qty), 0) - COALESCE(c.qty_receipt, 0)) AS outstanding
         FROM item_rm a
         JOIN purchase_order_others b ON a.id = b.item_rm_id
+        JOIN suppliers e ON b.supplier_id = e.id
         LEFT JOIN (SELECT item_rm_id, po_no, SUM(qty_receipt) AS qty_receipt FROM purchase_order_receipt_others WHERE receipt_date between '$filter_from' and '$filter_to' GROUP BY item_rm_id, po_no) c ON a.id = c.item_rm_id and b.po_no = c.po_no
         LEFT JOIN (SELECT a.id, b.po_no, (COALESCE(SUM(b.qty), 0) - COALESCE(c.qty_receipt, 0)) AS begin_stock
             FROM item_rm a
@@ -118,7 +119,9 @@ class Report_outstanding_po2 extends CI_Controller
                     <th width="20">No</th>
                     <th colspan="2">Part No EBWS</th>
                     <th colspan="2">Part No Supplier</th>
-                    <th colspan="3">Description</th>
+                    <th>Description</th>
+                    <th>Supplier ID</th>
+                    <th>Supplier Name</th>
                     <th>Uom</th>
                     <th>Begin Balance</th>
                     <th>Qty PO</th>
@@ -135,7 +138,9 @@ class Report_outstanding_po2 extends CI_Controller
                             <td style="text-align:center">' . $no . '</td>
                             <td colspan="2" style="mso-number-format:\@;">' . $record['item_rm_id'] . '</td>
                             <td colspan="2" style="mso-number-format:\@;">' . $record['item_rm_number'] . '</td>
-                            <td colspan="3" style="mso-number-format:\@;">' . $record['item_rm_name'] . '</td>
+                            <td style="mso-number-format:\@;">' . $record['item_rm_name'] . '</td>
+                            <td>' . $record['supplier_id'] . '</td>
+                            <td>' . $record['supplier_name'] . '</td>
                             <td>' . $record['uom'] . '</td>
                             <td style="text-align:right;">' . number_format(@$record['begin_stock'], 2) . '</td>
                             <td style="text-align:right;">' . number_format($record['qty_po'], 2) . '</td>
@@ -155,7 +160,7 @@ class Report_outstanding_po2 extends CI_Controller
                                 <th>Trans Date</th>
                                 <th>Supplier ID</th>
                                 <th>Supplier Name</th>
-                                <th>PO No</th>
+                                <th>PO/POR No</th>
                                 <th>Invoice No</th>
                                 <th>Begin</th>
                                 <th>Qty PO</th>

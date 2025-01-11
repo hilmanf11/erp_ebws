@@ -38,14 +38,17 @@ class Journal_posting_banks extends CI_Controller
         $get = $this->input->get();
         $trans_type = base64_decode($get['trans_type']);
         $account_number = base64_decode($get['account_number']);
+        $journal_date = base64_decode($get['journal_date']);
+        $trans_date = strtotime("Y-m-01", strtotime($journal_date));
 
         $this->db->select('a.trans_date, a.number, a.document_no, a.journal_type_id, a.company_name, abs(a.local_debit - a.local_credit) as amount');
         $this->db->from('journal_postings a');
         // $this->db->where('a.modul', $trans_type);
         $this->db->where('a.status_bank', 0);
         $this->db->where('a.account_number', $account_number);
+        $this->db->where("a.trans_date between '$trans_date' and '$journal_date'");
         $this->db->group_by('a.number');
-        $this->db->order_by('a.number', 'asc');
+        $this->db->order_by('a.trans_date', 'asc');
         $records = $this->db->get()->result_array();
 
         echo json_encode($records);

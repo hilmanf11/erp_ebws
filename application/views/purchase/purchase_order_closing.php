@@ -292,6 +292,19 @@
                 });
             }
         });
+
+        $("#filter_po_no").combobox({
+            url: '<?= base_url('purchase/purchase_order_closing/readPono') ?>',
+            valueField: 'po_no',
+            textField: 'po_no',
+            prompt: "Select Del. Sch No",
+            icons: [{
+                iconCls: 'icon-clear',
+                handler: function(e) {
+                    $(e.data.target).combobox('clear').combobox('textbox').focus();
+                }
+            }],
+        });
     }
 
     function saved() {
@@ -765,7 +778,11 @@
     function print_po() {
         var rows = $('#dg').treegrid('getSelected');
         if (rows) {
-            window.open("<?= base_url('purchase/purchase_order_closing/print_po/') ?>" + window.btoa(rows.po_no), "_blank");
+            if(rows.approved_to == ""){
+                window.open("<?= base_url('purchase/purchase_order_closing/print_po/') ?>" + window.btoa(rows.po_no), "_blank");
+            }else{
+                toastr.error("Approval Still Checking!!");
+            }
         } else {
             toastr.warning("Please select data in the table first!");
         }

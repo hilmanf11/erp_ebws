@@ -293,8 +293,8 @@ class Purchase_order_receipt_others extends CI_Controller
             e.asset_code,
             e.asset_code_sub,
             b.uom,
-            round(a.delivery - COALESCE(d.qty_os, 0)) as qty_delivery,
-            round(a.delivery - COALESCE(d.qty_os, 0)) as qty_receipt,
+            (a.delivery - COALESCE(d.qty_os, 0)) as qty_delivery,
+            (a.delivery - COALESCE(d.qty_os, 0)) as qty_receipt,
             CEIL(((a.delivery - COALESCE(d.qty_os, 0)) / f.mpq)) as qty_label");
         $this->db->from('purchase_confirm_others a');
         $this->db->join('item_rm b', 'a.item_rm_id = b.id');

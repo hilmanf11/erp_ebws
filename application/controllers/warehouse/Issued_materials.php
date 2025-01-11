@@ -56,73 +56,72 @@ class Issued_materials extends CI_Controller
         if ($this->input->post()) {
             $request_no = $this->input->post('request_no');
 
-            $readIssued = $this->crud->read("issued_materials", [], ["request_no" => $request_no]);
+            $readIssued = $this->crud->reads("issued_materials", [], ["request_no" => $request_no]);
             $totalRows = 1;
             $records = array();
-            if(empty($readIssued)){
-                $this->db->select('a.*, b.number as item_fg_number, c.id as item_rm_id, c.number as item_rm_number, c.name as item_rm_name, c.uom, d.period, d.wp');
-                $this->db->from('supply_sheets a');
+
+            $this->db->select('a.*, b.number as item_fg_number, c.id as item_rm_id, c.number as item_rm_number, c.name as item_rm_name, c.uom, d.period, d.wp');
+            $this->db->from('supply_sheets a');
+            $this->db->join('item_fg b', 'a.item_fg_id = b.id');
+            $this->db->join('item_rm c', 'a.item_rm_id = c.id');
+            $this->db->join('production_schedules d', 'a.workorder = d.workorder and a.item_fg_id = d.item_fg_id');
+            $this->db->join('bom f', 'a.item_fg_id = f.item_fg_id and a.item_rm_id = f.item_rm_id');
+            $this->db->where('a.request_no', $request_no);
+            // $this->db->where('d.period !=', '202410');
+            $totalRows = $this->db->count_all_results('', false);
+            //Get Data Array
+            $records = $this->db->get()->result_array();
+            if ($totalRows <= 0) {
+                $this->db->select("a.*, '-' as workorder, a.qty as qty_act, b.number as item_fg_number, c.id as item_rm_id, c.number as item_rm_number, c.name as item_rm_name, b.uom");
+                $this->db->from('supply_materials a');
                 $this->db->join('item_fg b', 'a.item_fg_id = b.id');
                 $this->db->join('item_rm c', 'a.item_rm_id = c.id');
-                $this->db->join('production_schedules d', 'a.workorder = d.workorder and a.item_fg_id = d.item_fg_id');
-                $this->db->join('bom f', 'a.item_fg_id = f.item_fg_id and a.item_rm_id = f.item_rm_id');
+                $this->db->where('a.approved_to', "");
                 $this->db->where('a.request_no', $request_no);
-                // $this->db->where('d.period !=', '202410');
                 $totalRows = $this->db->count_all_results('', false);
                 //Get Data Array
                 $records = $this->db->get()->result_array();
                 if ($totalRows <= 0) {
-                    $this->db->select("a.*, '-' as workorder, a.qty as qty_act, b.number as item_fg_number, c.id as item_rm_id, c.number as item_rm_number, c.name as item_rm_name, b.uom");
-                    $this->db->from('supply_materials a');
+                    $this->db->select("a.*, a.qty as qty_act, b.number as item_fg_number, c.id as item_rm_id, c.number as item_rm_number, c.name as item_rm_name, b.uom");
+                    $this->db->from('supply_requestions a');
                     $this->db->join('item_fg b', 'a.item_fg_id = b.id');
                     $this->db->join('item_rm c', 'a.item_rm_id = c.id');
-                    $this->db->where('a.approved_to', "");
+                    // $this->db->where('a.approved_to', "");
                     $this->db->where('a.request_no', $request_no);
                     $totalRows = $this->db->count_all_results('', false);
                     //Get Data Array
                     $records = $this->db->get()->result_array();
-                    if ($totalRows <= 0) {
-                        $this->db->select("a.*, a.qty as qty_act, b.number as item_fg_number, c.id as item_rm_id, c.number as item_rm_number, c.name as item_rm_name, b.uom");
-                        $this->db->from('supply_requestions a');
-                        $this->db->join('item_fg b', 'a.item_fg_id = b.id');
-                        $this->db->join('item_rm c', 'a.item_rm_id = c.id');
-                        $this->db->where('a.approved_to', "");
-                        $this->db->where('a.request_no', $request_no);
-                        $totalRows = $this->db->count_all_results('', false);
-                        //Get Data Array
-                        $records = $this->db->get()->result_array();
-                    }
                 }
+            }
 
-                if(count($records) > 0){
-                    foreach ($records as $record) {
-                        $item_fg_id = $record['item_fg_id'];
-                        $item_rm_id = $record['item_rm_id'];
-                        $request_no = $record['request_no'];
-                        $period = $record['period'];
-                        $wp = $record['wp'];
-                        $workorder = $record['workorder'];
-                        $qty = $record['qty_act'];
-                        
-                        $dataFinal = array(
-                            "item_fg_id" => $item_fg_id,
-                            "item_rm_id" => $item_rm_id,
-                            "request_no" => $request_no,
-                            "period" => $period,
-                            "wp" => $wp,
-                            "workorder" => $workorder,
-                            "qty" => $qty,
-                        );
-        
-                        $issued_materials = $this->crud->read("issued_materials", [], ["request_no" => $request_no, "workorder" => $workorder, "item_fg_id" => $item_fg_id, "item_rm_id" => $item_rm_id]);
-                        if (!$issued_materials) {
-                            $send = $this->crud->create('issued_materials', $dataFinal);
-                            $this->db->update('supply_requestions', ["status" => 0], ["request_no" => $request_no, "item_rm_id" => $item_rm_id]);
-                            // echo $send;
-                        } else {
-                            $send = $this->crud->update('issued_materials', ["request_no" => $request_no, "workorder" => $workorder, "item_fg_id" => $item_fg_id, "item_rm_id" => $item_rm_id], $dataFinal);
-                            // echo $send;
-                        }
+            if(count($records) != count($readIssued)){
+                foreach ($records as $record) {
+                    $item_fg_id = $record['item_fg_id'];
+                    $item_rm_id = $record['item_rm_id'];
+                    $request_no = $record['request_no'];
+                    $period = $record['period'];
+                    $wp = $record['wp'];
+                    $workorder = $record['workorder'];
+                    $qty = $record['qty_act'];
+                    
+                    $dataFinal = array(
+                        "item_fg_id" => $item_fg_id,
+                        "item_rm_id" => $item_rm_id,
+                        "request_no" => $request_no,
+                        "period" => $period,
+                        "wp" => $wp,
+                        "workorder" => $workorder,
+                        "qty" => $qty,
+                    );
+    
+                    $issued_materials = $this->crud->read("issued_materials", [], ["request_no" => $request_no, "workorder" => $workorder, "item_fg_id" => $item_fg_id, "item_rm_id" => $item_rm_id]);
+                    if (!$issued_materials) {
+                        $send = $this->crud->create('issued_materials', $dataFinal);
+                        $this->db->update('supply_requestions', ["status" => 0], ["request_no" => $request_no, "item_rm_id" => $item_rm_id]);
+                        // echo $send;
+                    } else {
+                        $send = $this->crud->update('issued_materials', ["request_no" => $request_no, "workorder" => $workorder, "item_fg_id" => $item_fg_id, "item_rm_id" => $item_rm_id], $dataFinal);
+                        // echo $send;
                     }
                 }
             }

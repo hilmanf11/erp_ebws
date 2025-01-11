@@ -318,10 +318,8 @@ class Report_history_transactions_fg extends CI_Controller
                                         <td>' . $rgp_status . '</td>
                                         <td>' . $user->name . '</td>
                                         <td>' . $rgp->transaction_date . '</td>
-                                        <td>' . $rgp->company_id . '</td>
+                                        <td>' . $rgp->number . '</td>
                                         <td>' . $rgp->company_name . '</td>
-                                        <td>' . $rgp->reference_number . '</td>
-                                        <td>' . $rgp->rgp_number . '</td>
                                         <td style="text-align:right;">' . number_format($begin, 2) . '</td>
                                         <td style="text-align:right;">' . number_format($rgp_qty_in) . '</td>
                                         <td style="text-align:right;">' . number_format($rgp_qty_out, 2)  . '</td>

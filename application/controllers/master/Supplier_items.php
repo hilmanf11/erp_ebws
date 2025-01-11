@@ -432,7 +432,7 @@ class Supplier_items extends CI_Controller
             // $supplier_item_share = $this->crud->read('supplier_items', [], ["item_rm_id" => @$item_rm->id]);
             $supplier_items = $this->crud->read('supplier_items', [], ["supplier_id" => $data['supplier_id'], "item_rm_id" => @$item_rm->id]);
             // $supplier_item_histories = $this->crud->read("supplier_item_histories", [], ["supplier_id" => $data['supplier_id'], "item_rm_id" => @$item_rm->id, "price" => $data['price']]);
-            $sqlSupItm = $this->db->query("SELECT SUM(share_order) as share_order FROM supplier_items WHERE item_rm_id = '$item_rm->id' GROUP BY item_rm_id");
+            $sqlSupItm = $this->db->query("SELECT SUM(share_order) as share_order FROM supplier_items WHERE item_rm_id = '$item_rm->id' and supplier_id != '$supplier->id' GROUP BY item_rm_id");
             $rowSupItm = $sqlSupItm->row();
 
             $dataFinal = array(
@@ -457,8 +457,8 @@ class Supplier_items extends CI_Controller
                 echo json_encode(array("title" => "Not Found", "message" => "Supplier Code " . $data['supplier_id'] . " Not Found", "theme" => "error"));
             }elseif(empty($item_rm->id)){
                 echo json_encode(array("title" => "Not Found", "message" => "Part No " . $data['item_rm_id'] . " Not Found", "theme" => "error"));
-            }elseif(($rowSupItm->share_order + $data['share_order']) > 100){
-                echo json_encode(array("title" => "Share Order", "message" => "Share Order for Part No " . $post['item_rm_id'] . " Cannot >= 100", "theme" => "error"));
+            }elseif((@$rowSupItm->share_order + $data['share_order']) > 100){
+                echo json_encode(array("title" => "Share Order", "message" => "Share Order for Part No " . $data['item_rm_id'] . " Cannot >= 100", "theme" => "error"));
             }elseif($data['mpq'] <= 0 || $data['moq'] <= 0 || $data['share_order'] <= 0 || $data['leadtime'] <= 0){
                 echo json_encode(array("title" => "MPQ 0", "message" => "MPQ or MOQ for Part No " . $data['item_rm_id'] . " Cannot <= 0", "theme" => "error"));
             }elseif(@$supplier_items->supplier_id != "") {
