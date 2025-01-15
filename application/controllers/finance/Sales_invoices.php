@@ -667,7 +667,7 @@ class Sales_invoices extends CI_Controller
         $grand_qty = 0;
         $grand_total = 0;
         for ($i = 0; $i < $page; $i++) {
-            $this->db->select('a.*, g.ship_by, d.name as customer_name, c.hsn_code, c.number_customer, c.name as item_fg_name, b.bill_address, b.ship_address, b.pan_no, b.gst_no, b.vendor_code, f.igst as p_igst, f.sgst as p_sgst, f.cgst as p_cgst');
+            $this->db->select('a.*, g.ship_by, d.name as customer_name, c.hsn_code, c.number_customer, c.name as item_fg_name, b.bill_address, b.ship_address, b.vendor_code, b.pan_no, b.gst_no, b.vendor_code, f.igst as p_igst, f.sgst as p_sgst, f.cgst as p_cgst');
             $this->db->from('sales_invoices a');
             $this->db->join('customers d', 'a.customer_id = d.id');
             $this->db->join('customer_address b', 'a.customer_id = b.customer_id and a.plant = b.plant');
@@ -863,7 +863,8 @@ class Sales_invoices extends CI_Controller
                                     <td style="text-align:right; border-top: 0; border-bottom: 0;">' . number_format((($records[$a]['price'] * $records[$a]['qty']) + $records[$a]['cgst'] + $records[$a]['igst'] + $records[$a]['sgst']), 2) . '</td>
                                 </tr>';
                     $urutan = sprintf("%02s", $no - 1);
-                    $dataQr2 .= " $urutan ".$records[$a]['number_customer']." ".$records[$a]['hsn_code']." ".$records[$a]['price'];
+                    // $dataQr2 .= " $urutan ".$records[$a]['number_customer']." ".$records[$a]['hsn_code']." ".$records[$a]['price'];
+                    $dataQr2 .= $records[$a]['number_customer']."   ".$records[$a]['hsn_code']."    ".round($records[$a]['qty'])."  ".$records[$a]['price']."   ";
                     $sub_qty += ($records[$a]['qty']);
                     $sub_total += ($records[$a]['price'] * $records[$a]['qty']);
                     $cgst += $records[$a]['cgst'];
@@ -891,7 +892,8 @@ class Sales_invoices extends CI_Controller
                 $no++;
             }
 
-            $dataQr = @$records[0]['customer_po']." ".@$records[0]['number']." ".date("d.m.Y", strtotime(@$records[0]['trans_date']))." ".$config->gst_no." ".($sub_total + ($cgst + $sgst + $igst))." ".$sub_total. " " .$dataQr2;
+            $dataQr = @$records[0]['vendor_code']."     ".@$records[0]['customer_po']."     ".@$records[0]['number']."      ".date("d.m.Y", strtotime(@$records[0]['trans_date']))."    ".
+                       $config->gst_no."    ".($sub_total + ($cgst + $sgst + $igst))."  ".$sub_total."  0   ".$sgst."   ".$igst."   ".$sgst."   ".$records[0]['tcs']."  ".$dataQr2;
             $this->createQrcode($dataQr, "assets/image/qrcode/", $sales_invoice->number."-00");
 
             $html .= '<tr>

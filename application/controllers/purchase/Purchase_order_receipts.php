@@ -408,45 +408,31 @@ class Purchase_order_receipts extends CI_Controller
         $receipt_id = $post['receipt_id'];
         $qty = $post['qty'];
         
-        // $po_receipt = $this->crud->read('purchase_order_receipts', [], ["receipt_id" => $receipt_id]);
-        
-        $sqlGetID = $this->db->query("SELECT max(label_no) as kode FROM purchase_order_labels WHERE receipt_id = '$receipt_id'");
-        $rowID = $sqlGetID->row();
-        $label = $rowID->kode;
-        if ($label == NULL) {
-            $autoID = $receipt_id . sprintf("%04s", $label + 1);
-        } else {
-            $urutan = (int) substr($label, -4);
-            $autoID = $receipt_id . sprintf("%04s", $urutan + 1);
+        $po_receipt = $this->crud->read('purchase_order_receipts', [], ["receipt_id" => $receipt_id]);
+        $po_label = $this->crud->reads('purchase_order_labels', [], ["receipt_id" => $receipt_id]);
+
+        if($po_receipt->qty_label >= count($po_label)){
+            $sqlGetID = $this->db->query("SELECT max(label_no) as kode FROM purchase_order_labels WHERE receipt_id = '$receipt_id'");
+            $rowID = $sqlGetID->row();
+            $label = $rowID->kode;
+            if ($label == NULL) {
+                $autoID = $receipt_id . sprintf("%04s", $label + 1);
+            } else {
+                $urutan = (int) substr($label, -4);
+                $autoID = $receipt_id . sprintf("%04s", $urutan + 1);
+            }
+            
+            $arrLabel = [
+                "receipt_id" => strtoupper($receipt_id),
+                "label_no" => strtoupper($autoID),
+                "qty" => $qty,
+            ];
+
+            $send = $this->crud->create('purchase_order_labels', $arrLabel);
+            die($send);
+        }else{
+            die(json_encode(array("title" => "Finish", "message" => "Already more Qty Label", "theme" => "error")));
         }
-
-        // $date = new DateTime($po_receipt->receipt_date);
-        // $p_month = $date->format('m'); 
-        // $p_year = $date->format('y'); 
-
-        // $sqlGetLot = $this->db->query("SELECT max(lot_no) as kode FROM purchase_order_labels WHERE receipt_id = '$receipt_id'");
-        // $rowLot = $sqlGetLot->row();
-        // $lot_no = $rowLot->kode;
-        
-        // if ($lot_no === NULL) {
-        //     $autoLot = sprintf("%03s", 1).$p_month.$p_year; // Jika lot_no NULL, mulai dari 1
-        // } else {
-        //     $urutan = (int) substr($lot_no, 0, 3); // Ambil angka urutan dari lot_no yang ada
-        //     $autoLot = sprintf("%03s", $urutan + 1).$p_month.$p_year; // Format urutan yang baru
-        // }                
-
-        //Simpan Label
-        $arrLabel = [
-            "receipt_id" => strtoupper($receipt_id),
-            "label_no" => strtoupper($autoID),
-            "qty" => $qty,
-            // "lot_no" => $autoLot,
-            // "p_month" => $p_month,
-            // "p_year" => $p_year 
-        ];
-
-        $send = $this->crud->create('purchase_order_labels', $arrLabel);
-        die($send);
     }
 
     public function uploadAttachment($file_bf = ""){

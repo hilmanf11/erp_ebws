@@ -66,7 +66,7 @@ class purchase_orders_2 extends CI_Controller
         $this->db->join('users d', 'a.created_by = d.username');
         $this->db->where('a.status', 0);
         $this->db->where("(a.approved_to = '' or a.approved_to is null)");
-        $this->db->where('a.supplier_id', $supplier_id);
+        $this->db->like('a.supplier_id', $supplier_id);
         $this->db->like('a.po_no', $post);
         $this->db->group_by('a.po_no');
         $this->db->order_by('a.created_date', 'desc');
@@ -173,15 +173,19 @@ class purchase_orders_2 extends CI_Controller
                 $this->db->join('item_rm b', 'a.item_rm_id = b.id');
                 $this->db->join('item_familys c', 'b.item_family_id = c.id');
                 $this->db->join('suppliers d', 'a.supplier_id = d.id');
-                $this->db->join('supplier_items e', "a.item_rm_id = e.item_rm_id and a.supplier_id = e.supplier_id and e.approved_to = ''");
+                $this->db->join('supplier_items e', "a.item_rm_id = e.item_rm_id and a.supplier_id = e.supplier_id and e.approved_to = ''", "left");
                 $this->db->join('(SELECT po_no, COUNT(status) as total_status_close FROM purchase_order_others WHERE status = 1 GROUP BY po_no) g', 'a.po_no = g.po_no', 'left');
                 $this->db->where('a.deleted', 0);
                 if ($filter_from != "" or $filter_to != "") {
                     $this->db->where('a.po_date >=', $filter_from);
                     $this->db->where('a.po_date <=', $filter_to);
                 }
-                $this->db->like('a.po_no', $filter_po_no);
-                $this->db->like('d.id', $filter_suppliers);
+                if($filter_po_no != ""){
+                    $this->db->where('a.po_no', $filter_po_no);
+                }
+                if($filter_suppliers != ""){
+                    $this->db->where('d.id', $filter_suppliers);
+                }
                 $this->db->group_by('a.po_no');
                 // $this->db->order_by('a.status', 'ASC');
                 $this->db->order_by('a.po_no', 'DESC');

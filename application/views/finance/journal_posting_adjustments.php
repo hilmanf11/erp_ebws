@@ -3,10 +3,11 @@
         <tr>
             <th rowspan="2" field="ck" checkbox="true"></th>
             <th rowspan="2" data-options="field:'details',width:90,align:'center', formatter:btnDetails">Detail</th>
-            <th rowspan="2" data-options="field:'journal_date',width:100,align:'center'">Journal Date</th>
-            <th rowspan="2" data-options="field:'number',width:140,align:'center'">GL No</th>
+            <th rowspan="2" data-options="field:'journal_date',width:100,align:'center'">Posting Date</th>
+            <th rowspan="2" data-options="field:'number',width:140,align:'center'">Voucher No</th>
             <!-- <th rowspan="2" data-options="field:'journal_type_name',width:100,halign:'center'">Journal Type</th> -->
-            <th rowspan="2" data-options="field:'document_no',width:200,halign:'center'">Document No</th>
+            <th rowspan="2" data-options="field:'document_no',width:200,halign:'center'">Invoice No</th>
+            <th rowspan="2" data-options="field:'trans_date',width:120,halign:'center'">Invoice Date</th>
             <!-- <th rowspan="2" data-options="field:'modul',width:150,halign:'center'">Modul</th> -->
             <th rowspan="2" data-options="field:'tds',width:100,halign:'center'">TDS</th>
             <th colspan="3" data-options="field:'',width:200,halign:'center'">Original Currency</th>
@@ -41,7 +42,7 @@
             <legend><b>Form Filter Data</b></legend>
             <div style="width:50%; float:left;">
                 <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Journal Date</span>
+                    <span style="width:35%; display:inline-block;">Posting Date</span>
                     <input style="width:28%;" id="filter_from" class="easyui-datebox" value="<?= date("Y-m-01") ?>" data-options="formatter:myformatter,parser:myparser, editable:false"> To
                     <input style="width:28%;" id="filter_to" class="easyui-datebox" value="<?= date("Y-m-t") ?>" data-options="formatter:myformatter,parser:myparser, editable:false">
                 </div>
@@ -79,7 +80,7 @@
             <legend><b>Form Data</b></legend>
             <div style="width:30%; float:left;">
                 <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Journal Date</span>
+                    <span style="width:35%; display:inline-block;">Posting Date</span>
                     <input style="width:60%;" name="journal_date" id="journal_date" required="" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
                 </div>
                 <div class="fitem" hidden>
@@ -107,11 +108,11 @@
             </div>
             <div style="width:30%; float:left;">
                 <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Document Date</span>
+                    <span style="width:35%; display:inline-block;">Invoice Date</span>
                     <input style="width:60%;" name="document_date" id="document_date" required="" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
                 </div>
                 <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Document No</span>
+                    <span style="width:35%; display:inline-block;">Invoice No</span>
                     <input style="width:60%;" name="document_no" required id="document_no" class="easyui-textbox">
                 </div>
                 <div class="fitem">
@@ -287,9 +288,9 @@
     <table id="dg3" class="easyui-datagrid" style="width:100%;" showFooter="true">
         <thead>
             <tr>
-                <th data-options="field:'journal_date',width:100,halign:'center'">Journal Date</th>
-                <th data-options="field:'trans_date',width:120,halign:'center'">Document Date</th>
-                <th data-options="field:'document_no',width:220,halign:'center'">Document No</th>
+                <th data-options="field:'journal_date',width:100,halign:'center'">Posting Date</th>
+                <th data-options="field:'trans_date',width:120,halign:'center'">Invoice Date</th>
+                <th data-options="field:'document_no',width:220,halign:'center'">Invoice No</th>
                 <!-- <th data-options="field:'invoice_no',width:150,halign:'center'">Supplier Invoice</th> -->
                 <th data-options="field:'company_name',width:200,halign:'center'">Company Name</th>
                 <th data-options="field:'account_number',width:100,halign:'center'">Account No</th>

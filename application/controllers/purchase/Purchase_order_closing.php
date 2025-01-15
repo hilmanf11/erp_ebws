@@ -164,7 +164,14 @@ class Purchase_order_closing extends CI_Controller
                     SUM(a.price) as price, 
                     SUM(a.total) as total_price,
                     COUNT(a.status) as total_status,
-                    g.total_status_close');
+                    g.total_status_close,
+                    a.approved_by,
+                    a.approved_to,
+                    a.approved_date,
+                    a.created_by,
+                    a.created_date,
+                    a.updated_by,
+                    a.updated_date');
                 $this->db->from('purchase_orders a');
                 $this->db->join('item_rm b', 'a.item_rm_id = b.id');
                 $this->db->join('item_familys c', 'b.item_family_id = c.id');
@@ -212,6 +219,13 @@ class Purchase_order_closing extends CI_Controller
                         "qty" => $record['qty'],
                         "price" => $record['price'],
                         "total_price" => $record['total_price'],
+                        "approved_by" => $record['approved_by'],
+                        "approved_to" => $record['approved_to'],
+                        "approved_date" => $record['approved_date'],
+                        "created_by" => $record['created_by'],
+                        "created_date" => $record['created_date'],
+                        "updated_by" => $record['updated_by'],
+                        "updated_date" => $record['updated_date'],
                         "state" => "closed",
                         "datatable" => 1
                     );

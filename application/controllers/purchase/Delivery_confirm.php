@@ -100,6 +100,16 @@ class Delivery_confirm extends CI_Controller
         echo json_encode($data);
     }
 
+    public function checkInvoice(){
+        $invoice_no = $this->input->post("invoice_no");
+        $read = $this->crud->reads("purchase_order_receipts", [], ["bc_document" => $invoice_no, "status" => 0]);
+        if(count($read) > 0){
+            die("NG");
+        }else{
+            die("OK");
+        }
+    }
+
     public function datatables()
     {
         if ($this->input->post()) {

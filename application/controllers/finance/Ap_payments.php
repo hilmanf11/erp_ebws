@@ -426,7 +426,7 @@ class Ap_payments extends CI_Controller
             $where_por = "por_no = '-'";
         }
 
-        $records = $this->crud->query("SELECT DISTINCT `number`, journal_type_id, invoice_no FROM purchase_invoices WHERE (`number` like '%$post%' or invoice_no like '%$post%') and supplier_id = '$supplier_id' and due_date <= '$payment_date' and `status` = 0");
+        $records = $this->crud->query("SELECT DISTINCT `number`, journal_type_id, invoice_no, invoice_date, due_date FROM purchase_invoices WHERE (`number` like '%$post%' or invoice_no like '%$post%') and supplier_id = '$supplier_id' and `status` = 0 ORDER BY due_date asc");
         echo json_encode($records);
     }
 

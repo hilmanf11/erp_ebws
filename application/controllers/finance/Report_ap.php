@@ -134,7 +134,7 @@ class Report_ap extends CI_Controller
                             <th rowspan="2">Gate Entry</th>
                             <th rowspan="2">Gate Entry<br>Date</th>
                             <th rowspan="2">Voucher No</th>
-                            <th rowspan="2">Voucher Date</th>
+                            <th rowspan="2">Posting Date</th>
                             <th rowspan="2">Account No</th>
                             <th rowspan="2">Currency</th>
                             <th colspan="3">LOCAL CURRENCY</th>
@@ -177,7 +177,7 @@ class Report_ap extends CI_Controller
                         WHERE a.payment_date between '$filter_from' and '$filter_to' and a.supplier_id = '$supplier_id' GROUP BY a.payment_no
                         )
                     UNION 
-                        (SELECT a.trans_date as trans_date, '-' as due_date, a.invoice_no, a.document_no, a.account_number, a.number as voucher_no, a.currency, SUM(a.original_debit) as original_debit, SUM(a.original_credit) as original_credit, SUM(a.local_debit) as local_debit, SUM(a.local_credit) as local_credit, a.rates, a.description,a.trans_date as voucher_date,'-' as status_purchase, '-' as por_no, '-' as receipt_date
+                        (SELECT a.trans_date as trans_date, '-' as due_date, a.invoice_no, a.document_no, a.account_number, a.number as voucher_no, a.currency, SUM(a.original_debit) as original_debit, SUM(a.original_credit) as original_credit, SUM(a.local_debit) as local_debit, SUM(a.local_credit) as local_credit, a.rates, a.description,a.journal_date as voucher_date,'-' as status_purchase, '-' as por_no, '-' as receipt_date
                         FROM journal_postings a
                         WHERE a.journal_date between '$filter_from' and '$filter_to' and (a.company_id = '$supplier_id') and a.modul in ('CURRENCY REVALUATION','ADJUSTMENT') and a.account_number IN ('16000001','16000002','16000003','16000004','16000005','16000006','16000007','16000008','28000003','28000006')
                         GROUP BY a.number, a.account_number, a.document_no)

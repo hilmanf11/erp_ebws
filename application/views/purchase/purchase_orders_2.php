@@ -318,6 +318,19 @@
                 });
             }
         });
+
+        $("#filter_po_no").combobox({
+            url: '<?= base_url('purchase/purchase_orders_2/readPono') ?>',
+            valueField: 'po_no',
+            textField: 'po_no',
+            prompt: "Select Purchase Order No",
+            icons: [{
+                iconCls: 'icon-clear',
+                handler: function(e) {
+                    $(e.data.target).combobox('clear').combobox('textbox').focus();
+                }
+            }],
+        });
     }
 
     function saved() {

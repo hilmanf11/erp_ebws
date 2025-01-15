@@ -246,6 +246,7 @@
         $('#dg2').datagrid('loadData', []);
         $("#supplier_id").combogrid('enable');
         $("#delivery_no").textbox('enable');
+        $("#awb_date").datebox("setValue", "<?= date("Y-m-d") ?>");
         // $("#invoice_no").textbox('enable');
         // $("#invoice_date").datebox('enable');
     }

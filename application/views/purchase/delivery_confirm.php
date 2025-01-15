@@ -246,6 +246,7 @@
         $('#dg2').datagrid('loadData', []);
         $("#supplier_id").combogrid('enable');
         $("#delivery_no").textbox('enable');
+        $("#awb_date").datebox("setValue", "<?= date("Y-m-d") ?>");
         // $("#invoice_no").textbox('enable');
         // $("#invoice_date").datebox('enable');
     }
@@ -770,77 +771,90 @@
                     var attachment = $("#attachment").textbox('getValue');
 
                     if(supplier_id != "" && delivery_no != "" && invoice_no != "" && invoice_date != ""){
-                        $('#dlg_insert').dialog('close');
+                        $.ajax({
+                            type: "post",
+                            url: "<?= base_url('purchase/delivery_confirm/checkInvoice') ?>",
+                            data: "invoice_no=" + invoice_no,
+                            dataType: "html",
+                            success: function (data) {
+                                if(data == "NG"){
+                                    toastr.error("Invoice No already in Gate Entry, You cannot create the Invoice No or please Cancel First in Gate Entry");
+                                    return false;
+                                }
 
-                        Swal.fire({
-                            title: 'Please Wait...',
-                            showConfirmButton: false,
-                            allowOutsideClick: false,
-                            allowEscapeKey: false,
-                            didOpen: () => {
-                                Swal.showLoading();
-                            },
-                        });
+                                $('#dlg_insert').dialog('close');
 
-                        $('#dg2').datagrid('acceptChanges');
-                        var rows = $('#dg2').datagrid('getRows');
-                        var totalrows = rows.length;
-                        endEditing();
+                                Swal.fire({
+                                    title: 'Please Wait...',
+                                    showConfirmButton: false,
+                                    allowOutsideClick: false,
+                                    allowEscapeKey: false,
+                                    didOpen: () => {
+                                        Swal.showLoading();
+                                    },
+                                });
 
-                        requestData(totalrows, rows);
-                        function requestData(total, json, number = 1, value = 0, success = 1, failed = 1) {
-                            var i = (number - 1);
-                            if (value < 100) {
-                                value = Math.floor((number / total) * 100);
+                                $('#dg2').datagrid('acceptChanges');
+                                var rows = $('#dg2').datagrid('getRows');
+                                var totalrows = rows.length;
+                                endEditing();
 
-                                if(json[i].balance >= 0){
-                                    $.ajax({
-                                        type: "post",
-                                        url: '<?= base_url('purchase/delivery_confirm/create') ?>',
-                                        data: {
-                                            supplier_id: supplier_id,
-                                            delivery_no: delivery_no,
-                                            invoice_no: invoice_no,
-                                            invoice_date: invoice_date,
-                                            awb_no: awb_no,
-                                            awb_date: awb_date,
-                                            attachment: attachment,
-                                            po_no: json[i].po_no,
-                                            po_date: json[i].po_date,
-                                            item_rm_id: json[i].item_rm_id,
-                                            uom: json[i].uom,
-                                            eta: json[i].eta,
-                                            etd: json[i].etd,
-                                            qty: json[i].qty,
-                                            delivery: json[i].delivery,
-                                            balance: json[i].balance,
-                                            id: json[i].id,
-                                        },
-                                        dataType: "json",
-                                        success: function(result) {
-                                            if (i == (total - 1)) {
-                                                Swal.close();
-                                                Swal.fire({
-                                                    title: result.message,
-                                                    icon: result.theme,
-                                                    confirmButtonText: 'Ok',
-                                                    allowOutsideClick: false,
-                                                }).then((result) => {
-                                                    if (result.isConfirmed) {
-                                                        // window.location.reload();
-                                                        $('#dg').datagrid('reload');
+                                requestData(totalrows, rows);
+                                function requestData(total, json, number = 1, value = 0, success = 1, failed = 1) {
+                                    var i = (number - 1);
+                                    if (value < 100) {
+                                        value = Math.floor((number / total) * 100);
+
+                                        if(json[i].balance >= 0){
+                                            $.ajax({
+                                                type: "post",
+                                                url: '<?= base_url('purchase/delivery_confirm/create') ?>',
+                                                data: {
+                                                    supplier_id: supplier_id,
+                                                    delivery_no: delivery_no,
+                                                    invoice_no: invoice_no,
+                                                    invoice_date: invoice_date,
+                                                    awb_no: awb_no,
+                                                    awb_date: awb_date,
+                                                    attachment: attachment,
+                                                    po_no: json[i].po_no,
+                                                    po_date: json[i].po_date,
+                                                    item_rm_id: json[i].item_rm_id,
+                                                    uom: json[i].uom,
+                                                    eta: json[i].eta,
+                                                    etd: json[i].etd,
+                                                    qty: json[i].qty,
+                                                    delivery: json[i].delivery,
+                                                    balance: json[i].balance,
+                                                    id: json[i].id,
+                                                },
+                                                dataType: "json",
+                                                success: function(result) {
+                                                    if (i == (total - 1)) {
+                                                        Swal.close();
+                                                        Swal.fire({
+                                                            title: result.message,
+                                                            icon: result.theme,
+                                                            confirmButtonText: 'Ok',
+                                                            allowOutsideClick: false,
+                                                        }).then((result) => {
+                                                            if (result.isConfirmed) {
+                                                                // window.location.reload();
+                                                                $('#dg').datagrid('reload');
+                                                            }
+                                                        });
                                                     }
-                                                });
-                                            }
 
-                                            requestData(total, json, number + 1, value, success + 1, failed + 0);
+                                                    requestData(total, json, number + 1, value, success + 1, failed + 0);
+                                                }
+                                            });
+                                        }else{
+                                            toastr.error("Balance Cannot Minus"); 
                                         }
-                                    });
-                                }else{
-                                    toastr.error("Balance Cannot Minus"); 
+                                    }
                                 }
                             }
-                        }
+                        });
                     }else{
                         toastr.error("Please Complete Your input");    
                     }

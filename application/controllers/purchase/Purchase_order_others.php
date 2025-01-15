@@ -51,10 +51,10 @@ class Purchase_order_others extends CI_Controller
         echo json_encode($records);
     }
 
-    public function readPono($supplier_id)
+    public function readPono($supplier_id = "")
     {
         $supplier_id = base64_decode($supplier_id);
-        $records = $this->crud->query("SELECT po_no, po_date, po_name FROM purchase_order_others WHERE `status` = '0' AND supplier_id = '$supplier_id' GROUP BY po_no ORDER BY `status` desc");
+        $records = $this->crud->query("SELECT po_no, po_date, po_name FROM purchase_order_others WHERE `status` = '0' AND supplier_id like '%$supplier_id%' GROUP BY po_no ORDER BY `status` desc");
         echo json_encode($records);
     }
 

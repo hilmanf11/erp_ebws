@@ -316,7 +316,12 @@
                     onSelect: function(val, row){
                         $("#bc_date").datebox('setValue', row.invoice_date);
                         $("#awb_no").textbox('setValue', row.awb_no);
-                        $("#awb_date").datebox('setValue', row.awb_date);
+                        
+                        if(row.awb_date == "1899-11-30"){
+                            $("#awb_date").datebox('setValue', "<?= date("Y-m-d") ?>");
+                        }else{
+                            $("#awb_date").datebox('setValue', row.awb_date);
+                        }
 
                         $("#po_no").combobox({
                             url: '<?= base_url('purchase/delivery_confirm/readPono?invoice_no=') ?>' + btoa(row.invoice_no),
@@ -1072,108 +1077,112 @@
     }
 
     function checkQas(id, bc_document, item_rm_number, label_box, qty, lot_box){
-        Swal.fire({
-            title: 'Please Wait...',
-            showConfirmButton: false,
-            allowOutsideClick: false,
-            allowEscapeKey: false,
-            didOpen: () => {
-                Swal.showLoading();
-            },
-        });
+        $.messager.confirm('Confirm','Are you sure you want to create/print label?', function(r){
+            if (r){
+                Swal.fire({
+                    title: 'Please Wait...',
+                    showConfirmButton: false,
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    },
+                });
 
-        $.ajax({
-            type: "post",
-            url: "<?= base_url("purchase/purchase_order_receipts/checkQas") ?>",
-            data: "bc_document=" + bc_document + "&item_rm_number=" + btoa(item_rm_number),
-            dataType: "json",
-            success: function (qas) {
-                swal.close();
+                $.ajax({
+                    type: "post",
+                    url: "<?= base_url("purchase/purchase_order_receipts/checkQas") ?>",
+                    data: "bc_document=" + bc_document + "&item_rm_number=" + btoa(item_rm_number),
+                    dataType: "json",
+                    success: function (qas) {
+                        swal.close();
 
-                if(qas == null){
-                    toastr.error("Receipt No and Part No in QAS not Found");
-                }else{
-                    if(qas.label == "OK"){
-                        $.ajax({
-                            type: "POST",
-                            async: true,
-                            url: "<?= base_url('purchase/purchase_order_receipts/create_check_label') ?>",
-                            data: {
-                                "receipt_id": id,
-                            },
-                            cache: false,
-                            dataType: "json",
-                            success: function(check) {
-                                if(check.total == 0){
-                                    $("#dlg_label").dialog('open');
-                                    requestDataBox(label_box, qty);
-                                    function requestDataBox(total, qty, number = 1, value = 0, success = 1, failed = 1) {
-                                        if (value < 100) {
-                                            value = Math.floor((number / total) * 100);
-                                            $('#p_upload').progressbar('setValue', value);
-                                            $('#p_start').html(number);
-                                            $('#p_finish').html(total);
+                        if(qas == null){
+                            toastr.error("Receipt No and Part No in QAS not Found");
+                        }else{
+                            if(qas.label == "OK"){
+                                $.ajax({
+                                    type: "POST",
+                                    async: true,
+                                    url: "<?= base_url('purchase/purchase_order_receipts/create_check_label') ?>",
+                                    data: {
+                                        "receipt_id": id,
+                                    },
+                                    cache: false,
+                                    dataType: "json",
+                                    success: function(check) {
+                                        if(check.total == 0){
+                                            $("#dlg_label").dialog('open');
+                                            requestDataBox(label_box, qty);
+                                            function requestDataBox(total, qty, number = 1, value = 0, success = 1, failed = 1) {
+                                                if (value < 100) {
+                                                    value = Math.floor((number / total) * 100);
+                                                    $('#p_upload').progressbar('setValue', value);
+                                                    $('#p_start').html(number);
+                                                    $('#p_finish').html(total);
 
-                                            if (parseInt(qty) > parseInt(lot_box)) {
-                                                var qty_final = lot_box;
-                                            } else {
-                                                var qty_final = qty;
-                                            }
-
-                                            $.ajax({
-                                                type: "POST",
-                                                async: true,
-                                                url: "<?= base_url('purchase/purchase_order_receipts/create_label') ?>",
-                                                data: {
-                                                    "receipt_id": id,
-                                                    "qty": qty_final,
-                                                },
-                                                cache: false,
-                                                dataType: "json",
-                                                success: function(result) {
-                                                    if(result.title != "OK"){
-                                                        if (result.theme == "success") {
-                                                            $('#p_success').html(success);
-                                                            var title = "<b style='color: green;'>" + result.title + "</b> | " + result.message;
-
-                                                            var qty_balance = (parseInt(qty) - parseInt(lot_box));
-                                                            requestDataBox(total, qty_balance, number + 1, value, success + 1, failed + 0);
-                                                        } else {
-                                                            $('#p_failed').html(failed);
-                                                            var title = "<b style='color: red;'>" + result.title + "</b> | " + result.message;
-
-                                                            var qty_balance = (parseInt(qty) - parseInt(lot_box));
-                                                            requestDataBox(total, qty_balance, number + 1, value, success + 0, failed + 1);
-                                                        }
-
-                                                        $("#p_remarks").append(title + "<br>");
-
-                                                        if (value == 100) {
-                                                            $("#dlg_label").dialog('close');
-                                                            $('#dg').datagrid('reload');
-                                                            toastr.success("Create Label Completed");
-                                                            window.open("<?= base_url('purchase/purchase_order_receipts/print_label/') ?>" + window.btoa(id), '_blank');
-                                                        }
-                                                    }else{
-                                                        $("#dlg_label").dialog('close');
-                                                        window.open("<?= base_url('purchase/purchase_order_receipts/print_label/') ?>" + window.btoa(id), '_blank');
+                                                    if (parseInt(qty) > parseInt(lot_box)) {
+                                                        var qty_final = lot_box;
+                                                    } else {
+                                                        var qty_final = qty;
                                                     }
+
+                                                    $.ajax({
+                                                        type: "POST",
+                                                        async: true,
+                                                        url: "<?= base_url('purchase/purchase_order_receipts/create_label') ?>",
+                                                        data: {
+                                                            "receipt_id": id,
+                                                            "qty": qty_final,
+                                                        },
+                                                        cache: false,
+                                                        dataType: "json",
+                                                        success: function(result) {
+                                                            if(result.title != "OK"){
+                                                                if (result.theme == "success") {
+                                                                    $('#p_success').html(success);
+                                                                    var title = "<b style='color: green;'>" + result.title + "</b> | " + result.message;
+
+                                                                    var qty_balance = (parseInt(qty) - parseInt(lot_box));
+                                                                    requestDataBox(total, qty_balance, number + 1, value, success + 1, failed + 0);
+                                                                } else {
+                                                                    $('#p_failed').html(failed);
+                                                                    var title = "<b style='color: red;'>" + result.title + "</b> | " + result.message;
+
+                                                                    var qty_balance = (parseInt(qty) - parseInt(lot_box));
+                                                                    requestDataBox(total, qty_balance, number + 1, value, success + 0, failed + 1);
+                                                                }
+
+                                                                $("#p_remarks").append(title + "<br>");
+
+                                                                if (value == 100) {
+                                                                    $("#dlg_label").dialog('close');
+                                                                    $('#dg').datagrid('reload');
+                                                                    toastr.success("Create Label Completed");
+                                                                    window.open("<?= base_url('purchase/purchase_order_receipts/print_label/') ?>" + window.btoa(id), '_blank');
+                                                                }
+                                                            }else{
+                                                                $("#dlg_label").dialog('close');
+                                                                window.open("<?= base_url('purchase/purchase_order_receipts/print_label/') ?>" + window.btoa(id), '_blank');
+                                                            }
+                                                        }
+                                                    }).fail(function(jqXHR, textStatus) {
+                                                        toastr.error("Connection Time Out, Please Wait");
+                                                        requestDataBox(total, qty, number, value, success, failed);
+                                                    }); 
                                                 }
-                                            }).fail(function(jqXHR, textStatus) {
-                                                toastr.error("Connection Time Out, Please Wait");
-                                                requestDataBox(total, qty, number, value, success, failed);
-                                            }); 
+                                            }
+                                        }else{
+                                            window.open("<?= base_url('purchase/purchase_order_receipts/print_label/') ?>" + window.btoa(id), '_blank');
                                         }
                                     }
-                                }else{
-                                    window.open("<?= base_url('purchase/purchase_order_receipts/print_label/') ?>" + window.btoa(id), '_blank');
-                                }
+                                });
+                            }else{
+                                toastr.error("Receipt No and Part No is NG");
                             }
-                        });
-                    }else{
-                        toastr.error("Receipt No and Part No is NG");
+                        }
                     }
-                }
+                });
             }
         });
     }

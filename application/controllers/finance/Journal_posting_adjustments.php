@@ -145,7 +145,7 @@ class Journal_posting_adjustments extends CI_Controller
             $offset = ($page - 1) * $rows;
             $result = array();
             //Select Query
-            $this->db->select('a.journal_date, a.number, a.journal_type_id, b.name as journal_type_name, a.modul, a.remarks, a.currency, a.rates, a.posting,
+            $this->db->select('a.journal_date, a.number, a.trans_date, a.journal_type_id, b.name as journal_type_name, a.modul, a.remarks, a.currency, a.rates, a.posting,
                 a.created_by, a.created_date, a.updated_by, a.updated_date, a.approved, a.approved_to, a.approved_by, a.approved_date, a.document_no, a.trans_date as document_date, a.tds,
                 SUM(a.original_debit) as original_debit, 
                 SUM(a.original_credit) as original_credit, 

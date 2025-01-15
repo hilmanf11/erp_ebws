@@ -73,17 +73,25 @@ class Report_general_ledgers extends CI_Controller
 
             $query = $this->db->query("SELECT a.*
                 FROM (
-                    (SELECT journal_date, `number`, document_no, invoice_no, company_name, account_number, account_name, modul, `description`, currency, local_debit, local_credit
-                    FROM journal_postings
-                    WHERE journal_date between '$filter_from' and '$filter_to' and account_number = '$filter_account' and modul != 'BANK STATEMENT'
+                    (SELECT a.journal_date, a.number, a.document_no, 
+                            (CASE WHEN b.invoice_no is not null THEN b.invoice_no WHEN c.customer_po is not null THEN c.customer_po WHEN d.supplier_invoice is not null then d.supplier_invoice WHEN e.sales_invoice is not null THEN e.sales_invoice ELSE a.invoice_no END) as invoice_no,
+                            (CASE WHEN b.invoice_date is not null THEN b.invoice_date WHEN c.trans_date is not null THEN c.trans_date WHEN d.payment_date is not null THEN d.payment_date WHEN e.receipt_date is not null THEN e.receipt_date ELSE a.trans_date END) as invoice_date, 
+                            a.company_name, a.account_number, a.account_name, a.modul, a.description, a.currency, a.local_debit, a.local_credit
+                        FROM journal_postings a
+                        LEFT JOIN purchase_invoices b ON a.document_no = b.number
+                        LEFT JOIN sales_invoices c ON a.document_no = c.number
+                        LEFT JOIN ap_payments d ON a.document_no = d.payment_no
+                        LEFT JOIN ar_receipts e ON a.document_no = e.receipt_no
+                        WHERE a.journal_date between '$filter_from' and '$filter_to' and a.account_number = '$filter_account' and a.modul != 'BANK STATEMENT'
+                        GROUP BY a.id
                     ) 
                 UNION 
-                    (SELECT journal_date, `number`, document_no, invoice_no, company_name, account_number, account_name, modul, `description`, currency, 
+                    (SELECT journal_date, `number`, document_no, invoice_no, trans_date as invoice_date, company_name, account_number, account_name, modul, `description`, currency, 
                     (CASE WHEN SUM(local_credit) > 0 THEN SUM(local_credit) ELSE 0 END) as local_credit,
                     (CASE WHEN SUM(local_debit) > 0 THEN SUM(local_debit) ELSE 0 END) as local_debit
-                    FROM journal_postings
-                    WHERE journal_date between '$filter_from' and '$filter_to' and account_number = '$filter_account' and modul = 'BANK STATEMENT'
-                    GROUP BY `number`
+                        FROM journal_postings
+                        WHERE journal_date between '$filter_from' and '$filter_to' and account_number = '$filter_account' and modul = 'BANK STATEMENT'
+                        GROUP BY `number`
                     )
                 ) a ORDER BY journal_date, account_number ASC");
             $journals = $query->result_array();
@@ -139,6 +147,7 @@ class Report_general_ledgers extends CI_Controller
                             <th rowspan="2">Posting No</th>
                             <th rowspan="2">Document No</th>
                             <th rowspan="2">Invoice No</th>
+                            <th rowspan="2">Invoice Date</th>
                             <th rowspan="2">Company Name</th>
                             <th rowspan="2">Account No</th>
                             <th rowspan="2">Account Name</th>
@@ -192,6 +201,7 @@ class Report_general_ledgers extends CI_Controller
                                 <td></td>
                                 <td></td>
                                 <td></td>
+                                <td></td>
                                 <td>BALANCE</td>
                                 <td style="text-align:center;">' . $account_coa->original_currency . '</td>
                                 <td style="text-align:right;font-weight:bold;">' . number_format(0, 2) . '</td>
@@ -233,6 +243,7 @@ class Report_general_ledgers extends CI_Controller
                                     <td>' . $journal['number'] . '</td>
                                     <td>' . $journal['document_no'] . '</td>
                                     <td>' . $journal['invoice_no'] . '</td>
+                                    <td>' . $journal['invoice_date'] . '</td>
                                     <td>' . $journal['company_name'] . '</td>
                                     <td style="mso-number-format:\@;">' . $journal['account_number'] . '</td>
                                     <td>' . $journal['account_name'] . '</td>
@@ -249,14 +260,14 @@ class Report_general_ledgers extends CI_Controller
             }
 
             $html .= '  <tr style="background:#DEDEDE;">
-                                <th style="text-align:right;" colspan="10"><b>ENDING BALANCE</b></th>
+                                <th style="text-align:right;" colspan="11"><b>ENDING BALANCE</b></th>
                                 <th style="text-align:right;">-</th>
                                 <th style="text-align:right;">-</th>
                                 <th style="text-align:right;">' . number_format(abs($local_balance), 2) . '</th>
                             </tr>';
 
             $html .= '  <tr style="background:#DEDEDE;">
-                                <th style="text-align:right;" colspan="10"><b>GRAND TOTAL</b></th>
+                                <th style="text-align:right;" colspan="11"><b>GRAND TOTAL</b></th>
                                 <th style="text-align:right;">' . number_format(abs($local_debit), 2) . '</th>
                                 <th style="text-align:right;">' . number_format(abs($local_credit), 2) . '</th>
                                 <th style="text-align:right;"></th>

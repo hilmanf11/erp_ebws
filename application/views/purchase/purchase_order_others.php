@@ -805,6 +805,19 @@
             }
         });
 
+        $("#filter_po_no").combobox({
+            url: '<?= base_url('purchase/purchase_order_others/readPono') ?>',
+            valueField: 'po_no',
+            textField: 'po_no',
+            prompt: "Select Purchase Order No",
+            icons: [{
+                iconCls: 'icon-clear',
+                handler: function(e) {
+                    $(e.data.target).combobox('clear').combobox('textbox').focus();
+                }
+            }],
+        });
+
         $("#total_dp").numberbox({
             onChange: function(val){
                 var total_amount = $("#total_amount").numberbox('getValue');

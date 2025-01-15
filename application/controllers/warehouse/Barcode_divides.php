@@ -211,10 +211,11 @@ class Barcode_divides extends CI_Controller
 
         $label_no = base64_decode($this->input->get('label_no'));
 
-        $this->db->select('a.*, c.receipt_date, d.number, d.name, c.location');
+        $this->db->select('a.*, c.receipt_date, d.number, d.name, e.warehouse');
         $this->db->from('barcode_divides a');
         $this->db->join('purchase_order_labels b', 'a.reff = b.receipt_id');
         $this->db->join('purchase_order_receipts c', 'b.receipt_id = c.receipt_id');
+        $this->db->join('scan_item_receipts e', 'a.label_no = e.label_no');
         $this->db->join('item_rm d', 'c.item_rm_id = d.id');
         $this->db->where('a.deleted', 0);
         // $this->db->where('a.status', 0);
@@ -223,10 +224,11 @@ class Barcode_divides extends CI_Controller
         $records = $this->db->get()->result_object();
 
         if (!$records) {
-            $this->db->select('a.*, c.trans_date as receipt_date, d.number, d.name');
+            $this->db->select('a.*, c.trans_date as receipt_date, d.number, d.name, e.warehouse');
             $this->db->from('barcode_divides a');
             $this->db->join('os_rm c', 'a.reff = c.id');
             $this->db->join('item_rm d', 'c.item_rm_id = d.id');
+            $this->db->join('scan_item_receipts e', 'a.label_no = e.label_no');
             $this->db->where('a.deleted', 0);
             // $this->db->where('a.status', 0);
             $this->db->where('a.label_no', $label_no);
@@ -283,7 +285,7 @@ class Barcode_divides extends CI_Controller
                                         <small>Quantity</small><br><b style="font-size:24px;">' . number_format($record->qty, 0, ",", ".") . '</b>
                                     </th>
                                     <th style="text-align:left">
-                                        <small>Location</small><br><b style="font-size:24px;">' . @$record->location . '</b>
+                                        <small>Location</small><br><b style="font-size:24px;">' . @$record->warehouse . '</b>
                                     </th>
                                 </tr>
                                 <tr>

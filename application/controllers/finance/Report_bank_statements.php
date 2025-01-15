@@ -342,7 +342,9 @@ class Report_bank_statements extends CI_Controller
         $grand_total_credit_original = 0;
         $grand_total_debit_local = 0;
         $grand_total_credit_local = 0;
+        $local_balance = $opening_balance_local;
         foreach ($datas as $data) {
+            $local_balance += ($data['local_debit'] - $data['local_credit']);
             $html .= '  <tr>
                             <td style="text-align:center">'.$no.'</td>
                             <td>' . $data['trans_date'] . '</td>
@@ -353,7 +355,7 @@ class Report_bank_statements extends CI_Controller
                             <td style="text-align:right;font-weight:bold;">1.00</td>
                             <td style="text-align:right;font-weight:bold;">' . number_format($data['local_debit'], 2) . '</td>
                             <td style="text-align:right;font-weight:bold;">' . number_format($data['local_credit'], 2) . '</td>
-                            <td style="text-align:right;font-weight:bold;">' . number_format($data['local_balance'], 2) . '</td>
+                            <td style="text-align:right;font-weight:bold;">' . number_format($local_balance, 2) . '</td>
                         </tr>';
             $no++;
             $grand_total_debit_original += $data['original_debit'];
