@@ -1042,19 +1042,17 @@ class Report_exceptions extends CI_Controller
             $filter_revision = base64_decode($this->input->get('filter_revision'));
             $filter_product_family = base64_decode($this->input->get('filter_product_family'));
             $filter_part_no = trim(base64_decode($this->input->get('filter_part_no')));
-            $this->db->select('a.*,c.number as item_rm_number, c.name as item_rm_name, c.hsn_code, b.cutoff, b.created_by');
-            $this->db->from('supplier_items a');
-            $this->db->join('generate_mrp_finals b', 'a.supplier_id=b.supplier_id and a.item_rm_id=b.item_rm_id', 'left');
-            $this->db->join('item_rm c', 'a.item_rm_id=c.id', 'left');
-            $this->db->where('b.p_month', $filter_month);
-            $this->db->where('b.p_year', $filter_year);
-            $this->db->where('b.revision', $filter_revision);
-            $this->db->like('c.item_family_id', $filter_product_family);
+            $this->db->select('a.*, b.mpq, b.moq, b.leadtime, b.share_order, d.number as item_rm_number, d.name as item_rm_name, d.hsn_code, c.cutoff, c.created_by');
+            $this->db->from("(select distinct item_rm_id from bom where item_rm_id <> '') a");
+            $this->db->join('supplier_items b', 'a.item_rm_id=b.item_rm_id', 'left');
+            $this->db->join("generate_mrp_finals c", "b.supplier_id=c.supplier_id and a.item_rm_id=c.item_rm_id and c.p_month='$filter_month' and c.p_year='$filter_year' and c.revision='$filter_revision'", "left");
+            $this->db->join('item_rm d', 'a.item_rm_id=d.id', 'left');
+            $this->db->like('d.item_family_id', $filter_product_family);
             $this->db->like('a.item_rm_id', $filter_part_no);
-            $this->db->where("(a.mpq = 0 or a.moq = 0 or a.leadtime = 0 or a.share_order = 0 or c.hsn_code ='-')");
+            $this->db->where("(b.mpq = 0 or b.moq = 0 or b.leadtime = 0 or b.share_order = 0 or d.hsn_code ='-')");
             // $this->db->where('leadtime >', 0);
             $this->db->group_by('a.item_rm_id');
-            $this->db->group_by('a.supplier_id');
+            // $this->db->group_by('b.supplier_id');
             $this->db->order_by('a.item_rm_id', 'asc');
             // $this->db->limit(10);
 

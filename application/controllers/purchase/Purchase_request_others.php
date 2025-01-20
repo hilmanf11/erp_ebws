@@ -54,6 +54,7 @@ class Purchase_request_others extends CI_Controller
             e.number as supplier_number,
             e.name as supplier_name,
             c.name as category_name,
+            f.name as maker,
             (CASE WHEN d.approved_to = '' THEN d.price ELSE 0 END) as price,
             (a.qty * (CASE WHEN d.approved_to = '' THEN d.price ELSE 0 END)) as total,
             DATE_FORMAT(now(), '%Y-%m-%d') as delivery_date");
@@ -62,6 +63,7 @@ class Purchase_request_others extends CI_Controller
         $this->db->join('item_familys c', 'b.item_family_id = c.id');
         $this->db->join('supplier_items d', "a.item_rm_id = d.item_rm_id");
         $this->db->join('suppliers e', 'd.supplier_id = e.id');
+        $this->db->join('makers f', 'd.maker_id = f.id', 'left');
         $this->db->where('a.status', 0);
         // $this->db->where("(a.asset_code = '' or a.asset_code is null or a.asset_code = '-')");
         $this->db->where('d.supplier_id', $supplier_id);
@@ -103,6 +105,13 @@ class Purchase_request_others extends CI_Controller
             JOIN supplier_items b ON a.item_rm_id = b.item_rm_id 
             WHERE $where_supplier a.status = 0 and (a.approved_to = '' or a.approved_to is null) 
             GROUP BY a.request_no ORDER BY a.created_date desc");
+        echo json_encode($records);
+    }
+
+    public function readRequestname(){
+        $records = $this->crud->query("SELECT a.request_name 
+            FROM purchase_request_others a
+            GROUP BY a.request_name ORDER BY a.request_name asc");
         echo json_encode($records);
     }
 
@@ -164,7 +173,9 @@ class Purchase_request_others extends CI_Controller
     {
         $filter_from = $this->input->get('filter_from');
         $filter_to   = $this->input->get('filter_to');
+        $filter_category = $this->input->get('filter_category');
         $filter_request_no = $this->input->get('filter_request_no');
+        $filter_request_name = $this->input->get('filter_request_name');
         $filter_item_rm = $this->input->get('filter_item_rm');
         $filter_item_familys = $this->input->get('filter_item_familys');
 
@@ -194,7 +205,9 @@ class Purchase_request_others extends CI_Controller
                 $this->db->where('a.request_date >=', $filter_from);
                 $this->db->where('a.request_date <=', $filter_to);
             }
+            $this->db->like('a.item_category_id', $filter_category);
             $this->db->like('a.request_no', $filter_request_no);
+            $this->db->like('a.request_name', $filter_request_name);
             $this->db->like('c.id', $filter_item_familys);
             $this->db->like('b.id', $filter_item_rm);
             $this->db->group_by('a.request_no');
@@ -317,7 +330,7 @@ class Purchase_request_others extends CI_Controller
     public function delete()
     {
         $data = $this->input->post();
-        $send = $this->crud->delete('purchase_request_others', $data);
+        $send = $this->crud->delete('purchase_request_others', ["id" => $data['id']]);
         $this->db->update('assets', ["status" => 0, "request_no" => ""], ["number" => $data['asset_code']]);
         echo $send;
     }
@@ -578,7 +591,9 @@ class Purchase_request_others extends CI_Controller
 
         $filter_from = $this->input->get('filter_from');
         $filter_to   = $this->input->get('filter_to');
+        $filter_category = $this->input->get('filter_category');
         $filter_request_no = $this->input->get('filter_request_no');
+        $filter_request_name = $this->input->get('filter_request_name');
         $filter_item_rm = $this->input->get('filter_item_rm');
         $filter_item_familys = $this->input->get('filter_item_familys');
 
@@ -600,7 +615,9 @@ class Purchase_request_others extends CI_Controller
             $this->db->where('a.request_date >=', $filter_from);
             $this->db->where('a.request_date <=', $filter_to);
         }
+        $this->db->like('a.item_category_id', $filter_category);
         $this->db->like('a.request_no', $filter_request_no);
+        $this->db->like('a.request_name', $filter_request_name);
         $this->db->like('c.id', $filter_item_familys);
         $this->db->like('b.id', $filter_item_rm);
         $this->db->order_by('a.request_date', 'DESC');

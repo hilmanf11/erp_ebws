@@ -131,7 +131,7 @@ class Rgp_scan_in extends CI_Controller
                             $postItemReceipts = array(
                                 "checksheet_number" => $post['rgp_id'],
                                 "checksheet_label" => $post['label_no'],
-                                "workorder" => @$rgp_transactions->id,
+                                "workorder" => @$rgp_transactions->rgp_id,
                                 "qty" => $post['qty'],
                                 "status" => 0,
                             );

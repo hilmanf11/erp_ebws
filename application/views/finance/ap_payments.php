@@ -817,7 +817,10 @@
                     $("#supplier_id").combogrid('disable');
                     $("#purchase_invoice").combogrid('disable');
                     $("#showExchange").hide();
+
                     var payment_by = $("#payment_by").combobox('getValue');
+                    $("#journal_type").combobox('setValue', row.journal_type);
+                    
                     if (payment_by == "CHEQUE") {
                         $("#f_cheque_no").show();
                     } else {
@@ -872,11 +875,11 @@
                                 ],
                                 onLoadSuccess: function(load_invoice) {
                                     $("#purchase_invoice").combogrid('setValue', row.purchase_invoice);
-                                    $("#journal_type").combobox('setValue', row.journal_type);
                                 },
                             });
                         }
                     });
+
                     preview('<?= base_url('finance/ap_payments/reads/') ?>' + window.btoa(row.payment_no));
                     addTable2('<?= base_url('finance/ap_payments/readJournals/') ?>' + window.btoa(row.payment_no) + "/" + window.btoa(row.journal_type) + "/" + window.btoa(row.bank_account));
                     setTimeout(function() {

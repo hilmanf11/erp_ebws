@@ -248,7 +248,7 @@ class Ap_payments extends CI_Controller
                     $amount2 = round(($grand_total * $exchangeNow->middle), 2);
                 } else {
                     // $amount2 = 0;
-                    $amount = ($total * $rate);
+                    $amount2 = ($total * $rate);
                 }
             } else {
                 $amount2 = $grand_total;
@@ -656,7 +656,7 @@ class Ap_payments extends CI_Controller
     {
         if ($this->input->post()) {
             $post = $this->input->post();
-            $purchase_invoice_journals = $this->crud->read('ap_payment_journals', [], ["payment_no" => $post['payment_no'], "account_number" => $post['account_number']]);
+            $purchase_invoice_journals = $this->crud->read('ap_payment_journals', [], ["payment_no" => $post['payment_no'], "account_number" => $post['account_number'], "flag" => $post['flag']]);
 
             if (@$purchase_invoice_journals->id != "") {
                 $send = $this->crud->update('ap_payment_journals', ["payment_no" => $post['payment_no'], "account_number" => $post['account_number']], $post);

@@ -1,0 +1,219 @@
+<?php
+date_default_timezone_set("Asia/Bangkok");
+defined('BASEPATH') or exit('No direct script access allowed');
+class Scrap_booking extends CI_Controller
+{
+    public function __construct()
+    {
+        parent::__construct();
+        $this->load->helper('url');
+        $this->load->helper(array('form', 'url'));
+        $this->load->library('form_validation');
+        $this->load->library('session');
+        $this->load->library('Ciqrcode');
+        $this->load->model('crud');
+        //Validasi Form
+        $this->form_validation->set_rules('item_fg_id', 'Part No', 'required|min_length[1]|max_length[30]');
+    }
+
+    public function index()
+    {
+        if (empty($this->session->username)) {
+            redirect('error_session');
+        } elseif ($this->checkuserAccess($this->id_menu()) > 0) {
+            $data['button'] = $this->getbutton($this->id_menu());
+            $data['id_menu'] = $this->id_menu();
+
+            $this->load->view('template/header', $data);
+            $this->load->view('production/scrap_booking');
+        } else {
+            redirect('error_access');
+        }
+    }
+
+    public function reads()
+    {
+        $post = isset($_POST['q']) ? $_POST['q'] : "";
+        $send = $this->crud->reads('scrap_booking', ["name" => $post]);
+        echo json_encode($send);
+    }
+
+    public function readItems()
+    {
+        $post = isset($_POST['q']) ? $_POST['q'] : "";
+        $send = $this->crud->query("SELECT * 
+            FROM item_fg 
+            WHERE status = 0 and harnes_type='11'
+            and (id like '%$post%' or number like '%$post%' or name like '%$post%' or number_customer like '%$post%')");
+        echo json_encode($send);
+    }
+
+    public function autonumber()
+    {
+
+        $datenow = date("ymd");
+        $sql = $this->db->query("SELECT max(`number`) as kode From scrap_booking where `number` like '%$datenow%'");
+        $row = $sql->row();
+        if (empty($row->kode)) {
+            $kode = substr($row->kode, 1);
+            $autoid = "SCP-" . $datenow . sprintf("%04s", $kode + 1);
+        } else {
+            $kode = substr($row->kode, -4);
+            $autoid = "SCP-" . $datenow . sprintf("%04s", $kode + 1);
+        }
+        echo $autoid;
+    }
+
+    public function datatables()
+    {
+        if ($this->input->post()) {
+            $filter_from = $this->input->get('filter_from');
+            $filter_to = $this->input->get('filter_to');
+            $filter_items = $this->input->get('filter_items');
+
+            $page = $this->input->post('page');
+            $rows = $this->input->post('rows');
+
+            //Pagination 1-10
+            $page   = isset($page) ? intval($page) : 1;
+            $rows   = isset($rows) ? intval($rows) : 10;
+            $offset = ($page - 1) * $rows;
+            $result = array();
+            //Select Query
+            $this->db->select('a.*, b.number as item_fg_number, b.number_customer as item_fg_customer, b.name as item_fg_name, b.uom');
+            $this->db->from('scrap_booking a');
+            $this->db->join('item_fg b', 'a.item_fg_id = b.id');
+            $this->db->join('uom c', 'b.uom = c.name');
+            $this->db->where('a.deleted', 0);
+            if ($filter_from != "" or $filter_to != "") {
+                $this->db->where('a.trans_date >=', $filter_from);
+                $this->db->where('a.trans_date <=', $filter_to);
+            }
+            $this->db->like('a.item_fg_id', $filter_items);
+            $this->db->order_by('a.item_fg_id');
+            //Total Data
+            $totalRows = $this->db->count_all_results('', false);
+            //Limit 1 - 10
+            $this->db->limit($rows, $offset);
+            //Get Data Array
+            $records = $this->db->get()->result_array();
+            //Mapping Data
+            $result['total'] = $totalRows;
+            $result = array_merge($result, ['rows' => $records]);
+            echo json_encode($result);
+        }
+    }
+
+    //CREATE DATA
+    public function create()
+    {
+        if ($this->input->post()) {
+            if ($this->form_validation->run() == TRUE) {
+                $post   = $this->input->post();
+                $send   = $this->crud->create('scrap_booking', $post);
+                echo $send;
+            } else {
+                show_error(validation_errors());
+            }
+        } else {
+            show_error("Cannot Process your request");
+        }
+    }
+    //UPDATE DATA
+    public function update()
+    {
+        if ($this->input->post()) {
+            $id   = base64_decode($this->input->get('id'));
+            $post = $this->input->post();
+            $send = $this->crud->update('scrap_booking', ["id" => $id], $post);
+            echo $send;
+        } else {
+            show_error("Cannot Process your request");
+        }
+    }
+
+    public function delete()
+    {
+        $data = $this->input->post();
+        $send = $this->crud->delete('scrap_booking', ["id" => $data['id']]);
+        echo $send;
+    }
+
+    public function print($option = "")
+    {
+        if ($option == "excel") {
+            $format  = date("Ymd");
+            header("Content-type: application/vnd-ms-excel");
+            header("Content-Disposition: attachment; filename=scrap_booking_$format.xls");
+        }
+        $filter_from = $this->input->get('filter_from');
+        $filter_to = $this->input->get('filter_to');
+        $filter_items = $this->input->get('filter_items');
+
+        //Config
+        $this->db->select('*');
+        $this->db->from('config');
+        $config = $this->db->get()->row();
+
+        $this->db->select('a.*, b.number as item_fg_number, b.number_customer as item_fg_customer, b.name as item_fg_name, b.uom');
+        $this->db->from('scrap_booking a');
+        $this->db->join('item_fg b', 'a.item_fg_id = b.id');
+        $this->db->join('uom c', 'b.uom = c.name');
+        $this->db->where('a.deleted', 0);
+        if ($filter_from != "" or $filter_to != "") {
+            $this->db->where('a.trans_date >=', $filter_from);
+            $this->db->where('a.trans_date <=', $filter_to);
+        }
+        $this->db->like('a.item_fg_id', $filter_items);
+        $this->db->order_by('a.item_fg_id');
+        $records = $this->db->get()->result_array();
+
+        $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#customers {border-collapse: collapse;width: 100%;font-size: 12px;}#customers td, #customers th {border: 1px solid #ddd;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: #ddd;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: center;color: black;}</style><body>
+            <center>
+                <div style="float: left; font-size: 12px; text-align: left;">
+                    <table style="width: 100%;">
+                        <tr>
+                            <td width="50" style="font-size: 12px; vertical-align: top; text-align: center; vertical-align:jus margin-right:10px;">
+                                <img src="' . $config->favicon . '" width="30">
+                            </td>
+                            <td style="font-size: 14px; text-align: left; margin:2px;">
+                                <b>' . $config->name . '</b><br>
+                                <small>SCRAPS BOOKING</small>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+                <div style="float: right; font-size: 12px; text-align: right;">
+                    Print Date ' . date("d M Y H:i:s") . ' <br>
+                    Print By ' . $this->session->username . '  
+                </div>
+            </center>
+            <br><br><br>
+            
+            <table id="customers" border="1">
+                <tr>
+                    <th width="20">No</th>
+                    <th>Trans Date</th>
+                    <th>Part No EBWS</th>
+                    <th>Part No Supplier</th>
+                    <th>Description</th>
+                    <th>UoM</th>
+                    <th>Qty</th>
+                </tr>';
+        $no = 1;
+        foreach ($records as $data) {
+            $html .= '<tr>
+                            <td style="text-align:center">' . $no . '</td>
+                            <td>' . $data['trans_date'] . '</td>
+                            <td>' . $data['item_fg_number'] . '</td>
+                            <td>' . $data['item_fg_customer'] . '</td>
+                            <td>' . $data['item_fg_name'] . '</td>
+                            <td>' . $data['uom'] . '</td>
+                            <td>' . number_format($data['qty']) . '</td>
+                        </tr>';
+            $no++;
+        }
+        $html .= '</table></body></html>';
+        echo $html;
+    }
+}

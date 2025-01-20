@@ -169,8 +169,8 @@ class Report_general_ledgers extends CI_Controller
             $begin_ori_tb = $this->db->get()->row();
 
             $this->db->select('account_number, account_name, header,
-                    SUM(begin_debit) as begin_debit, 
-                    SUM(begin_credit) as begin_credit');
+                    (CASE WHEN header = 0 THEN SUM(ending_debit) ELSE SUM(begin_debit) END) as begin_debit, 
+                    (CASE WHEN header = 0 THEN SUM(ending_credit) ELSE SUM(begin_credit) END) as begin_credit');
             $this->db->from('trial_balances');
             $this->db->where('period =', $period);
             $this->db->where('account_number', $filter_account);
