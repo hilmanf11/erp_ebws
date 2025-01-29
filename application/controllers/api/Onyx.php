@@ -180,7 +180,7 @@ class Onyx extends CI_Controller
                 "orgCntry" => null,
                 "othchrg" => 0,
                 "prdDesc" => $item_fg->name,
-                "prdNm" => $item_fg->name . " " . $item_fg->number_customer,
+                "prdNm" => $item_fg->name . " " . $item_fg->alias,
                 "prdSlNo" => null,
                 "preTaxVal" => 0,
                 "qty" => $sales_invoice->qty,

@@ -378,6 +378,14 @@ class Generate_mrp extends CI_Controller
                 $revision = $filter_revision;
             }
 
+            if($filter_part_no != ""){
+                $where_del_part_no = "AND item_rm_id = '$filter_part_no'";
+            }else{
+                $where_del_part_no = "";
+            }
+
+            $this->db->query("DELETE FROM generate_mrp WHERE p_month = '$filter_month' and p_year = '$filter_year' and revision = '$revision' $where_del_part_no");
+            
             //Select Query
             $this->db->select("b.p_month, b.p_year, '$revision' as revision,
                 a.item_rm_id,
@@ -447,6 +455,14 @@ class Generate_mrp extends CI_Controller
             }else{
                 $filter_revision = $revision;
             }
+
+            if($filter_part_no != ""){
+                $where_del_part_no = "AND item_rm_id = '$filter_part_no'";
+            }else{
+                $where_del_part_no = "";
+            }
+
+            $this->db->query("DELETE FROM generate_mrp_finals WHERE p_month = '$filter_month' and p_year = '$filter_year' and revision = '$filter_revision' $where_del_part_no");
 
             //Select Query
             $this->db->select('a.item_rm_id, b.supplier_id, b.share_order, b.safety_stock,
@@ -847,6 +863,14 @@ class Generate_mrp extends CI_Controller
             }else{
                 $filter_revision = $revision;
             }
+
+            if($filter_part_no != ""){
+                $where_del_part_no = "AND item_rm_id = '$filter_part_no'";
+            }else{
+                $where_del_part_no = "";
+            }
+
+            $this->db->query("DELETE FROM generate_mrp_abcclass WHERE p_month = '$filter_month' and p_year = '$filter_year' and revision = '$filter_revision' $where_del_part_no");
 
             //Select Query
             $this->db->select('a.*, b.item_family_id');

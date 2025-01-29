@@ -15,7 +15,7 @@
             <th data-options="field:'state',width:120,halign:'center'">State</th>
             <th data-options="field:'currency',width:80,align:'center'">Currency</th>
             <th data-options="field:'total_qty',width:100,align:'right',halign:'center',formatter:numberformat">Total Qty</th>
-            <!-- <th data-options="field:'total_amount',width:120,align:'right',halign:'center',formatter:numberformatPrice">Total Amount</th> -->
+            <th data-options="field:'total_amount',width:120,align:'right',halign:'center',formatter:numberformatPrice">Total Amount</th>
             <!-- <th data-options="field:'remarks1',width:200,halign:'center'">Remarks Approval 1</th>
             <th data-options="field:'remarks2',width:200,halign:'center'">Remarks Approval 2</th>
             <th data-options="field:'remarks3',width:200,halign:'center'">Remarks Approval 3</th> -->
@@ -26,13 +26,14 @@
 <!-- TOOLBAR DATAGRID -->
 <div id="toolbar" style="height: 35px;">
     <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="reload()"><i class="fa fa-refresh"></i> Reload</a>
+    <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="export_excel()"><i class="fa fa-file"></i> Export Excel</a>
 </div>
 
 <!-- TOOLBAR DATAGRID -->
 <div id="toolbar2" style="height: 35px;">
     <a href="javascript:void(0)" id="approveacheck" class="easyui-linkbutton" data-options="plain:true" onclick="approve()"><i class="fa fa-check"></i> Approve</a>
 	<a href="javascript:void(0)" id="approveacheck" class="easyui-linkbutton" data-options="plain:true" onclick="disapprove()"><i class="fa fa-times"></i> Disapprove</a>
-    <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="export_excel()"><i class="fa fa-file"></i> Export Excel</a>
+    <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="export_excel2()"><i class="fa fa-file"></i> Export Excel</a>
 </div>
 
 <div id="dlg_details" class="easyui-window" title="Detail Data" data-options="closed: true, modal:true, closed: true, minimizable:false, collapsible:false" style="width: 800px; height: 500px; top: 50px;">
@@ -91,7 +92,11 @@
     }
 
     function export_excel() {
-		$('#dg_details').datagrid('toExcel', "approval_<?= $table ?>.xls");
+		$('#dg').datagrid('toExcel', "approval_<?= $table ?>_summary.xls");
+	}
+
+    function export_excel() {
+		$('#dg_details').datagrid('toExcel', "approval_<?= $table ?>_details.xls");
 	}
 
 	function approve() {

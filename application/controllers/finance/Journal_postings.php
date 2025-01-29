@@ -939,7 +939,7 @@ class Journal_postings extends CI_Controller
 
         } elseif ($modul == "AP PAYMENT") {
             $this->db->select("a.payment_no, b.payment_date, b.purchase_invoice, b.supplier_invoice, c.id as supplier_id, c.name as supplier_name, 
-                b.currency, a.description, a.account_number, a.account_name, a.debit, a.credit, a.flag, a.local_debit, a.local_credit, 
+                b.currency, a.description, a.account_number, a.account_name, a.debit, a.credit, a.flag, a.local_debit, a.local_credit, b.rate,
                 (CASE WHEN e.name is null THEN d.account_name ELSE e.name END) as other_account");
             $this->db->from('ap_payment_journals a');
             $this->db->join("(SELECT * FROM ap_payments GROUP BY payment_no) b", "b.payment_no = a.payment_no");
@@ -980,7 +980,8 @@ class Journal_postings extends CI_Controller
                     $local_credit = $journal['local_credit'];
 
                     // $rates = @$exchange->middle;
-                    $rates = (abs($journal['local_debit'] + $journal['local_credit']) / abs($journal['debit'] + $journal['credit']));
+                    // $rates = (abs($journal['local_debit'] + $journal['local_credit']) / abs($journal['debit'] + $journal['credit']));
+                    $rates = $journal['rate'];
                 } else {
                     $original_debit = $debit;
                     $original_credit = $credit;

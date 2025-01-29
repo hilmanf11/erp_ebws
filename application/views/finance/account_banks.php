@@ -10,6 +10,7 @@
             <th rowspan="2" data-options="field:'account_number',width:120,halign:'center'">Account Code</th>
             <th rowspan="2" data-options="field:'account_name',width:200,halign:'center'">Account Name</th>
             <th rowspan="2" data-options="field:'start_date',width:120,align:'center'">Start Date</th>
+            <th rowspan="2" data-options="field:'posting_to',width:120,align:'center'">Posting To</th>
             <th colspan="2" data-options="field:'',width:120,halign:'center'">Original Currency</th>
             <th colspan="2" data-options="field:'',width:120,halign:'center'">Local Currency</th>
             <th colspan="3" data-options="field:'',width:120,halign:'center'">Transaction</th>
@@ -124,6 +125,10 @@
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">IFSC Code</span>
                     <input style="width:60%;" name="ifsc_code" id="ifsc_code" required="" class="easyui-textbox">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Posting To</span>
+                    <input style="width:60%;" name="posting_to" id="posting_to" required="" class="easyui-combogrid">
                 </div>
             </div>
         </fieldset>
@@ -460,6 +465,31 @@
                     prompt: "Choose Account No"
                 });
             }
+        });
+
+        $("#posting_to").combogrid({
+            url: '<?= base_url('finance/account_banks/reads/journal') ?>',
+            panelWidth: 500,
+            idField: 'account_number',
+            textField: 'bank_name',
+            mode: 'remote',
+            fitColumns: true,
+            prompt: "Choose Bank Account",
+            columns: [
+                [{
+                    field: 'bank_account',
+                    title: 'Bank Account',
+                    width: 120
+                }, {
+                    field: 'bank_name',
+                    title: 'Bank Name',
+                    width: 250
+                }, {
+                    field: 'bank_code',
+                    title: 'Bank Code',
+                    width: 100
+                }, ]
+            ],
         });
     });
 

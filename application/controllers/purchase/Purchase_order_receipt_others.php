@@ -204,7 +204,7 @@ class Purchase_order_receipt_others extends CI_Controller
                     $this->db->where('a.bc_document', $filter_doc_no);
                 }
                 $this->db->group_by('a.receipt_no');
-                $this->db->order_by('a.receipt_id', 'DESC');
+                $this->db->order_by('a.receipt_no', 'DESC');
                 // $this->db->order_by('a.status', 'ASC');
                 //Total Data
                 $totalRows = $this->db->count_all_results('', false);
@@ -292,7 +292,7 @@ class Purchase_order_receipt_others extends CI_Controller
             a.supplier_id,
             e.asset_code,
             e.asset_code_sub,
-            b.uom,
+            (CASE WHEN a.uom = '' THEN b.uom ELSE a.uom END) as uom,
             (a.delivery - COALESCE(d.qty_os, 0)) as qty_delivery,
             (a.delivery - COALESCE(d.qty_os, 0)) as qty_receipt,
             CEIL(((a.delivery - COALESCE(d.qty_os, 0)) / f.mpq)) as qty_label");
@@ -730,10 +730,8 @@ class Purchase_order_receipt_others extends CI_Controller
             <table id="customers" border="1">
             <tr>
                 <th rowspan="2" width="20">No</th>
-                <th rowspan="2" width="80">Status<br>POR</th>
                 <th rowspan="2" width="80">Status<br>Invoice</th>
-                <th rowspan="2">MRN No</th>
-                <th rowspan="2">GRN No</th>
+                <th rowspan="2">POR No</th>
                 <th rowspan="2">PO No</th>
                 <th rowspan="2">Invoice No</th>
                 <th rowspan="2">Invoice Date</th>
@@ -767,22 +765,10 @@ class Purchase_order_receipt_others extends CI_Controller
                 $style = "style='background: red; color:white;'";
             }
 
-            if($data['total_scan'] == $data['qty_label']){
-                $grn_no = "GRN".substr(@$data['receipt_no'], 3);
-                $status2 = "CLOSED";
-                $style2 = "style='background: red; color:white;'";
-            }else{
-                $grn_no = "";
-                $status2 = "OPEN";
-                $style2 = "style='background: green; color:white;'";
-            }
-
             $html .= '<tr>
                         <td style="text-align:center">' . $no . '</td>
-                        <td '.$style2.'>' . $status2 . '</td>
                         <td '.$style.'>' . $status . '</td>
                         <td>' . $data['receipt_no'] . '</td>
-                        <td>' . $grn_no . '</td>
                         <td>' . $data['po_no'] . '</td>
                         <td>' . $data['bc_document'] . '</td>
                         <td>' . $data['bc_date'] . '</td>

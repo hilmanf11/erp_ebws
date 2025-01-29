@@ -489,6 +489,7 @@ class Report_ar extends CI_Controller
             $customer_id = $customer['id'];
             $customer_name = $customer['name'];
             $plant = $customer['plant'];
+            $customer_w = "($plant) $customer_name";
 
             if ($customer['currency'] != "IDR") {
                 $digit = 2;
@@ -514,7 +515,7 @@ class Report_ar extends CI_Controller
                     UNION 
                         (SELECT a.journal_date as trans_date, '-' as due_date, a.invoice_no as sales_invoice, a.document_no, a.account_number, a.number as voucher_no, a.currency, a.original_debit, a.original_credit, a.local_debit, a.local_credit, a.rates, a.description,a.trans_date as voucher_date,'-' as status_sales
                         FROM journal_postings a
-                        WHERE a.journal_date between '$filter_from' and '$filter_to' and a.company_id = '$customer_id' and a.company_name like '%$plant%' and a.modul in ('CURRENCY REVALUATION','ADJUSTMENT') and a.account_number IN ('27000001','28000004','28000007')
+                        WHERE a.journal_date between '$filter_from' and '$filter_to' and a.company_id = '$customer_id' and a.company_name like '%$customer_w%' and a.modul in ('CURRENCY REVALUATION','ADJUSTMENT') and a.account_number IN ('27000001','28000004','28000007')
                         )
                     ) a 
                     WHERE a.status_sales like '%$filter_status%'

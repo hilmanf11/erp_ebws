@@ -39,6 +39,23 @@ class Barcode_divides extends CI_Controller
             $this->db->where('label_no', $label_no);
             $records = $this->db->get()->result_array();
 
+            $barcode_divides = $this->crud->read("barcode_divides", [], ["label_no" => $label_no]);
+            $barcode_divides2 = $this->crud->read("barcode_divides", [], ["label_divided" => $label_no]);
+
+            if (!empty($barcode_divides)) {
+                $result['total'] = 0;
+                $result['message'] = "Barcode Divided has been created";
+                $result = array_merge($result, ['rows' => []]);
+                die(json_encode($result));
+            }
+
+            if (@$barcode_divides2->type == "SUPPLY") {
+                $result['total'] = 0;
+                $result['message'] = "Barcode Divided cannot scan because this label for SUPPLY";
+                $result = array_merge($result, ['rows' => []]);
+                die(json_encode($result));
+            }
+
             if(empty($records)){
                 $this->db->select('a.*, b.trans_date as receipt_date, c.number, c.name');
                 $this->db->from('scan_item_receipts a');
@@ -93,11 +110,13 @@ class Barcode_divides extends CI_Controller
 
                 //Mapping Data
                 $result['total'] = count($records);
+                $result['message'] = "Label not found!";
                 $result = array_merge($result, ['rows' => $records]);
                 echo json_encode($result);
             }else{
                 //Mapping Data
                 $result['total'] = 0;
+                $result['message'] = "Label Already Scan Out!";
                 $result = array_merge($result, ['rows' => []]);
                 echo json_encode($result);
             }
@@ -109,7 +128,7 @@ class Barcode_divides extends CI_Controller
         if ($this->input->post()) {
             if ($this->form_validation->run() == TRUE) {
                 $post = $this->input->post();
-                if ($post['bal'] >= 0) {
+                if ($post['bal'] > 0) {
                     $explode = @explode("D", $post['label_no']);
                     
                     if(empty($explode[0])){
@@ -191,7 +210,7 @@ class Barcode_divides extends CI_Controller
                     }
 
                 } else {
-                    $message = json_encode(array("title" => "Not Balance", "message" => "Qty Balance <= 0 ", "theme" => "error"));
+                    $message = json_encode(array("title" => "Not Balance", "message" => "Qty Balance Cannot Minus or Zero ", "theme" => "error"));
                 }
                 echo $message;
             } else {
@@ -246,6 +265,19 @@ class Barcode_divides extends CI_Controller
                 $this->db->where('a.label_no', $label_no);
                 $this->db->group_by('a.label_divided');
                 $records = $this->db->get()->result_object();
+
+                if (!$records) {
+                    $this->db->select('a.*, c.receipt_date, d.number, d.name, e.warehouse');
+                    $this->db->from('barcode_divides a');
+                    $this->db->join('purchase_order_receipts c', 'a.reff = c.receipt_id');
+                    $this->db->join('item_rm d', 'c.item_rm_id = d.id');
+                    $this->db->join('scan_item_receipts e', 'c.receipt_id = e.receipt_id');
+                    $this->db->where('a.deleted', 0);
+                    // $this->db->where('a.status', 0);
+                    $this->db->where('a.label_no', $label_no);
+                    $this->db->group_by('a.label_divided');
+                    $records = $this->db->get()->result_object();
+                }
             }
         }
 
@@ -262,9 +294,9 @@ class Barcode_divides extends CI_Controller
                 $no = 1;
             }
             if ($no == 1) {
-                $padding = "padding:0 0mm 1mm 0mm;";
+                $padding = "padding:0 0mm 5mm 0mm;";
             } else {
-                $padding = "padding:0 0mm 1mm 0mm;";
+                $padding = "padding:0 0mm 5mm 0mm;";
             }
             $html .= '  <div style="width: 55mm; max-height:42mm; ' . $padding . '">
                             <table id="customers" border="1" style="margin-bottom:20px;">
@@ -295,10 +327,10 @@ class Barcode_divides extends CI_Controller
                                         <small>Label No</small><br>
                                         <b style="font-size:7px;">' . $record->label_divided . '</b><br>
                                         <br>
-                                        <b style="color:blue;">BARCODE DIVIDES</b>
+                                        <b style="color:blue;">BARCODE DIVIDES <br>'.$record->type.'</br>
                                     </td>
                                     <th style="text-align:center;">
-                                        <img src="' . base_url('assets/image/qrcode/' . $record->label_divided . '.png') . '" width="50"/>
+                                        <img src="' . base_url('assets/image/qrcode/' . $record->label_divided . '.png') . '" width="70"/>
                                     </th>
                                 </tr>
                             </table>

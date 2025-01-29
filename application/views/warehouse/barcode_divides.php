@@ -92,7 +92,7 @@
                             $("#balance").numberbox('setValue', 0);
                             toastr.success("Serial Found");
                         } else {
-                            toastr.warning("Label not found or Label Already Scan Out or Label has been Divided!");
+                            toastr.error(json.message);
                             $("#label_no").val('');
                         }
                     }
@@ -119,24 +119,29 @@
         var label_no = $("#label_no_2").textbox('getValue');
         var supply = $("#supply").numberbox('getValue');
         var balance = $("#balance").numberbox('getValue');
-        $.ajax({
-            type: "POST",
-            url: "<?= base_url('warehouse/barcode_divides/create') ?>",
-            data: "label_no=" + label_no +
-                "&qty=" + supply +
-                "&bal=" + balance,
-            dataType: "json",
-            success: function(result) {
-                if (result.theme == "success") {
-                    toastr.success(result.message, result.title);
-                } else {
-                    toastr.error(result.message, result.title);
+        
+        if(supply > 0){
+            $.ajax({
+                type: "POST",
+                url: "<?= base_url('warehouse/barcode_divides/create') ?>",
+                data: "label_no=" + label_no +
+                    "&qty=" + supply +
+                    "&bal=" + balance,
+                dataType: "json",
+                success: function(result) {
+                    if (result.theme == "success") {
+                        toastr.success(result.message, result.title);
+                    } else {
+                        toastr.error(result.message, result.title);
+                    }
+                    var url = "?label_no=" + window.btoa(label_no);
+                    $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
+                    $("#printout").attr('src', '<?= base_url('warehouse/barcode_divides/print') ?>' + url);
                 }
-                var url = "?label_no=" + window.btoa(label_no);
-                $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
-                $("#printout").attr('src', '<?= base_url('warehouse/barcode_divides/print') ?>' + url);
-            }
-        });
+            });
+        }else{
+            toastr.error("Qty Supply Cannot 0");
+        }
     }
 
     function print() {

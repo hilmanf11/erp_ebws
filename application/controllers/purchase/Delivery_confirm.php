@@ -130,7 +130,7 @@ class Delivery_confirm extends CI_Controller
             $result = array();
             //Select Query
             // $this->db->select("a.*, b.name as supplier_name, c.number as item_rm_number, c.name as item_rm_name, d.name as item_family_name, e.receipt");
-            $this->db->select("a.*, b.name as supplier_name, c.number as item_rm_number, c.name as item_rm_name, d.name as item_family_name, f.qty_confirm, (e.qty + (f.qty_confirm - a.delivery)) as qty_remain, e.qty as qty_po, (e.qty + (f.qty_confirm - a.delivery) - a.delivery) as balance");
+            $this->db->select("a.*, (CASE WHEN a.uom = '' THEN c.uom ELSE a.uom END) as uom, b.name as supplier_name, c.number as item_rm_number, c.name as item_rm_name, d.name as item_family_name, f.qty_confirm, (e.qty + (f.qty_confirm - a.delivery)) as qty_remain, e.qty as qty_po, (e.qty + (f.qty_confirm - a.delivery) - a.delivery) as balance");
             $this->db->from('purchase_confirm a');
             $this->db->join('suppliers b', 'a.supplier_id = b.id');
             $this->db->join('item_rm c', 'a.item_rm_id = c.id');

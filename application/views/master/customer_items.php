@@ -93,6 +93,7 @@
                 <th data-options="field:'valid_date',width:100,halign:'center'">Valid Date</th>
                 <th data-options="field:'created_date',width:150,halign:'center'">Created Date</th>
                 <th data-options="field:'created_by',width:120,halign:'center'">Created By</th>
+                <th data-options="field:'attachment',width:80,align:'center',formatter: btnDetails">Attachment</th>
                 <th data-options="field:'remark',width:200,halign:'center'">Remark</th>
             </tr>
         </thead>
@@ -265,10 +266,65 @@
                         }
                     }
                 }, {
+                    field: 'attachment_upload',
+                    width: 150,
+                    halign: 'center',
+                    title: "Attachment",
+                    editor: {
+                        type: 'filebox',
+                        options: {
+                            // required: true,
+                            buttonText: 'Browse File',
+                            accept: '.jpg, .png, .pdf',
+                            onChange: function() {
+                                var dg = $('#dg2');
+                                var row = dg.datagrid('getSelected');
+                                var rowIndex = dg.datagrid('getRowIndex', row);
+
+                                var ed = dg.datagrid('getEditor', {
+                                    index: rowIndex,
+                                    field: 'attachment'
+                                });
+
+                                var files = $(this).filebox('files')
+                                var formData = new FormData();
+                                for (var i = 0; i < files.length; i++) {
+                                    var file = files[i];
+                                    formData.append('file', file, file.name);
+                                }
+                                $.ajax({
+                                    url: '<?= base_url('master/customer_items/uploadatt') ?>',
+                                    type: 'post',
+                                    data: formData,
+                                    contentType: false,
+                                    processData: false,
+                                    dataType: 'json',
+                                    success: function(data) {
+                                        if (data.success == true) {
+                                            toastr.success(data.message);
+                                            $(ed.target).textbox('setValue', data.filename);
+                                        } else {
+                                            toastr.error(data.message);
+                                        }
+                                    }
+                                })
+                            }
+                        }
+                    }
+                }, {
                     field: 'remark',
                     width: 200,
                     halign: 'center',
                     title: "Remarks",
+                    editor: {
+                        type: 'textbox'
+                    }
+                }, {
+                    field: 'attachment',
+                    width: 200,
+                    hidden: true,
+                    halign: 'center',
+                    title: "Attachment",
                     editor: {
                         type: 'textbox'
                     }
@@ -547,6 +603,12 @@
                             width: 80,
                             formatter: btnHistories
                         }, {
+                            field: 'attachment',
+                            title: 'Attachment',
+                            halign: 'center',
+                            width: 80,
+                            formatter: btnDetails
+                        }, {
                             field: 'start_date',
                             title: 'Start Date',
                             halign: 'center',
@@ -618,6 +680,7 @@
                                     price: json[i].price,
                                     start_date: json[i].start_date,
                                     valid_date: json[i].valid_date,
+                                    attachment: json[i].attachment,
                                     remark: json[i].remark
                                 },
                                 dataType: "json",
@@ -838,12 +901,15 @@
         }
     }
 
-    // function priceformat(value, row) {
-    //     const formatter = new Intl.NumberFormat('en-IN', {
-    //         minimumFractionDigits: 2
-    //     });
-    //     return "<b>" + formatter.format(value) + "</b>";
-    // }
+    function btnDetails(val, row, index) {
+        var attachment = row.attachment;
+
+        if (attachment != null && attachment != "") {
+            return '<a class="btn btn-primary w-100" target="_blank" href="<?= base_url('assets/image/customer_items/') ?>' + row.attachment + '" style="pointer-events: visible; opacity:1;"><i class="fa fa-eye"></i> View</a>';
+        } else {
+            return '-';
+        }
+    }
 
     function btnHistories(val, row) {
         var history = "viewHistories('" + row.customer_id + "','" + row.item_fg_id + "','" + row.plant + "')";

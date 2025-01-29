@@ -374,6 +374,7 @@
         
         $("#modul").textbox('setValue', "ADJUSTMENT");
         $("#journal_date").datebox('setValue', "<?= date("Y-m-d") ?>");
+        $("#document_date").datebox('setValue', "<?= date("Y-m-d") ?>");
         $("#journal_category").combobox('setValue', 'GL - GL');
         $("#journal_type").combogrid('setValue', '20241120000001');
 
@@ -598,8 +599,93 @@
         var modul = $("#modul").textbox('getValue')
 
         if(modul == "ADJUSTMENT"){
-            $('#dg2').datagrid('selectRow', getRowIndex(target));
-            $('#dg2').datagrid('beginEdit', getRowIndex(target));
+            if (editIndex !== undefined) {
+                $('#dg2').datagrid('endEdit', editIndex);
+            }
+            var rowIndex = getRowIndex(target);
+            $('#dg2').datagrid('selectRow', rowIndex).datagrid('beginEdit', rowIndex);
+            editIndex = rowIndex;
+
+            var journal_category = $("#journal_category").combobox('getValue');
+
+            var ed = $('#dg2').datagrid('getEditor', {
+                index: rowIndex,
+                field: 'account_number'
+            });
+
+            var account_number = $(ed.target).combogrid('getValue');
+
+            var urls = '<?= base_url('finance/journal_posting_adjustments/readCoa?category=') ?>' + btoa(journal_category);
+
+            $(ed.target).combogrid({
+                url: urls,
+                panelWidth: 450,
+                panelHeight: 200,
+                idField: 'account_number',
+                textField: 'account_number',
+                mode: 'remote', 
+                fitColumns: true,
+                prompt: 'Choose Account No',
+                columns: [
+                    [{
+                        field: 'number',
+                        title: 'Code',
+                        width: 100
+                    },{
+                        field: 'name',
+                        title: 'Name',
+                        width: 250
+                    }]
+                ],
+                onSelect: function(value, rows) {
+                    var dg = $('#dg2');
+                    var row = dg.datagrid('getSelected');
+                    var rowIndex = dg.datagrid('getRowIndex', row);
+                    var ed = dg.datagrid('getEditor', {
+                        index: rowIndex,
+                        field: 'account_name'
+                    });
+                    var ed1 = dg.datagrid('getEditor', {
+                        index: rowIndex,
+                        field: 'company_id'
+                    });
+                    var ed2 = dg.datagrid('getEditor', {
+                        index: rowIndex,
+                        field: 'company_name'
+                    });
+                    var ed3 = dg.datagrid('getEditor', {
+                        index: rowIndex,
+                        field: 'amount'
+                    });
+                    var ed4 = dg.datagrid('getEditor', {
+                        index: rowIndex,
+                        field: 'debitcredit'
+                    });
+                    var ed5 = dg.datagrid('getEditor', {
+                        index: rowIndex,
+                        field: 'local_credit'
+                    });
+
+                    $(ed.target).textbox('setValue', rows.account_name);
+                    $(ed1.target).textbox('setValue', rows.number);
+                    $(ed2.target).textbox('setValue', rows.name);
+
+                    $.ajax({
+                        type: "post",
+                        url: "<?= base_url('master/tds/reads/') ?>" + rows.account_number,
+                        dataType: "json",
+                        success: function (tds) {
+                            if(tds.length > 0){
+                                $(ed3.target).numberbox('setValue', (parseFloat(amount) * (parseFloat(tds[0].individual) / 100)));
+                                $(ed4.target).combobox('setValue', "CREDIT");
+                                $(ed5.target).numberbox('setValue', (parseFloat(amount) * (parseFloat(tds[0].individual) / 100)));
+                            }
+                        }
+                    });
+                }, onLoadSuccess: function(){
+                    $(ed.target).combogrid('setValue', account_number);
+                }
+            });
         }else{
             toastr.warning("Not Available for Modul " + modul);
         }
@@ -936,6 +1022,12 @@
                 text: 'Save All',
                 iconCls: 'icon-ok',
                 handler: function() {
+                    var btn = $(this);
+                    btn.linkbutton('disable');
+                    setTimeout(function() { 
+                        btn.linkbutton('enable'); 
+                    }, 3000);
+                    
                     var journal_date = $("#journal_date").datebox('getValue');
                     var modul = $("#modul").textbox('getValue');
                     var journal_type = $("#journal_type").combogrid('getValue');

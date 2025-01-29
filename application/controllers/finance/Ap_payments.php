@@ -147,7 +147,7 @@ class Ap_payments extends CI_Controller
     {
         $journal_type_id = base64_decode($journal_type_id);
         $bank_account = base64_decode($bank_account);
-        $rate = base64_decode($rate);
+        // $rate = base64_decode($rate);
 
         $banks = $this->crud->query("SELECT a.*, b.account_name FROM account_banks a 
             JOIN account_coa b ON a.account_number = b.account_number 
@@ -166,8 +166,9 @@ class Ap_payments extends CI_Controller
             $description = $jsonData["description"];
             $total = $jsonData["payment"];
             $currency = $jsonData['currency'];
+            $rate = $jsonData['rate'];
             $payment_date = $jsonData['payment_date'];
-            $trans_date = $jsonData['trans_date'];
+            $trans_date = $jsonData['payment_date'];
 
             $search_date = date("d", strtotime($payment_date));
             if ($search_date == "31") {
@@ -214,7 +215,7 @@ class Ap_payments extends CI_Controller
                         "description" => $description,
                         "debit" => $total,
                         "credit" => 0,
-                        "rate" => empty($exchangeBf->middle) ? 1 : $exchangeBf->middle,
+                        "rate" => $rate,
                         "local_debit" => round($amount, 2),
                         "local_credit" => 0,
                         "flag" => $flag,
@@ -227,7 +228,7 @@ class Ap_payments extends CI_Controller
                         "description" => $description,
                         "debit" => 0,
                         "credit" => $total,
-                        "rate" => empty($exchangeBf->middle) ? 1 : $exchangeBf->middle,
+                        "rate" => $rate,
                         "local_debit" => 0,
                         "local_credit" => round($amount, 2),
                         "flag" => $flag,
@@ -236,8 +237,14 @@ class Ap_payments extends CI_Controller
             }
 
             $flag++;
-            $grand_total += round($total, 2);
-            $grand_total_INR += round($amount, 2);
+            
+            if ($jsonData['account_type'] == "DEBIT") {
+                $grand_total += round($total, 2);
+                $grand_total_INR += round($amount, 2);
+            }else{
+                $grand_total -= round($total, 2);
+                $grand_total_INR -= round($amount, 2);
+            }
         }
 
         $arr = array_values($mergedData);
@@ -248,7 +255,11 @@ class Ap_payments extends CI_Controller
                     $amount2 = round(($grand_total * $exchangeNow->middle), 2);
                 } else {
                     // $amount2 = 0;
+<<<<<<< Updated upstream
                     $amount2 = ($total * $rate);
+=======
+                    $amount2 = ($grand_total_INR);
+>>>>>>> Stashed changes
                 }
             } else {
                 $amount2 = $grand_total;
@@ -259,7 +270,7 @@ class Ap_payments extends CI_Controller
                 "account_name" => $bank->account_name,
                 "debit" => "0.00",
                 "credit" => $grand_total,
-                "rate" => empty($exchangeNow->middle) ? 1 : $exchangeNow->middle,
+                "rate" => round($amount2 / $grand_total, 2),
                 "local_debit" => 0,
                 "local_credit" => round($amount2, 2),
                 "flag" => $flag,
@@ -454,8 +465,8 @@ class Ap_payments extends CI_Controller
         $this->db->from('ap_payments a');
         $this->db->join('account_coa b', 'a.account_number = b.account_number', 'left');
         $this->db->where('a.supplier_id', $supplier_id);
-        $this->db->where('a.purchase_invoice', $purchase_invoice);
-        // $this->db->where('a.journal_type_id', '20230823000001');
+        // $this->db->where('a.purchase_invoice', $purchase_invoice);
+        $this->db->where('a.journal_type_id', '20240913000026');
         //$this->db->where('a.account_number', '1151101');
         $this->db->where('a.status_dp', '0');
         $records = $this->db->get()->result_array();
@@ -520,6 +531,16 @@ class Ap_payments extends CI_Controller
             JOIN account_coa b ON a.account_number = b.account_number 
             WHERE a.journal_type_id = '$journal_type_id' AND a.ap_payment = 'YES'");
 
+            if(count($journal) > 0){
+                $account_number = @$journal[0]->account_number;
+                $account_name = @$journal[0]->account_name;
+            }else{
+                $journal = $this->crud->query("SELECT account_number, account_name FROM purchase_invoice_journals WHERE `number` = '$number' and credit > 0 ORDER BY flag desc");
+                
+                $account_number = @$journal[0]->account_number;
+                $account_name = @$journal[0]->account_name;
+            }
+
             $ap_payment = $this->crud->query("SELECT purchase_invoice, SUM(payment) as payment FROM ap_payments WHERE purchase_invoice = '$number' GROUP BY purchase_invoice, account_number ORDER BY payment DESC");
 
             $obj[] = array(
@@ -529,10 +550,12 @@ class Ap_payments extends CI_Controller
                 "currency" => $record['currency'],
                 "rate" => $record['rate'],
                 "amount" => $record['total'],
+                "balance" => ($record['total']),
                 "balance" => ($record['total'] - @$ap_payment[0]->payment),
+                "payment" => ($record['total']),
                 "payment" => ($record['total'] - @$ap_payment[0]->payment),
-                "account_number" => @$journal[0]->account_number,
-                "account_name" => @$journal[0]->account_name,
+                "account_number" => @$account_number,
+                "account_name" => @$account_name,
                 "account_type" => "DEBIT",
             );
         }
@@ -631,9 +654,7 @@ class Ap_payments extends CI_Controller
                         $this->crud->update('purchase_invoices', ["number" => $post['purchase_invoice']], ["status" => 1]);
                     }
 
-                    if ($post['balance'] == $post['payment']) {
-                        $this->crud->update('ap_payments', ["payment_no" => $post['purchase_invoice']], ["status_dp" => 1]);
-                    }
+                    $this->crud->update('ap_payments', ["payment_no" => $post['purchase_invoice']], ["status_dp" => 1]);
                 }
                 echo $send;
             }

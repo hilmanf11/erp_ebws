@@ -569,12 +569,17 @@ class Purchase_invoices extends CI_Controller
     {
         if ($this->input->post()) {
             $post = $this->input->post();
-            // $purchase_invoices = $this->crud->read('purchase_invoices', [], ["por_no" => $post['por_no'], "item_no" => $post['item_no'], "supplier_id" => $post['supplier_id'], "trans_date" => $post['trans_date']]);
-
+            
             if (@$post['id'] != "") {
                 $send = $this->crud->update('purchase_invoices', ["id" => $post['id']], $post);
                 echo $send;
             } else {
+                $purchase_invoices = $this->crud->reads('purchase_invoices', [], ["por_no" => $post['por_no'], "item_no" => $post['item_no'], "supplier_id" => $post['supplier_id'], "trans_date" => $post['trans_date']]);
+                
+                if(count($purchase_invoices) > 0){
+                    die(json_encode(array("title" => "Available", "message" => "Data Already Created", "theme" => "error")));
+                }
+
                 $send = $this->crud->create('purchase_invoices', $post);
                 if ($send) {
                     if ($post['por_no'] != "-") {
@@ -953,13 +958,13 @@ class Purchase_invoices extends CI_Controller
                                 <td>' . $record['uom'] . '</td>
                                 <td style="text-align:right;">' . @number_format(($record['qty']), 2) . '</td>
                                 <td>' . $record['currency'] . '</td>
-                                <td style="text-align:right;">' . @number_format($record['price'], 2) . '</td>
+                                <td style="text-align:right;">' . @number_format($record['price'], 4) . '</td>
                                 <td style="text-align:right;">' . @number_format($record['total'], 2) . '</td>
                                 <td style="text-align:right;">' . @number_format($record['igst'], 2) . '</td>
                                 <td style="text-align:right;">' . @number_format($record['cgst'], 2) . '</td>
                                 <td style="text-align:right;">' . @number_format($record['sgst'], 2) . '</td>
                                 <td style="text-align:right;">' . @number_format($record['total2'], 2) . '</td>
-                                <td style="text-align:right;">' . @number_format($record['rate'], 2) . '</td>
+                                <td style="text-align:right;">' . @number_format($record['rate'], 4) . '</td>
                                 <td>INR</td>
                                 <td style="text-align:right;">' . @number_format($amount, 2) . '</td>
                             </tr>';
@@ -1220,7 +1225,7 @@ class Purchase_invoices extends CI_Controller
                                 <td style="text-align:right">' . number_format($detail['qty'], 2) . '</td>
                                 <td>' . $detail['uom'] . '</td>
                                 <td>' . $detail['currency'] . '</td>
-                                <td style="text-align:right">' . number_format($detail['price'], 2) . '</td>
+                                <td style="text-align:right">' . number_format($detail['price'], 4) . '</td>
                                 <td style="text-align:right">' . number_format($detail['total'], 4)  . '</td>
                             </tr>';
             }
@@ -1287,7 +1292,7 @@ class Purchase_invoices extends CI_Controller
         $this->db->join('journal_types c', 'a.journal_type_id = c.id', 'left');
         $this->db->join('purchase_order_receipts d', 'a.por_no = d.receipt_no', 'left');
         $this->db->join('account_coa e', 'a.account_number = e.account_number', 'left');
-        $this->db->join('item_rm f', 'a.item_rm_id = f.id');
+        $this->db->join('item_rm f', 'a.item_rm_id = f.id', 'left');
         $this->db->join('hsn g', 'f.hsn_code = g.number', 'left');
         if ($filter_type == "PID") {
             $this->db->where("a.trans_date between '$filter_trans_date_from' and '$filter_trans_date_to'");
@@ -1302,6 +1307,7 @@ class Purchase_invoices extends CI_Controller
         $this->db->like('a.invoice_no', $filter_status_supplier);
         $this->db->like('a.invoice_no', $filter_invoice_no);
         $this->db->like('a.status', $filter_status);
+        $this->db->group_by('a.id');
         $this->db->order_by('a.supplier_id', 'ASC');
         $this->db->order_by('a.number', 'ASC');
         $records = $this->db->get()->result_array();
@@ -1327,7 +1333,7 @@ class Purchase_invoices extends CI_Controller
             </center>
             <br><br>
             <center>
-                <h2>PURCHASE REGISTER REPORT</h2>
+                <h2>PURCHASE INVOICE DETAIL REPORT</h2>
                 <small>PERIOD : '.$periode.'</small>
             </center>
             <br><br>

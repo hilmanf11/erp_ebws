@@ -47,7 +47,7 @@ class Issued_others extends CI_Controller
             FROM purchase_order_receipt_others a 
             JOIN item_rm b ON a.item_rm_id = b.id 
             LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as issued FROM issued_others WHERE `status` = '0' GROUP BY item_rm_id) c ON a.item_rm_id = c.item_rm_id
-            WHERE b.id like '%$post%' and b.number like '%$post%' and a.store != 0
+            WHERE (b.id like '%$post%' or b.number like '%$post%') and a.store != 0
             GROUP BY a.item_rm_id
             HAVING (SUM(a.qty_receipt) - COALESCE(c.issued, 0)) > 0");
         $results = $sql->result_array();

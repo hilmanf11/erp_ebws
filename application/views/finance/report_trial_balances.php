@@ -38,9 +38,24 @@
 </div>
 
 <script>
+    function formatDate(tanggal){
+        var tanggalObj = new Date(tanggal);
+
+        var bulan = tanggalObj.toLocaleString('default', { month: 'long' });
+        var tahun = tanggalObj.getFullYear();
+
+        var formatBaru = bulan + " " + tahun;
+        return formatBaru;
+    }
+
     function add(){
         var filter_from = $("#filter_from").datebox('getValue');
         var filter_to = $("#filter_to").datebox('getValue');
+
+        if(formatDate(filter_from) != formatDate(filter_to)){
+            toastr.error("The Period only by monthly");
+            return false;
+        }
 
         $.ajax({
             type: "post",
@@ -54,7 +69,7 @@
                 }
 
                 if(filter_from != ""){
-                    $.messager.confirm('Warning', 'Are you sure you want to save this data?', function(r) {
+                    $.messager.confirm('Warning', 'Are you sure you want to generate period '+formatDate(filter_from)+' ?', function(r) {
                         if (r) {
                             Swal.fire({
                                 title: 'Please Wait for Save Trial Balance',
@@ -142,6 +157,9 @@
                                     }else{
                                         toastr.warning("Data not Found!");
                                     }
+                                }, error(){
+                                    toastr.error("Cutoff Period in Chart of Account not match");
+                                    Swal.close();
                                 }
                             });
                         }

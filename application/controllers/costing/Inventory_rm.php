@@ -51,94 +51,6 @@ class Inventory_rm extends CI_Controller
         echo json_encode($records);
     }
 
-    public function getData(){
-        $filter_from = $this->input->post('filter_from');
-        $filter_to   = $this->input->post('filter_to');
-        $filter_item_family = $this->input->post('filter_item_family');
-        $filter_items = $this->input->post('filter_items');
-        $period = date("Ym", strtotime($filter_from));
-
-        $start = strtotime($filter_from);
-        $finish = strtotime($filter_to);
-
-        $this->db->query("DELETE FROM inventory_rm WHERE trans_date between '$filter_from' and '$filter_to'");
-
-        //Item Receipts
-        $itemReceipts = $this->crud->query("SELECT * FROM (SELECT
-            DATE_FORMAT(a.receipt_date, '%Y%m') AS `period`,
-            a.item_rm_id,
-            f.item_family_id,
-            'RECEIPT' AS trans_type,
-            c.name AS created_name,
-            d.po_date,
-            a.receipt_date AS trans_date,
-            a.receipt_id AS custom_kind, 
-            a.po_no AS custom_no,
-            a.bc_document AS document_no, 
-            a.bc_date AS custom_date,
-            f.uom, 
-            SUM(b.qty) AS qty,
-            d.currency,
-            d.price,
-            (SUM(b.qty) * d.price) AS amount
-        FROM item_rm f
-        JOIN purchase_order_receipts a ON a.item_rm_id = f.id
-        JOIN scan_item_receipts b ON a.receipt_id = b.receipt_id
-        JOIN users c ON a.created_by = c.username
-        LEFT JOIN purchase_orders d ON a.item_rm_id = d.item_rm_id AND a.po_no = d.po_no
-        LEFT JOIN suppliers e ON d.supplier_id = e.id
-        GROUP BY a.id
-        UNION
-        SELECT 
-            DATE_FORMAT(a.created_date, '%Y%m') AS `period`,
-            a.item_rm_id, 
-            g.item_family_id, 
-            'ISSUED' AS trans_type,
-            h.name AS created_name,
-            d.po_date,
-            DATE_FORMAT(a.created_date, '%Y-%m-%d') AS trans_date,
-            b.receipt_id AS custom_kind,
-            a.request_no AS custom_no,
-            a.label_no AS document_no,
-            DATE_FORMAT(a.created_date, '%Y-%m-%d') AS custom_date,
-            g.uom,
-            (a.qty * -1),
-            d.currency,
-            d.price,
-            ((a.qty * price) * -1) AS amount
-        FROM item_rm g
-        JOIN issued_material_details a ON g.id = a.item_rm_id
-        LEFT JOIN purchase_order_labels b ON a.label_no = b.label_no
-        LEFT JOIN barcode_divides f ON a.label_no = f.label_divided
-        LEFT JOIN purchase_order_receipts c ON a.item_rm_id = c.item_rm_id AND (b.receipt_id = c.receipt_id OR f.reff = c.receipt_id) 
-        LEFT JOIN purchase_orders d ON a.item_rm_id = d.item_rm_id AND c.po_no = d.po_no
-        LEFT JOIN suppliers e ON d.supplier_id = e.id
-        JOIN users h ON a.created_by = h.username
-        GROUP BY a.id) z
-        WHERE z.trans_date BETWEEN '$filter_from' and '$filter_to' and z.item_family_id like '%$filter_item_family%' and z.item_rm_id like '%$filter_items%'
-        ORDER BY z.item_rm_id, z.trans_date");
-
-        $result['total'] = count($itemReceipts);
-        $result = array_merge($result, ['rows' => $itemReceipts]);
-        echo json_encode($result);
-    }
-
-    public function create()
-    {
-        if ($this->input->post()) {
-            $post = $this->input->post('data');
-            $data = array_merge($post, array("created_by" => $this->session->username, "created_date" => date("Y-m-d H:i:s")));
-            $send = $this->db->insert('inventory_rm', $data);
-            if($send){
-                echo json_encode(array("title" => "Created", "message" => "Data Created Successfully", "theme" => "success"));
-            }else{
-                echo json_encode(array("title" => "Failed", "message" => "Data Updated Failed, Try again", "theme" => "error"));
-            }
-        } else {
-            show_error("Cannot Process your request");
-        }
-    }
-
     public function formatNo($number){
         if($number >= 0){
             return "<span>".number_format($number, 2)."</span>";
@@ -198,33 +110,230 @@ class Inventory_rm extends CI_Controller
             <br><br><br><br>';
 
         if ($filter_display == "RECAP") {
-            //Item Receipts
-            $itemReceipts = $this->crud->query("SELECT 
-                a.id AS item_rm_id, 
-                a.number AS item_rm_number, 
-                a.name AS item_rm_name, 
-                a.uom, 
-                b.name AS item_family_name, 
-                COALESCE(c.qty, 0) AS begin_qty, 
-                COALESCE((c.amount / c.qty), 0) AS begin_price,
-                COALESCE(c.amount, 0) AS begin_amount,
-                COALESCE(d.qty, 0) AS in_qty,
-                COALESCE((d.amount / d.qty), 0) AS in_price,
-                COALESCE(d.amount, 0) AS in_amount,
-                COALESCE(e.qty, 0) AS out_qty,
-                COALESCE((e.amount / e.qty), 0) AS out_price,
-                COALESCE(e.amount, 0) AS out_amount,
-                COALESCE(f.qty, 0) AS bal_qty,
-                COALESCE((f.amount / f.qty), 0) AS bal_price,
-                COALESCE(f.amount, 0) AS bal_amount
-            FROM item_rm a
-            JOIN item_familys b ON a.item_family_id = b.id
-            LEFT JOIN (SELECT item_rm_id, SUM(qty) AS qty, SUM(amount) AS amount FROM inventory_rm WHERE trans_date < '$filter_from' GROUP BY item_rm_id) c ON a.id = c.item_rm_id
-            LEFT JOIN (SELECT item_rm_id, SUM(qty) AS qty, SUM(amount) AS amount FROM inventory_rm WHERE trans_type = 'RECEIPT' AND trans_date BETWEEN '$filter_from' AND '$filter_to' GROUP BY item_rm_id) d ON a.id = d.item_rm_id
-            LEFT JOIN (SELECT item_rm_id, SUM(qty) AS qty, SUM(amount) AS amount FROM inventory_rm WHERE trans_type = 'ISSUED' AND trans_date BETWEEN '$filter_from' AND '$filter_to' GROUP BY item_rm_id) e ON a.id = e.item_rm_id
-            LEFT JOIN (SELECT item_rm_id, SUM(qty) AS qty, SUM(amount) AS amount FROM inventory_rm WHERE trans_date BETWEEN '$filter_from' AND '$filter_to' GROUP BY item_rm_id) f ON a.id = f.item_rm_id
-            WHERE a.item_category_id = 'C01' and a.item_family_id like '%$filter_item_family%' and a.id like '%$filter_items%'
-            ORDER BY b.number, a.number ASC");
+            $sql_begin = $this->crud->query("SELECT c.id as item_rm_id, 
+                    c.number AS item_rm_number, c.name AS item_rm_name, c.uom, d.name AS item_family_name,
+                    ROUND(zz.begin_qty, 2) AS begin_qty,
+                    ROUND(zz.begin_price, 4) AS begin_price,
+                    ROUND(zz.begin_amount, 4) AS begin_amount,
+                    ROUND(SUM(zz.qty_in), 2) AS qty_in, 
+                    ROUND(SUM(zz.amount_in) / SUM(zz.qty_in), 4) AS price_in,
+                    ROUND(SUM(zz.amount_in), 4) AS amount_in, 
+                    ROUND(COALESCE(SUM(zz.qty_out), 0), 2) AS qty_out, 
+                    ROUND(COALESCE((SUM(zz.amount_out) / SUM(zz.qty_out)), 0), 4) AS price_out,
+                    ROUND(COALESCE(SUM(zz.amount_out), 0), 4) AS amount_out,
+                    ROUND(zz.begin_qty + SUM(zz.qty_in) - SUM(zz.qty_out), 2) AS bal_qty,
+                    ROUND((zz.begin_amount + SUM(zz.amount_in) - SUM(zz.amount_out)) / (zz.begin_qty + SUM(zz.qty_in) - SUM(zz.qty_out)), 2) AS bal_price,
+                    ROUND((ROUND(zz.begin_qty + SUM(zz.qty_in) - SUM(zz.qty_out), 2) * ROUND((zz.begin_amount + SUM(zz.amount_in) - SUM(zz.amount_out)) / (zz.begin_qty + SUM(zz.qty_in) - SUM(zz.qty_out)), 2)), 2) AS bal_amount
+                FROM (SELECT (@no_urut := @no_urut + 1) AS no_urut, z.receipt_date, 
+                        (CASE WHEN @item_rm_id = a.id THEN '1' ELSE '0' END) AS typee,
+                        @begin_qty := ROUND(CASE WHEN @item_rm_id = a.id THEN @balance_qty ELSE COALESCE(bgin.begin_qty, 0) END, 2) AS begin_qty,
+                        @begin_price := ROUND(CASE WHEN @item_rm_id = a.id THEN @balance_price ELSE COALESCE(bgin.begin_price, 0) END, 4) AS begin_price,
+                        @begin_amount := ROUND(CASE WHEN @item_rm_id = a.id THEN @balance_amount ELSE COALESCE(bgin.begin_amount, 0) END, 4) AS begin_amount,
+                        @item_rm_id := a.id AS item_rm_id,
+                        COALESCE(z.qty_in, 0) AS qty_in, 
+                        COALESCE(z.price_in, 0) AS price_in, 
+                        COALESCE(z.amount_in, 0) AS amount_in,
+                        COALESCE(z.qty_out, 0) AS qty_out,
+                        ROUND(CASE WHEN z.qty_in = 0 THEN @begin_price ELSE 0 END, 4) AS price_out, 
+                        (CASE WHEN z.qty_in = 0 THEN ROUND(z.qty_out * @begin_price, 4) ELSE 0 END) AS amount_out,
+                        @balance_price := COALESCE(ROUND((@begin_amount + COALESCE(z.amount_in, 0) - (CASE WHEN COALESCE(z.qty_in, 0) = 0 THEN ROUND(COALESCE(z.qty_out, 0) * @begin_price, 4) ELSE 0 END)) / (@begin_qty + COALESCE(z.qty_in, 0) - COALESCE(z.qty_out, 0)), 2), 0) AS balance_price,
+                        @balance_qty := COALESCE(ROUND(@begin_qty + COALESCE(z.qty_in, 0) - COALESCE(z.qty_out, 0), 2), 0) AS balance_qty,
+                        @balance_amount := COALESCE(ROUND(@balance_qty * @balance_price, 4), 0) AS balance_amount
+                    FROM item_rm a
+                    LEFT JOIN (
+                        SELECT a.* FROM (
+                            SELECT
+                                a.id,
+                                a.item_rm_id,
+                                a.receipt_date,
+                                c.qty_receipt AS qty_in,
+                                b.price AS price_in,
+                                (c.qty_receipt * b.price) AS amount_in,
+                                0 AS qty_out
+                            FROM purchase_order_receipts a
+                            LEFT JOIN purchase_orders b ON a.item_rm_id = b.item_rm_id AND a.po_no = b.po_no
+                            JOIN (SELECT receipt_id, SUM(qty) as qty_receipt FROM scan_item_receipts GROUP BY receipt_id) c ON a.receipt_id = c.receipt_id
+                            WHERE a.receipt_date BETWEEN '$filter_from' and '$filter_to'
+                            GROUP BY a.id
+                            UNION
+                            SELECT
+                                id,
+                                item_rm_id,
+                                DATE_FORMAT(created_date, '%Y-%m-%d') AS receipt_date,
+                                0 AS qty_in,
+                                0 AS price_in,
+                                0 AS amount_in,
+                                qty AS qty_out
+                            FROM issued_material_details
+                            WHERE DATE_FORMAT(created_date, '%Y-%m-%d') BETWEEN '$filter_from' and '$filter_to'
+                            GROUP BY id
+                            UNION
+                            SELECT 
+                                a.id,
+                                a.item_rm_id, 
+                                a.trans_date,
+                                COALESCE(SUM(a.qty), 0) AS qty_in,
+                                0 AS price_in,
+                                0 AS amount_in,
+                                0 AS qty_out
+                            FROM sto_rm a 
+                            WHERE a.type = 'IN' AND a.trans_date BETWEEN '$filter_from' and '$filter_to' AND a.approved_to = ''
+                            GROUP BY a.id
+                            UNION
+                            SELECT 
+                                a.id,
+                                a.item_rm_id, 
+                                a.trans_date,
+                                0 AS qty_in,
+                                0 AS price_in,
+                                0 AS amount_in,
+                                COALESCE(SUM(a.qty), 0) AS qty_out
+                            FROM sto_rm a 
+                            WHERE a.type = 'OUT' AND a.trans_date BETWEEN '$filter_from' and '$filter_to' AND a.approved_to = ''
+                            GROUP BY a.id
+                            UNION
+                            SELECT 
+                                b.id,
+                                a.item_rm_id, 
+                                DATE_FORMAT(b.created_date, '%Y-%m-%d') AS trans_date,
+                                0 AS qty_in,
+                                0 AS price_in,
+                                0 AS amount_in,
+                                COALESCE(SUM(b.qty), 0) AS qty_out 
+                            FROM purchase_order_receipts a 
+                            JOIN scan_item_rejections b ON a.receipt_id  = b.receipt_id 
+                            WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') BETWEEN '$filter_from' and '$filter_to' 
+                            GROUP BY b.id
+                            UNION
+                            SELECT
+                                a.id,
+                                a.item_rm_id,
+                                a.trans_date,
+                                a.qty AS qty_in,
+                                0 AS price_in,
+                                0 AS amount_in,
+                                0 AS qty_out
+                            FROM os_rm a
+                            WHERE a.trans_date BETWEEN '$filter_from' and '$filter_to' AND a.type = 'STO'
+                            GROUP BY a.id
+                            ) a
+                            ORDER BY a.item_rm_id, a.receipt_date ASC
+                        ) z ON a.id = z.item_rm_id
+                    LEFT JOIN (
+                        SELECT 
+                            c.id as item_rm_id, 
+                            (COALESCE(a.qty, 0) + COALESCE(SUM(zz.qty_in), 0) - COALESCE(SUM(zz.qty_out), 0)) AS begin_qty, 
+                            (CASE WHEN zz.balance_price IS NULL OR zz.balance_price = 0 THEN a.price ELSE zz.balance_price END) AS begin_price, 
+                            ((COALESCE(a.qty, 0) + COALESCE(SUM(zz.qty_in), 0) - COALESCE(SUM(zz.qty_out), 0)) * (CASE WHEN zz.balance_price IS NULL OR zz.balance_price = 0 THEN a.price ELSE zz.balance_price END)) AS begin_amount
+                        FROM item_rm c
+                        LEFT JOIN (
+                            SELECT (@no_urut := @no_urut + 1) AS no_urut, z.receipt_date,
+                                (CASE WHEN @item_rm_id = z.item_rm_id THEN '1' ELSE '0' END) AS typee,
+                                @begin_qty := ROUND(CASE WHEN @item_rm_id = z.item_rm_id THEN @balance_qty ELSE 0 END, 2) AS begin_qty,
+                                @begin_price := ROUND(CASE WHEN @item_rm_id = z.item_rm_id THEN @balance_price ELSE 0 END, 4) AS begin_price,
+                                @begin_amount := ROUND(CASE WHEN @item_rm_id = z.item_rm_id THEN @balance_amount ELSE 0 END, 4) AS begin_amount,
+                                @item_rm_id := z.item_rm_id AS item_rm_id,
+                                z.qty_in, 
+                                z.price_in, 
+                                z.amount_in,
+                                z.qty_out, 
+                                ROUND(CASE WHEN z.qty_in = 0 THEN @begin_price ELSE 0 END, 4) AS price_out, 
+                                (CASE WHEN z.qty_in = 0 THEN ROUND(z.qty_out * @begin_price, 4) ELSE 0 END) AS amount_out,
+                                @balance_price := COALESCE(ROUND((@begin_amount + z.amount_in - (CASE WHEN z.qty_in = 0 THEN ROUND(z.qty_out * @begin_price, 4) ELSE 0 END)) / (@begin_qty + z.qty_in - z.qty_out), 4), 0) AS balance_price,
+                                @balance_qty := COALESCE(ROUND(@begin_qty + z.qty_in - z.qty_out, 2), 0) AS balance_qty,
+                                @balance_amount := COALESCE(ROUND(@balance_qty * @balance_price, 4), 0) AS balance_amount
+                            FROM (
+                            SELECT a.* FROM (
+                                SELECT
+                                    a.id,
+                                    a.item_rm_id,
+                                    a.receipt_date,
+                                    c.qty_receipt AS qty_in,
+                                    b.price AS price_in,
+                                    (c.qty_receipt * b.price) AS amount_in,
+                                    0 AS qty_out
+                                FROM purchase_order_receipts a
+                                LEFT JOIN purchase_orders b ON a.item_rm_id = b.item_rm_id AND a.po_no = b.po_no
+                                JOIN (SELECT receipt_id, SUM(qty) as qty_receipt FROM scan_item_receipts GROUP BY receipt_id) c ON a.receipt_id = c.receipt_id
+                                WHERE a.receipt_date < '$filter_from'
+                                GROUP BY a.id
+                                UNION
+                                SELECT
+                                    id,
+                                    item_rm_id,
+                                    DATE_FORMAT(created_date, '%Y-%m-%d') AS receipt_date,
+                                    0 AS qty_in,
+                                    0 AS price_in,
+                                    0 AS amount_in,
+                                    qty AS qty_out
+                                FROM issued_material_details
+                                WHERE DATE_FORMAT(created_date, '%Y-%m-%d') < '$filter_from'
+                                GROUP BY id
+                                UNION
+                                SELECT 
+                                    a.id,
+                                    a.item_rm_id, 
+                                    a.trans_date,
+                                    COALESCE(SUM(a.qty), 0) AS qty_in,
+                                    0 AS price_in,
+                                    0 AS amount_in,
+                                    0 AS qty_out
+                                FROM sto_rm a 
+                                WHERE a.type = 'IN' AND a.trans_date < '$filter_from' AND a.approved_to = ''
+                                GROUP BY a.id
+                                UNION
+                                SELECT 
+                                    a.id,
+                                    a.item_rm_id, 
+                                    a.trans_date,
+                                    0 AS qty_in,
+                                    0 AS price_in,
+                                    0 AS amount_in,
+                                    COALESCE(SUM(a.qty), 0) AS qty_out
+                                FROM sto_rm a 
+                                WHERE a.type = 'OUT' AND a.trans_date < '$filter_from' AND a.approved_to = ''
+                                GROUP BY a.id
+                                UNION
+                                SELECT 
+                                    b.id,
+                                    a.item_rm_id, 
+                                    DATE_FORMAT(b.created_date, '%Y-%m-%d') AS trans_date,
+                                    0 AS qty_in,
+                                    0 AS price_in,
+                                    0 AS amount_in,
+                                    COALESCE(SUM(b.qty), 0) AS qty_out 
+                                FROM purchase_order_receipts a 
+                                JOIN scan_item_rejections b ON a.receipt_id  = b.receipt_id 
+                                WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') < '$filter_from' 
+                                GROUP BY b.id
+                                UNION
+                                SELECT
+                                    a.id,
+                                    a.item_rm_id,
+                                    a.trans_date,
+                                    a.qty AS qty_in,
+                                    0 AS price_in,
+                                    0 AS amount_in,
+                                    0 AS qty_out
+                                FROM os_rm a
+                                WHERE a.trans_date < '$filter_from' AND a.type = 'STO'
+                                GROUP BY a.id
+                                ) a
+                                ORDER BY a.item_rm_id, a.receipt_date ASC
+                            ) z,
+                        (SELECT @no_urut := 0, @balance_qty := 0.0000, @balance_price := 0.0000, @balance_amount := 0.0000) AS zz
+                        ORDER BY z.item_rm_id, z.receipt_date ASC) zz ON c.id = zz.item_rm_id
+                        LEFT JOIN inventory_rm a ON c.id = a.item_rm_id
+                        WHERE c.id LIKE '%$filter_items%' AND c.item_family_id LIKE '%$filter_item_family%' AND c.item_category_id = 'C01'
+                    GROUP BY c.id) bgin ON a.id = bgin.item_rm_id,
+                    (SELECT @no_urut := 0, @item_rm_id := 0) AS za
+                WHERE a.id LIKE '%$filter_items%' AND a.item_family_id LIKE '%$filter_item_family%' AND a.item_category_id = 'C01'
+                ORDER BY z.item_rm_id, z.receipt_date, no_urut ASC) zz
+                JOIN item_rm c ON zz.item_rm_id = c.id
+                JOIN item_familys d ON c.item_family_id = d.id
+                GROUP BY c.id
+                ORDER BY c.item_family_id, c.number asc"
+            );
 
             $html .= '<table id="customers" border="1" style="width: 100%">
                             <tr>
@@ -234,19 +343,23 @@ class Inventory_rm extends CI_Controller
                                 <th width="200" rowspan="2">Description</th>
                                 <th width="50" rowspan="2">Uom</th>
                                 <th width="100" rowspan="2">Product Family</th>
-                                <th colspan="2">Begin</th>
-                                <th colspan="2">In</th>
-                                <th colspan="2">Out</th>
-                                <th colspan="2">Ending</th>
+                                <th colspan="3">Begin</th>
+                                <th colspan="3">In</th>
+                                <th colspan="3">Out</th>
+                                <th colspan="3">Ending</th>
                             </tr>
                             <tr>
                                 <th width="50">Qty</th>
+                                <th width="50">Price</th>
                                 <th width="50">Amount</th>
                                 <th width="50">Qty</th>
+                                <th width="50">Price</th>
                                 <th width="50">Amount</th>
                                 <th width="50">Qty</th>
+                                <th width="50">Price</th>
                                 <th width="50">Amount</th>
                                 <th width="50">Qty</th>
+                                <th width="50">Price</th>
                                 <th width="50">Amount</th>
                             </tr>';
             $noh = 1;
@@ -258,7 +371,7 @@ class Inventory_rm extends CI_Controller
             $total_out_amount = 0;
             $total_bal_qty = 0;
             $total_bal_amount = 0;
-            foreach ($itemReceipts as $itemReceipt) {
+            foreach ($sql_begin as $itemReceipt) {
                 $html .= '  <tr>
                                 <td>' . $noh . '</td>
                                 <td>' . $itemReceipt->item_rm_id . '</td>
@@ -267,113 +380,365 @@ class Inventory_rm extends CI_Controller
                                 <td>' . $itemReceipt->uom . '</td>
                                 <td>' . $itemReceipt->item_family_name . '</td>
                                 <td style="text-align:right;">' . $this->formatNo($itemReceipt->begin_qty) . '</td>
+                                <td style="text-align:right;">' . $this->formatNo($itemReceipt->begin_price) . '</td>
                                 <td style="text-align:right;">' . $this->formatNo($itemReceipt->begin_amount) . '</td>
-                                <td style="text-align:right;">' . $this->formatNo($itemReceipt->in_qty) . '</td>
-                                <td style="text-align:right;">' . $this->formatNo($itemReceipt->in_amount) . '</td>
-                                <td style="text-align:right;">' . $this->formatNo($itemReceipt->out_qty) . '</td>
-                                <td style="text-align:right;">' . $this->formatNo($itemReceipt->out_amount) . '</td>
-                                <td style="text-align:right;">' . $this->formatNo($itemReceipt->begin_qty + $itemReceipt->bal_qty) . '</td>
-                                <td style="text-align:right;">' . $this->formatNo($itemReceipt->begin_amount + $itemReceipt->bal_amount) . '</td>
+                                <td style="text-align:right;">' . $this->formatNo($itemReceipt->qty_in) . '</td>
+                                <td style="text-align:right;">' . $this->formatNo($itemReceipt->price_in) . '</td>
+                                <td style="text-align:right;">' . $this->formatNo($itemReceipt->amount_in) . '</td>
+                                <td style="text-align:right;">' . $this->formatNo($itemReceipt->qty_out) . '</td>
+                                <td style="text-align:right;">' . $this->formatNo($itemReceipt->price_out) . '</td>
+                                <td style="text-align:right;">' . $this->formatNo($itemReceipt->amount_out) . '</td>
+                                <td style="text-align:right;">' . $this->formatNo($itemReceipt->bal_qty) . '</td>
+                                <td style="text-align:right;">' . $this->formatNo($itemReceipt->bal_price) . '</td>
+                                <td style="text-align:right;">' . $this->formatNo($itemReceipt->bal_amount) . '</td>
                             </tr>';
 
                 $total_begin_qty += $itemReceipt->begin_qty;
                 $total_begin_amount += $itemReceipt->begin_amount;
-                $total_in_qty += $itemReceipt->in_qty;
-                $total_in_amount += $itemReceipt->in_amount;
-                $total_out_qty += $itemReceipt->out_qty;
-                $total_out_amount += $itemReceipt->out_amount;
-                $total_bal_qty += ($itemReceipt->begin_qty + $itemReceipt->bal_qty);
-                $total_bal_amount += ($itemReceipt->begin_amount + $itemReceipt->bal_amount);
+                $total_in_qty += $itemReceipt->qty_in;
+                $total_in_amount += $itemReceipt->amount_in;
+                $total_out_qty += $itemReceipt->qty_out;
+                $total_out_amount += $itemReceipt->amount_out;
+                $total_bal_qty += ($itemReceipt->bal_qty);
+                $total_bal_amount += ($itemReceipt->bal_amount);
                 $noh++;
             }
 
             $html .= '  <tr>
                             <td colspan="6" style="text-align:right;"><b>GRAND TOTAL</b></td>
                             <td style="text-align:right;"><b>' . $this->formatNo($total_begin_qty, 2) . '</b></td>
+                            <td style="text-align:right;">-</td>
                             <td style="text-align:right;"><b>' . $this->formatNo($total_begin_amount, 2) . '</b></td>
                             <td style="text-align:right;"><b>' . $this->formatNo($total_in_qty, 2) . '</b></td>
+                            <td style="text-align:right;">-</td>
                             <td style="text-align:right;"><b>' . $this->formatNo($total_in_amount, 2) . '</b></td>
                             <td style="text-align:right;"><b>' . $this->formatNo($total_out_qty, 2) . '</b></td>
+                            <td style="text-align:right;">-</td>
                             <td style="text-align:right;"><b>' . $this->formatNo($total_out_amount, 2) . '</b></td>
                             <td style="text-align:right;"><b>' . $this->formatNo($total_bal_qty, 2) . '</b></td>
+                            <td style="text-align:right;">-</td>
                             <td style="text-align:right;"><b>' . $this->formatNo($total_bal_amount, 2) . '</b></td>
                         </tr>';
             $html .= '</table></body></html>';
         } else {
-            $itemReceipts = $this->crud->query("SELECT 
-	            a.id AS item_rm_id, 
-                a.number AS item_rm_number, 
-                a.name AS item_rm_name, 
-                a.uom, 
-                b.name AS item_family_name, 
-                d.*
-            FROM item_rm a
-            JOIN item_familys b ON a.item_family_id = b.id
-            JOIN inventory_rm d ON a.id = d.item_rm_id
-            WHERE a.item_category_id = 'C01' and d.trans_date BETWEEN '$filter_from' AND '$filter_to' and a.item_family_id like '%$filter_item_family%' and a.id like '%$filter_items%'
-            ORDER BY d.trans_date, b.number, a.number ASC");
+            $itemReceipts = $this->crud->query("SELECT (@no_urut := @no_urut + 1) AS no_urut, 
+                    c.number as item_rm_number, c.name as item_rm_name, c.uom, d.name as item_family_name, z.created_by,
+                    z.trans_type, z.po_date, z.receipt_date, z.receipt_no, z.po_no, z.bc_document, z.bc_date,
+                    (CASE WHEN @item_rm_id = z.item_rm_id THEN '1' ELSE '0' END) AS typee,
+                    @begin_qty := ROUND(CASE WHEN @item_rm_id = z.item_rm_id THEN @balance_qty ELSE COALESCE(bgin.begin_qty, 0) END, 2) AS begin_qty,
+                    @begin_price := ROUND(CASE WHEN @item_rm_id = z.item_rm_id THEN @balance_price ELSE COALESCE(bgin.begin_price, 0) END, 4) AS begin_price,
+                    @begin_amount := ROUND(CASE WHEN @item_rm_id = z.item_rm_id THEN @balance_amount ELSE COALESCE(bgin.begin_amount, 0) END, 4) AS begin_amount,
+                    @item_rm_id := z.item_rm_id AS item_rm_id,
+                    z.qty_in, 
+                    ROUND(CASE WHEN z.price_in = 0 THEN @begin_price ELSE z.price_in END, 4) as price_in,
+                    ROUND(CASE WHEN z.amount_in = 0 THEN (z.qty_in * @begin_price) ELSE z.amount_in END, 4) as amount_in,
+                    z.qty_out, 
+                    ROUND(CASE WHEN z.qty_in = 0 THEN @begin_price ELSE 0 END, 4) AS price_out, 
+                    (CASE WHEN z.qty_in = 0 THEN ROUND(z.qty_out * @begin_price, 4) ELSE 0 END) AS amount_out,
+                    @balance_price := COALESCE(ROUND((@begin_amount + z.amount_in - (CASE WHEN z.qty_in = 0 THEN ROUND(z.qty_out * @begin_price, 4) ELSE 0 END)) / (@begin_qty + z.qty_in - z.qty_out), 2), 0) AS balance_price,
+                    @balance_qty := COALESCE(ROUND(@begin_qty + z.qty_in - z.qty_out, 2), 0) AS balance_qty,
+                    @balance_amount := COALESCE(ROUND(@balance_qty * @balance_price, 4), 0) AS balance_amount
+                FROM (SELECT a.* FROM (
+                    SELECT
+                        a.id,
+                        a.item_rm_id,
+                        a.receipt_date,
+                        'RECEIPT' AS trans_type,
+                        b.po_date,
+                        a.receipt_no,
+                        b.po_no,
+                        a.bc_document,
+                        a.created_by,
+                        a.bc_date,
+                        c.qty_receipt AS qty_in,
+                        b.price AS price_in,
+                        (c.qty_receipt * b.price) AS amount_in,
+                        0 AS qty_out
+                    FROM purchase_order_receipts a
+                    LEFT JOIN purchase_orders b ON a.item_rm_id = b.item_rm_id AND a.po_no = b.po_no
+                    JOIN (SELECT receipt_id, SUM(qty) as qty_receipt FROM scan_item_receipts GROUP BY receipt_id) c ON a.receipt_id = c.receipt_id
+                    WHERE a.receipt_date BETWEEN '$filter_from' AND '$filter_to'
+                    GROUP BY a.id
+                    UNION
+                    SELECT
+                        id,
+                        item_rm_id,
+                        DATE_FORMAT(created_date, '%Y-%m-%d') AS receipt_date,
+                        'ISSUED' AS trans_type,
+                        '-' AS po_date,
+                        '-' AS receipt_no,
+                        request_no AS po_no,
+                        label_no AS bc_document,
+                        created_by,
+                        '-' AS bc_date,
+                        0 AS qty_in,
+                        0 AS price_in,
+                        0 AS amount_in,
+                        qty AS qty_out
+                    FROM issued_material_details
+                    WHERE DATE_FORMAT(created_date, '%Y-%m-%d') BETWEEN '$filter_from' AND '$filter_to'
+                    GROUP BY id
+                    UNION
+                    SELECT 
+                        a.id,
+                        a.item_rm_id, 
+                        a.trans_date AS receipt_date,
+                        'ADJUSTMENT IN' AS trans_type,
+                        '-' AS po_date,
+                        '-' AS receipt_no,
+                        '-' AS po_no,
+                        a.document_no AS bc_document,
+                        a.created_by,
+                        '-' AS bc_date,
+                        COALESCE(SUM(a.qty), 0) AS qty_in,
+                        0 AS price_in,
+                        0 AS amount_in,
+                        0 AS qty_out
+                    FROM sto_rm a 
+                    WHERE a.type = 'IN' AND a.trans_date BETWEEN '$filter_from' AND '$filter_to' AND a.approved_to = ''
+                    GROUP BY a.id
+                    UNION
+                    SELECT 
+                        a.id,
+                        a.item_rm_id, 
+                        a.trans_date AS receipt_date,
+                        'ADJUSTMENT OUT' AS trans_type,
+                        '-' AS po_date,
+                        '-' AS receipt_no,
+                        '-' AS po_no,
+                        a.document_no AS bc_document,
+                        a.created_by,
+                        '-' AS bc_date,
+                        0 AS qty_in,
+                        0 AS price_in,
+                        0 AS amount_in,
+                        COALESCE(SUM(a.qty), 0) AS qty_out
+                    FROM sto_rm a 
+                    WHERE a.type = 'OUT' AND a.trans_date BETWEEN '$filter_from' AND '$filter_to' AND a.approved_to = ''
+                    GROUP BY a.id
+                    UNION
+                    SELECT 
+                        b.id,
+                        a.item_rm_id, 
+                        DATE_FORMAT(b.created_date, '%Y-%m-%d') AS trans_date,
+                        'REJECTION' AS trans_type,
+                        '-' AS po_date,
+                        a.receipt_no,
+                        a.po_no,
+                        a.bc_document,
+                        a.created_by,
+                        a.bc_date,
+                        0 AS qty_in,
+                        0 AS price_in,
+                        0 AS amount_in,
+                        COALESCE(SUM(b.qty), 0) AS qty_out 
+                    FROM purchase_order_receipts a 
+                    JOIN scan_item_rejections b ON a.receipt_id  = b.receipt_id 
+                    WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') BETWEEN '$filter_from' AND '$filter_to'
+                    GROUP BY b.id
+                    UNION
+                    SELECT
+                        a.id,
+                        a.item_rm_id,
+                        a.trans_date as receipt_date,
+                        'STO' as trans_type,
+                        '-' AS po_date,
+                        '-' AS receipt_no,
+                        '-' AS po_no,
+                        document_no AS bc_document,
+                        created_by,
+                        '-' AS bc_date,
+                        a.qty AS qty_in,
+                        0 AS price_in,
+                        0 AS amount_in,
+                        0 AS qty_out
+                    FROM os_rm a
+                    WHERE a.trans_date BETWEEN '$filter_from' AND '$filter_to' AND a.type = 'STO'
+                    GROUP BY a.id) a
+                    ORDER BY a.item_rm_id, a.receipt_date ASC) z
+                LEFT JOIN (SELECT 
+                        c.id as item_rm_id, 
+                        (COALESCE(a.qty, 0) + COALESCE(SUM(zz.qty_in), 0) - COALESCE(SUM(zz.qty_out), 0)) AS begin_qty, 
+                        (CASE WHEN zz.balance_price IS NULL OR zz.balance_price = 0 THEN a.price ELSE zz.balance_price END) as begin_price, 
+                        ((COALESCE(a.qty, 0) + COALESCE(SUM(zz.qty_in), 0) - COALESCE(SUM(zz.qty_out), 0)) * (CASE WHEN zz.balance_price IS NULL OR zz.balance_price = 0 THEN a.price ELSE zz.balance_price END)) AS begin_amount
+                    FROM item_rm c
+                    LEFT JOIN (
+                        SELECT (@no_urut := @no_urut + 1) AS no_urut, z.receipt_date,
+                            (CASE WHEN @item_rm_id = z.item_rm_id THEN '1' ELSE '0' END) AS typee,
+                            @begin_qty := ROUND(CASE WHEN @item_rm_id = z.item_rm_id THEN @balance_qty ELSE 0 END, 2) AS begin_qty,
+                            @begin_price := ROUND(CASE WHEN @item_rm_id = z.item_rm_id THEN @balance_price ELSE 0 END, 4) AS begin_price,
+                            @begin_amount := ROUND(CASE WHEN @item_rm_id = z.item_rm_id THEN @balance_amount ELSE 0 END, 4) AS begin_amount,
+                            @item_rm_id := z.item_rm_id AS item_rm_id,
+                            z.qty_in, 
+                            ROUND(CASE WHEN z.price_in = 0 THEN @begin_price ELSE z.price_in END, 4) as price_in,
+                            ROUND(CASE WHEN z.amount_in = 0 THEN (z.qty_in * @begin_price) ELSE z.amount_in END, 4) as amount_in,
+                            z.qty_out, 
+                            ROUND(CASE WHEN z.qty_in = 0 THEN @begin_price ELSE 0 END, 4) AS price_out, 
+                            (CASE WHEN z.qty_in = 0 THEN ROUND(z.qty_out * @begin_price, 4) ELSE 0 END) AS amount_out,
+                            @balance_price := COALESCE(ROUND((@begin_amount + z.amount_in - (CASE WHEN z.qty_in = 0 THEN ROUND(z.qty_out * @begin_price, 4) ELSE 0 END)) / (@begin_qty + z.qty_in - z.qty_out), 4), 0) AS balance_price,
+                            @balance_qty := COALESCE(ROUND(@begin_qty + z.qty_in - z.qty_out, 2), 0) AS balance_qty,
+                            @balance_amount := COALESCE(ROUND(@balance_qty * @balance_price, 4), 0) AS balance_amount
+                        FROM (
+                        SELECT a.* FROM (
+                            SELECT
+                                a.id,
+                                a.item_rm_id,
+                                a.receipt_date,
+                                c.qty_receipt AS qty_in,
+                                b.price AS price_in,
+                                (c.qty_receipt * b.price) AS amount_in,
+                                0 AS qty_out
+                            FROM purchase_order_receipts a
+                            LEFT JOIN purchase_orders b ON a.item_rm_id = b.item_rm_id AND a.po_no = b.po_no
+                            JOIN (SELECT receipt_id, SUM(qty) as qty_receipt FROM scan_item_receipts GROUP BY receipt_id) c ON a.receipt_id = c.receipt_id
+                            WHERE a.receipt_date < '$filter_from'
+                            GROUP BY a.id
+                            UNION
+                            SELECT
+                                id,
+                                item_rm_id,
+                                DATE_FORMAT(created_date, '%Y-%m-%d') AS receipt_date,
+                                0 AS qty_in,
+                                0 AS price_in,
+                                0 AS amount_in,
+                                qty AS qty_out
+                            FROM issued_material_details
+                            WHERE DATE_FORMAT(created_date, '%Y-%m-%d') < '$filter_from'
+                            GROUP BY id
+                            UNION
+                            SELECT 
+                                a.id,
+                                a.item_rm_id, 
+                                a.trans_date,
+                                COALESCE(SUM(a.qty), 0) AS qty_in,
+                                0 AS price_in,
+                                0 AS amount_in,
+                                0 AS qty_out
+                            FROM sto_rm a 
+                            WHERE a.type = 'IN' AND a.trans_date < '$filter_from' AND a.approved_to = ''
+                            GROUP BY a.id
+                            UNION
+                            SELECT 
+                                a.id,
+                                a.item_rm_id, 
+                                a.trans_date,
+                                0 AS qty_in,
+                                0 AS price_in,
+                                0 AS amount_in,
+                                COALESCE(SUM(a.qty), 0) AS qty_out
+                            FROM sto_rm a 
+                            WHERE a.type = 'OUT' AND a.trans_date < '$filter_from' AND a.approved_to = ''
+                            GROUP BY a.id
+                            UNION
+                            SELECT 
+                                b.id,
+                                a.item_rm_id, 
+                                DATE_FORMAT(b.created_date, '%Y-%m-%d') AS trans_date,
+                                0 AS qty_in,
+                                0 AS price_in,
+                                0 AS amount_in,
+                                COALESCE(SUM(b.qty), 0) AS qty_out 
+                            FROM purchase_order_receipts a 
+                            JOIN scan_item_rejections b ON a.receipt_id  = b.receipt_id 
+                            WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') < '$filter_from' 
+                            GROUP BY b.id
+                            UNION
+                            SELECT
+                                a.id,
+                                a.item_rm_id,
+                                a.trans_date,
+                                a.qty AS qty_in,
+                                0 AS price_in,
+                                0 AS amount_in,
+                                0 AS qty_out
+                            FROM os_rm a
+                            WHERE a.trans_date < '$filter_from' AND a.type = 'STO'
+                            GROUP BY a.id) a
+                            ORDER BY a.item_rm_id, a.receipt_date ASC
+                        ) z,
+                    (SELECT @no_urut := 0, @balance_qty := 0.0000, @balance_price := 0.0000, @balance_amount := 0.0000) AS zz
+                    ORDER BY z.item_rm_id, z.receipt_date ASC) zz ON c.id = zz.item_rm_id
+                    LEFT JOIN inventory_rm a ON c.id = a.item_rm_id
+                    WHERE c.id like '%$filter_items%' and c.item_family_id like '%$filter_item_family%' AND c.item_category_id = 'C01'
+                    GROUP BY c.id) bgin ON z.item_rm_id = bgin.item_rm_id
+                JOIN item_rm c ON z.item_rm_id = c.id
+                JOIN item_familys d ON c.item_family_id = d.id,
+                (SELECT @no_urut := 0, @item_rm_id := 0) AS za
+                WHERE z.item_rm_id like '%$filter_items%' and d.id like '%$filter_item_family%' AND c.item_category_id = 'C01'
+                ORDER BY z.item_rm_id, z.receipt_date, no_urut ASC");
 
             $html .= '<table id="customers" style="width: 100%">
                         <tr>
-                            <th width="20">No</th>
-                            <th>Part No EBWS</th>
-                            <th>Part No Supplier</th>
-                            <th>Description</th>
-                            <th>Trans Type</th>
-                            <th>Created By</th>
-                            <th>PO Date</th>
-                            <th>Trans Date</th>
-                            <th>Receipt No</th>
-                            <th>Kanban/PO No</th>
-                            <th>Document No</th>
-                            <th>Document Date</th>
-                            <th>Qty</th>
-                            <th>Price</th>
-                            <th>Amount</th>
-                            <th>Balance</th>
+                            <th rowspan="2" width="20">No</th>
+                            <th rowspan="2">Part No EBWS</th>
+                            <th rowspan="2">Part No Supplier</th>
+                            <th rowspan="2">Description</th>
+                            <th rowspan="2">Trans Type</th>
+                            <th rowspan="2">Created By</th>
+                            <th rowspan="2">PO Date</th>
+                            <th rowspan="2">Trans Date</th>
+                            <th rowspan="2">Receipt No</th>
+                            <th rowspan="2">Kanban/PO No</th>
+                            <th rowspan="2">Document No</th>
+                            <th rowspan="2">Document Date</th>
+                            <th colspan="3">Begin</th>
+                            <th colspan="3">In</th>
+                            <th colspan="3">Out</th>
+                            <th colspan="3">Ending</th>
+                        </tr>
+                        <tr>
+                            <th width="50">Qty</th>
+                            <th width="50">Price</th>
+                            <th width="50">Amount</th>
+                            <th width="50">Qty</th>
+                            <th width="50">Price</th>
+                            <th width="50">Amount</th>
+                            <th width="50">Qty</th>
+                            <th width="50">Price</th>
+                            <th width="50">Amount</th>
+                            <th width="50">Qty</th>
+                            <th width="50">Price</th>
+                            <th width="50">Amount</th>
                         </tr>';
             $nod = 1;
             $last_item_rm_id = "";
             foreach ($itemReceipts as $itemReceipt) {
                 $item_rm_id = $itemReceipt->item_rm_id;
-
                 if($item_rm_id != $last_item_rm_id){
-                    $begin = $this->crud->query("SELECT item_rm_id, SUM(qty) as begin_qty, SUM(amount) as begin_amount FROM inventory_rm WHERE item_rm_id = '$item_rm_id' and trans_date < '$filter_from'");
-                    
-                    if(@$begin[0]->begin_amount > 0){
-                        $begin_price = (@$begin[0]->begin_amount / @$begin[0]->begin_qty);
-                    }else{
-                        $begin_price = 0;
-                    }
 
                     $html .= '  <tr style="background: #aae9b5;">
-                                    <td colspan="12" style="font-weight:bold;">BEGINING STOCK ('.$itemReceipt->item_rm_number.')</td>
-                                    <td style="text-align:right; font-weight:bold;">' . $this->formatNo(@$begin[0]->begin_qty) . '</td>
-                                    <td style="text-align:right; font-weight:bold;">' . $this->formatNo($begin_price) . '</td>
-                                    <td colspan="2" style="text-align:right; font-weight:bold;">' . $this->formatNo(@$begin[0]->begin_amount) . '</td>
+                                    <td colspan="21" style="font-weight:bold;">BEGINING STOCK ('.$itemReceipt->item_rm_number.')</td>
+                                    <td style="text-align:right; font-weight:bold;">' . $this->formatNo($itemReceipt->begin_qty) . '</td>
+                                    <td style="text-align:right; font-weight:bold;">' . $this->formatNo($itemReceipt->begin_price) . '</td>
+                                    <td colspan="2" style="text-align:right; font-weight:bold;">' . $this->formatNo($itemReceipt->begin_amount) . '</td>
                                 </tr>';
-
-                    $balnce = @$begin[0]->begin_amount;
                 }
 
-                $balnce += $itemReceipt->amount;
                 $html .= '  <tr>
                                 <td>' . $nod . '</td>
                                 <td>' . $itemReceipt->item_rm_id . '</td>
                                 <td>' . $itemReceipt->item_rm_number . '</td>
                                 <td>' . $itemReceipt->item_rm_name . '</td>
                                 <td>' . $itemReceipt->trans_type . '</td>
-                                <td>' . $itemReceipt->created_name . '</td>
+                                <td>' . $itemReceipt->created_by . '</td>
                                 <td>' . $itemReceipt->po_date . '</td>
-                                <td>' . $itemReceipt->trans_date . '</td>
-                                <td>' . $itemReceipt->custom_kind . '</td>
-                                <td>' . $itemReceipt->custom_no . '</td>
-                                <td>' . $itemReceipt->document_no . '</td>
-                                <td>' . $itemReceipt->custom_date . '</td>
-                                <td style="text-align:right;">' . $this->formatNo($itemReceipt->qty) . '</td>
-                                <td style="text-align:right;">' . $this->formatNo($itemReceipt->price) . '</td>
-                                <td style="text-align:right;">' . $this->formatNo($itemReceipt->amount) . '</td>
-                                <td style="text-align:right;">' . $this->formatNo($balnce) . '</td>
+                                <td>' . $itemReceipt->receipt_date . '</td>
+                                <td>' . $itemReceipt->receipt_no . '</td>
+                                <td>' . $itemReceipt->po_no . '</td>
+                                <td>' . $itemReceipt->bc_document . '</td>
+                                <td>' . $itemReceipt->bc_date . '</td>
+                                <td style="text-align:right;">' . $this->formatNo($itemReceipt->begin_qty) . '</td>
+                                <td style="text-align:right;">' . $this->formatNo($itemReceipt->begin_price) . '</td>
+                                <td style="text-align:right;">' . $this->formatNo($itemReceipt->begin_amount) . '</td>
+                                <td style="text-align:right;">' . $this->formatNo($itemReceipt->qty_in) . '</td>
+                                <td style="text-align:right;">' . $this->formatNo($itemReceipt->price_in) . '</td>
+                                <td style="text-align:right;">' . $this->formatNo($itemReceipt->amount_in) . '</td>
+                                <td style="text-align:right;">' . $this->formatNo($itemReceipt->qty_out) . '</td>
+                                <td style="text-align:right;">' . $this->formatNo($itemReceipt->price_out) . '</td>
+                                <td style="text-align:right;">' . $this->formatNo($itemReceipt->amount_out) . '</td>
+                                <td style="text-align:right;">' . $this->formatNo($itemReceipt->balance_qty) . '</td>
+                                <td style="text-align:right;">' . $this->formatNo($itemReceipt->balance_price) . '</td>
+                                <td style="text-align:right;">' . $this->formatNo($itemReceipt->balance_amount) . '</td>
                             </tr>';
 
                 $last_item_rm_id = $item_rm_id;

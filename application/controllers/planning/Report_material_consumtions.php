@@ -170,11 +170,21 @@ class Report_material_consumtions extends CI_Controller
                     $whereCustomer = "";
                 }
                 $mpp = $this->crud->query("
+<<<<<<< Updated upstream
                 select sum(
                             a.date_1 + a.date_2 + a.date_3 + a.date_4 + a.date_5 + a.date_6 + a.date_7 + a.date_8 + a.date_9 + a.date_10 + 
                             a.date_11 + a.date_12 + a.date_13 + a.date_14 + a.date_15 + a.date_16 + a.date_17 + a.date_18 + a.date_19 + a.date_20 + 
                             a.date_21 + a.date_22 + a.date_23 + a.date_24 + a.date_25 + a.date_26 + a.date_27 + a.date_28 + a.date_29 + a.date_30 + a.date_31
                         ) * b.composition as mpp_bom 
+=======
+                select 
+                sum(
+                        (a.date_1 + a.date_2 + a.date_3 + a.date_4 + a.date_5 + a.date_6 + a.date_7 + a.date_8 + a.date_9 + a.date_10 + 
+                        a.date_11 + a.date_12 + a.date_13 + a.date_14 + a.date_15 + a.date_16 + a.date_17 + a.date_18 + a.date_19 + a.date_20 + 
+                        a.date_21 + a.date_22 + a.date_23 + a.date_24 + a.date_25 + a.date_26 + a.date_27 + a.date_28 + a.date_29 + a.date_30 + a.date_31
+                        ) * b.composition
+                    ) as mpp_bom
+>>>>>>> Stashed changes
                 from generate_mpp a 
                 join bom b on a.item_fg_id = b.item_fg_id 
                 where a.p_year ='" . $param_dates[$i]['year'] . "' and a.p_month='" . $param_dates[$i]['month'] . "' and b.item_rm_id='" . $record['item_rm_id'] . "' $whereCustomer

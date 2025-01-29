@@ -31,8 +31,10 @@ class Report_trial_balances extends CI_Controller
     }
 
     public function getData(){
-        $filter_from = $this->input->post('filter_from');
-        $filter_to   = $this->input->post('filter_to');
+        $begin_date = $this->input->post('filter_from');
+        
+        $filter_from = date("Y-m-01", strtotime($begin_date));
+        $filter_to   = date("Y-m-t", strtotime($begin_date));
 
         $start = strtotime($filter_from);
         $finish = strtotime($filter_to);
@@ -40,6 +42,17 @@ class Report_trial_balances extends CI_Controller
         $filter_before_to = date("Y-m-t", strtotime("-1 month", strtotime($filter_from)));
         $period = date("Ym", strtotime($filter_from));
         $period_before = date("Ym", strtotime("-1 month", strtotime($filter_from)));
+
+        $this->db->select('a.*');
+        $this->db->from('account_coa a');
+        $this->db->where("a.cutoff <= '$begin_date'");
+        $this->db->order_by('a.account_number', 'asc');
+        $accounts = $this->db->get()->result_array();
+
+        if(count($accounts) == 0){
+            show_error("Error");
+            die();
+        }
         
         $this->db->select('*');
         $this->db->from('account_group_details');
@@ -51,7 +64,6 @@ class Report_trial_balances extends CI_Controller
             $this->db->select('a.*');
             $this->db->from('account_coa a');
             $this->db->where('a.account_group_detail_id', $account_group['id']);
-            // $this->db->where('a.account_number', "17000008");
             $this->db->order_by('a.account_number', 'asc');
             $accounts = $this->db->get()->result_array();
 

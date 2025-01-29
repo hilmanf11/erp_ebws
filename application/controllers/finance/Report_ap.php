@@ -53,6 +53,97 @@ class Report_ap extends CI_Controller
         return $amount;
     }
 
+    public function begin_balance($supplier_id, $filter_from, $filter_status = "", $balance_local){
+        $query = $this->db->query("SELECT 
+                'PI' AS source,
+                a.invoice_date AS trans_date,
+                a.due_date,
+                a.number AS document_no,
+                a.invoice_no AS invoice_no,
+                b.description,
+                b.trans_date AS voucher_date,
+                b.number AS voucher_no,
+                b.account_number,
+                a.currency,
+                b.local_debit,
+                b.local_credit,
+                a.status
+            FROM purchase_invoices a
+            JOIN (SELECT trans_date, number, document_no, account_number, description, SUM(local_debit) AS local_debit, SUM(local_credit) AS local_credit 
+                FROM journal_postings 
+                WHERE account_number IN ('16000001','16000002','16000003','16000004','16000005','16000006','16000007','16000008') 
+                GROUP BY number, document_no, account_number) b ON a.number = b.document_no
+            WHERE a.supplier_id = '$supplier_id' and a.trans_date < '$filter_from' and a.status like '%$filter_status%'
+            GROUP BY a.number
+            UNION
+            SELECT
+                'AP' AS source,
+                a.payment_date AS trans_date,
+                '-' AS due_date,
+                a.payment_no AS document_no,
+                a.supplier_invoice AS invoice_no,
+                a.remarks AS description,
+                b.trans_date AS voucher_date,
+                b.number AS voucher_no,
+                b.account_number,
+                a.currency,
+                b.local_debit,
+                b.local_credit,
+                '1' as status
+            FROM ap_payments a
+            LEFT JOIN (SELECT trans_date, number, document_no, account_number, SUM(local_debit) AS local_debit, SUM(local_credit) AS local_credit 
+                FROM journal_postings 
+                WHERE account_number IN ('16000001','16000002','16000003','16000004','16000005','16000006','16000007','16000008') 
+                GROUP BY number, document_no, account_number) b ON a.payment_no = b.document_no
+            WHERE a.supplier_id = '$supplier_id' AND a.purchase_invoice NOT IN (SELECT DISTINCT number FROM purchase_invoices) and a.payment_date < '$filter_from'
+            GROUP BY a.payment_no
+            UNION
+            SELECT
+                'AD' AS source,
+                a.journal_date AS trans_date,
+                '-' AS due_date,
+                a.document_no,
+                a.invoice_no,
+                a.description,
+                a.trans_date AS voucher_date,
+                a.number AS voucher_no,
+                a.account_number,
+                a.currency,
+                SUM(a.local_debit) AS local_debit,
+                SUM(a.local_credit) AS local_credit,
+                (CASE WHEN SUM(a.local_debit) > 0 THEN 0 ELSE 1 END) as status
+            FROM journal_postings a
+            WHERE a.company_id = '$supplier_id' 
+            AND a.modul IN ('CURRENCY REVALUATION','ADJUSTMENT') 
+            AND a.account_number IN ('16000001','16000002','16000003','16000004','16000005','16000006','16000007','16000008','28000003','28000006')
+            AND a.trans_date < '$filter_from'
+            GROUP BY a.number
+            ORDER BY trans_date ASC");
+        $purchase_invoices = $query->result_array();
+
+        $local_debit = 0;
+        $local_credit = 0;
+        foreach ($purchase_invoices as $purchase_invoice) {
+            $document_no = $purchase_invoice['document_no'];
+            $payments = $this->db->query("SELECT a.*, b.number as voucher_no, b.trans_date as voucher_date, a.account_number, (CASE WHEN b.local_debit IS NULL THEN 0 ELSE a.payment END) AS local_debit, 0 AS local_credit
+                FROM ap_payments a
+                LEFT JOIN journal_postings b ON a.payment_no = b.document_no
+                WHERE a.purchase_invoice = '$document_no'
+                GROUP BY a.payment_no")->result_array();
+
+            foreach ($payments as $payment) {
+                $local_debit += $payment['local_debit'];
+                $local_credit += $payment['local_credit'];
+            }
+
+            $local_debit += $purchase_invoice['local_debit'];
+            $local_credit += $purchase_invoice['local_credit'];
+        }
+
+        $begin_balance = ($balance_local + $local_credit - $local_debit);
+        return $begin_balance;
+    }
+
     public function print($option = "")
     {
         if ($option == "excel") {
@@ -70,6 +161,14 @@ class Report_ap extends CI_Controller
         $filter_purchase_invoice = base64_decode($this->input->get("filter_purchase_invoice"));
         $filter_status = $this->input->get("filter_status");
         $period = date("Ym", strtotime($filter_to));
+
+        if($filter_status == "0"){
+            $ap_status = "1";
+        }elseif($filter_status == "1"){
+            $ap_status = "0";
+        }else{
+            $ap_status = "";
+        }
 
         //Config
         $this->db->select('*');
@@ -117,24 +216,43 @@ class Report_ap extends CI_Controller
                                 <th>Supplier ID</th>
                                 <th>Supplier Name</th>
                                 <th>Currency</th>
-                                <th>ORIGINAL CURRENCY<br><i>Balance</i></th>
-                                <th>LOCAL CURRENCY<br><i>Balance</i></th>
+                                <th>Amount</th>
                             </tr>';
+
+        $invoice = '<table id="customers" border="1">
+                        <tr>
+                            <th rowspan="2" width="20">No</th>
+                            <th rowspan="2" width="50">Status</th>
+                            <th rowspan="2">Source</th>
+                            <th rowspan="2">Invoice Date</th>
+                            <th rowspan="2">Payment Due</th>
+                            <th rowspan="2">Document No</th>
+                            <th rowspan="2">Invoice No</th>
+                            <th rowspan="2">Descripstion</th>
+                            <th rowspan="2">Posting Date</th>
+                            <th rowspan="2">Posting No</th>
+                            <th rowspan="2">Account No</th>
+                            <th rowspan="2">Currency</th>
+                            <th colspan="3">LOCAL CURRENCY</th>
+                        </tr>
+                        <tr>
+                            <th>Invoice</th>
+                            <th>Payment</th>
+                            <th>Remain</th>
+                        </tr>';
 
         $detail = '<table id="customers" border="1">
                         <tr>
                             <th rowspan="2" width="20">No</th>
                             <th rowspan="2" width="50">Status</th>
-                            <th rowspan="2">Supplier ID</th>
-                            <th rowspan="2">Supplier Name</th>
+                            <th rowspan="2">Source</th>
                             <th rowspan="2">Invoice Date</th>
                             <th rowspan="2">Payment Due</th>
+                            <th rowspan="2">Document No</th>
                             <th rowspan="2">Invoice No</th>
-                            <th rowspan="2" width="100">Descripstion</th>
-                            <th rowspan="2">Gate Entry</th>
-                            <th rowspan="2">Gate Entry<br>Date</th>
-                            <th rowspan="2">Voucher No</th>
+                            <th rowspan="2">Descripstion</th>
                             <th rowspan="2">Posting Date</th>
+                            <th rowspan="2">Posting No</th>
                             <th rowspan="2">Account No</th>
                             <th rowspan="2">Currency</th>
                             <th colspan="3">LOCAL CURRENCY</th>
@@ -146,16 +264,13 @@ class Report_ap extends CI_Controller
                         </tr>';
         $no = 1;
         $noid = 1;
-        $grand_original_debit = 0;
-        $grand_original_credit = 0;
-        $grand_original_balance = 0;
         $grand_local_debit = 0;
         $grand_local_credit = 0;
         $grand_local_balance = 0;
         foreach ($suppliers as $supplier) {
             $supplier_id = $supplier['id'];
-            $supplier_name = $supplier['name'];
 
+<<<<<<< Updated upstream
             $query = $this->db->query("SELECT a.*
                     FROM (
                         (SELECT a.invoice_date as trans_date, a.due_date, a.invoice_no, a.invoice_no as document_no, c.account_number, a.number as voucher_no, a.currency, c.original_debit, c.original_credit, c.local_debit, c.local_credit, c.rates, c.description,c.voucher_date,a.status as status_purchase, a.por_no, d.receipt_date
@@ -186,138 +301,227 @@ class Report_ap extends CI_Controller
                     ) a 
                     WHERE a.status_purchase like '%$filter_status%'
                     GROUP BY a.voucher_no, a.document_no ORDER BY a.trans_date ASC");
+=======
+            $query = $this->db->query("SELECT 
+                    'PI' AS source,
+                    a.invoice_date as trans_date,
+                    a.due_date,
+                    a.number AS document_no,
+                    a.invoice_no AS invoice_no,
+                    b.description,
+                    b.trans_date AS voucher_date,
+                    b.number AS voucher_no,
+                    b.account_number,
+                    a.currency,
+                    b.local_debit,
+                    b.local_credit,
+                    a.status
+                FROM purchase_invoices a
+                JOIN (SELECT trans_date, number, document_no, account_number, description, SUM(local_debit) AS local_debit, SUM(local_credit) AS local_credit 
+                    FROM journal_postings 
+                    WHERE account_number IN ('16000001','16000002','16000003','16000004','16000005','16000006','16000007','16000008') 
+                    GROUP BY number, document_no, account_number) b ON a.number = b.document_no
+                WHERE a.supplier_id = '$supplier_id' and a.trans_date BETWEEN '$filter_from' and '$filter_to' and a.status like '%$filter_status%'
+                GROUP BY a.number
+                UNION
+                SELECT
+                    'AP' AS source,
+                    a.payment_date AS trans_date,
+                    '-' AS due_date,
+                    a.payment_no AS document_no,
+                    a.supplier_invoice AS invoice_no,
+                    a.remarks AS description,
+                    b.trans_date AS voucher_date,
+                    b.number AS voucher_no,
+                    b.account_number,
+                    a.currency,
+                    b.local_debit,
+                    b.local_credit,
+                    '1' as status
+                FROM ap_payments a
+                LEFT JOIN (SELECT trans_date, number, document_no, account_number, SUM(local_debit) AS local_debit, SUM(local_credit) AS local_credit 
+                    FROM journal_postings 
+                    WHERE account_number IN ('16000001','16000002','16000003','16000004','16000005','16000006','16000007','16000008') 
+                    GROUP BY number, document_no, account_number) b ON a.payment_no = b.document_no
+                WHERE a.supplier_id = '$supplier_id' AND a.purchase_invoice NOT IN (SELECT DISTINCT number FROM purchase_invoices) and a.payment_date BETWEEN '$filter_from' and '$filter_to' and a.status like '%$ap_status%'
+                GROUP BY a.payment_no
+                UNION
+                SELECT
+                    'AD' AS source,
+                    a.journal_date AS trans_date,
+                    '-' AS due_date,
+                    a.document_no,
+                    a.invoice_no,
+                    a.description,
+                    a.trans_date AS voucher_date,
+                    a.number AS voucher_no,
+                    a.account_number,
+                    a.currency,
+                    SUM(a.local_debit) AS local_debit,
+                    SUM(a.local_credit) AS local_credit,
+                    (CASE WHEN SUM(a.local_debit) > 0 THEN 1 ELSE 0 END) as status
+                FROM journal_postings a
+                WHERE a.company_id = '$supplier_id' 
+                AND a.modul IN ('CURRENCY REVALUATION','ADJUSTMENT') 
+                AND a.account_number IN ('16000001','16000002','16000003','16000004','16000005','16000006','16000007','16000008','28000003','28000006')
+                AND a.trans_date BETWEEN '$filter_from' and '$filter_to'
+                GROUP BY a.number
+                ORDER BY trans_date ASC");
+>>>>>>> Stashed changes
             $purchase_invoices = $query->result_array();
             // die($this->db->last_query());
 
-            $original_debit = 0;
-            $original_credit = 0;
-            $original_balance = 0;
             $local_debit = 0;
             $local_credit = 0;
-            $local_balance = 0;
 
-
-            $pi_begin = $this->db->query("
-                select COALESCE(SUM(local_debit) + SUM(local_credit), 0) as local_pi, COALESCE(SUM(original_debit) + SUM(original_credit), 0) as original_pi
-                from (SELECT DISTINCT supplier_id, number, trans_date FROM purchase_invoices) a
-                join journal_postings b on a.number = b.document_no and b.account_number IN ('16000001','16000002','16000003','16000004','16000005')
-                where a.supplier_id= '$supplier_id'
-                and a.trans_date < '$filter_from'")->row();
-
-            $revaluation_begin = $this->db->query("
-                select COALESCE(SUM(a.local_credit) - SUM(a.local_debit), 0) as local_re, COALESCE(SUM(a.original_credit) - SUM(a.original_debit), 0) as original_re
-                from journal_postings a
-                where a.journal_date < '$filter_from'
-                and a.modul in ('CURRENCY REVALUATION','ADJUSTMENT')
-                and a.account_number in ('16000001','16000002','16000003','16000004','16000005','28000003','28000006')
-                and (a.company_name like '%$supplier_name%')
-                ")->row();
-
-            $ap_begin = $this->db->query("
-                select COALESCE(SUM(local_debit) + SUM(local_credit), 0) as local_ap, COALESCE(SUM(original_debit) + SUM(original_credit), 0) as original_ap
-                from (SELECT DISTINCT supplier_id, payment_no, payment_date FROM ap_payments) a
-                join journal_postings b on a.payment_no = b.document_no and b.account_number IN ('16000001','16000002','16000003','16000004','16000005')
-                where a.supplier_id ='$supplier_id'
-                and a.payment_date < '$filter_from'
-                ")->row();
-
-            // if(@$supplier['balance'] > 0 || $pi_begin->original_pi > 0 || $ap_begin->original_ap > 0 || $revaluation_begin->original_re > 0){
-            $begin_balance = (@$supplier['balance'] + ($pi_begin->original_pi + $revaluation_begin->original_re - $ap_begin->original_ap));
-            // }else{
-            //     $begin_balance = 0;
-            // }
-
-            // if(@$supplier['balance'] > 0 || $pi_begin->local_pi > 0 || $ap_begin->local_ap > 0 || $revaluation_begin->local_re > 0){
-            $begin_balance_local = (@$supplier['balance_local'] + ($pi_begin->local_pi + $revaluation_begin->local_re - $ap_begin->local_ap));
-            // }else{
-            //     $begin_balance_local = 0;
-            // }
+            $begin_balance_local = $this->begin_balance($supplier_id, $filter_from, $filter_status, @$supplier['balance_local']);
 
             if (count($purchase_invoices) > 0) {
                 $detail .= '  <tr style="background: #DEE2FF; font-weight:bold;">
-                                    <td colspan="13">BEGINING BALANCE</td>
+                                    <td colspan="11">BEGINING BALANCE</td>
+                                    <td colspan="3"></td>
+                                    <td style="text-align:right;">' . number_format(@$begin_balance_local, 2) . '</td>
+                                </tr>';
+
+                $invoice .= '    <tr style="background: #DEE2FF; font-weight:bold;">
+                                    <td colspan="11">BEGINING BALANCE</td>
                                     <td colspan="3"></td>
                                     <td style="text-align:right;">' . number_format(@$begin_balance_local, 2) . '</td>
                                 </tr>';
             }
 
             foreach ($purchase_invoices as $purchase_invoice) {
-                if (trim($purchase_invoice['currency']) != "INR") {
-                    $original_debit2 = $purchase_invoice['original_debit'];
-                    $original_credit2 = $purchase_invoice['original_credit'];
-                } else {
-                    $original_debit2 = $purchase_invoice['local_debit'];;
-                    $original_credit2 = $purchase_invoice['local_credit'];;
-                }
+                $document_no = $purchase_invoice['document_no'];
+                $payments = $this->db->query("SELECT a.*, b.number as voucher_no, b.trans_date as voucher_date, a.account_number, (CASE WHEN b.local_debit IS NULL THEN 0 ELSE a.payment END) AS local_debit, 0 AS local_credit
+                    FROM ap_payments a
+                    LEFT JOIN journal_postings b ON a.payment_no = b.document_no
+                    WHERE a.purchase_invoice = '$document_no'
+                    GROUP BY a.payment_no")->result_array();
 
-                if ((@$begin_balance - $original_debit2 + $original_credit2) >= 0) {
-                    $balance_original = number_format(@$begin_balance - $original_debit2 + $original_credit2, 2);
-                } else {
-                    $balance_original = "<span style='color:red;'>(" . number_format(abs(@$begin_balance - $original_debit2 + $original_credit2), 2) . ")</span>";
-                }
+                // if($purchase_invoice['source'] == "PI"){
+                //     if (count($payments) == '0') {
+                //         $status_purchase = "OPEN";
+                //         $style_status_purchase = "background-color:#C8FFCC;";
+                //     } else if (count($payments) > 0) {
+                //         $status_purchase = "CLOSE";
+                //         $style_status_purchase = "background-color:#FFC8C8;";
+                //     } else {
+                //         $status_purchase = "-";
+                //         $style_status_purchase = "";
+                //     }
+                // }else{
+                //     $status_purchase = "CLOSE";
+                //     $style_status_purchase = "background-color:#FFC8C8;";
+                // }
 
-                if ((@$begin_balance_local - $purchase_invoice['local_debit'] + $purchase_invoice['local_credit']) >= 0) {
-                    $balance_local = number_format(@$begin_balance_local - $purchase_invoice['local_debit'] + $purchase_invoice['local_credit'], 2);
-                } else {
-                    $balance_local = "<span style='color:red;'>(" . number_format(abs(@$begin_balance_local - $purchase_invoice['local_debit'] + $purchase_invoice['local_credit']), 2) . ")</span>";
-                }
-
-                if ($purchase_invoice['status_purchase'] == '0') {
+                if ($purchase_invoice['status'] == '0') {
                     $status_purchase = "OPEN";
                     $style_status_purchase = "background-color:#C8FFCC;";
-                } else if ($purchase_invoice['status_purchase'] == '1') {
+                } else if ($purchase_invoice['status'] == '1') {
                     $status_purchase = "CLOSE";
                     $style_status_purchase = "background-color:#FFC8C8;";
                 } else {
                     $status_purchase = "-";
                     $style_status_purchase = "";
                 }
+                
+                
+                $balance_local = ($purchase_invoice['local_credit'] - $purchase_invoice['local_debit']);
+                if ($balance_local >= 0) {
+                    $balance_local_output = number_format(@$balance_local, 2);
+                } else {
+                    $balance_local_output = "<span style='color:red;'>(" . number_format(abs($balance_local), 2) . ")</span>";
+                }
+
                 $detail .= '  <tr>
-                                    <td>' . $no . '</td>
-                                    <td style="text-align:center;' . $style_status_purchase . '">' . $status_purchase . '</td>
-                                    <td>' . $supplier_id . '</td>
-                                    <td>' . $supplier_name . '</td>
+                                    <td rowspan='.(count($payments) + 1).'>' . $no . '</td>
+                                    <td rowspan='.(count($payments) + 1).' style="text-align:center;' . $style_status_purchase . '">' . $status_purchase . '</td>
+                                    <td>' . $purchase_invoice['source'] . '</td>
                                     <td>' . $purchase_invoice['trans_date'] . '</td>
                                     <td>' . $purchase_invoice['due_date'] . '</td>
                                     <td>' . $purchase_invoice['document_no'] . '</td>
+                                    <td>' . $purchase_invoice['invoice_no'] . '</td>
                                     <td>' . $purchase_invoice['description'] . '</td>
-                                    <td>' . $purchase_invoice['por_no'] . '</td>
-                                    <td>' . $purchase_invoice['receipt_date'] . '</td>
-                                    <td>' . $purchase_invoice['voucher_no'] . '</td>
                                     <td>' . $purchase_invoice['voucher_date'] . '</td>
+                                    <td>' . $purchase_invoice['voucher_no'] . '</td>
                                     <td>' . $purchase_invoice['account_number'] . '</td>
-                                    <td>' . $purchase_invoice['currency'] . '</td>
+                                    <td>INR</td>
                                     <td style="text-align:right;">' . number_format($purchase_invoice['local_debit'], 2) . '</td>
                                     <td style="text-align:right;">' . number_format($purchase_invoice['local_credit'], 2) . '</td>
-                                    <td style="text-align:right;">' . $balance_local . '</td>
+                                    <td style="text-align:right;">' . $balance_local_output . '</td>
                                 </tr>';
 
+                $payment_total = 0;
+                foreach ($payments as $payment) {
+                    $balance_local += ($payment['local_credit'] - $payment['local_debit']);
+                    if ($balance_local >= 0) {
+                        $balance_local_output = number_format(@$balance_local, 2);
+                    } else {
+                        $balance_local_output = "<span style='color:red;'>(" . number_format(abs($balance_local), 2) . ")</span>";
+                    }
+                    $detail .= '  <tr>
+                                    <td>AP</td>
+                                    <td>' . $payment['payment_date'] . '</td>
+                                    <td>-</td>
+                                    <td>' . $payment['payment_no'] . '</td>
+                                    <td>' . $payment['supplier_invoice'] . '</td>
+                                    <td>' . $payment['purchase_invoice'] . ' | ' . $payment['payment_by'] . '</td>
+                                    <td>' . $payment['voucher_date'] . '</td>
+                                    <td>' . $payment['voucher_no'] . '</td>
+                                    <td>' . $payment['account_number'] . '</td>
+                                    <td>INR</td>
+                                    <td style="text-align:right;">' . number_format($payment['local_debit'], 2) . '</td>
+                                    <td style="text-align:right;">' . number_format($payment['local_credit'], 2) . '</td>
+                                    <td style="text-align:right;">' . $balance_local_output . '</td>
+                                </tr>';
+
+                    $payment_total += $payment['local_debit'];
+                    $local_debit += $payment['local_debit'];
+                    $local_credit += $payment['local_credit'];
+                }
+
+                if($purchase_invoice['local_debit'] > 0){
+                    $payment_total = $purchase_invoice['local_debit'];
+                }
+
+                if (($purchase_invoice['local_credit'] - $payment_total) >= 0) {
+                    $balance_invoice = number_format(($purchase_invoice['local_credit'] - $payment_total), 2);
+                } else {
+                    $balance_invoice = "<span style='color:red;'>(" . number_format(abs(($purchase_invoice['local_credit'] - $payment_total)), 2) . ")</span>";
+                }
+
+                $invoice .= '  <tr>
+                                <td>' . $no . '</td>
+                                <td style="text-align:center;' . $style_status_purchase . '">' . $status_purchase . '</td>
+                                <td>' . $purchase_invoice['source'] . '</td>
+                                <td>' . $purchase_invoice['trans_date'] . '</td>
+                                <td>' . $purchase_invoice['due_date'] . '</td>
+                                <td>' . $purchase_invoice['document_no'] . '</td>
+                                <td>' . $purchase_invoice['invoice_no'] . '</td>
+                                <td>' . $purchase_invoice['description'] . '</td>
+                                <td>' . $purchase_invoice['voucher_date'] . '</td>
+                                <td>' . $purchase_invoice['voucher_no'] . '</td>
+                                <td>' . $purchase_invoice['account_number'] . '</td>
+                                <td>INR</td>
+                                <td style="text-align:right;">' . number_format($purchase_invoice['local_credit'], 2) . '</td>
+                                <td style="text-align:right;">' . number_format($payment_total, 2) . '</td>
+                                <td style="text-align:right;">' . $balance_invoice . '</td>
+                            </tr>';
+
                 $no++;
-                $original_debit += $original_debit2;
-                $original_credit += $original_credit2;
-                $original_balance += (@$begin_balance - $original_debit2 + $original_credit2);
                 $local_debit += $purchase_invoice['local_debit'];
                 $local_credit += $purchase_invoice['local_credit'];
-                $local_balance += (@$begin_balance_local - $purchase_invoice['local_debit'] + $purchase_invoice['local_credit']);
-                $begin_balance = (@$begin_balance - $original_debit2 + $original_credit2);
-                $begin_balance_local = (@$begin_balance_local - $purchase_invoice['local_debit'] + $purchase_invoice['local_credit']);
+            }
+
+            if (($begin_balance_local + $local_credit - $local_debit) >= 0) {
+                $balance_local = number_format(($begin_balance_local + $local_credit - $local_debit), 2);
+            } else {
+                $balance_local = "<span style='color:red;'>(" . number_format(abs(($begin_balance_local + $local_credit - $local_debit)), 2) . ")</span>";
             }
 
             if (count($purchase_invoices) > 0) {
-                if ($begin_balance >= 0) {
-                    $balance_original = number_format($begin_balance, 2);
-                } else {
-                    $balance_original = "<span style='color:red;'>(" . number_format(abs($begin_balance), 2) . ")</span>";
-                }
-
-                if ($begin_balance_local >= 0) {
-                    $balance_local = number_format(@$begin_balance_local, 2);
-                } else {
-                    $balance_local = "<span style='color:red;'>(" . number_format(abs(@$begin_balance_local), 2) . ")</span>";
-                }
-
                 $detail .= '  <tr style="background: #E5E5E5; font-weight:bold;">
-                                    <td colspan="13">SUB TOTAL</td>
+                                    <td colspan="11">SUB TOTAL</td>
                                     <td></td>
                                     <td style="text-align:right;">' . number_format($local_debit, 2) . '</td>
                                     <td style="text-align:right;">' . number_format($local_credit, 2) . '</td>
@@ -326,59 +530,60 @@ class Report_ap extends CI_Controller
                                 <tr>
                                     <td colspan="17" style="height:20px;"></td>
                                 </tr>';
-            }
 
-            // if($begin_balance_local != 0){
-
-            if ($begin_balance >= 0) {
-                $balance_original = number_format($begin_balance, 2);
-            } else {
-                $balance_original = "<span style='color:red;'>(" . number_format(abs($begin_balance), 2) . ")</span>";
-            }
-
-            if ($begin_balance_local >= 0) {
-                $balance_local = number_format(@$begin_balance_local, 2);
-            } else {
-                $balance_local = "<span style='color:red;'>(" . number_format(abs(@$begin_balance_local), 2) . ")</span>";
+                $invoice .= '  <tr style="background: #E5E5E5; font-weight:bold;">
+                                    <td colspan="11">SUB TOTAL</td>
+                                    <td></td>
+                                    <td style="text-align:right;">' . number_format($local_credit, 2) . '</td>
+                                    <td style="text-align:right;">' . number_format($local_debit, 2) . '</td>
+                                    <td style="text-align:right;">' . $balance_local . '</td>
+                                </tr>
+                                <tr>
+                                    <td colspan="17" style="height:20px;"></td>
+                                </tr>';
             }
 
             $summary .= '   <tr>
-                                        <td>' . $noid . '</td>
-                                        <td>' . $supplier['id'] . '</td>
-                                        <td>' . $supplier['name'] . '</td>
-                                        <td>' . $supplier['currency'] . '</td>
-                                        <td style="text-align:right;">' . $balance_original . '</td>
-                                        <td style="text-align:right;">' . $balance_local . '</td>
-                                    </tr>';
+                                <td>' . $noid . '</td>
+                                <td>' . $supplier['id'] . '</td>
+                                <td>' . $supplier['name'] . '</td>
+                                <td>' . $supplier['currency'] . '</td>
+                                <td style="text-align:right;">' . $balance_local . '</td>
+                            </tr>';
             $noid++;
-            // }
 
-            $grand_original_debit += $original_debit;
-            $grand_original_credit += $original_credit;
-            $grand_original_balance += $begin_balance;
             $grand_local_debit += $local_debit;
             $grand_local_credit += $local_credit;
-            $grand_local_balance += $begin_balance_local;
+            $grand_local_balance += ($begin_balance_local + $local_credit - $local_debit);
         }
 
-        $detail .= '  <tr style="background: #C3FFB4; font-weight:bold;">
-                            <td colspan="13">GRAND TOTAL</td>
+        $detail .= '    <tr style="background: #C3FFB4; font-weight:bold;">
+                            <td colspan="11">GRAND TOTAL</td>
                             <td></td>
                             <td style="text-align:right;">' . number_format($grand_local_debit, 2) . '</td>
                             <td style="text-align:right;">' . number_format($grand_local_credit, 2) . '</td>
                             <td style="text-align:right;">' . number_format($grand_local_balance, 2) . '</td>
                         </tr>';
 
+        $invoice .= '   <tr style="background: #C3FFB4; font-weight:bold;">
+                            <td colspan="11">GRAND TOTAL</td>
+                            <td></td>
+                            <td style="text-align:right;">' . number_format($grand_local_credit, 2) . '</td>
+                            <td style="text-align:right;">' . number_format($grand_local_debit, 2) . '</td>
+                            <td style="text-align:right;">' . number_format($grand_local_balance, 2) . '</td>
+                        </tr>';
+
         $summary .= '   <tr style="font-weight:bold;">
-                                <td colspan="4">GRAND TOTAL</td>
-                                <td style="text-align:right;">' . number_format($grand_original_balance, 2) . '</td>
-                                <td style="text-align:right;">' . number_format($grand_local_balance, 2) . '</td>
-                            </tr>';
+                            <td colspan="4">GRAND TOTAL</td>
+                            <td style="text-align:right;">' . number_format($grand_local_balance, 2) . '</td>
+                        </tr>';
 
         $htmlend = '</table></body></html>';
 
         if ($filter_display == "Summary") {
             echo $html . $summary . $htmlend;
+        }elseif ($filter_display == "Invoice") {
+            echo $html . $invoice . $htmlend;
         } else {
             echo $html . $detail . $htmlend;
         }

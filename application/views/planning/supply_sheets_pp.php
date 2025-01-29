@@ -351,6 +351,11 @@
                             }
                         }
                     }, {
+                        field: 'stock',
+                        width: 80,
+                        halign: 'center',
+                        title: "Stock",
+                    }, {
                         field: 'qty',
                         width: 80,
                         halign: 'center',

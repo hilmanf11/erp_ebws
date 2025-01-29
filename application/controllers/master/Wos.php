@@ -246,6 +246,8 @@ class Wos extends CI_Controller
 
             if (empty($item_fg->id)) {
                 echo json_encode(array("title" => "Not Found", "message" => "Product No " . $data['item_fg_number'] . " is Not Found", "theme" => "error"));
+            }elseif(empty($data['cct_range']) && empty($data['cct_order'])){
+                echo json_encode(array("title" => "Empty", "message" => "Product No " . $data['item_fg_number'] . " CCT Range and CCT Order still Empty", "theme" => "error"));
             }elseif(!empty($wos->item_fg_id)){
                 $send = $this->crud->update('wos', ["item_fg_id" => @$item_fg->id, "circuit_no" => $data['circuit_no']], $data);
                 echo $send;

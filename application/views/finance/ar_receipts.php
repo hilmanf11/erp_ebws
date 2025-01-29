@@ -52,7 +52,6 @@
             <div class="fitem">
                 <span style="width:35%; display:inline-block;"></span>
                 <a href="javascript:;" class="easyui-linkbutton" onclick="filter()"><i class="fa fa-search"></i> Filter Data</a>
-                <a href="javascript:;" class="easyui-linkbutton" onclick="view_journal()"><i class="fa fa-print"></i> View Journal</a>
                 <a href="javascript:;" class="easyui-linkbutton" onclick="print_voucher()"><i class="fa fa-print"></i> Print Voucher</a>
             </div>
         </div>
@@ -96,6 +95,7 @@
     <?= $button ?>
     <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="excelDetail()"><i class="fa fa-file"></i> Export Excel Detail</a>
     <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="excelJournal()"><i class="fa fa-file"></i> Export Excel Journal</a>
+    <a href="javascript:;" class="easyui-linkbutton" data-options="plain:true" onclick="view_journal()"><i class="fa fa-print"></i> View Journal</a>
     <a href="javascript:void(0)" class="easyui-linkbutton" id="reverse" data-options="plain:true" onclick="reverse()"><i class="fa fa-rotate-left"></i> Reversal</a>
 </div>
 

@@ -46,6 +46,7 @@
                     <span style="width:35%; display:inline-block;">Display</span>
                     <select style="width:60%;" id="filter_display" class="easyui-combobox" panelHeight="auto">
                         <option value="Summary">Summary</option>
+                        <option value="Invoice">Invoice</option>
                         <option value="Detail">Detail</option>
                     </select>
                 </div>

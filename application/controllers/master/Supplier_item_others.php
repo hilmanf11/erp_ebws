@@ -101,7 +101,7 @@ class Supplier_item_others extends CI_Controller
         $this->db->join('item_rm c', 'a.item_rm_id = c.id');
         $this->db->join('item_familys d', "c.item_family_id = d.id and d.item_category_id NOT IN ('C01','C08')");
         $this->db->where('a.deleted', 0);
-        // $this->db->where('a.status', 0);
+        $this->db->where('b.status', 0);
         $this->db->like("c.number", $item_number);
         $this->db->like("c.id", $item_id);
         $this->db->like("d.id", $item_family_id);

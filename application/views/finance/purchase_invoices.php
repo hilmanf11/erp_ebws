@@ -609,7 +609,7 @@
         $("#total_tds").numberbox('setValue', 0);
         $("#total_freight").numberbox('setValue', 0);
 
-        $("#trans_date").datebox({
+        $("#invoice_date").datebox({
             onChange: function(val) {
                 var trans_date = val;
                 var payment_term = $("#payment_term").numberbox("getValue");
@@ -1617,7 +1617,7 @@
                             width: 100,
                             halign: 'center',
                             align: 'right',
-                            formatter: numberformat
+                            formatter: priceformat
                         }, {
                             field: 'total',
                             title: 'Amount',

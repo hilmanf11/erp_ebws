@@ -601,7 +601,7 @@ class Ar_receipts extends CI_Controller
             $this->db->like('a.bank_account', $filter_bank_no);
             $this->db->like('a.receipt_by', $filter_receipt_by);
             $this->db->order_by('a.status', 'ASC');
-            $this->db->order_by('a.receipt_date', 'DESC');
+            $this->db->order_by('a.receipt_no', 'DESC');
             $this->db->group_by('a.receipt_no');
             //Total Data
             $totalRows = $this->db->count_all_results('', false);

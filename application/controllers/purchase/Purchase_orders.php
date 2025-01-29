@@ -742,7 +742,8 @@ class Purchase_orders extends CI_Controller
             $po_no = @$data->po_no;
             $maxRev = $this->crud->query("SELECT max(rev) as rev FROM purchase_orders WHERE po_no = '$po_no'");
 
-            $start_date = date("Y-m-d");
+            $sync_date = date("Y-m-d H:i:s");
+            $sync_by = $this->session->username;
 
             $this->db->select('a.price, a.currency');
             $this->db->from('supplier_items a');
@@ -752,7 +753,7 @@ class Purchase_orders extends CI_Controller
 
             if(!empty($supplier_item)){
                 $total = ($data->qty * $supplier_item->price);
-                $update = $this->db->update('purchase_orders', ["price" => $supplier_item->price, "currency" => $supplier_item->currency, "total" => $total, "rev" => (@$maxRev->rev + 1)], ["id" => $id]);
+                $update = $this->db->update('purchase_orders', ["price" => $supplier_item->price, "currency" => $supplier_item->currency, "total" => $total, "rev" => (@$maxRev->rev + 1), "sync_date" => $sync_date, "sync_by" => $sync_by], ["id" => $id]);
                 if($update){
                     echo json_encode(array("title" => "Good Job", "message" => $data->item_rm_id . " | Sync Price Successfully", "theme" => "success"));
                 } else {
@@ -887,11 +888,18 @@ class Purchase_orders extends CI_Controller
         if ($this->input->post()) {
             $id = $this->input->post('id');
             $price = $this->input->post('price');
+            $price_old = $this->input->post('price_old');
+
+            $sync_date = date("Y-m-d H:i:s");
+            $sync_by = $this->session->username;
 
             $po = $this->crud->read("purchase_orders", [], ["id" => $id]);
             $total = ($po->qty * $price);
 
             $send = $this->db->update('purchase_orders', [
+                "sync_by" => $sync_by,
+                "sync_date" => $sync_date,
+                "price_old" => $price_old,
                 "price" => $price,
                 "total" => $total,
             ], ["id" => $id]);
@@ -1192,10 +1200,7 @@ class Purchase_orders extends CI_Controller
                                             <td>PO No : ' . $supplier->supplier_po . '<br>
                                                 Register No : ' . $purchase_orders->po_no . '<br>
                                                 Date : ' . $purchase_orders->po_date . '<br>
-                                                Revision : ' . $purchase_orders->revision . '<br>
-                                                Office Address : <br>
-                                                <b>' . @$config->name . '</b><br>
-                                                '.@$config->address.'<br><br>
+                                                Revision : ' . $purchase_orders->revision . '<br><br>
                                                 Factory / Shipping Address : <br>
                                                 '.@$config->address2.'<br>
                                                 GST No : '.@$config->gst_no.'

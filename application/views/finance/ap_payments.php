@@ -352,6 +352,20 @@
         </ul>
     </div>
 </div>
+
+<div id="dlg_dp" class="easyui-dialog" title="Data Down Payment" data-options="closed: true, modal:true" style="width: 700px; top: 20px; left: 20px;">
+    <table id="dgdp" class="easyui-datagrid" style="width: 100%; height: 400px;" data-options="singleSelect: false">
+        <thead>
+            <tr>
+                <th field="ck" checkbox="true"></th>
+                <th data-options="field:'payment_no',halign:'center',width:150">Payment No</th>
+                <th data-options="field:'purchase_invoice',halign:'center',width:150">Purchase Invoice No</th>
+                <th data-options="field:'supplier_invoice',halign:'center',width:150">Invoice No</th>
+                <th data-options="field:'payment',width:120,halign:'center',align:'right',formatter:numberformat">Payment</th>
+            </tr>
+        </thead>
+    </table>
+</div>
 <!-- PDF -->
 <iframe id="printout" src="" style="width: 100%;" hidden></iframe>
 <script>
@@ -471,6 +485,7 @@
             toastr.warning("Please select one of the data in the table first!", "Information");
         }
     }
+    
     function addJournal() {
         var rows = $('#dg2').datagrid('getRows');
         var totalrows = rows.length;
@@ -511,11 +526,13 @@
                         currency = rows[i].currency;
                         rate = rows[i].rate;
                     }
+
                     if (rows[i].account_type == "DEBIT") {
                         total_payment += parseFloat(rows[i].payment);
                     } else if (rows[i].account_type == "CREDIT") {
                         total_payment -= parseFloat(rows[i].payment);
                     }
+
                     data_array.push(data);
                     // }else{
                     //     toastr.error("Balance must >= Payment, Please check again your data");
@@ -571,6 +588,7 @@
             toastr.info("Please Select Journal Type & Bank Account");
         }
     }
+
     function addTable2(link = "") {
         var lastIndex;
         var dg = $('#dg3').datagrid({
@@ -670,48 +688,31 @@
             $('#dg2').datagrid('selectRow', editIndex).datagrid('beginEdit', editIndex);
         }
     }
+
     function append_dp() {
         var supplier_id = $("#supplier_id").combogrid('getValue');
         var purchase_invoice = $("#purchase_invoice").combogrid('getValue');
-        if (endEditing()) {
+
+        $("#dlg_dp").dialog('open');
+
+        if(supplier_id != ""){
             $.ajax({
-                type: "post",
-                url: "<?= base_url('finance/ap_payments/readDp') ?>",
-                data: "supplier_id=" + supplier_id + "&purchase_invoice=" + purchase_invoice,
-                dataType: "json",
-                success: function(dp) {
-                    if (parseInt(dp.length) > 0) {
-                        toastr.success("Data Down Payment Added Success");
-                        for (let i = 0; i < dp.length; i++) {
-                            if (dp[i].amount == 0) {
-                                var amount = dp[i].payment;
-                            } else {
-                                var amount = dp[i].amount;
-                            }
-                            if (dp[i].balance == 0) {
-                                var balance = dp[i].payment;
-                            } else {
-                                var balance = (parseFloat(dp[i].balance) - parseFloat(dp[i].payment));
-                            }
-                            var payment = (parseFloat(dp[i].balance) - parseFloat(dp[i].payment));
-                            $('#dg2').datagrid('appendRow', {
-                                purchase_invoice: dp[i].payment_no,
-                                supplier_invoice: dp[i].supplier_invoice,
-                                currency: dp[i].currency,
-                                amount: amount,
-                                balance: balance,
-                                payment: payment,
-                                remarks: dp[i].remarks,
-                                account_number: dp[i].account_number,
-                                account_name: dp[i].account_name,
-                                account_type: dp[i].account_type,
-                            });
-                        }
-                    } else {
+                url: '<?= base_url('finance/ap_payments/readDp') ?>',
+                type: 'POST',
+                data: {
+                    supplier_id: supplier_id,
+                },
+                dataType: 'json',
+                success: function(result) {
+                    if(result.length > 0){
+                        $('#dgdp').datagrid('loadData', result).datagrid('loaded');
+                    }else{
                         toastr.info("Data Down Payment Not Found");
                     }
                 }
             });
+        }else{
+            toastr.info("Please Choose Supplier!!");
         }
     }
     function getRowIndex(target) {
@@ -1147,6 +1148,57 @@
         }
     }
     $(function() {
+        $('#dlg_dp').dialog({
+            buttons: [{
+                text: 'Add DP',
+                handler: function() {
+                    var rows = $('#dgdp').datagrid('getSelections');
+                    var totalrows = rows.length;
+
+                    if(totalrows == 0){
+                        toastr.warning("Please Select data Down Payment in table first");
+                        return false;
+                    }
+
+                    for (let i = 0; i < totalrows; i++) {
+                        if (rows[i].amount == 0) {
+                            var amount = rows[i].payment;
+                        } else {
+                            var amount = rows[i].amount;
+                        }
+                        
+                        if (rows[i].balance == 0) {
+                            var balance = rows[i].payment;
+                        } else {
+                            var balance = (parseFloat(rows[i].balance) - parseFloat(rows[i].payment));
+                        }
+
+                        if(rows[i].account_type == "DEBIT"){
+                            var account_type = "CREDIT";
+                        }else{
+                            var account_type = "DEBIT";
+                        }
+
+                        $('#dg2').datagrid('appendRow', {
+                            purchase_invoice: rows[i].payment_no,
+                            supplier_invoice: rows[i].supplier_invoice,
+                            currency: rows[i].currency,
+                            rate: 1,
+                            amount: amount,
+                            balance: balance,
+                            payment: rows[i].payment,
+                            remarks: rows[i].remarks,
+                            account_number: rows[i].account_number,
+                            account_name: rows[i].account_name,
+                            account_type: account_type,
+                        });
+                    }
+
+                    $("#dlg_dp").dialog('close');
+                },
+            }]
+        });
+
         //SETTING DATAGRID EASYUI
         $('#dg').datagrid({
             url: '<?= base_url('finance/ap_payments/datatables') ?>',
@@ -1389,6 +1441,7 @@
                 }
             }]
         });
+
         //Upload Data
         $('#dlg_upload').dialog({
             buttons: [{

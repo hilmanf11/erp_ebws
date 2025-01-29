@@ -20,6 +20,7 @@
             <th data-options="field:'currency',width:80,halign:'center'">Currency</th>
             <th data-options="field:'price',width:100,halign:'center',align:'right',formatter: numberformatPrice2">Price</th>
             <th data-options="field:'total',width:100,halign:'center',align:'right',formatter: numberformatPrice4">Total</th>
+            <th data-options="field:'attachment',width:80,align:'center',formatter: btnDetails">Attachment</th>
             <th data-options="field:'remarks',width:150,halign:'center'">Remarks</th>
             <th data-options="field:'created_by',width:120,halign:'center'">Create By</th>
             <th data-options="field:'created_date',width:150,halign:'center'">Create Date</th>
@@ -206,5 +207,15 @@
         });
 
         return "<b>" + formatter.format(value) + "</b>";
+    }
+
+    function btnDetails(val, row, index) {
+        var attachment = row.attachment;
+        
+        if (attachment != null && attachment != "") {
+            return '<a class="btn btn-primary w-100" target="_blank" href="<?= base_url('assets/documents/purchase_requests/') ?>'+row.attachment+'" style="pointer-events: visible; opacity:1;"><i class="fa fa-eye"></i> View</a>';
+        } else {
+            return '-';
+        }
     }
 </script>

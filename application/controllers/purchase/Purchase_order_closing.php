@@ -154,7 +154,7 @@ class Purchase_order_closing extends CI_Controller
             $id = $_POST['id'];
             if ($id === "0") {
                 //Select Query
-                $this->db->select('a.po_no, a.request_no, a.total_dp,
+                $this->db->select('a.po_no, a.request_no, a.total_dp, a.attachment,
                     a.po_date, 
                     d.currency, 
                     b.uom,
@@ -226,6 +226,7 @@ class Purchase_order_closing extends CI_Controller
                         "created_date" => $record['created_date'],
                         "updated_by" => $record['updated_by'],
                         "updated_date" => $record['updated_date'],
+                        "attachment" => $record['attachment'],
                         "state" => "closed",
                         "datatable" => 1
                     );
@@ -265,6 +266,60 @@ class Purchase_order_closing extends CI_Controller
         }
     }
 
+    public function uploadatt()
+    {
+        // Pastikan file disimpan dalam direktori yang diinginkan
+        $uploadDir = 'assets/documents/purchase_orders/';
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            // Pastikan ada file yang diunggah dari permintaan
+            if (isset($_FILES['file'])) {
+                $file = $_FILES['file'];
+
+                // Validasi ekstensi file yang diunggah
+                $allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png'];
+                $fileExtension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+
+                if (!in_array($fileExtension, $allowedExtensions)) {
+                    echo json_encode(['success' => false, 'message' => 'Only files with the extension .pdf, .jpg, or .png are allowed.']);
+                    exit; // Menghentikan proses lebih lanjut jika ekstensi tidak valid
+                }
+
+                // Validasi ukuran file yang diunggah (maksimal 5MB)
+                $maxFileSize = 2 * 1024 * 1024; // 5MB dalam bytes
+                if ($file['size'] > $maxFileSize) {
+                    echo json_encode(['success' => false, 'message' => 'Size File Maximal 2 Mb.']);
+                    exit; // Menghentikan proses lebih lanjut jika ukuran terlalu besar
+                }
+
+                // Pastikan tidak ada error dalam proses upload
+                if ($file['error'] === UPLOAD_ERR_OK) {
+                    // Buat nama unik untuk file yang diunggah
+                    $fileName = uniqid() . '_' . $file['name'];
+                    $uploadPath = $uploadDir . $fileName;
+
+                    // Pindahkan file dari temporary directory ke lokasi yang diinginkan
+                    if (move_uploaded_file($file['tmp_name'], $uploadPath)) {
+                        // File berhasil diunggah
+                        echo json_encode(['success' => true, 'message' => 'File Upload Success.', 'filename' => $fileName]);
+                    } else {
+                        // Gagal menyimpan file
+                        echo json_encode(['success' => false, 'message' => 'File Upload Failed.']);
+                    }
+                } else {
+                    // Ada error dalam proses upload
+                    echo json_encode(['success' => false, 'message' => 'Error while Upload.']);
+                }
+            } else {
+                // File tidak ditemukan dalam permintaan
+                echo json_encode(['success' => false, 'message' => 'File Not Found.']);
+            }
+        } else {
+            // Metode request yang diperlukan adalah POST
+            echo json_encode(['success' => false, 'message' => 'Metode request yang diperlukan adalah POST.']);
+        }
+    }
+
     public function create()
     {
         if ($this->input->post()) {
@@ -293,6 +348,7 @@ class Purchase_order_closing extends CI_Controller
                     "total" => $post['total'],
                     "delivery_date" => $post['delivery_date'],
                     "remarks" => $post['remarks'],
+                    "attachment" => $post['attachment'],
                     "revision" => ($post['revision'] + 1)
                 ]);
                 

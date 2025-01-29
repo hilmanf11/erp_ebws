@@ -117,7 +117,7 @@
                         <select style="width:60%;" required="" name="type" id="type" panelHeight="auto" class="easyui-combobox">
                             <option value="SALES">SALES INVOICE</option>
                             <option value="SUPPLEMENTARY">SUPPLEMENTARY INVOICE</option>
-                            <!-- <option value="SCRAP">SCRAP INVOICE</option> -->
+                            <option value="SCRAP">SCRAP INVOICE</option>
                         </select>
                     </div>
                     <div class="fitem">
@@ -513,7 +513,7 @@
                             }
                         });
 
-                        if(type != "SUPPLEMENTARY"){
+                        if(type == "SALES"){
                             $("#dn_number").combobox({
                                 url: '<?= base_url('finance/sales_invoices/readDelivery?customer_id=') ?>' + btoa(row.id) + "&plant=" + btoa(plant.plant),
                                 valueField: 'delivery_note_no',
@@ -524,6 +524,13 @@
                                     $("#vehicle_no").textbox('setValue', plant.vehicle_no);
                                     $("#taxes").numberbox("setValue", 0);
                                 }
+                            });
+                        }else if(type == "SCRAP"){
+                            $("#dn_number").combobox({
+                                url: '<?= base_url('finance/sales_invoices/readScraps') ?>',
+                                valueField: 'number',
+                                textField: 'number',
+                                prompt: "Choose Scrap No",
                             });
                         }
                     }
@@ -813,6 +820,7 @@
             var type = $("#type").combobox('getValue');
             var customer_id = $("#customer_id").combogrid('getValue');
             var plant = $("#plant").combobox('getValue');
+            var dn_numberVal = $("#dn_number").combobox('getValue');
 
             $('#dg2').datagrid('appendRow', {
                 "action": 0
@@ -841,7 +849,7 @@
             $(qty.target).numberbox('readonly', false);
             $(price.target).numberbox('readonly', false);
             $(currency.target).combobox('setValue', "INR");
-            $(qty.target).numberbox('setValue', 1);
+            // $(qty.target).numberbox('setValue', 1);
             
             if(type == "SUPPLEMENTARY"){
                 $(dn_number.target).textbox('setValue', '-');
@@ -877,6 +885,48 @@
                         $(item_fg_name.target).textbox('setValue', rows.name);
                         $(hsn_code.target).textbox('setValue', rows.hsn_code);
                         $(uom.target).combobox('setValue', rows.uom);
+                        $(qty.target).numberbox('setValue', 1);
+                    }
+                });
+            }else if(type == "SCRAP"){
+                $(dn_number.target).textbox('setValue', dn_numberVal);
+                $(so_number.target).textbox('setValue', '-');
+                $(customer_po.target).textbox('setValue', '-');
+
+                $(item_fg_number.target).combogrid({
+                    url: "<?= base_url("finance/sales_invoices/readScrapItem?number=") ?>" + btoa(dn_numberVal),
+                    panelWidth: 650,
+                    idField: 'number',
+                    textField: 'number',
+                    mode: 'remote', 
+                    fitColumns: true,
+                    prompt: 'Choose Product No',
+                    columns: [
+                        [{
+                            field: 'number',
+                            title: 'Product No EBWS',
+                            width: 150
+                        },{
+                            field: 'number_customer',
+                            title: 'Product No Customer',
+                            width: 250
+                        },{
+                            field: 'name',
+                            title: 'Description',
+                            width: 150
+                        },{
+                            field: 'qty',
+                            title: 'Qty',
+                            width: 80
+                        }]
+                    ],
+                    onSelect: function(value, rows) {
+                        $(item_fg_id.target).textbox('setValue', rows.id);
+                        $(number_customer.target).textbox('setValue', rows.number_customer);
+                        $(item_fg_name.target).textbox('setValue', rows.name);
+                        $(hsn_code.target).textbox('setValue', rows.hsn_code);
+                        $(uom.target).combobox('setValue', rows.uom);
+                        $(qty.target).numberbox('setValue', rows.qty);
                     }
                 });
             }
@@ -1846,6 +1896,8 @@
                 if(val == "SUPPLEMENTARY"){
                     $("#dn_number").combobox('setValue', '-');
                     $("#dn_number").combobox('readonly', true);
+                    $("#preview").linkbutton('disable');
+                }else if(val == "SCRAP"){
                     $("#preview").linkbutton('disable');
                 }else{
                     $("#dn_number").combobox('clear');

@@ -95,6 +95,19 @@ class Sales_invoices extends CI_Controller
         echo json_encode($records);
     }
 
+    public function readScraps()
+    {
+        $records = $this->crud->query("SELECT DISTINCT `number` FROM scrap_booking WHERE `status` = '0' ORDER BY `number` ASC");
+        echo json_encode($records);
+    }
+
+    public function readScrapItem()
+    {
+        $number = base64_decode($this->input->get('number'));
+        $records = $this->crud->query("SELECT b.id, b.number, b.number_customer, b.name, b.hsn_code, b.uom, a.qty FROM scrap_booking a JOIN item_fg b ON a.item_fg_id = b.id WHERE a.status = '0' and a.number = '$number' ORDER BY b.number ASC");
+        echo json_encode($records);
+    }
+
     public function readSalesInvoices()
     {
         $data = $this->crud->query("SELECT DISTINCT `number` FROM sales_invoices WHERE `status` = '0' ORDER BY `number` ASC");
@@ -371,7 +384,7 @@ class Sales_invoices extends CI_Controller
         $config = $this->db->get()->row();
 
         $this->db->select("a.delivery_note_no as dn_number, a.customer_order_no as customer_po, a.sales_order_no as so_number, b.uom,
-            a.item_fg_id, b.number_customer, b.number as item_fg_number, b.name as item_fg_name, b.account_number, b.account_name, b.hsn_code, h.bill_state as state,
+            a.item_fg_id, b.alias as number_customer, b.number as item_fg_number, b.name as item_fg_name, b.account_number, b.account_name, b.hsn_code, h.bill_state as state,
             ((a.qty * c.price) * COALESCE(f.igst, 0) / 100) as igst,
             ((a.qty * c.price) * COALESCE(f.sgst, 0) / 100) as sgst,
             ((a.qty * c.price) * COALESCE(f.cgst, 0) / 100) as cgst,
@@ -544,6 +557,11 @@ class Sales_invoices extends CI_Controller
                 $send = $this->crud->update('sales_invoices', ["id" => $post['id']], $post);
                 echo $send;
             } else {
+                $sales_invoices = $this->crud->reads('sales_invoices', [], ["dn_number" => $post['dn_number'], "item_no" => $post['item_no'], "customer_id" => $post['customer_id'], "trans_date" => $post['trans_date']]);
+                if(count($sales_invoices) > 0){
+                    die(json_encode(array("title" => "Available", "message" => "Data Already Created", "theme" => "error")));
+                }
+
                 $send = $this->crud->create('sales_invoices', $post);
                 $update = $this->crud->update('delivery_notes', ["delivery_note_no" => $post['dn_number'], "sales_order_no" => $post['so_number'], "item_fg_id" => $post['item_fg_id']], ["status" => "1"]);
                 echo $send;
@@ -647,8 +665,9 @@ class Sales_invoices extends CI_Controller
         //Generate QRcode
         $imgIrn = "";
         if($sales_invoice->barcode != ""){
-            $this->createQrcodeIrn($sales_invoice->barcode, "assets/image/qrcode/", $sales_invoice->number);
-            $imgIrn = '<img src="' . base_url('assets/image/qrcode/' . $sales_invoice->number . '.png?'.time()) . '" width="170"/>';
+            // $this->createQrcodeIrn($sales_invoice->barcode, "assets/image/qrcode/", $sales_invoice->number);
+            // $imgIrn = '<img src="' . base_url('assets/image/qrcode/' . $sales_invoice->number . '.png?'.time()) . '" width="200"/>';
+            $imgIrn = '<img src="' . base_url('assets/qrcode/qrcode.php?s=qrm&sf=2&d='. $sales_invoice->barcode) . '" width="150"/>';
         }
 
         //Header Print
@@ -667,7 +686,7 @@ class Sales_invoices extends CI_Controller
         $grand_qty = 0;
         $grand_total = 0;
         for ($i = 0; $i < $page; $i++) {
-            $this->db->select('a.*, g.ship_by, d.name as customer_name, c.hsn_code, c.number_customer, c.name as item_fg_name, b.bill_address, b.ship_address, b.vendor_code, b.pan_no, b.gst_no, b.vendor_code, f.igst as p_igst, f.sgst as p_sgst, f.cgst as p_cgst');
+            $this->db->select('a.*, g.ship_by, d.name as customer_name, c.hsn_code, c.alias as number_customer, c.name as item_fg_name, b.bill_address, b.ship_address, b.vendor_code, b.pan_no, b.gst_no, b.vendor_code, f.igst as p_igst, f.sgst as p_sgst, f.cgst as p_cgst');
             $this->db->from('sales_invoices a');
             $this->db->join('customers d', 'a.customer_id = d.id');
             $this->db->join('customer_address b', 'a.customer_id = b.customer_id and a.plant = b.plant');
@@ -781,6 +800,11 @@ class Sales_invoices extends CI_Controller
                                                     <td>:</td>
                                                     <td>'.@$records[0]['payment_term'].' Days</td>
                                                 </tr>
+                                                <tr>
+                                                    <td><b>Remarks</b></td>
+                                                    <td>:</td>
+                                                    <td>'.@$records[0]['remarks'].'</td>
+                                                </tr>
                                             </table>
                                         </td>
                                         <td width="200" style="text-align:right;" rowspan="2">
@@ -864,7 +888,7 @@ class Sales_invoices extends CI_Controller
                                 </tr>';
                     $urutan = sprintf("%02s", $no - 1);
                     // $dataQr2 .= " $urutan ".$records[$a]['number_customer']." ".$records[$a]['hsn_code']." ".$records[$a]['price'];
-                    $dataQr2 .= $records[$a]['number_customer']."   ".$records[$a]['hsn_code']."    ".round($records[$a]['qty'])."  ".$records[$a]['price']."   ";
+                    $dataQr2 .= $records[$a]['number_customer']."%09".$records[$a]['hsn_code']."%09".round($records[$a]['qty'])."%09".$records[$a]['price']."%09";
                     $sub_qty += ($records[$a]['qty']);
                     $sub_total += ($records[$a]['price'] * $records[$a]['qty']);
                     $cgst += $records[$a]['cgst'];
@@ -892,9 +916,22 @@ class Sales_invoices extends CI_Controller
                 $no++;
             }
 
-            $dataQr = @$records[0]['vendor_code']."     ".@$records[0]['customer_po']."     ".@$records[0]['number']."      ".date("d.m.Y", strtotime(@$records[0]['trans_date']))."    ".
-                       $config->gst_no."    ".($sub_total + ($cgst + $sgst + $igst))."  ".$sub_total."  0   ".$sgst."   ".$igst."   ".$sgst."   ".$records[0]['tcs']."  ".$dataQr2;
-            $this->createQrcode($dataQr, "assets/image/qrcode/", $sales_invoice->number."-00");
+            $dataQr =   @$records[0]['vendor_code']."%09" . 
+                        @$records[0]['customer_po']."%09" .
+                        @$records[0]['number']."%09" .
+                        date("d.m.Y", strtotime(@$records[0]['trans_date']))."%09" .
+                        $config->gst_no."%09" .
+                        ($sub_total + ($cgst + $sgst + $igst))."%09" .
+                        $sub_total .
+                        "%090%09" .
+                        $sgst."%09" . 
+                        $igst."%09" . 
+                        $sgst."%09" . 
+                        $records[0]['tcs']."%09" .
+                        $dataQr2;
+                        
+            // $this->createQrcode($dataQr, "assets/image/qrcode/", $sales_invoice->number."-00");
+            $imgIrn2 = '<img src="' . base_url('assets/qrcode/qrcode.php?s=qrm&sf=2&d='. $dataQr) . '"/>';
 
             $html .= '<tr>
                         <td colspan="3" style="text-align:right"><b>Sub Total</b></td>
@@ -964,7 +1001,7 @@ class Sales_invoices extends CI_Controller
                                 <b>Terms and Condition :</b>
                             </div>
                             <div style="float:right; width: 20%;">
-                                <img src="' . base_url('assets/image/qrcode/' . $sales_invoice->number . '-00.png?'.time()) . '" width="100"/>
+                                '.$imgIrn2.'
                             </div>
                         </td>
                     </tr>

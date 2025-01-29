@@ -105,7 +105,7 @@
             <div style="width:50%; float:left;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Posting To</span>
-                    <input style="width:60%;" name="posting_to" id="posting_to" class="easyui-combogrid">
+                    <input style="width:60%;" name="posting_to" id="posting_to" required class="easyui-combogrid">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Vourcher No</span>
@@ -284,7 +284,7 @@
         var number = $("#number").textbox('getValue');
         var document_no = $("#document_no").combogrid('getText');
 
-        if (posting_to == "" && document_no == "") {
+        if (posting_to == "" || document_no == "") {
             toastr.info('Please Choose Document No and Posting To');
         } else {
             $.ajax({
@@ -511,6 +511,12 @@
                 text: 'Save All',
                 iconCls: 'icon-ok',
                 handler: function() {
+                    var btn = $(this);
+                    btn.linkbutton('disable');
+                    setTimeout(function() { 
+                        btn.linkbutton('enable'); 
+                    }, 3000);
+                    
                     var journal_date = $("#journal_date").datebox('getValue');
                     var modul = $("#modul").textbox('getValue');
                     var journal_type = $("#journal_type").textbox('getValue');
@@ -668,6 +674,7 @@
                     ],
                     onSelect: function(index, bank){
                         var journal_date = $("#journal_date").datebox('getValue');
+                        $("#posting_to").combogrid('setValue', bank.posting_to);
 
                         $("#document_no").combogrid({
                             url: '<?= base_url('finance/journal_posting_banks/readModul?trans_type=') ?>' + btoa(trans_type) + "&account_number=" + btoa(bank.account_number) + "&journal_date=" + btoa(journal_date),

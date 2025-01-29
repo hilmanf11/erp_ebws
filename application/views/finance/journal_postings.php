@@ -794,6 +794,12 @@
                 text: 'Save All',
                 iconCls: 'icon-ok',
                 handler: function() {
+                    var btn = $(this);
+                    btn.linkbutton('disable');
+                    setTimeout(function() { 
+                        btn.linkbutton('enable'); 
+                    }, 3000);
+                    
                     $.ajax({
                         type: "post",
                         url: "<?= base_url('finance/journal_postings/number/' . $menus_id) ?>",

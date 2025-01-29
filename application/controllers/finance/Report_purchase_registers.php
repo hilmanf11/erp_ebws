@@ -40,9 +40,17 @@ class Report_purchase_registers extends CI_Controller
         die(json_encode($query));
     }
 
-    public function readPartNo($supplier_id){
+    public function readPartNo($supplier_id = ""){
+        $post = isset($_POST['q']) ? $_POST['q'] : "";
+
         $supplier_id = base64_decode($supplier_id);
-        $query = $this->crud->query("SELECT DISTINCT item_rm_id, item_no, item_name FROM purchase_invoices WHERE supplier_id = '$supplier_id' ORDER BY `item_rm_id` ASC");
+        if($supplier_id != ""){
+            $w_supplier = "and a.supplier_id = '$supplier_id'";
+        }else{
+            $w_supplier = "";
+        }
+
+        $query = $this->crud->query("SELECT DISTINCT item_rm_id, b.number as item_rm_number, b.name as item_rm_name FROM purchase_invoices a JOIN item_rm b ON a.item_rm_id = b.id WHERE (a.item_rm_id like '%$post%' or b.number like '%$post%') $w_supplier ORDER BY b.number ASC");
         die(json_encode($query));
     }
 

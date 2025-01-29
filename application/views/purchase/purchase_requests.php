@@ -28,6 +28,7 @@
             <th rowspan="2" data-options="field:'detail',width:80,halign:'center',formatter:BtnDetail">Detail</th>
             <th rowspan="2" data-options="field:'print_pr',width:80,halign:'center',formatter:BtnPrint">Print PR</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'">Create PO</th>
+            <th rowspan="2" data-options="field:'attachment',width:80,align:'center',formatter: btnDetails">Attachment</th>
             <!-- <th colspan="2" data-options="field:'',width:100,halign:'center'">Confirm PR</th> -->
             <th colspan="3" data-options="field:'',width:100,halign:'center'">Approved</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'">Created</th>
@@ -241,14 +242,22 @@
                         </select>
                     </div>
                     <div class="fitem">
+                        <span style="width:35%; display:inline-block;">PR Date</span>
+                        <input style="width:60%;" name="request_date" id="request_date" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
+                    </div>
+                    <div class="fitem">
                         <span style="width:35%; display:inline-block;">PR No</span>
                         <input style="width:60%;" name="request_no" id="request_no" readonly required class="easyui-textbox">
                     </div>
                 </div>
                 <div style="float: left; width: 50%;">
                     <div class="fitem">
-                        <span style="width:35%; display:inline-block;">PR Date</span>
-                        <input style="width:60%;" name="request_date" id="request_date" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
+                        <span style="width:35%; display:inline-block;">Attachment</span>
+                        <input style="width:60%;" name="attachment_upload" id="attachment_upload" class="easyui-filebox">
+                    </div>
+                    <div class="fitem" hidden>
+                        <span style="width:35%; display:inline-block;">Attachment</span>
+                        <input style="width:60%;" name="attachment" id="attachment" class="easyui-textbox">
                     </div>
                     <div class="fitem">
                         <span style="width:35%; display:inline-block;">Supplier Name</span>
@@ -1212,6 +1221,7 @@
                     var revision = $("#revision").combobox('getValue');
                     var supplier_id = $("#supplier_id").combobox('getValue');
                     var request_no = $("#request_no").textbox('getValue');
+                    var attachment = $("#attachment").textbox('getValue');
                     var request_date = $("#request_date").datebox('getValue');
                     var item_family_id = $("#item_family_id").combobox('getValue');
 
@@ -1233,7 +1243,7 @@
                                         request_no: request_no,
                                         request_date: request_date,
                                         supplier_id: supplier_id,
-                                        // supplier_name: supplier_name,
+                                        attachment: attachment,
                                         item_family_id: item_family_id,
                                         item_rm_id: rows[i].item_rm_id,
                                         // mpq: rows[i].mpq,
@@ -1291,6 +1301,37 @@
                     });
                 }
             }]
+        });
+
+        $('#attachment_upload').filebox({
+            buttonText: 'Browse File',
+            accept: '.jpg, .png, .pdf',
+            onChange: function () {
+                var files = $(this).filebox('files');
+                var formData = new FormData();
+
+                for (var i = 0; i < files.length; i++) {
+                    var file = files[i];
+                    formData.append('file', file, file.name);
+                }
+
+                $.ajax({
+                    url: '<?= base_url('purchase/purchase_requests/uploadatt') ?>',
+                    type: 'post',
+                    data: formData,
+                    contentType: false,
+                    processData: false,
+                    dataType: 'json',
+                    success: function (data) {
+                        if (data.success == true) {
+                            toastr.success(data.message);
+                            $('#attachment').textbox('setValue', data.filename); // Mengatur nilai pada textbox
+                        } else {
+                            toastr.error(data.message);
+                        }
+                    }
+                });
+            }
         });
 
         //ADD
@@ -1553,4 +1594,14 @@
             return 'Checking';
         }
     };
+
+    function btnDetails(val, row, index) {
+        var attachment = row.attachment;
+        
+        if (attachment != null && attachment != "") {
+            return '<a class="btn btn-primary w-100" target="_blank" href="<?= base_url('assets/documents/purchase_requests/') ?>'+row.attachment+'" style="pointer-events: visible; opacity:1;"><i class="fa fa-eye"></i> View</a>';
+        } else {
+            return '-';
+        }
+    }
 </script>

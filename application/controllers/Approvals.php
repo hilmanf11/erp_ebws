@@ -335,6 +335,8 @@ class Approvals extends CI_Controller
             $tablename = "supplier_contracts";
         }elseif($table == "item_rm"){
             $tablename = "master_items";
+        }elseif($table == "supply_materials"){
+            $tablename = "sample_requisition";
         }else{
             $tablename = $table;
         }
@@ -782,11 +784,9 @@ class Approvals extends CI_Controller
         $approved_to = base64_decode($approved_to);
         $approved_by = base64_decode($approved_by);
 
-        $this->db->select('a.supplier_id, e.supplier_po, e.number as supplier_number, e.name as supplier_name, e.type, e.state, e.currency, SUM(a.purchase_order) as total_qty');
-        $this->db->from('generate_mrp_finals a');
+        $this->db->select('a.supplier_id, e.supplier_po, e.number as supplier_number, e.name as supplier_name, e.type, e.state, e.currency, SUM(a.purchase_order) as total_qty, SUM(a.amount) as total_amount');
+        $this->db->from("(SELECT a.id, a.supplier_id, a.purchase_order, b.price, (a.purchase_order * b.price) AS amount FROM generate_mrp_finals a JOIN supplier_items b ON a.supplier_id = b.supplier_id AND a.item_rm_id = b.item_rm_id WHERE a.approved_to = '$approved_to' and a.approved_by = '$approved_by') a");
         $this->db->join('suppliers e', 'a.supplier_id = e.id');
-        $this->db->where('a.approved_to', $approved_to);
-        $this->db->where('a.approved_by', $approved_by);
         $this->db->group_by('e.id');
         $this->db->having('SUM(a.purchase_order) > 0');
         $this->db->order_by('e.name', 'asc');
@@ -812,8 +812,7 @@ class Approvals extends CI_Controller
         $this->db->where('a.approved_by', $approved_by);
         $this->db->where('a.supplier_id', $supplier_id);
         $this->db->where('a.purchase_order > 0');
-        $this->db->group_by('a.item_rm_id');
-        $this->db->group_by('a.supplier_id');
+        $this->db->group_by('a.id');
         $this->db->order_by('c.name', 'asc');
         $this->db->order_by('d.class', 'asc');
         $this->db->order_by('b.number', 'asc');

@@ -177,7 +177,7 @@ class Report_check_serialno extends CI_Controller
             $this->db->where("DATE_FORMAT(a.created_date, '%Y-%m-%d') between '$filter_from' and '$filter_to'");
             // $this->db->where('a.type', "SUPPLY");
             $this->db->like('a.label_divided', $filter_serial_no);
-            $this->db->like('a.label_no', $filter_serial_no);
+            $this->db->or_like('a.label_no', $filter_serial_no);
             // $this->db->like('e.id', $filter_supplier);
             if($filter_receipt != ""){
                 $this->db->where('c.id', $filter_receipt);

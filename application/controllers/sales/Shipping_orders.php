@@ -78,8 +78,8 @@ class Shipping_orders extends CI_Controller
             if(empty($records)){
                 $this->db->select("d.*, a.id as item_fg_id");
                 $this->db->from('item_fg a');
-                $this->db->join('rgp_transactions c', 'a.id = c.item_id', 'left');
-                $this->db->join('scan_item_receipts_fg d', 'c.id = d.workorder');
+                $this->db->join('os_fg c', 'a.id = c.item_fg_id', 'left');
+                $this->db->join('scan_item_receipts_fg d', '(c.id = d.workorder)');
                 $this->db->where('d.checksheet_label', $checksheet_label);
                 $this->db->where('d.status', '0');
                 $totalRows = $this->db->count_all_results('', false);
@@ -88,8 +88,8 @@ class Shipping_orders extends CI_Controller
                 if(empty($records)){
                     $this->db->select("d.*, a.id as item_fg_id");
                     $this->db->from('item_fg a');
-                    $this->db->join('os_fg c', 'a.id = c.item_fg_id', 'left');
-                    $this->db->join('scan_item_receipts_fg d', '(c.id = d.workorder)');
+                    $this->db->join('rgp_transactions c', 'a.id = c.item_id', 'left');
+                    $this->db->join('scan_item_receipts_fg d', 'c.rgp_id = d.workorder');
                     $this->db->where('d.checksheet_label', $checksheet_label);
                     $this->db->where('d.status', '0');
                     $totalRows = $this->db->count_all_results('', false);

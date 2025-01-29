@@ -24,14 +24,14 @@
             <th colspan="3" data-options="field:'',width:100,halign:'center',align:'right',formatter:numberformat"> Quantity</th>
             <!-- <th rowspan="2" data-options="field:'warehouse',width:80,halign:'center', align:'right', formatter:numberformat">Stock WHS</th> -->
             <th rowspan="2" data-options="field:'uom',width:80,align:'center'">UoM</th>
-            <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
+            <th colspan="2" data-options="field:'',width:100,halign:'center'"> Request</th>
         </tr>
         <tr>
-            <th data-options="field:'qty',width:80,halign:'center',align:'right',formatter:numberformat">Need</th>
+            <th data-options="field:'qty_act',width:80,halign:'center',align:'right',formatter:numberformat">Need</th>
             <th data-options="field:'qty_req',width:80,halign:'center',align:'right',formatter:numberformat">Issued</th>
             <th data-options="field:'qty_bal',width:80,halign:'center',align:'right',formatter:numberformat,styler:numberStyle">Balance</th>
-            <th data-options="field:'created_by',width:100,align:'center'"> By</th>
-            <th data-options="field:'created_date',width:150,align:'center'"> Date</th>
+            <th data-options="field:'request_name',width:100,align:'center'"> Name</th>
+            <th data-options="field:'request_date',width:100,align:'center'"> Date</th>
         </tr>
     </thead>
 </table>
@@ -88,30 +88,6 @@
                         dataType: "json",
                         success: function(json) {
                             if (json.total > 0) {
-                                // var row = json.rows;
-                                // for (let i = 0; i < json.total; i++) {
-                                //     $.ajax({
-                                //         type: "POST",
-                                //         url: "<?= base_url('warehouse/issued_materials/create') ?>",
-                                //         data: "item_fg_id=" + row[i].item_fg_id +
-                                //             "&item_rm_id=" + row[i].item_rm_id +
-                                //             "&request_no=" + row[i].request_no +
-                                //             "&period=" + row[i].period +
-                                //             "&wp=" + row[i].wp +
-                                //             "&workorder=" + row[i].workorder +
-                                //             "&qty=" + row[i].qty_act,
-                                //         dataType: "json",
-                                //         success: function(result) {
-                                            $('#receipt_id').focus();
-                                            // if (result.theme == "success") {
-                                            //     $('#receipt_id').focus();
-                                            //     toastr.success(result.message, result.title);
-                                            // } else {
-                                            //     toastr.error(result.message, result.title);
-                                            // }
-                                //         }
-                                //     });
-                                // }
                                 $('#dg').datagrid({
                                     url: '<?= base_url('warehouse/issued_materials/datatables?request_no=') ?>' + window.btoa(request_no),
                                     rownumbers: true
@@ -137,53 +113,35 @@
             if (e.which == 13) {
                 var receipt_id = $(this).val();
                 var request_no = $("#request_no").val();
+
                 $.ajax({
                     type: "POST",
-                    url: "<?= base_url('warehouse/issued_materials/getPoReceipt') ?>",
-                    data: "receipt_id=" + receipt_id + "&request_no=" + request_no,
+                    url: "<?= base_url('warehouse/issued_materials/create_label') ?>",
+                    data: "request_no=" + request_no +
+                        "&label_no=" + receipt_id,
                     dataType: "json",
-                    success: function(json) {
-                        if (json.total > 0) {
-                            var row = json.rows;
-                            for (let i = 0; i < json.total; i++) {
-                                $.ajax({
-                                    type: "POST",
-                                    url: "<?= base_url('warehouse/issued_materials/create_label') ?>",
-                                    data: "request_no=" + request_no +
-                                        "&label_no=" + receipt_id +
-                                        "&item_rm_id=" + row[i].item_rm_id +
-                                        "&qty=" + row[i].qty,
-                                    dataType: "json",
-                                    success: function(result) {
-                                        if (result.theme == "success") {
-                                            serialSuccess.play();
-                                            toastr.success(result.message, result.title);
-                                            $("#receipt_id").val('');
-                                            $('#receipt_id').focus();
-                                        } else {
-                                            if (result.title == "Not Scanned In" || result.title == "Not Registered") {
-                                                serialNotFound.play();
-                                            } else {
-                                                serialDuplicate.play();
-                                            }
-                                            toastr.error(result.message, result.title);
-                                            $("#receipt_id").val('');
-                                            $('#receipt_id').focus();
-                                        }
-                                    }
-                                });
-                            }
-
-                            $('#dg').datagrid({
-                                url: '<?= base_url('warehouse/issued_materials/datatables?request_no=') ?>' + window.btoa(request_no),
-                                rownumbers: true
-                            });
-                            
-                        } else {
-                            serialNotFound.play();
-                            toastr.warning("Label not found!");
+                    success: function(result) {
+                        if (result.theme == "success") {
+                            serialSuccess.play();
+                            toastr.success(result.message, result.title);
                             $("#receipt_id").val('');
+                            $('#receipt_id').focus();
+                        } else {
+                            if (result.title == "Not Scanned In" || result.title == "Not Registered") {
+                                serialNotFound.play();
+                            } else {
+                                serialDuplicate.play();
+                            }
+                            toastr.error(result.message, result.title);
+                            $("#receipt_id").val('');
+                            $('#receipt_id').focus();
                         }
+
+                        $('#dg').datagrid('reload');
+                    }, error: function(xhr, status, error) {
+                        toastr.error("An error occurred: Cannot Scan Out Label!", "Error");
+                        $("#receipt_id").val('');
+                        $('#receipt_id').focus();
                     }
                 });
             }

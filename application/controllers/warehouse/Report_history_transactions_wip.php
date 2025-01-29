@@ -138,21 +138,21 @@ class Report_history_transactions_wip extends CI_Controller
                             </tr>';
 
                 $details = $this->crud->query("SELECT * FROM (
-                    (SELECT 'PRODUCTION' as trans_type, b.name AS request_no, a.created_by, a.workorder, c.number_customer, c.name, a.trans_date, (a.qty * d.composition) AS qty
-                    FROM production_schedules a 
-                    JOIN customers b ON a.customer_id = b.id
-                    JOIN item_fg c ON a.item_fg_id = c.id
-                    JOIN bom d ON a.item_fg_id = d.item_fg_id
-                    WHERE a.trans_date BETWEEN '$filter_from' AND '$filter_to' AND d.item_rm_id = '$item_rm_id'
-                    GROUP BY a.item_fg_id, d.item_rm_id, a.workorder)
+                    (SELECT 'NEED PROD' as trans_type, b.name AS request_no, a.created_by, a.workorder, c.number_customer, c.name, a.trans_date, (a.qty * d.composition) AS qty
+                        FROM production_schedules a 
+                        JOIN customers b ON a.customer_id = b.id
+                        JOIN item_fg c ON a.item_fg_id = c.id
+                        JOIN bom d ON a.item_fg_id = d.item_fg_id
+                        WHERE a.trans_date BETWEEN '$filter_from' AND '$filter_to' AND d.item_rm_id = '$item_rm_id'
+                        GROUP BY a.item_fg_id, d.item_rm_id, a.workorder)
                     UNION
                     (SELECT 'ISSUED' as trans_type, b.request_no, b.created_by, b.workorder, c.number_customer, c.name, DATE_FORMAT(a.created_date, '%Y-%m-%d') AS trans_date, SUM(a.qty) AS qty 
-                    FROM issued_material_details a 
-                    JOIN issued_materials b ON a.request_no = b.request_no AND a.item_rm_id = b.item_rm_id
-                    JOIN item_fg c ON b.item_fg_id = c.id
-                    WHERE DATE_FORMAT(a.created_date, '%Y-%m-%d') BETWEEN '$filter_from' AND '$filter_to' AND a.item_rm_id = '$item_rm_id'
-                    GROUP BY a.request_no)) z 
-                    ORDER BY trans_date ASC");
+                        FROM issued_material_details a 
+                        LEFT JOIN supply_sheets b ON a.request_no = b.request_no AND a.item_rm_id = b.item_rm_id
+                        LEFT JOIN item_fg c ON b.item_fg_id = c.id
+                        WHERE DATE_FORMAT(a.created_date, '%Y-%m-%d') BETWEEN '$filter_from' AND '$filter_to' AND a.item_rm_id = '$item_rm_id'
+                        GROUP BY a.request_no)) z 
+                        ORDER BY trans_date ASC");
 
                 $nod = 1;
                 foreach ($details as $detail) {

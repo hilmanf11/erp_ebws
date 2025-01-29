@@ -316,31 +316,35 @@
                             var row = json[number-1];
                             value = Math.floor((number / total) * 100);
 
-                            $.ajax({
-                                method: 'post',
-                                url: '<?= base_url('warehouse/wip_receipts/delete') ?>',
-                                data: {
-                                    id: row.id,
-                                    workorder: row.workorder,
-                                },
-                                success: function(result) {
-                                    var result = eval('(' + result + ')');
-                                    requestDelete(total, json, number + 1, value);
+                            if(row.scan <= 0){
+                                $.ajax({
+                                    method: 'post',
+                                    url: '<?= base_url('warehouse/wip_receipts/delete') ?>',
+                                    data: {
+                                        id: row.id,
+                                        workorder: row.workorder,
+                                    },
+                                    success: function(result) {
+                                        var result = eval('(' + result + ')');
+                                        requestDelete(total, json, number + 1, value);
 
-                                    if (number == total) {
-                                        $('#dg').datagrid('reload');
-                                        Swal.close();
-                                        Swal.fire(
-                                            'Delete Completed',
-                                            'Delete Data has been completed, You cannot restore data that has been deleted',
-                                            'success'
-                                        );
-                                    }
-                                },
-                                error: function(jqXHR, textStatus, errorThrown) {
-                                    toastr.error(jqXHR.statusText);
-                                },
-                            });
+                                        if (number == total) {
+                                            $('#dg').datagrid('reload');
+                                            Swal.close();
+                                            Swal.fire(
+                                                'Delete Completed',
+                                                'Delete Data has been completed, You cannot restore data that has been deleted',
+                                                'success'
+                                            );
+                                        }
+                                    },
+                                    error: function(jqXHR, textStatus, errorThrown) {
+                                        toastr.error(jqXHR.statusText);
+                                    },
+                                });
+                            }else{
+                                toastr.error("Cannot Delete Because The label Already Scan In FG")
+                            }
                         }
                     }
                 }

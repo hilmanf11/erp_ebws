@@ -61,6 +61,10 @@
                     <span style="width:35%; display:inline-block;">Kanban No</span>
                     <input style="width:60%;" id="filter_request_no" class="easyui-combobox">
                 </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Workorder</span>
+                    <input style="width:60%;" id="filter_workorder" class="easyui-combobox">
+                </div>
             </div>
             <div style="width: 30%; float:left;">
                 <div class="fitem">
@@ -351,6 +355,11 @@
                             }
                         }
                     }, {
+                        field: 'stock',
+                        width: 80,
+                        halign: 'center',
+                        title: "Stock",
+                    }, {
                         field: 'qty',
                         width: 80,
                         halign: 'center',
@@ -589,10 +598,11 @@
         var filter_period = $("#filter_period").combobox('getValue');
         var filter_wp = $("#filter_wp").combobox('getValue');
         var filter_request_no = $("#filter_request_no").combobox('getValue');
+        var filter_workorder = $("#filter_workorder").combobox('getValue');
         var filter_item_fg_id = $("#filter_item_fg_id").combogrid('getValue');
         var filter_item_rm_id = $("#filter_item_rm_id").combogrid('getValue');
 
-        url = "?filter_period=" + filter_period + "&filter_wp=" + filter_wp + "&filter_request_no=" + filter_request_no + "&filter_supply_type=" + filter_supply_type + "&filter_item_fg_id=" + filter_item_fg_id + "&filter_item_rm_id=" + filter_item_rm_id;
+        url = "?filter_period=" + filter_period + "&filter_wp=" + filter_wp + "&filter_request_no=" + filter_request_no + "&filter_workorder=" + filter_workorder + "&filter_supply_type=" + filter_supply_type + "&filter_item_fg_id=" + filter_item_fg_id + "&filter_item_rm_id=" + filter_item_rm_id;
         $('#dg').treegrid({
             url: '<?= base_url('planning/supply_sheets/datatables') ?>' + url,
             pagination: true,
@@ -621,11 +631,12 @@
         var filter_supply_type = $("#filter_supply_type").combobox('getValue');
         var filter_period = $("#filter_period").combobox('getValue');
         var filter_wp = $("#filter_wp").combobox('getValue');
+        var filter_workorder = $("#filter_workorder").combobox('getValue');
         var filter_request_no = $("#filter_request_no").combobox('getValue');
         var filter_item_fg_id = $("#filter_item_fg_id").combogrid('getValue');
         var filter_item_rm_id = $("#filter_item_rm_id").combogrid('getValue');
 
-        url = "?filter_period=" + filter_period + "&filter_wp=" + filter_wp + "&filter_request_no=" + filter_request_no + "&filter_supply_type=" + filter_supply_type + "&filter_item_fg_id=" + filter_item_fg_id + "&filter_item_rm_id=" + filter_item_rm_id;
+        url = "?filter_period=" + filter_period + "&filter_wp=" + filter_wp + "&filter_request_no=" + filter_request_no + "&filter_workorder=" + filter_workorder + "&filter_supply_type=" + filter_supply_type + "&filter_item_fg_id=" + filter_item_fg_id + "&filter_item_rm_id=" + filter_item_rm_id;
         window.location.assign('<?= base_url('planning/supply_sheets/print/excel') ?>' + url);
     }
 
@@ -808,6 +819,19 @@
                             }],
                         });
                     }
+                });
+
+                $("#filter_workorder").combobox({
+                    url: '<?= base_url('planning/supply_sheets/readWorkorder?period=') ?>' + window.btoa(rowPeriod.period),
+                    valueField: 'workorder',
+                    textField: 'workorder',
+                    prompt: "Select Workorder",
+                    icons: [{
+                        iconCls: 'icon-clear',
+                        handler: function(e) {
+                            $(e.data.target).combobox('clear').combobox('textbox').focus();
+                        }
+                    }],
                 });
             }
         });

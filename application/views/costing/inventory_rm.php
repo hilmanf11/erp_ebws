@@ -20,7 +20,7 @@
         </div>
         <div style="width: 49%; float:left;">
             <div class="fitem">
-                <span style="width:35%; display:inline-block;">Product No</span>
+                <span style="width:35%; display:inline-block;">Part No</span>
                 <input style="width:60%;" id="filter_items" class="easyui-combogrid">
             </div>
             <div class="fitem">
@@ -59,109 +59,110 @@
 
 <script>
     function add(){
-        var filter_from = $("#filter_from").datebox('getValue');
-        var filter_to = $("#filter_to").datebox('getValue');
-        var filter_item_family = $("#filter_item_family").combobox('getValue');
-        var filter_items = $("#filter_items").combogrid('getValue');
-        var filter_display = $("#filter_display").combobox('getValue');
-        var filter_transtype = $("#filter_transtype").combobox('getValue');
+        toastr.info("Generate Not Available Now");
+        // var filter_from = $("#filter_from").datebox('getValue');
+        // var filter_to = $("#filter_to").datebox('getValue');
+        // var filter_item_family = $("#filter_item_family").combobox('getValue');
+        // var filter_items = $("#filter_items").combogrid('getValue');
+        // var filter_display = $("#filter_display").combobox('getValue');
+        // var filter_transtype = $("#filter_transtype").combobox('getValue');
 
-        $.ajax({
-            type: "post",
-            url: "<?= base_url('closing/locks/checkLock') ?>",
-            data: "period=" + filter_from + "&menus_id=<?= $menus_id ?>",
-            dataType: "json",
-            success: function (lock) {
-                if(lock.total > 0){
-                    toastr.error("This period is not active by Accounting");
-                    return false;
-                }
+        // $.ajax({
+        //     type: "post",
+        //     url: "<?= base_url('closing/locks/checkLock') ?>",
+        //     data: "period=" + filter_from + "&menus_id=<?= $menus_id ?>",
+        //     dataType: "json",
+        //     success: function (lock) {
+        //         if(lock.total > 0){
+        //             toastr.error("This period is not active by Accounting");
+        //             return false;
+        //         }
 
-                $.messager.confirm('Warning', 'Are you sure you want to save this data?', function(r) {
-                    if (r) {
-                        Swal.fire({
-                            title: 'Please wait, the system is generate a lot of data, it may take a long time.',
-                            showConfirmButton: false,
-                            allowOutsideClick: false,
-                            allowEscapeKey: false,
-                            didOpen: () => {
-                                Swal.showLoading();
-                            },
-                        });
+        //         $.messager.confirm('Warning', 'Are you sure you want to save this data?', function(r) {
+        //             if (r) {
+        //                 Swal.fire({
+        //                     title: 'Please wait, the system is generate a lot of data, it may take a long time.',
+        //                     showConfirmButton: false,
+        //                     allowOutsideClick: false,
+        //                     allowEscapeKey: false,
+        //                     didOpen: () => {
+        //                         Swal.showLoading();
+        //                     },
+        //                 });
 
-                        $("#p_remarks").html("");
+        //                 $("#p_remarks").html("");
 
-                        $.ajax({
-                            type: "post",
-                            url: '<?= base_url('costing/inventory_rm/getData') ?>',
-                            data: {
-                                filter_from: filter_from,
-                                filter_to: filter_to,
-                                filter_item_family: filter_item_family,
-                                filter_items: filter_items,
-                            },
-                            dataType: "json",
-                            success: function(data) {
-                                Swal.close();
+        //                 $.ajax({
+        //                     type: "post",
+        //                     url: '<?= base_url('costing/inventory_rm/getData') ?>',
+        //                     data: {
+        //                         filter_from: filter_from,
+        //                         filter_to: filter_to,
+        //                         filter_item_family: filter_item_family,
+        //                         filter_items: filter_items,
+        //                     },
+        //                     dataType: "json",
+        //                     success: function(data) {
+        //                         Swal.close();
 
-                                if(data.total > 0){
-                                    requestData(data.total, data.rows);
-                                    $('#dlg_generate').dialog('open');
+        //                         if(data.total > 0){
+        //                             requestData(data.total, data.rows);
+        //                             $('#dlg_generate').dialog('open');
 
-                                    function requestData(total, json, jml = 1, value = 0) {
-                                        if (value < 100) {
-                                            value = Math.floor((jml / total) * 100);
-                                            var i = (jml - 1);
+        //                             function requestData(total, json, jml = 1, value = 0) {
+        //                                 if (value < 100) {
+        //                                     value = Math.floor((jml / total) * 100);
+        //                                     var i = (jml - 1);
 
-                                            $('#p_upload').progressbar('setValue', value);
-                                            $('#p_start').html(jml);
-                                            $('#p_finish').html(data.total);
+        //                                     $('#p_upload').progressbar('setValue', value);
+        //                                     $('#p_start').html(jml);
+        //                                     $('#p_finish').html(data.total);
 
-                                            $.ajax({
-                                                type: "post",
-                                                url: '<?= base_url('costing/inventory_rm/create') ?>',
-                                                data: {
-                                                    data: json[i]
-                                                },
-                                                dataType: "json",
-                                                success: function(result) {
-                                                    requestData(total, json, jml + 1, value);
+        //                                     $.ajax({
+        //                                         type: "post",
+        //                                         url: '<?= base_url('costing/inventory_rm/create') ?>',
+        //                                         data: {
+        //                                             data: json[i]
+        //                                         },
+        //                                         dataType: "json",
+        //                                         success: function(result) {
+        //                                             requestData(total, json, jml + 1, value);
 
-                                                    if (result.theme == "success") {
-                                                        var title = "<b style='color: green;'>" + result.title + "</b> | " + result.message;
-                                                    } else {
-                                                        var title = "<b style='color: red;'>" + result.title + "</b> | " + result.message;
-                                                    }
+        //                                             if (result.theme == "success") {
+        //                                                 var title = "<b style='color: green;'>" + result.title + "</b> | " + result.message;
+        //                                             } else {
+        //                                                 var title = "<b style='color: red;'>" + result.title + "</b> | " + result.message;
+        //                                             }
 
-                                                    $("#p_remarks").append(title + "<br>");
+        //                                             $("#p_remarks").append(title + "<br>");
 
-                                                    if (i == (data.total - 1)) {
-                                                        $('#dlg_generate').dialog('close');
+        //                                             if (i == (data.total - 1)) {
+        //                                                 $('#dlg_generate').dialog('close');
 
-                                                        Swal.fire({
-                                                            title: result.message,
-                                                            icon: result.theme,
-                                                            confirmButtonText: 'Ok',
-                                                            allowOutsideClick: false,
-                                                        }).then((result) => {
-                                                            // if (result.isConfirmed) {
-                                                            //     window.location.reload();
-                                                            // }
-                                                        });
-                                                    }
-                                                }
-                                            });
-                                        }
-                                    }
-                                }else{
-                                    toastr.warning("Data not Found!");
-                                }
-                            }
-                        });
-                    }
-                });
-            }
-        });
+        //                                                 Swal.fire({
+        //                                                     title: result.message,
+        //                                                     icon: result.theme,
+        //                                                     confirmButtonText: 'Ok',
+        //                                                     allowOutsideClick: false,
+        //                                                 }).then((result) => {
+        //                                                     // if (result.isConfirmed) {
+        //                                                     //     window.location.reload();
+        //                                                     // }
+        //                                                 });
+        //                                             }
+        //                                         }
+        //                                     });
+        //                                 }
+        //                             }
+        //                         }else{
+        //                             toastr.warning("Data not Found!");
+        //                         }
+        //                     }
+        //                 });
+        //             }
+        //         });
+        //     }
+        // });
     }
 
     function reload() {
@@ -181,8 +182,14 @@
         var filter_transtype = $("#filter_transtype").combobox('getValue');
 
         url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_item_family=" + filter_item_family + "&filter_items=" + filter_items + "&filter_display=" + filter_display + "&filter_transtype=" + filter_transtype;
-        $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
-        $("#printout").attr('src', '<?= base_url('costing/inventory_rm/print') ?>' + url);
+
+        if(filter_display == "DETAIL" && filter_items == ""){
+            toastr.info("Please Choose Part No for View Detail, if you want to all detail please Klik Export to Excel");
+        }else{
+            $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
+            $("#printout").attr('src', '<?= base_url('costing/inventory_rm/print') ?>' + url);
+        }
+
     }
 
     function excel() {
@@ -199,19 +206,6 @@
 
     $(function() {
         $("#add").html("Save Inventory RM");
-        
-        $("#filter_transtype").combobox({
-            url: '<?= base_url('master/transaction_types/reads') ?>',
-            valueField: 'number',
-            textField: 'name',
-            prompt: "Select Transaction Type",
-            icons: [{
-                iconCls: 'icon-clear',
-                handler: function(e) {
-                    $(e.data.target).combobox('clear').combobox('textbox').focus();
-                }
-            }],
-        });
 
         $("#filter_item_family").combobox({
             url: '<?= base_url('costing/inventory_rm/readItemFamily') ?>',

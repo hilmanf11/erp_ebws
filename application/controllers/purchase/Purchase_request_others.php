@@ -205,9 +205,21 @@ class Purchase_request_others extends CI_Controller
                 $this->db->where('a.request_date >=', $filter_from);
                 $this->db->where('a.request_date <=', $filter_to);
             }
+<<<<<<< Updated upstream
             $this->db->like('a.item_category_id', $filter_category);
             $this->db->like('a.request_no', $filter_request_no);
             $this->db->like('a.request_name', $filter_request_name);
+=======
+            if($filter_category != ""){
+                $this->db->where('a.item_category_id', $filter_category);
+            }
+            if($filter_request_no != ""){
+                $this->db->where('a.request_no', $filter_request_no);
+            }
+            if($filter_request_name != ""){
+                $this->db->like('a.request_name', $filter_request_name);
+            }
+>>>>>>> Stashed changes
             $this->db->like('c.id', $filter_item_familys);
             $this->db->like('b.id', $filter_item_rm);
             $this->db->group_by('a.request_no');

@@ -63,6 +63,18 @@ class Supply_sheets extends CI_Controller
         echo json_encode($send);
     }
 
+    public function readWorkorder()
+    {
+        $period = base64_decode($this->input->get('period'));
+        $send = $this->crud->query("SELECT a.workorder
+            FROM production_schedules a 
+            WHERE a.status = 1 and a.period = '$period'
+            GROUP BY a.workorder
+            ORDER BY a.workorder DESC");
+
+        echo json_encode($send);
+    }
+
     public function readRequestNo()
     {
         $period = base64_decode($this->input->get('period'));
@@ -159,6 +171,7 @@ class Supply_sheets extends CI_Controller
         $filter_period = $this->input->get('filter_period');
         $filter_wp   = $this->input->get('filter_wp');
         $filter_request_no = $this->input->get('filter_request_no');
+        $filter_workorder = $this->input->get('filter_workorder');
         $filter_item_fg_id = $this->input->get('filter_item_fg_id');
         $filter_item_rm_id = $this->input->get('filter_item_rm_id');
 
@@ -203,6 +216,9 @@ class Supply_sheets extends CI_Controller
             }
             if ($filter_request_no != "") {
                 $this->db->where('a.request_no', $filter_request_no);
+            }
+            if ($filter_workorder != "") {
+                $this->db->where('a.workorder', $filter_workorder);
             }
             if ($filter_item_fg_id != "") {
                 $this->db->where('a.item_fg_id', $filter_item_fg_id);
@@ -342,6 +358,7 @@ class Supply_sheets extends CI_Controller
         $main_process = $this->input->get('main_process');
         $item_family_id = $this->input->get('item_family_id');
         $item_rm_id = $this->input->get('item_rm_id');
+        $date = date("Y-m-d");
 
         // CASE WHEN d.qty_bal is not null THEN d.qty_bal WHEN f.uom_soft is null THEN round(a.qty * b.composition) ELSE round(a.qty * (b.composition * f.convertion)) END as qty_req,
         //Select Query
@@ -359,8 +376,9 @@ class Supply_sheets extends CI_Controller
             COALESCE(d.qty_issued, 0) as qty_issued,
             ROUND(a.qty * b.composition) AS qty_req2,
             (CEIL(ROUND(a.qty * b.composition) / i.mpq) * i.mpq) AS qty_req3,
-            CASE WHEN d.qty_bal IS NOT NULL THEN d.qty_bal WHEN f.uom_po IS NOT NULL THEN ROUND(a.qty * (b.composition * f.convertion)) WHEN h.calculate = 'YES' THEN (CEIL(ROUND(a.qty * b.composition) / i.mpq) * i.mpq) ELSE ROUND(a.qty * b.composition) END AS qty_req,
-            CASE WHEN d.qty_bal IS NOT NULL THEN d.qty_bal WHEN f.uom_po IS NOT NULL THEN ROUND(a.qty * (b.composition * f.convertion)) WHEN h.calculate = 'YES' THEN (CEIL(ROUND(a.qty * b.composition) / i.mpq) * i.mpq) ELSE ROUND(a.qty * b.composition) END AS qty_act");
+            COALESCE(j.end_stock, 0) as stock,
+            CASE WHEN COALESCE(j.end_stock, 0) <= 0 THEN 0 WHEN d.qty_bal IS NOT NULL THEN d.qty_bal WHEN f.uom_po IS NOT NULL THEN ROUND(a.qty * (b.composition * f.convertion)) WHEN h.calculate = 'YES' THEN (CEIL(ROUND(a.qty * b.composition) / i.mpq) * i.mpq) ELSE ROUND(a.qty * b.composition) END AS qty_req,
+            CASE WHEN COALESCE(j.end_stock, 0) <= 0 THEN 0 WHEN d.qty_bal IS NOT NULL THEN d.qty_bal WHEN f.uom_po IS NOT NULL THEN ROUND(a.qty * (b.composition * f.convertion)) WHEN h.calculate = 'YES' THEN (CEIL(ROUND(a.qty * b.composition) / i.mpq) * i.mpq) ELSE ROUND(a.qty * b.composition) END AS qty_act");
         $this->db->from('production_schedules a');
         $this->db->join('bom b', 'a.item_fg_id = b.item_fg_id');
         $this->db->join('item_rm c', 'b.item_rm_id = c.id');
@@ -370,6 +388,27 @@ class Supply_sheets extends CI_Controller
         $this->db->join('item_familys g', 'c.item_family_id = g.id');
         $this->db->join('supplier_items h', 'c.id = h.item_rm_id');
         $this->db->join('item_mpq i', 'c.id = i.item_rm_id');
+        $this->db->join("(SELECT
+                a.id,
+                ((COALESCE(SUM(c.qty_sto),0) + COALESCE(dd.sto_qty_in, 0) + COALESCE(j.qty_rgp_in, 0) + COALESCE(e.qty_receipt, 0) + COALESCE(g.return_qty, 0)) - COALESCE(f.qty, 0) - COALESCE(d.sto_qty_out, 0) - COALESCE(k.qty_rgp_out, 0) - COALESCE(h.qty_reject, 0)) AS end_stock
+                FROM item_rm a 
+                JOIN item_familys b ON a.item_family_id = b.id AND b.number != '006'
+                LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) AS qty_sto FROM os_rm a JOIN scan_item_receipts b ON a.id  = b.receipt_id WHERE a.trans_date <= '$date' GROUP BY item_rm_id) c ON a.id = c.item_rm_id
+                LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(a.qty), 0) as sto_qty_out FROM sto_rm a WHERE a.type = 'OUT' and a.trans_date <= '$date' and a.approved_to = '' GROUP BY item_rm_id) d ON a.id = d.item_rm_id
+                LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(a.qty), 0) as sto_qty_in FROM sto_rm a WHERE a.type = 'IN' and a.trans_date <= '$date' and a.approved_to = '' GROUP BY item_rm_id) dd ON a.id = dd.item_rm_id
+                LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) AS qty_receipt FROM purchase_order_receipts a JOIN scan_item_receipts b ON a.receipt_id  = b.receipt_id WHERE a.receipt_date <= '$date' GROUP BY item_rm_id) e ON a.id = e.item_rm_id
+                LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) AS qty FROM issued_material_details WHERE DATE_FORMAT(created_date, '%Y-%m-%d') <= '$date' GROUP BY item_rm_id) f ON a.id = f.item_rm_id
+                LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) AS qty_reject FROM purchase_order_receipts a JOIN scan_item_rejections b ON a.receipt_id  = b.receipt_id WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') <= '$date' GROUP BY item_rm_id) h ON a.id = h.item_rm_id
+                LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_in FROM rgp_transactions WHERE type = 'IN' and transaction_date <= '$date' GROUP BY item_id) j ON a.id = j.item_id
+                LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_out FROM rgp_transactions WHERE type = 'OUT' and transaction_date <= '$date' GROUP BY item_id) k ON a.id = k.item_id
+                LEFT JOIN (SELECT a.item_rm_id, SUM(c.qty) AS return_qty
+                    FROM return_materials a 
+                    JOIN return_material_labels b ON a.return_id = b.return_id
+                    JOIN scan_item_receipts c ON a.return_id = c.receipt_id AND b.label_no = c.label_no
+                    WHERE a.return_date <= '$date'
+                    GROUP BY a.item_rm_id) g ON a.id = g.item_rm_id
+            GROUP BY a.id
+            ORDER BY b.number, a.number) j", 'c.id = j.id');
         $this->db->where("(d.qty_bal > 0 or d.qty_bal is null)");
         $this->db->where('a.deleted', 0);
         // $this->db->where('a.status', 0);
@@ -642,7 +681,7 @@ class Supply_sheets extends CI_Controller
             $supply_sheet_total = $this->db->get()->result_array();
 
             //Config Page
-            $rows = 8;
+            $rows = 20;
             $page = ceil(count($supply_sheet_total) / $rows);
             $no = 1;
 
@@ -751,7 +790,7 @@ class Supply_sheets extends CI_Controller
                 $this->db->like('a.request_no', base64_decode($request_no));
                 $this->db->group_by('c.number');
                 $this->db->order_by('c.number', 'ASC');
-                $this->db->limit(8, ($i * 8));
+                $this->db->limit(20, ($i * 20));
                 $records2 = $this->db->get()->result_array();
 
                 $html .= '<tr>
@@ -818,6 +857,7 @@ class Supply_sheets extends CI_Controller
         $filter_period = $this->input->get('filter_period');
         $filter_wp   = $this->input->get('filter_wp');
         $filter_request_no = $this->input->get('filter_request_no');
+        $filter_workorder = $this->input->get('filter_workorder');
         $filter_item_fg_id = $this->input->get('filter_item_fg_id');
         $filter_item_rm_id = $this->input->get('filter_item_rm_id');
 
@@ -856,14 +896,15 @@ class Supply_sheets extends CI_Controller
         }elseif ($filter_supply_type == "CLOSE") {
             $this->db->where('(i.qty_issued - a.qty_act) =', 0);
         }
-        if ($filter_period != "") {
-            $this->db->where('e.period', $filter_period);
-        }
+        $this->db->where('e.period', $filter_period);
         if ($filter_wp != "") {
             $this->db->where('e.wp', $filter_wp);
         }
         if ($filter_request_no != "") {
             $this->db->where('a.request_no', $filter_request_no);
+        }
+        if ($filter_workorder != "") {
+            $this->db->where('a.workorder', $filter_workorder);
         }
         if ($filter_item_fg_id != "") {
             $this->db->where('a.item_fg_id', $filter_item_fg_id);

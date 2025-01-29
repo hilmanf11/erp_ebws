@@ -83,7 +83,6 @@ class Wip_reports extends CI_Controller
                             "qty" => $qty_scan
                         );
                     }
-
                 }
 
                 $filter_from = date("Y-m-d", strtotime("+1 day", strtotime($filter_from)));
@@ -102,46 +101,53 @@ class Wip_reports extends CI_Controller
         if ($this->input->post()) {
 
             $filter_from = $this->input->post('filter_from');
+            $filter_from2 = date("Y-m-d", strtotime("-1 day", strtotime($filter_from)));
             $filter_to = $this->input->post('filter_to');
 
             //Select Query
             $this->db->select("a.id, a.number, a.name, a.uom, b.name as item_family_name, c.main_process, 
                 i.supplier_id,
                 j.name as supplier_name,
-                COALESCE(h.beginWip, 0) as begin,
+                (COALESCE(h.beginWip, 0) + COALESCE(k.begin_wip, 0)) as begin,
                 COALESCE(d.qty_receipt, 0) as receipt,
-                COALESCE(SUM(c.fg), 0) as fg,
+                COALESCE(c.fg, 0) as fg,
                 COALESCE(e.qty_ng, 0) as ng, 
                 COALESCE(f.qty_scrap, 0) as scrap,
                 COALESCE(g.wip, 0) as wip,
-                (COALESCE(h.beginWip, 0) + COALESCE(g.wip, 0) + COALESCE(d.qty_receipt, 0) - COALESCE(e.qty_ng, 0) - COALESCE(f.qty_scrap, 0) - COALESCE(SUM(c.fg), 0)) as balance");
+                (abs(COALESCE(h.beginWip, 0) + COALESCE(g.wip, 0) + COALESCE(k.begin_wip, 0) + COALESCE(d.qty_receipt, 0)) - (COALESCE(e.qty_ng, 0) + COALESCE(f.qty_scrap, 0) + COALESCE(c.fg, 0))) as balance");
             $this->db->from('item_rm a');
             $this->db->join('item_familys b', 'a.item_family_id = b.id');
             $this->db->join('supplier_items i', 'a.id = i.item_rm_id and i.share_order > 0', 'left');
             $this->db->join('suppliers j', 'i.supplier_id = j.id', 'left');
-            $this->db->join("(SELECT a.item_rm_id, a.main_process, a.item_fg_id, (a.composition * SUM(b.qty)) as fg from bom a JOIN wip_reports b ON a.item_fg_id = b.item_fg_id WHERE b.trans_date BETWEEN '$filter_from' AND '$filter_to' GROUP BY a.item_rm_id, a.item_fg_id) c", 'a.id = c.item_rm_id', 'left');
-            $this->db->join("(SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) AS qty_receipt
-                FROM issued_materials a
-                JOIN (SELECT item_rm_id, request_no, DATE_FORMAT(created_date, '%Y-%m-%d') as trans_date, SUM(qty) as qty FROM issued_material_details GROUP BY request_no, item_rm_id) b ON b.request_no = a.request_no and b.item_rm_id = a.item_rm_id
-                WHERE b.trans_date BETWEEN '$filter_from' AND '$filter_to'
-                GROUP BY a.item_rm_id) d", 'a.id = d.item_rm_id', 'left');
+            $this->db->join("(SELECT z.item_rm_id, z.main_process, SUM(z.fg) AS fg FROM (
+                SELECT a.item_rm_id, a.main_process, a.item_fg_id, (a.composition * SUM(b.qty)) AS fg 
+                FROM bom a JOIN wip_receipts b ON a.item_fg_id = b.item_fg_id 
+                WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d')  BETWEEN '$filter_from' AND '$filter_to' 
+                GROUP BY a.item_rm_id, a.item_fg_id) z
+                GROUP BY z.item_rm_id) c", 'a.id = c.item_rm_id', 'left');
+            $this->db->join("(SELECT item_rm_id, COALESCE(SUM(qty), 0) AS qty_receipt
+                FROM issued_material_details
+                WHERE DATE_FORMAT(created_date, '%Y-%m-%d') BETWEEN '$filter_from' AND '$filter_to'
+                GROUP BY item_rm_id) d", 'a.id = d.item_rm_id', 'left');
             $this->db->join("(SELECT item_rm_id, SUM(qty) as qty_ng FROM scraps WHERE source = 'Vendor' and trans_date between '$filter_from' and '$filter_to' GROUP BY item_rm_id) e", 'a.id = e.item_rm_id', 'left');
             $this->db->join("(SELECT item_rm_id, SUM(qty) as qty_scrap FROM scraps WHERE source = 'User' and trans_date between '$filter_from' and '$filter_to' GROUP BY item_rm_id) f", 'a.id = f.item_rm_id', 'left');
-            $this->db->join("(SELECT item_rm_id, SUM(qty) as wip FROM sto_wip WHERE trans_date between '$filter_from' and '$filter_to' GROUP BY item_rm_id) g", 'a.id = g.item_rm_id', 'left');
-            $this->db->join("(SELECT a.id, (COALESCE(c.qty_receipt, 0) + COALESCE(f.wip, 0) - COALESCE(d.qty_ng, 0) - COALESCE(e.qty_scrap, 0) - COALESCE(SUM(b.fg), 0)) AS beginWip
+            $this->db->join("(SELECT item_rm_id, SUM(qty) as wip FROM sto_wip WHERE trans_date between '2024-12-30' and '$filter_to' GROUP BY item_rm_id) g", 'a.id = g.item_rm_id', 'left');
+            $this->db->join("(SELECT item_rm_id, SUM(qty) as begin_wip FROM begin_wip WHERE trans_date between '2024-12-30' and '$filter_to' GROUP BY item_rm_id) k", 'a.id = k.item_rm_id', 'left');
+            $this->db->join("(SELECT a.id, (abs(COALESCE(f.wip, 0) + COALESCE(c.qty_receipt, 0)) - (COALESCE(d.qty_ng, 0) + COALESCE(e.qty_scrap, 0) + COALESCE(b.fg, 0))) AS beginWip
                 FROM item_rm a 
-                JOIN (	SELECT a.item_rm_id, a.main_process, a.item_fg_id, (a.composition * SUM(b.qty)) AS fg 
-                    FROM bom a JOIN wip_reports b ON a.item_fg_id = b.item_fg_id 
-                    WHERE b.trans_date < '$filter_from' 
-                    GROUP BY a.item_rm_id, a.item_fg_id) b ON a.id = b.item_rm_id
-                LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) AS qty_receipt
-                    FROM issued_materials a
-                    JOIN (SELECT item_rm_id, request_no, DATE_FORMAT(created_date, '%Y-%m-%d') as trans_date, SUM(qty) AS qty FROM issued_material_details GROUP BY request_no, item_rm_id) b ON b.request_no = a.request_no AND b.item_rm_id = a.item_rm_id
-                    WHERE b.trans_date < '$filter_from'
-                    GROUP BY a.item_rm_id) c ON a.id = c.item_rm_id
-                LEFT JOIN (SELECT item_rm_id, SUM(qty) AS qty_ng FROM scraps WHERE source = 'Vendor' AND trans_date < '$filter_from' GROUP BY item_rm_id) d ON a.id = d.item_rm_id
-                LEFT JOIN (SELECT item_rm_id, SUM(qty) AS qty_scrap FROM scraps WHERE source = 'User' AND trans_date < '$filter_from' GROUP BY item_rm_id) e ON a.id = d.item_rm_id
-                LEFT JOIN (SELECT item_rm_id, SUM(qty) AS wip FROM sto_wip WHERE trans_date < '$filter_from' GROUP BY item_rm_id) f ON a.id = f.item_rm_id
+                LEFT JOIN (SELECT z.item_rm_id, z.main_process, SUM(z.fg) AS fg FROM (
+                    SELECT a.item_rm_id, a.main_process, a.item_fg_id, (a.composition * SUM(b.qty)) AS fg 
+                    FROM bom a JOIN wip_receipts b ON a.item_fg_id = b.item_fg_id 
+                    WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') BETWEEN '2024-12-30' AND '$filter_from2' 
+                    GROUP BY a.item_rm_id, a.item_fg_id) z
+                    GROUP BY z.item_rm_id) b ON a.id = b.item_rm_id
+                LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) AS qty_receipt
+                    FROM issued_material_details
+                    WHERE DATE_FORMAT(created_date, '%Y-%m-%d') BETWEEN '2024-12-30' AND '$filter_from2'
+                    GROUP BY item_rm_id) c ON a.id = c.item_rm_id
+                LEFT JOIN (SELECT item_rm_id, SUM(qty) AS qty_ng FROM scraps WHERE source = 'Vendor' AND trans_date BETWEEN '2024-12-30' AND '$filter_from2' GROUP BY item_rm_id) d ON a.id = d.item_rm_id
+                LEFT JOIN (SELECT item_rm_id, SUM(qty) AS qty_scrap FROM scraps WHERE source = 'User' AND trans_date BETWEEN '2024-12-30' AND '$filter_from2' GROUP BY item_rm_id) e ON a.id = d.item_rm_id
+                LEFT JOIN (SELECT item_rm_id, SUM(qty) AS wip FROM sto_wip WHERE trans_date BETWEEN '2024-12-30' AND '$filter_from2' GROUP BY item_rm_id) f ON a.id = f.item_rm_id
                 GROUP BY a.id) h", 'a.id = h.id', 'left');
             $this->db->where('a.item_category_id', "C01");
             $this->db->group_by('a.id');

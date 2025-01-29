@@ -19,6 +19,7 @@
             <th rowspan="2" data-options="field:'revision',width:80,align:'center'">Revision</th>
             <th rowspan="2" data-options="field:'remarks',width:100,halign:'center'">Remarks</th>
             <th rowspan="2" data-options="field:'terms',width:100,halign:'center',formatter:btnTerms">Terms<br>Condition</th>
+            <th rowspan="2" data-options="field:'attachment',width:80,align:'center',formatter: btnDetails">Attachment</th>
             <th colspan="3" data-options="field:'',width:100,halign:'center'">Approved</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
@@ -98,6 +99,16 @@
                     <input style="width:60%;" name="supplier_po" id="supplier_po" readonly class="easyui-textbox">
                 </div>
             </div>
+            <div style="width: 30%; float: left;">
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Attachment</span>
+                    <input style="width:60%;" name="attachment_upload" id="attachment_upload" class="easyui-filebox">
+                </div>
+                <div class="fitem" hidden>
+                    <span style="width:35%; display:inline-block;">Attachment</span>
+                    <input style="width:60%;" name="attachment" id="attachment" class="easyui-textbox">
+                </div>
+            </div>
         </fieldset>
 
         <table id="dg_request" class="easyui-datagrid" style="width:100%;" title="Purchase Order Closing" toolbar="#toolbar2" data-options="rownumbers: true">
@@ -121,6 +132,14 @@
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">PO No</span>
                 <input style="width:60%;" name="supplier_po" disabled class="easyui-textbox">
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Attachment</span>
+                <input style="width:60%;" id="attachment_upload2" class="easyui-filebox">
+            </div>
+            <div class="fitem" hidden>
+                <span style="width:35%; display:inline-block;">Attachment</span>
+                <input style="width:60%;" name="attachment" id="attachment2" class="easyui-textbox">
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Part No EBWS</span>
@@ -207,7 +226,7 @@
         });
 
         $("#supplier_id").combogrid({
-            url: '<?php echo base_url('master/supplier_items/readSuppliers'); ?>',
+            url: '<?php echo base_url('master/suppliers/reads'); ?>',
             panelWidth: 500,
             idField: 'id',
             textField: 'name',
@@ -833,6 +852,7 @@
                     var po_date = $("#po_date").datebox('getValue');
                     var po_no = $("#po_no").textbox('getValue');
                     var supplier_id = $("#supplier_id").combogrid('getValue');
+                    var attachment = $("#attachment").textbox('getValue');
 
                     if (po_date == "" || supplier_id == "") {
                         toastr.warning('Please select Po Date', 'Required');
@@ -855,6 +875,7 @@
                                                     po_no: po_no,
                                                     po_date: po_date,
                                                     supplier_id: supplier_id,
+                                                    attachment: attachment,
                                                     item_rm_id: row.item_rm_id,
                                                     delivery_date: row.delivery_date,
                                                     type: 'CL',
@@ -931,6 +952,75 @@
             onChange: function(val) {
                 var qty = $("#qty").numberbox('getValue');
                 $("#total").numberbox('setValue', (qty * val));
+            }
+        });
+
+        $('#attachment_upload').filebox({
+            buttonText: 'Browse File',
+            accept: '.jpg, .png, .pdf',
+            onChange: function () {
+                var files = $(this).filebox('files');
+                var formData = new FormData();
+
+                for (var i = 0; i < files.length; i++) {
+                    var file = files[i];
+                    formData.append('file', file, file.name);
+                }
+
+                $.ajax({
+                    url: '<?= base_url('purchase/purchase_order_closing/uploadatt') ?>',
+                    type: 'post',
+                    data: formData,
+                    contentType: false,
+                    processData: false,
+                    dataType: 'json',
+                    success: function (data) {
+                        if (data.success == true) {
+                            toastr.success(data.message);
+                            $('#attachment').textbox('setValue', data.filename); // Mengatur nilai pada textbox
+                        } else {
+                            toastr.error(data.message);
+                        }
+                    }
+                });
+            }
+        });
+
+        $('#attachment_upload2').filebox({
+            buttonText: 'Browse File',
+            accept: '.jpg, .png, .pdf',
+            onChange: function () {
+                var files = $(this).filebox('files');
+                var formData = new FormData();
+
+                for (var i = 0; i < files.length; i++) {
+                    var file = files[i];
+                    formData.append('file', file, file.name);
+                }
+
+                $.messager.progress({
+                    title:'Please waiting',
+                    msg:'Uploading data...'
+                });
+
+                $.ajax({
+                    url: '<?= base_url('purchase/purchase_order_closing/uploadatt') ?>',
+                    type: 'post',
+                    data: formData,
+                    contentType: false,
+                    processData: false,
+                    dataType: 'json',
+                    success: function (data) {
+                        if (data.success == true) {
+                            toastr.success(data.message);
+                            $('#attachment2').textbox('setValue', data.filename); // Mengatur nilai pada textbox
+                        } else {
+                            toastr.error(data.message);
+                        }
+
+                        $.messager.progress('close');
+                    }
+                });
             }
         });
     });
@@ -1019,4 +1109,16 @@
             return 'Checking';
         }
     };
+
+    function btnDetails(val, row, index) {
+        var attachment = row.attachment;
+        
+        if(row.datatable == 1){
+            if (attachment != null && attachment != "") {
+                return '<a class="btn btn-primary w-100" target="_blank" href="<?= base_url('assets/documents/purchase_orders/') ?>'+row.attachment+'" style="pointer-events: visible; opacity:1;"><i class="fa fa-eye"></i> View</a>';
+            } else {
+                return '-';
+            }
+        }
+    }
 </script>

@@ -339,7 +339,7 @@ class Wip_receipts extends CI_Controller
         if ($this->input->post()) {
             if ($this->form_validation->run() == TRUE) {
                 $post = $this->input->post();
-                $read = $this->crud->reads("wip_receipts", [], ["checksheet_number" => $post['checksheet_number'], "workorder" => $post['workorder']]);
+                $read = $this->crud->reads("wip_receipts", [], ["checksheet_number" => $post['checksheet_number']]);
                 // $item_fg_id = $post['item_fg_id'];
                 // $trans_date_from = $post['trans_date_from'];
                 // $trans_date_to = $post['trans_date_to'];
@@ -365,7 +365,7 @@ class Wip_receipts extends CI_Controller
                 // }
                 
                 if (count($read) > 0) {
-                    echo json_encode(array("title" => "Error", "message" => "Duplicate Workorder", "theme" => "error"));
+                    echo json_encode(array("title" => "Error", "message" => "Duplicate Checksheet Number", "theme" => "error"));
                 } else {
                     $send_wip_receipt = $this->crud->create('wip_receipts', $post);
                     $this->db->update('production_schedules', ["status_wip" => 1], ["workorder" => $post['workorder']]);
@@ -745,13 +745,13 @@ class Wip_receipts extends CI_Controller
         // $this->db->join('uom e', 'd.uom_id = e.id');
         $this->db->where('a.deleted', 0);
         if ($filter_from != "" or $filter_to != "") {
-            $this->db->where('a.trans_date_from >=', $filter_from);
-            $this->db->where('a.trans_date_to <=', $filter_to);
+            $this->db->where("DATE_FORMAT(a.created_date, '%Y-%m-%d') >=", $filter_from);
+            $this->db->where("DATE_FORMAT(a.created_date, '%Y-%m-%d') <=", $filter_to);
         }
         $this->db->like('a.checksheet_number', $filter_checksheet);
         $this->db->like('a.workorder', $filter_workorder);
         $this->db->like('d.id', $filter_item_fg_id);
-        $this->db->order_by('a.trans_date_from', 'DESC');
+        $this->db->order_by('a.created_date', 'DESC');
         $this->db->order_by('a.checksheet_number', 'DESC');
         $records = $this->db->get()->result_array();
 

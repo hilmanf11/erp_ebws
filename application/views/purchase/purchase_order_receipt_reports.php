@@ -20,7 +20,8 @@
             <th data-options="field:'qty_label',width:100,halign:'center',align:'right', formatter:numberformat">Label Est</th>
             <th data-options="field:'label',width:100,halign:'center',align:'right', formatter:numberformat">Label Created</th>
             <th data-options="field:'scan',width:100,halign:'center',align:'right', formatter:numberformat">Label Scan</th>
-            <th data-options="field:'balance',width:100,halign:'center',align:'right', formatter:numberformat">Balance</th>
+            <th data-options="field:'balance2',width:100,halign:'center',align:'right', formatter:numberformat">Balance<br>(Est - Create)</th>
+            <th data-options="field:'balance',width:100,halign:'center',align:'right', formatter:numberformat">Balance<br>(Create - Scan)</th>
             <th data-options="field:'status',width:80,align:'center', styler:statusStyle">Status</th>
         </tr>
     </thead>
@@ -35,6 +36,7 @@
                 <span style="width:10%; display:inline-block;">Period</span>
                 <input style="width:18%;" id="filter_from" class="easyui-datebox" value="<?= date("Y-m-01") ?>" data-options="formatter:myformatter,parser:myparser, editable:false"> To
                 <input style="width:18%;" id="filter_to" class="easyui-datebox" value="<?= date('Y-m-d', strtotime('+14 days', strtotime(date('Y-m-01')))); ?>" data-options="formatter:myformatter,parser:myparser, editable:false">
+                &nbsp; &nbsp; <input value="on" class="easyui-checkbox" id="not_balance"> &nbsp; Not Balance &nbsp; &nbsp;
                 <a href="javascript:;" class="easyui-linkbutton" onclick="filter()"><i class="fa fa-search"></i> Filter Data</a>
             </div>
         </div>
@@ -43,13 +45,18 @@
 </div>
 
 
-<iframe id="printout" src="<?= base_url('purchase/purchase_order_receipt_reports/print') ?>" style="width: 100%;" hidden></iframe>
+<!-- <iframe id="printout" src="<?= base_url('purchase/purchase_order_receipt_reports/print') ?>" style="width: 100%;" hidden></iframe> -->
 <script>
     function filter() {
         var filter_from = $("#filter_from").datebox('getValue');
         var filter_to = $("#filter_to").datebox('getValue');
+        var not_balance = $("#not_balance").checkbox('options');
 
-        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to;
+        if(not_balance.checked == false){
+            var balance = 0;
+        }else{
+            var balance = 1;
+        }
 
         $('#dg').datagrid('loading');
 
@@ -58,7 +65,8 @@
             type: 'POST',
             data: {
                 filter_from: filter_from,
-                filter_to: filter_to
+                filter_to: filter_to,
+                not_balance: balance,
             },
             dataType: 'json',
             success: function(result) {

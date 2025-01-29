@@ -1168,10 +1168,12 @@
                                                         }
                                                     }).fail(function(jqXHR, textStatus) {
                                                         toastr.error("Connection Time Out, Please Wait");
-                                                        requestDataBox(total, qty, number, value, success, failed);
+                                                        requestDataBox(total, qty, number + 1, value, success, failed);
                                                     }); 
                                                 }
                                             }
+                                        }else if(parseInt(check.total) == parseInt(qty)){
+                                            toastr.error("Label Qty and Total Label Create not same, please Recreate or Click Sync Button");
                                         }else{
                                             window.open("<?= base_url('purchase/purchase_order_receipts/print_label/') ?>" + window.btoa(id), '_blank');
                                         }

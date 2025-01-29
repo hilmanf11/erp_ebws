@@ -36,7 +36,7 @@ class Account_coa extends CI_Controller
         //master/item_familys
         //master/item_fg
         $post = isset($_POST['q']) ? $_POST['q'] : "";
-        $send = $this->crud->query("SELECT * FROM account_coa WHERE (account_name LIKE '%$post%' or account_number LIKE '%$post%') and account_group_detail_id LIKE '%$account_group_detail_id%'");
+        $send = $this->crud->query("SELECT * FROM account_coa WHERE (account_name LIKE '%$post%' or account_number LIKE '%$post%') and account_number NOT IN (SELECT `number` FROM account_group_details) and account_group_detail_id LIKE '%$account_group_detail_id%'");
         echo json_encode($send);
     }
 

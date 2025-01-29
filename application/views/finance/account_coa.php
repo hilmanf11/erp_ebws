@@ -8,6 +8,7 @@
             <th rowspan="2" data-options="field:'account_name',width:200,halign:'center'">Account Name</th>
             <th rowspan="2" data-options="field:'status',width:80,align:'center', styler:cellStyler, formatter:cellFormatter">Closing<br>Journal</th>
             <th rowspan="2" data-options="field:'other',width:80,align:'center'">AP/AR<br>Other</th>
+            <th rowspan="2" data-options="field:'cutoff',width:100,align:'center'">Starting From</th>
             <th colspan="3" data-options="field:'',width:150,halign:'center'"> Original Currency</th>
             <th colspan="3" data-options="field:'',width:150,halign:'center'"> Local Currency</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
@@ -61,6 +62,10 @@
                     <option value="BOTH">BOTH</option>
                 </select>
             </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Starting From</span>
+                <input style="width:30%;" id="cutoff" name="cutoff" required class="easyui-datebox" data-options="prompt:'Starting From',formatter:myformatter,parser:myparser, editable:false" required>
+            </div>
         </fieldset>
         <div style="width:50%; float: left; box-sizing: border-box; margin-bottom: 10px;">
             <fieldset style="border:1px solid #d0d0d0; border-radius: 4px; margin-bottom: 10px;">
@@ -98,6 +103,7 @@
         </div>
     </form>
 </div>
+
 <!-- Upload -->
 <div id="dlg_upload" class="easyui-dialog" title="Upload Data" data-options="closed: true,modal:true" style="width: 500px; padding:10px; top: 20px;">
     <form id="frm_upload" method="post" enctype="multipart/form-data" novalidate>
@@ -117,6 +123,7 @@
         </ul>
     </div>
 </div>
+
 <!-- PDF -->
 <iframe id="printout" src="<?= base_url('finance/account_coa/print') ?>" style="width: 100%;" hidden></iframe>
 <script>
@@ -472,4 +479,25 @@
             }]
         });
     });
+
+    //Format Datepicker
+    function myformatter(date) {
+        var y = date.getFullYear();
+        var m = date.getMonth() + 1;
+        var d = date.getDate();
+        return y + '-' + (m < 10 ? ('0' + m) : m) + '-' + (d < 10 ? ('0' + d) : d);
+    }
+    //Format Datepicker
+    function myparser(s) {
+        if (!s) return new Date();
+        var ss = (s.split('-'));
+        var y = parseInt(ss[0], 10);
+        var m = parseInt(ss[1], 10);
+        var d = parseInt(ss[2], 10);
+        if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+            return new Date(y, m - 1, d);
+        } else {
+            return new Date();
+        }
+    }
 </script>
