@@ -1,0 +1,150 @@
+<?php
+date_default_timezone_set("Asia/Bangkok");
+defined('BASEPATH') or exit('No direct script access allowed');
+class Report_tds extends CI_Controller
+{
+    public function __construct()
+    {
+        parent::__construct();
+        $this->load->helper('url');
+        $this->load->helper(array('form', 'url'));
+        $this->load->library('form_validation');
+        $this->load->library('session');
+        $this->load->model('crud');
+        //Validasi Form
+        $this->form_validation->set_rules('item_id', 'Product No', 'required|min_length[1]|max_length[50]');
+    }
+
+    public function index()
+    {
+        if (empty($this->session->username)) {
+            redirect('error_session');
+        } elseif ($this->checkuserAccess($this->id_menu()) > 0) {
+            $data['button'] = $this->getbutton($this->id_menu());
+            $this->load->view('template/header', $data);
+            $this->load->view('finance/report_tds');
+        } else {
+            redirect('error_access');
+        }
+    }
+
+    public function readInvoice($supplier_id){
+        $supplier_id = base64_decode($supplier_id);
+        $query = $this->crud->query("SELECT DISTINCT `invoice_no` FROM purchase_invoices WHERE supplier_id = '$supplier_id' ORDER BY `invoice_no` ASC");
+        die(json_encode($query));
+    }
+
+    public function readPor($supplier_id){
+        $supplier_id = base64_decode($supplier_id);
+        $query = $this->crud->query("SELECT DISTINCT `por_no` FROM purchase_invoices WHERE supplier_id = '$supplier_id' ORDER BY `por_no` ASC");
+        die(json_encode($query));
+    }
+
+    public function readPartNo($supplier_id){
+        $supplier_id = base64_decode($supplier_id);
+        $query = $this->crud->query("SELECT DISTINCT item_rm_id, item_no, item_name FROM purchase_invoices WHERE supplier_id = '$supplier_id' ORDER BY `item_rm_id` ASC");
+        die(json_encode($query));
+    }
+
+    public function print($option = "")
+    {
+        if ($option == "excel") {
+            $format  = date("Ymd");
+            header("Content-type: application/vnd-ms-excel");
+            header("Content-Disposition: attachment; filename=report_purchase_registers_$format.xls");
+        }
+
+        $filter_from  = base64_decode($this->input->get('filter_from'));
+        $filter_to = base64_decode($this->input->get('filter_to'));
+        $filter_supplier = base64_decode($this->input->get('filter_supplier'));
+        $filter_invoice_no = base64_decode($this->input->get('filter_invoice_no'));
+
+        //Config
+        $this->db->select('*');
+        $this->db->from('config');
+        $config = $this->db->get()->row();
+
+        $this->db->select("a.supplier_id, b.name AS supplier_name, b.pen, b.tds,  
+            (CASE WHEN SUBSTRING(b.pen, 4, 1) = 'P' THEN 'Non Company' ELSE 'Company' END) AS tds_status,
+            c.individual, d.account_number, a.invoice_no, a.invoice_date, a.currency, a.total, 
+            e.number as posting_no, e.journal_date as posting_date,
+            ABS(d.debit - d.credit) AS tds_amount");
+        $this->db->from('purchase_invoices a');
+        $this->db->join('suppliers b', 'a.supplier_id = b.id');
+        $this->db->join('tds c', 'b.tds = c.section', 'left');
+        $this->db->join('purchase_invoice_journals d', 'a.number = d.number');
+        $this->db->join('journal_postings e', 'a.number = e.document_no', 'left');
+        $this->db->where("a.trans_date between '$filter_from' and '$filter_to'");
+        $this->db->where_in('d.account_number', ['17000001','17000002','17000003','17000004','17000005','17000006','17000028','17000029']);
+        $this->db->where('ABS(d.debit - d.credit) > 0');
+        $this->db->like('a.supplier_id', $filter_supplier);
+        $this->db->like('a.invoice_no', $filter_invoice_no);
+        $this->db->group_by('a.number');
+        $this->db->order_by('a.invoice_date', 'ASC');
+        $records = $this->db->get()->result_array();
+
+        $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#customers {border-collapse: collapse;width: 100%;font-size: 12px;}#customers td, #customers th {border: 1px solid #ddd;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: #ddd;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: center;color: black;}</style><body>
+            <center>
+                <div style="float: left; font-size: 12px; text-align: left;">
+                    <table style="width: 100%;">
+                        <tr>
+                            <td width="50" style="font-size: 12px; vertical-align: top; text-align: center; vertical-align:jus margin-right:10px;">
+                                <img src="' . $config->favicon . '" width="30">
+                            </td>
+                            <td style="font-size: 14px; text-align: left; margin:2px;">
+                                <b>' . $config->name . '</b><br>
+                                <small>' . $config->description . '</small>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </center>
+            <br><br><br>
+            <center>
+                <h2 style="margin:0;">TDS REPORT</h2>
+                <small>PERIOD : '.$filter_from.' To '.$filter_to.'</small>
+            </center>
+            <br><br>
+            <table id="customers" border="1">
+                <tr>
+                    <th width="20">No</th>
+                    <th>Supplier No</th>
+                    <th>Supplier Name</th>
+                    <th>PEN No</th>
+                    <th>TDS Section</th>
+                    <th>Status of Supplier</th>
+                    <th>TDS Rate</th>
+                    <th>COA No</th>
+                    <th>Invoice No</th>
+                    <th>Invoice Date</th>
+                    <th>Posting No</th>
+                    <th>Posting Date</th>
+                    <th>Currency</th>
+                    <th>Taxable Amount</th>
+                    <th>TDS Value</th>
+                </tr>';
+        $no = 1;
+        foreach ($records as $data) {
+            $html .= '  <tr>
+                            <td style="text-align:center">' . $no . '</td>
+                            <td>' . $data['supplier_id'] . '</td>
+                            <td>' . $data['supplier_name'] . '</td>
+                            <td>' . $data['pen'] . '</td>
+                            <td>' . $data['tds'] . '</td>
+                            <td>' . $data['tds_status'] . '</td>
+                            <td>' . $data['individual'] . '</td>
+                            <td>' . $data['account_number'] . '</td>
+                            <td>' . $data['invoice_no'] . '</td>
+                            <td>' . $data['invoice_date'] . '</td>
+                            <td>' . $data['posting_no'] . '</td>
+                            <td>' . $data['posting_date'] . '</td>
+                            <td>' . $data['currency'] . '</td>
+                            <td style="text-align:right;">' . $data['total'] . '</td>
+                            <td style="text-align:right;">' . $data['tds_amount'] . '</td>
+                        </tr>';
+            $no++;
+        }
+        $html .= '</table></body></html>';
+        echo $html;
+    }
+}
