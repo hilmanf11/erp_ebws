@@ -90,12 +90,12 @@
             }],
             columns: [
                 [{
-                    field: 'number',
+                    field: 'id',
                     title: 'Product No EBWS',
                     width: 150
                 }, {
-                    field: 'number_customer',
-                    title: 'Product No Customer',
+                    field: 'number',
+                    title: 'Product No Supplier',
                     width: 200
                 }, {
                     field: 'name',

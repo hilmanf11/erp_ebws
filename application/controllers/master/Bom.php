@@ -28,7 +28,7 @@ class Bom extends CI_Controller
             redirect('error_access');
         }
     }
-    
+
     //GET DATA
     public function reads()
     {
@@ -46,40 +46,74 @@ class Bom extends CI_Controller
         echo json_encode($send);
     }
 
-     //GET DATA
-     public function readWeight()
-     {
+    //GET DATA
+    public function readWeight()
+    {
         $post = $this->input->post();
-        $item_fg = $this->crud->read("item_fg", [] ,["id" => $post['item_fg_id']]);
+        $item_fg = $this->crud->read("item_fg", [], ["id" => $post['item_fg_id']]);
         echo json_encode($item_fg);
     }
 
     //GET DATA
     public function readRunner()
     {
-       $post = $this->input->post();
-       $item_fg_id = $post['item_fg_id'];
-       $menu_loading = $this->crud->query("SELECT SUM(a.runner) as runner, b.cavity_standard
+        $post = $this->input->post();
+        $item_fg_id = $post['item_fg_id'];
+        $menu_loading = $this->crud->query("SELECT SUM(a.runner) as runner, b.cavity_standard
        FROM menu_loadings a JOIN molds b on a.mold_id = b.id
        WHERE a.item_fg_id = '$item_fg_id' group by a.item_fg_id");
-       echo json_encode($menu_loading);
-   }
+        echo json_encode($menu_loading);
+    }
 
     public function readProcessMain($item_fg_id)
     {
-       $item_fg_id = base64_decode($item_fg_id);
+        $item_fg_id = base64_decode($item_fg_id);
 
-       $bom = $this->crud->query("SELECT a.main_process FROM bom a JOIN process_main b ON a.main_process = b.name WHERE item_fg_id = '$item_fg_id' and b.type = 'HAV' GROUP BY a.main_process ORDER BY a.main_process ASC");
-       echo json_encode($bom);
+        $bom = $this->crud->query("SELECT a.main_process FROM bom a JOIN process_main b ON a.main_process = b.name WHERE item_fg_id = '$item_fg_id' and b.type = 'HAV' GROUP BY a.main_process ORDER BY a.main_process ASC");
+        echo json_encode($bom);
     }
 
     public function readProcessItems($item_fg_id, $main_process)
     {
-       $item_fg_id = base64_decode($item_fg_id);
-       $main_process = base64_decode($main_process);
+        $item_fg_id = base64_decode($item_fg_id);
+        $main_process = base64_decode($main_process);
 
-       $bom = $this->crud->query("SELECT b.* FROM bom a JOIN item_rm b ON a.item_rm_id = b.id WHERE a.item_fg_id = '$item_fg_id' and a.main_process = '$main_process' GROUP BY b.id ORDER BY b.id ASC");
-       echo json_encode($bom);
+        $bom = $this->crud->query("SELECT b.* FROM bom a JOIN item_rm b ON a.item_rm_id = b.id WHERE a.item_fg_id = '$item_fg_id' and a.main_process = '$main_process' GROUP BY b.id ORDER BY b.id ASC");
+        echo json_encode($bom);
+    }
+
+    public function readRevision(){
+        $item_fg_id = $this->input->post("item_fg_id");
+        
+        $datas = $this->crud->query("SELECT DISTINCT revision FROM bom_log WHERE item_fg_id = '$item_fg_id' ORDER BY revision DESC");
+        die(json_encode(array(
+            "rows" => $datas,
+            "new_revision" => (@$datas[0]->revision + 1)
+        )));
+    }
+    
+    public function calculateBom(){
+        $datas = $this->crud->query("SELECT item_fg_id, MAX(revision) as revision FROM bom GROUP BY item_fg_id ORDER BY item_fg_id");
+        foreach ($datas as $data) {
+            $item_fg_id = $data->item_fg_id;
+            $details = $this->crud->query("SELECT * FROM bom WHERE item_fg_id = '$item_fg_id'");
+            foreach ($details as $detail) {
+                $dataFinal = array(
+                    "created_by" => $detail->created_by,
+                    "created_date" => $detail->created_date,
+                    "item_fg_id" => $detail->item_fg_id,
+                    "item_rm_id" => $detail->item_rm_id,
+                    "main_process" => $detail->main_process,
+                    "sub_process" => $detail->sub_process,
+                    "type" => $detail->type,
+                    "composition" => $detail->composition,
+                    "revision" => $data->revision,
+                );
+                $this->db->insert("bom_log", $dataFinal);
+            }
+            $this->db->update("bom", ["revision" => $data->revision], ["item_fg_id" => $item_fg_id]);
+            echo "OK<br>";
+        }
     }
 
     //GET DATATABLES
@@ -98,8 +132,8 @@ class Bom extends CI_Controller
             $offset = ($page - 1) * $rows;
             $result = array();
             //Select Query
-            $this->db->select('b.id as item_fg_id, b.number as item_fg_number, b.number_customer, b.name as item_fg_name, a.created_by, a.created_date, a.updated_by, a.updated_date, a.approved_to, a.approved_by, a.approved_date');
-            $this->db->from('bom a');
+            $this->db->select('b.id as item_fg_id, b.number as item_fg_number, b.number_customer, b.name as item_fg_name, a.created_by, a.created_date, a.updated_by, a.updated_date, a.approved_to, a.approved_by, a.approved_date, a.revision');
+            $this->db->from("(SELECT * FROM bom ORDER BY approved_to desc) a");
             $this->db->join('item_fg b', 'a.item_fg_id = b.id');
             $this->db->like('a.item_fg_id', $filter_item_fg_id);
             $this->db->like('a.item_rm_id', $filter_item_rm_id);
@@ -148,15 +182,28 @@ class Bom extends CI_Controller
     {
         if ($this->input->get()) {
             $item_fg_id = base64_decode($this->input->get('item_fg_id'));
+            $revision = $this->input->get('revision');
 
-            $this->db->select('a.*, c.number as item_rm_number, c.name as item_rm_name, c.uom, d.name as item_family_name');
-            $this->db->from('bom a');
-            $this->db->join('item_fg b', 'a.item_fg_id = b.id');
-            $this->db->join('item_rm c', 'a.item_rm_id = c.id');
-            $this->db->join('item_familys d', 'c.item_family_id = d.id');
-            $this->db->where('a.item_fg_id', $item_fg_id);
-            $this->db->order_by('a.id', 'ASC');
-            $records = $this->db->get()->result_array();
+            if($revision != ""){
+                $this->db->select('a.*, c.number as item_rm_number, c.name as item_rm_name, c.uom, d.name as item_family_name');
+                $this->db->from('bom_log a');
+                $this->db->join('item_fg b', 'a.item_fg_id = b.id');
+                $this->db->join('item_rm c', 'a.item_rm_id = c.id');
+                $this->db->join('item_familys d', 'c.item_family_id = d.id');
+                $this->db->where('a.item_fg_id', $item_fg_id);
+                $this->db->where('a.revision', $revision);
+                $this->db->order_by('c.number', 'ASC');
+                $records = $this->db->get()->result_array();
+            }else{
+                $this->db->select('a.*, c.number as item_rm_number, c.name as item_rm_name, c.uom, d.name as item_family_name');
+                $this->db->from('bom a');
+                $this->db->join('item_fg b', 'a.item_fg_id = b.id');
+                $this->db->join('item_rm c', 'a.item_rm_id = c.id');
+                $this->db->join('item_familys d', 'c.item_family_id = d.id');
+                $this->db->where('a.item_fg_id', $item_fg_id);
+                $this->db->order_by('a.id', 'ASC');
+                $records = $this->db->get()->result_array();
+            }
 
             echo json_encode($records);
         }
@@ -166,14 +213,166 @@ class Bom extends CI_Controller
     public function create()
     {
         if ($this->input->post()) {
-            $post = $this->input->post();
+            $jsonData = file_get_contents("php://input");
+            $post = json_decode($jsonData, true);
+            $datas = $post['dataBom'];
 
-            $bom = $this->crud->read("bom", [], ["item_fg_id" => $post['item_fg_id'], "item_rm_id" => $post['item_rm_id']]);
-            if (@$bom->item_fg_id != "") {
-                $send = $this->crud->update('bom', ["item_fg_id" => $post['item_fg_id'], "item_rm_id" => $post['item_rm_id']], array_merge($post, array("revision" => $bom->revision + 1)));
-            } else {
-                $send = $this->crud->create('bom', $post);
+            foreach ($datas as $data) {
+                $dataFinal = array(
+                    "created_by" => $this->session->username,
+                    "created_date" => date("Y-m-d H:i:s"),
+                    "item_fg_id" => $data['item_fg_id'],
+                    "item_rm_id" => $data['item_rm_id'],
+                    "main_process" => $data['main_process'],
+                    "revision" => $data['revision'],
+                    "drawing" => $data['drawing'],
+                    "composition" => $data['composition']
+                );
+
+                if($data['revision'] == ""){
+                    $bom = $this->crud->read("bom", [], ["item_fg_id" => $data['item_fg_id'], "item_rm_id" => $data['item_rm_id']]);
+                    if (@$bom->item_fg_id != "") {
+                        $send = $this->crud->update('bom', ["item_fg_id" => $data['item_fg_id'], "item_rm_id" => $data['item_rm_id']], $data, "logs");
+                        $this->db->update("bom_log", $dataFinal, ["item_fg_id" => $data['item_fg_id'], "item_rm_id" => $data['item_rm_id']]);
+                    } else {
+                        $send = $this->crud->create('bom', $data, "logs");
+                        $this->db->insert("bom_log", $dataFinal);
+                    }
+                }else{
+                    $bom = $this->crud->read("bom", [], ["item_fg_id" => $data['item_fg_id'], "item_rm_id" => $data['item_rm_id']]);
+                    if (@$bom->item_fg_id != "") {
+                        if(@$bom->approved_to != ""){
+                            die(json_encode(array("title" => "Failed", "message" => "Data Cannot Save because the Data still Process Approvals", "theme" => "error")));
+                        }
+
+                        if($data['revision'] > 0){
+                            $send = $this->crud->update('bom', ["item_fg_id" => $data['item_fg_id'], "item_rm_id" => $data['item_rm_id']], $data, "logs");
+                        }else{
+                            $send = $this->db->update('bom', $data, ["item_fg_id" => $data['item_fg_id'], "item_rm_id" => $data['item_rm_id']]);
+                        }
+                    } else {
+                        $send = $this->crud->create('bom', $data, "logs");
+                    }
+
+                    $this->db->insert("bom_log", $dataFinal);
+                }
             }
+
+            die(json_encode(array("title" => "Good Job", "message" => "Data Save Successfully", "theme" => "success")));
+        } else {
+            show_error("Cannot Process your request");
+        }
+    }
+
+    public function copy()
+    {
+        if ($this->input->post()) {
+            $jsonData = file_get_contents("php://input");
+            $post = json_decode($jsonData, true);
+            $datas = $post['dataBom'];
+
+            $bom2 = $this->crud->read("bom", [], ["item_fg_id" => @$datas[0]['item_fg_id_copy_2']]);
+
+            if(!empty($bom2)){
+                die(json_encode(array("title" => "Exists", "message" => "Cannot Copy Data, Because Already Exist", "theme" => "error")));
+            }
+
+            foreach ($datas as $data) {
+                // $bom = $this->crud->read("bom", [], ["item_fg_id" => $data['item_fg_id_copy_1'], "item_rm_id" => $data['item_rm_id']]);
+                $revision = 0;
+
+                // if(empty($bom2)){
+                //     $revision = 0;
+                // }else{
+                //     $revision = ($bom2->revision + 1);
+                // }
+
+                // $postFinalSource = array(
+                //     "item_fg_id" => $data['item_fg_id_copy_1'],
+                //     "item_rm_id" => $data['item_rm_id'],
+                //     "main_process" => $data['main_process'],
+                //     "composition" => $data['composition'],
+                //     "revision" => ($bom->revision + 1)
+                // );
+    
+                $postFinalCopy = array(
+                    "item_fg_id" => $data['item_fg_id_copy_2'],
+                    "item_rm_id" => $data['item_rm_id'],
+                    "main_process" => $data['main_process'],
+                    "composition" => $data['composition'],
+                    "revision" => $revision
+                );
+    
+                // $dataFinal = array(
+                //     "created_by" => $this->session->username,
+                //     "created_date" => date("Y-m-d H:i:s"),
+                //     "item_fg_id" => $data['item_fg_id_copy_1'],
+                //     "item_rm_id" => $data['item_rm_id'],
+                //     "main_process" => $data['main_process'],
+                //     "composition" => $data['composition'],
+                //     "revision" => ($bom->revision + 1)
+                // );
+    
+                $dataFinal2 = array(
+                    "created_by" => $this->session->username,
+                    "created_date" => date("Y-m-d H:i:s"),
+                    "item_fg_id" => $data['item_fg_id_copy_2'],
+                    "item_rm_id" => $data['item_rm_id'],
+                    "main_process" => $data['main_process'],
+                    "composition" => $data['composition'],
+                    "revision" => $revision
+                );
+
+                $bom_copy = $this->crud->read("bom", [], ["item_fg_id" => $data['item_fg_id_copy_2'], "item_rm_id" => $data['item_rm_id']]);
+                if (@$bom_copy->item_fg_id != "") {
+                    $send = $this->db->update('bom', $postFinalCopy, ["item_fg_id" => $data['item_fg_id_copy_2'], "item_rm_id" => $data['item_rm_id']]);
+                } else {
+                    $send = $this->crud->create('bom', $postFinalCopy);
+                }
+                
+                $this->db->insert("bom_log", $dataFinal2);
+                $this->db->update("bom", ["approved_to" => ""], ["item_fg_id" => $data['item_fg_id_copy_2'], "item_rm_id" => $data['item_rm_id']]);
+    
+                // if ($data["type"] == "1") { // update source
+                //     if (@$bom->item_fg_id != "") {
+                //         $send = $this->db->update('bom', $postFinalSource, ["item_fg_id" => $data['item_fg_id_copy_1'], "item_rm_id" => $data['item_rm_id']]);
+                //     } else {
+                //         $send = $this->crud->create('bom', $postFinalSource);
+                //     }
+
+                //     $this->db->insert("bom_log", $dataFinal);
+                // } else if ($data["type"] == "2") { // copy to new
+                //     $bom_copy = $this->crud->read("bom", [], ["item_fg_id" => $data['item_fg_id_copy_2'], "item_rm_id" => $data['item_rm_id']]);
+                //     if (@$bom_copy->item_fg_id != "") {
+                //         $send = $this->db->update('bom', $postFinalCopy, ["item_fg_id" => $data['item_fg_id_copy_2'], "item_rm_id" => $data['item_rm_id']]);
+                //     } else {
+                //         $send = $this->crud->create('bom', $postFinalCopy);
+                //     }
+                    
+                //     $this->db->insert("bom_log", $dataFinal2);
+                //     $this->db->update("bom", ["approved_to" => ""], ["item_fg_id" => $data['item_fg_id_copy_2'], "item_rm_id" => $data['item_rm_id']]);
+                // } else if ($data["type"] == "3") { // update & copy to new
+                //     $bom_copy = $this->crud->read("bom", [], ["item_fg_id" => $data['item_fg_id_copy_1'], "item_rm_id" => $data['item_rm_id']]);
+    
+                //     if (@$bom->item_fg_id != "") {
+                //         $send = $this->db->update('bom', $postFinalSource, ["item_fg_id" => $data['item_fg_id_copy_1'], "item_rm_id" => $data['item_rm_id']]);
+                //     } else {
+                //         $send = $this->crud->create('bom', $postFinalSource);
+                //     }
+    
+                //     $this->db->insert("bom_log", $dataFinal);
+                    
+                //     if (@$bom_copy->item_fg_id != "") {
+                //         $send = $this->db->update('bom', $postFinalCopy, ["item_fg_id" => $data['item_fg_id_copy_2'], "item_rm_id" => $data['item_rm_id']]);
+                //     } else {
+                //         $send = $this->crud->create('bom', $postFinalCopy);
+                //     }
+    
+                //     $this->db->insert("bom_log", $dataFinal2);
+                //     $this->db->update("bom", ["approved_to" => ""], ["item_fg_id" => $data['item_fg_id_copy_2'], "item_rm_id" => $data['item_rm_id']]);
+                // }
+            }
+
             echo $send;
         } else {
             show_error("Cannot Process your request");
@@ -185,29 +384,31 @@ class Bom extends CI_Controller
     {
         $data = $this->input->post();
         $send = $this->crud->delete('bom', $data);
+        $send = $this->crud->delete('bom_log', $data);
         echo $send;
     }
 
     //UPLOAD IMAGE
-    public function uploadDrawing($file_bf = ""){
-        $file				= $_FILES['file']['name'];
-        $extension			= explode('.', $file);
-        $extension_end		= strtolower(end($extension));
-        $size				= $_FILES['file']['size'];
-        $temporary 			= $_FILES['file']['tmp_name'];
+    public function uploadDrawing($file_bf = "")
+    {
+        $file                = $_FILES['file']['name'];
+        $extension            = explode('.', $file);
+        $extension_end        = strtolower(end($extension));
+        $size                = $_FILES['file']['size'];
+        $temporary             = $_FILES['file']['tmp_name'];
         $fileName           = time() . "." . $extension_end;
 
-        if (in_array($extension_end, array('pdf','jpg','png','jpeg')) === true) {
+        if (in_array($extension_end, array('pdf', 'jpg', 'png', 'jpeg')) === true) {
             if ($size < 1000000) {
                 if ($file != "") {
                     @unlink("assets/documents/bom/" . base64_decode($file_bf));
                     @move_uploaded_file($temporary, 'assets/documents/bom/' . $fileName);
                     echo json_encode(array('msg' => 'Upload Success', "file" => $fileName));
                 }
-            }else{
+            } else {
                 echo json_encode(array('msg' => 'Your file size is too large, a maximum of 1 MB', 'file' => base64_decode($file_bf)));
             }
-        }else{
+        } else {
             echo json_encode(array('msg' => 'error', 'text' =>  'Your file format is not accepted', 'file' => base64_decode($file_bf)));
         }
     }
@@ -275,15 +476,22 @@ class Bom extends CI_Controller
             $item_fg = $this->crud->read('item_fg', [], ["number" => $data['item_fg_number']]);
             $item_rm = $this->crud->read('item_rm', [], ["id" => $data['item_rm_number']]);
             $process_main = $this->crud->read('process_main', [], ["name" => $data['main_process']]);
-        
+
             $bom = $this->crud->read('bom', [], ["item_fg_id" => @$item_fg->id, "item_rm_id" => @$item_rm->id]);
+            $bomRev = $this->crud->read('bom', [], ["item_fg_id" => @$item_fg->id]);
+
+            if(empty($bomRev->revision)){
+                $revision = 0;
+            }else{
+                $revision = $bomRev->revision;
+            }
 
             if (empty($item_fg->id)) {
-                echo json_encode(array("title" => "Not Found", "message" => "Product No EBWS " . $data['item_fg_number'] ." Not Found", "theme" => "error"));
+                echo json_encode(array("title" => "Not Found", "message" => "Product No EBWS " . $data['item_fg_number'] . " Not Found", "theme" => "error"));
             } elseif (empty($item_rm->id)) {
-                echo json_encode(array("title" => "Not Found", "message" => "Part No EBWS " . $data['item_rm_number'] ." Not Found", "theme" => "error"));
+                echo json_encode(array("title" => "Not Found", "message" => "Part No EBWS " . $data['item_rm_number'] . " Not Found", "theme" => "error"));
             } elseif (empty($process_main->id)) {
-                echo json_encode(array("title" => "Not Found", "message" => "Process Main " . $data['main_process'] ." Not Found", "theme" => "error"));
+                echo json_encode(array("title" => "Not Found", "message" => "Process Main " . $data['main_process'] . " Not Found", "theme" => "error"));
             } elseif (!empty($bom->item_rm_id)) {
                 echo json_encode(array("title" => "Duplicated", "message" => "Part No " . $data['item_rm_number'] . " is Duplicate Data", "theme" => "error"));
             } else {
@@ -296,7 +504,21 @@ class Bom extends CI_Controller
                     "composition" => $data['composition'],
                 );
 
-                $send   = $this->crud->create('bom', $dataFinal);
+                $dataFinal2 = array(
+                    "created_by" => $this->session->username,
+                    "created_date" => date("Y-m-d H:i:s"),
+                    "item_fg_id" => $item_fg->id,
+                    "item_rm_id" => $item_rm->id,
+                    "main_process" => $data['main_process'],
+                    "type" => $data['type'],
+                    "revision" => $revision,
+                    "composition" => $data['composition']
+                );
+
+                $this->db->insert("bom_log", $dataFinal2);
+
+                $send = $this->crud->create('bom', $dataFinal);
+                $this->db->update("bom", ["approved_to" => ""], ["item_fg_id" => @$item_fg->id, "item_rm_id" => @$item_rm->id]);
                 echo $send;
             }
         }
@@ -310,7 +532,7 @@ class Bom extends CI_Controller
     //         HAVING COUNT(a.id) > 1
     //         LIMIT 1");
     //     $querys = $query->result_array();
-        
+
     //     foreach ($querys as $query) {
     //         $item_fg_id = $query['item_fg_id'];
     //         $item_rm_id = $query['item_rm_id'];
@@ -418,6 +640,154 @@ class Bom extends CI_Controller
                     <td>' . $data['revision'] . '</td>';
             $no++;
         }
+        $html .= '</table></body></html>';
+        echo $html;
+    }
+
+    public function print_compare($option = "")
+    {
+        if ($option == "excel") {
+            $format  = date("Ymd");
+            header("Content-type: application/vnd-ms-excel");
+            header("Content-Disposition: attachment; filename=bom_compare_$format.xls");
+        }
+        $item_fg_id_source = base64_decode($this->input->get("item_fg_id_source"));
+        $item_fg_id_compare = base64_decode($this->input->get("item_fg_id_compare"));
+        $revision_source = base64_decode($this->input->get("revision_source"));
+        $revision_compare = base64_decode($this->input->get("revision_compare"));
+
+        // data head
+        $item_fg_source = $this->crud->read('item_fg', ["id" => $item_fg_id_source]);
+        $customer_source = $this->crud->read('customers', ["id" => @$item_fg_source->customer_id]);
+        $circuit_source = $this->db->query("select count(*) as total_cct from wos where item_fg_id='$item_fg_id_source'")->row();
+        $bom_source = $this->crud->read('bom_log', ["item_fg_id" => $item_fg_id_source, "revision" => $revision_source]);
+
+        $item_fg_compare = $this->crud->read('item_fg', ["id" => $item_fg_id_compare]);
+        $customer_compare = $this->crud->read('customers', ["id" => @$item_fg_compare->customer_id]);
+        $circuit_compare = $this->db->query("select count(*) as total_cct from wos where item_fg_id='$item_fg_id_compare'")->row();
+        $bom_compare = $this->crud->read('bom_log', ["item_fg_id" => $item_fg_id_compare, "revision" => $revision_compare]);
+
+        //Config
+        $this->db->select('*');
+        $this->db->from('config');
+        $config = $this->db->get()->row();
+
+        $records = $this->db->query("select item_rm_id from bom_log where item_fg_id in ('$item_fg_id_source','$item_fg_id_compare') and revision in ('$revision_source','$revision_compare') group by item_rm_id order by item_rm_id asc")->result_array();
+
+        $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#customers {border-collapse: collapse;width: 100%;font-size: 12px;}#customers td, #customers th {border: 1px solid #ddd;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: #ddd;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: center;color: black;}</style><body>
+            <table id="customers" border="1">
+            <tr>
+                <td><b>Source</b></td>
+                <td colspan="7" style="mso-number-format:\@;"><b>' . @$item_fg_source->number . ' | ' . @$item_fg_source->number_customer . '</b></td>
+                <td><b>Compare</b></td>
+                <td colspan="8" style="mso-number-format:\@;"><b>' . @$item_fg_compare->number . ' | ' . @$item_fg_compare->number_customer . '</b></td>
+            </tr>
+            <tr>
+                <td><b>Customer</b></td>
+                <td colspan="7"><b>' . @$customer_source->name . '</b></td>
+                <td><b>Customer</b></td>
+                <td colspan="8"><b>' . @$customer_compare->name . '</b></td>
+            </tr>
+            <tr>
+                <td><b>Revision</b></td>
+                <td colspan="7"><b>' . @$bom_source->revision . '</b></td>
+                <td><b>Revision</b></td>
+                <td colspan="8"><b>' . @$bom_compare->revision . '</b></td>
+            </tr>
+            <tr>
+                <td><b>Last Rev</b></td>
+                <td colspan="7"><b>' . @$bom_source->created_date . '</b></td>
+                <td><b>Last Rev</b></td>
+                <td colspan="8"><b>' . @$bom_compare->created_date . '</b></td>
+            </tr>
+            <tr>
+                <td><b>Rev By</b></td>
+                <td colspan="7"><b>' . @$bom_source->created_by . '</b></td>
+                <td><b>Rev By</b></td>
+                <td colspan="8"><b>' . @$bom_compare->created_by . '</b></td>
+            </tr>
+            <tr>
+                <td><b>Circuit</b></td>
+                <td colspan="7"><b>' . @$circuit_source->total_cct . '</b></td>
+                <td><b>Circuit</b></td>
+                <td colspan="8"><b>' . @$circuit_compare->total_cct . '</b></td>
+            </tr>';
+        $html .= '<tr>
+        <th>No</th>
+        <th>Part No EBWS</th>
+        <th>Part No Supplier</th>
+        <th>Product Family</th>
+        <th>Process Main</th>
+        <th>Maker</th>
+        <th>UoM</th>
+        <th>QPA</th>
+        <th>No</th>
+        <th>Part No EBWS</th>
+        <th>Part No Supplier</th>
+        <th>Product Family</th>
+        <th>Process Main</th>
+        <th>Maker</th>
+        <th>UoM</th>
+        <th>QPA</th>
+        <th>Status</th>
+        </tr>';
+
+        $no = 1;
+        foreach ($records as $record) {
+            // assy source
+            $bom_source = $this->db->query("
+            select a.*, b.number as item_rm_number, b.name as item_rm_name, b.uom,c.name as item_family_name, d.name as maker_name
+            from bom_log a 
+            join item_rm b on a.item_rm_id = b.id
+            join item_familys c on b.item_family_id = c.id
+            join makers d on b.maker_id = d.id
+            where a.item_fg_id='$item_fg_id_source' and a.revision='$revision_source' and a.item_rm_id='" . $record['item_rm_id'] . "'
+            ")->row();
+
+            // assy compare
+            $bom_compare = $this->db->query("
+            select a.*, b.number as item_rm_number, b.name as item_rm_name, b.uom,c.name as item_family_name, d.name as maker_name
+            from bom_log a 
+            join item_rm b on a.item_rm_id = b.id
+            join item_familys c on b.item_family_id = c.id
+            join makers d on b.maker_id = d.id
+            where a.item_fg_id='$item_fg_id_compare' and a.revision='$revision_compare' and a.item_rm_id='" . $record['item_rm_id'] . "'
+            ")->row();
+
+            if (@$bom_source->item_rm_id == @$bom_compare->item_rm_id && @$bom_source->composition == @$bom_compare->composition) {
+                $styleCell = "style='background:#53d636; color:white;'";
+                $styleRow = "";
+                $status = "<b>SAME</b>";
+            } else {
+                $styleCell = "style='background:#ff5f5f; color:white;'";
+                $styleRow = "style='background:#FFF2AF;'";
+                $status = "<b>DIFFERENT</b>";
+            }
+
+            $html .= '
+            <tr ' . $styleRow . '>
+                <td align="center">' . $no . '</td>
+                <td style="mso-number-format:\@;">' . @$bom_source->item_rm_id . '</td>
+                <td style="mso-number-format:\@;">' . @$bom_source->item_rm_number . '</td>
+                <td>' . @$bom_source->item_family_name . '</td>
+                <td>' . @$bom_source->main_process . '</td>
+                <td>' . @$bom_source->maker_name . '</td>
+                <td>' . @$bom_source->uom . '</td>
+                <td align="right">' . @$bom_source->composition . '</td>
+                
+                <td align="center">' . $no . '</td>
+                <td style="mso-number-format:\@;">' . @$bom_compare->item_rm_id . '</td>
+                <td style="mso-number-format:\@;">' . @$bom_compare->item_rm_number . '</td>
+                <td>' . @$bom_compare->item_family_name . '</td>
+                <td>' . @$bom_compare->main_process . '</td>
+                <td>' . @$bom_compare->maker_name . '</td>
+                <td>' . @$bom_compare->uom . '</td>
+                <td align="right">' . @$bom_compare->composition . '</td>
+                <td align="center" ' . $styleCell . '>' . $status . '</td>
+            </tr>';
+            $no++;
+        }
+
         $html .= '</table></body></html>';
         echo $html;
     }

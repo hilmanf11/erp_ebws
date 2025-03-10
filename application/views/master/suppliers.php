@@ -30,7 +30,7 @@
             <th rowspan="2" data-options="field:'tds',halign:'center',width:120">TDS</th>
             <th rowspan="2" data-options="field:'tax',halign:'center',width:120">Tax No</th>
             <th rowspan="2" data-options="field:'gst',halign:'center',width:120">GST No</th>
-            <th rowspan="2" data-options="field:'pen',halign:'center',width:120">PEN No</th>
+            <th rowspan="2" data-options="field:'pen',halign:'center',width:120">PAN No</th>
             <th rowspan="2" data-options="field:'ifsc',halign:'center',width:120">Bank IFSC Code</th>
             <th rowspan="2" data-options="field:'bank_account',width:150,halign:'center'">Bank Account</th>
             <th rowspan="2" data-options="field:'bank_name',width:150,halign:'center'">Bank Name</th>
@@ -170,7 +170,7 @@
                     <input style="width:60%;" name="gst" class="easyui-textbox">
                 </div>
                 <div class="fitem">
-                    <span style="width:35%; display:inline-block;">PEN No</span>
+                    <span style="width:35%; display:inline-block;">PAN No</span>
                     <input style="width:60%;" name="pen" class="easyui-textbox">
                 </div>
                 <div class="fitem">

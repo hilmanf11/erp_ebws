@@ -108,7 +108,7 @@ class Purchase_order_others extends CI_Controller
             $this->db->like('a.po_no', $filter_po_no);
             $this->db->like('c.id', $filter_supplier_id);
             $this->db->group_by('a.po_no');
-            $this->db->order_by('a.po_no', 'DESC');
+            $this->db->order_by('a.po_date', 'DESC');
             //Total Data
             $totalRows = $this->db->count_all_results('', false);
             //Limit 1 - 10

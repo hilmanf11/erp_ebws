@@ -19,6 +19,8 @@
             <!-- <th rowspan="2" data-options="field:'total_pph',width:120,halign:'center',align:'right',formatter: priceformat">PPH</th> -->
             <th rowspan="2" data-options="field:'total_grand',width:120,halign:'center',align:'right',formatter: priceformat">Grand Total</th>
             <th rowspan="2" data-options="field:'remarks',width:150,halign:'center'">Remarks</th>
+            <th rowspan="2" data-options="field:'cancel',width:100,halign:'center',formatter:BtnCancel">Cancel</th>
+            <th rowspan="2" data-options="field:'cancel_date',width:150,halign:'center'">Cancel Date</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
         </tr>
@@ -118,11 +120,12 @@
                             <option value="SALES">SALES INVOICE</option>
                             <option value="SUPPLEMENTARY">SUPPLEMENTARY INVOICE</option>
                             <option value="SCRAP">SCRAP INVOICE</option>
+                            <option value="RM">RM / OTHERS</option>
                         </select>
                     </div>
                     <div class="fitem">
                         <span style="width:35%; display:inline-block;">Sales Invoice Date</span>
-                        <input style="width:60%;" id="trans_date" name="trans_date" required="" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
+                        <input style="width:60%;" id="trans_date" name="trans_date" required="" readonly class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
                     </div>
                     <div class="fitem">
                         <span style="width:35%; display:inline-block;">Sales Invoice No</span>
@@ -294,6 +297,8 @@
                                 var row = dg.datagrid('getSelected');
                                 var rowIndex = dg.datagrid('getRowIndex', row);
 
+                                var type = $('#type').combobox('getValue');
+
                                 var ed = dg.datagrid('getEditor', {index: rowIndex,field: 'total'});
                                 var ed2 = dg.datagrid('getEditor', {index: rowIndex,field: 'qty'});
                                 var item_fg_id = dg.datagrid('getEditor', {index: rowIndex, field: 'item_fg_id'});
@@ -317,7 +322,7 @@
 
                                 $.ajax({
                                     type: 'post',
-                                    url: '<?= base_url("finance/sales_invoices/readGst") ?>',
+                                    url: '<?= base_url("finance/sales_invoices/readGst/") ?>' + type,
                                     data: {
                                         customer_id: customer_id,
                                         plant: plant,
@@ -525,12 +530,12 @@
                                     $("#taxes").numberbox("setValue", 0);
                                 }
                             });
-                        }else if(type == "SCRAP"){
+                        }else if(type == "RM"){
                             $("#dn_number").combobox({
-                                url: '<?= base_url('finance/sales_invoices/readScraps') ?>',
+                                url: '<?= base_url('finance/sales_invoices/readFoc') ?>',
                                 valueField: 'number',
                                 textField: 'number',
-                                prompt: "Choose Scrap No",
+                                prompt: "Choose FOC No",
                             });
                         }
                     }
@@ -846,12 +851,11 @@
             var qty = dg.datagrid('getEditor', {index: rowIndex, field: 'qty'});
             var price = dg.datagrid('getEditor', {index: rowIndex, field: 'price'});
 
-            $(qty.target).numberbox('readonly', false);
-            $(price.target).numberbox('readonly', false);
             $(currency.target).combobox('setValue', "INR");
-            // $(qty.target).numberbox('setValue', 1);
             
             if(type == "SUPPLEMENTARY"){
+                $(qty.target).numberbox('readonly', false);
+                $(price.target).numberbox('readonly', false);
                 $(dn_number.target).textbox('setValue', '-');
                 $(so_number.target).textbox('setValue', '-');
                 $(customer_po.target).textbox('setValue', '-');
@@ -889,12 +893,59 @@
                     }
                 });
             }else if(type == "SCRAP"){
+                $(qty.target).numberbox('readonly', false);
+                $(price.target).numberbox('readonly', false);
+                $(customer_po.target).textbox('setValue', '-');
+
+                $(item_fg_number.target).combogrid({
+                    url: "<?= base_url("finance/sales_invoices/readScrapItem") ?>",
+                    panelWidth: 800,
+                    idField: 'number',
+                    textField: 'number',
+                    mode: 'remote', 
+                    fitColumns: true,
+                    prompt: 'Choose Product No',
+                    columns: [
+                        [{
+                            field: 'number',
+                            title: 'Product No EBWS',
+                            width: 150
+                        },{
+                            field: 'number_customer',
+                            title: 'Product No Customer',
+                            width: 250
+                        },{
+                            field: 'name',
+                            title: 'Description',
+                            width: 150
+                        },{
+                            field: 'document_no',
+                            title: 'Document No',
+                            width: 150
+                        },{
+                            field: 'qty',
+                            title: 'Qty',
+                            width: 80
+                        }]
+                    ],
+                    onSelect: function(value, rows) {
+                        $(item_fg_id.target).textbox('setValue', rows.id);
+                        $(number_customer.target).textbox('setValue', rows.number_customer);
+                        $(item_fg_name.target).textbox('setValue', rows.name);
+                        $(hsn_code.target).textbox('setValue', rows.hsn_code);
+                        $(uom.target).combobox('setValue', rows.uom);
+                        $(qty.target).numberbox('setValue', rows.qty);
+                        $(dn_number.target).textbox('setValue', rows.document_no);
+                        $(so_number.target).textbox('setValue', rows.document_no);
+                    }
+                });
+            }else if(type == "RM"){
                 $(dn_number.target).textbox('setValue', dn_numberVal);
                 $(so_number.target).textbox('setValue', '-');
                 $(customer_po.target).textbox('setValue', '-');
 
                 $(item_fg_number.target).combogrid({
-                    url: "<?= base_url("finance/sales_invoices/readScrapItem?number=") ?>" + btoa(dn_numberVal),
+                    url: "<?= base_url("finance/sales_invoices/readFocItems?number=") ?>" + btoa(dn_numberVal),
                     panelWidth: 650,
                     idField: 'number',
                     textField: 'number',
@@ -927,6 +978,7 @@
                         $(hsn_code.target).textbox('setValue', rows.hsn_code);
                         $(uom.target).combobox('setValue', rows.uom);
                         $(qty.target).numberbox('setValue', rows.qty);
+                        $(price.target).numberbox('setValue', rows.price);
                     }
                 });
             }
@@ -1057,7 +1109,19 @@
                     data: row,
                     dataType: "json",
                     success: function (j) {
-                        Swal.fire('close');
+                        Swal.close();
+
+                        if(j.status == "FAILURE"){
+                            Swal.fire({
+                                title: j.message,
+                                icon: 'error',
+                                confirmButtonText: 'Ok',
+                                allowOutsideClick: false,
+                            });
+
+                            return false;
+                        }
+                        
                         Swal.fire({
                             title: 'Are Your Sure ?',
                             text: "Hai " + j.response.username + " in " + j.response.companyname + " You want Generate IRN Barcode ? with User Mail " + j.response.email,
@@ -1367,50 +1431,57 @@
                     for (var i = 0; i < rows.length; i++) {
                         var row = rows[i];
 
-                        // $.ajax({
-                        //     type: "post",
-                        //     url: "<?= base_url('closing/locks/checkLock') ?>",
-                        //     data: "period=" + row.trans_date + "&menus_id=<?= $menus_id ?>",
-                        //     dataType: "json",
-                        //     success: function (lock) {
-                        //         if(lock.total > 0){
-                        //             toastr.error("This period is not active by Accounting");
-                        //             return false;
-                        //         }
-
-                                if (row.status == 0) {
-                                    if(row.gl_no == null){
-                                        $.ajax({
-                                            method: 'post',
-                                            url: '<?= base_url('finance/sales_invoices/delete') ?>',
-                                            data: {
-                                                number: row.number,
-                                                dn_number: row.dn_number,
-                                            },
-                                            success: function(result) {
-                                                var result = eval('(' + result + ')');
-
-                                                if (result.theme == "success") {
-                                                    toastr.success(result.message);
-                                                } else {
-                                                    toastr.error(result.message);
-                                                }
-                                            },
-                                            error: function(jqXHR, textStatus, errorThrown) {
-                                                toastr.error("This data is already used in other modules, You must delete it First", "Error");
-                                            },
-                                            complete: function(data) {
-                                                $('#dg').datagrid('reload');
-                                            }
-                                        });
-                                    }else{
-                                        toastr.error("Cannot Delete because this Sales Invoice has been created in Posting Journal");
-                                    }
-                                } else {
-                                    toastr.error("Cannot Update because AR Receipt status is closed");
+                        $.ajax({
+                            type: "post",
+                            url: "<?= base_url('closing/locks/checkLock') ?>",
+                            data: "period=" + row.trans_date + "&menus_id=<?= $menus_id ?>",
+                            dataType: "json",
+                            success: function (lock) {
+                                if(lock.total > 0){
+                                    toastr.error("This period is not active by Accounting");
+                                    return false;
                                 }
-                        //     }
-                        // });
+
+                                if (row.status != 0) {
+                                    toastr.error("Cannot Delete because Sales Invoice status is closed");
+                                    return false;
+                                }
+
+                                if(row.gl_no != null){
+                                    toastr.error("Cannot Delete because this Sales Invoice has been created in Posting Journal");
+                                    return false;
+                                }
+
+                                if (row.cancel != 0) {
+                                    toastr.error("Cannot Delete because Sales Invoice status is Cancel");
+                                    return false;
+                                }
+
+                                $.ajax({
+                                    method: 'post',
+                                    url: '<?= base_url('finance/sales_invoices/delete') ?>',
+                                    data: {
+                                        number: row.number,
+                                        dn_number: row.dn_number,
+                                    },
+                                    success: function(result) {
+                                        var result = eval('(' + result + ')');
+
+                                        if (result.theme == "success") {
+                                            toastr.success(result.message);
+                                        } else {
+                                            toastr.error(result.message);
+                                        }
+                                    },
+                                    error: function(jqXHR, textStatus, errorThrown) {
+                                        toastr.error("This data is already used in other modules, You must delete it First", "Error");
+                                    },
+                                    complete: function(data) {
+                                        $('#dg').datagrid('reload');
+                                    }
+                                });
+                            }
+                        });
                     }
                 }
             });
@@ -1545,6 +1616,11 @@
         var row = $('#dg').datagrid('getSelected');
         
         if (row) {
+            if(row.cancel > 0){
+                toastr.error("Cannot Print Invoce because the status is cancel");
+                return false;
+            }
+
             window.open("<?= base_url('finance/sales_invoices/print_dn/') ?>" + window.btoa(row.number), '_blank', 'location=yes,height=570,width=1000,scrollbars=yes,status=yes');
         } else {
             toastr.warning("Please checklist in the table first!", "Information");
@@ -1556,6 +1632,11 @@
         var row = $('#dg').datagrid('getSelected');
         
         if (row) {
+            if(row.cancel > 0){
+                toastr.error("Cannot Print Invoce because the status is cancel");
+                return false;
+            }
+
             window.open("<?= base_url('finance/sales_invoices/print_commercial/') ?>" + window.btoa(row.number), '_blank', 'location=yes,height=570,width=1000,scrollbars=yes,status=yes');
         } else {
             toastr.warning("Please checklist in the table first!", "Information");
@@ -1733,16 +1814,16 @@
                     var total_grand = $("#total_grand").numberbox('getValue');
                     var total_grand_local = $("#total_grand_local").numberbox('getValue');
 
-                    // $.ajax({
-                    //     type: "post",
-                    //     url: "<?= base_url('closing/locks/checkLock') ?>",
-                    //     data: "period=" + trans_date + "&menus_id=<?= $menus_id ?>",
-                    //     dataType: "json",
-                    //     success: function (lock) {
-                    //         if(lock.total > 0){
-                    //             toastr.error("This period is not active by Accounting");
-                    //             return false;
-                    //         }
+                    $.ajax({
+                        type: "post",
+                        url: "<?= base_url('closing/locks/checkLock') ?>",
+                        data: "period=" + trans_date + "&menus_id=<?= $menus_id ?>",
+                        dataType: "json",
+                        success: function (lock) {
+                            if(lock.total > 0){
+                                toastr.error("This period is not active by Accounting");
+                                return false;
+                            }
 
                             if (parseFloat(balance_debit) == parseFloat(balance_credit)) {
                                 if (due_date == "" || trans_date == "" || customer_id == "" || journal_type_id == "" || vehicle_no == "") {
@@ -1853,18 +1934,52 @@
                                                                                         requestData2(total2, json2, jml2 + 1, value2);
                                                                                         if (jml2 == total2) {
                                                                                             Swal.close();
+
                                                                                             Swal.fire({
-                                                                                                title: result.message,
-                                                                                                icon: result.theme,
-                                                                                                confirmButtonText: 'Ok',
+                                                                                                title: 'Posting Journal',
+                                                                                                text: result2.message + ", Do you want to save journal posting to ?",
+                                                                                                icon: result2.theme,
+                                                                                                showCancelButton: true,
                                                                                                 allowOutsideClick: false,
-                                                                                            }).then((result) => {
-                                                                                                if (result.isConfirmed) {
-                                                                                                    window.location.reload();
+                                                                                                allowEscapeKey: false,
+                                                                                                confirmButtonText: 'Yes, Add to Journal!'
+                                                                                            }).then((msg) => {
+                                                                                                if (msg.isConfirmed) {
+                                                                                                    Swal.fire({
+                                                                                                        title: 'Please Wait...',
+                                                                                                        showConfirmButton: false,
+                                                                                                        allowOutsideClick: false,
+                                                                                                        allowEscapeKey: false,
+                                                                                                        didOpen: () => {
+                                                                                                            Swal.showLoading();
+                                                                                                        },
+                                                                                                    });
+
+                                                                                                    $.ajax({
+                                                                                                        type: "post",
+                                                                                                        url: '<?= base_url('finance/sales_invoices/createPosting') ?>',
+                                                                                                        data: {
+                                                                                                            number: number
+                                                                                                        },
+                                                                                                        dataType: "json",
+                                                                                                        success: function(result3) {
+                                                                                                            Swal.close();
+
+                                                                                                            Swal.fire({
+                                                                                                                title: result3.message,
+                                                                                                                icon: result3.theme,
+                                                                                                                confirmButtonText: 'Ok',
+                                                                                                                allowOutsideClick: false,
+                                                                                                            }).then((result3) => {
+                                                                                                                if (result3.isConfirmed) {
+                                                                                                                    window.location.reload();
+                                                                                                                }
+                                                                                                            });
+
+                                                                                                        }
+                                                                                                    });
                                                                                                 }
                                                                                             });
-
-                                                                                            $('#dg').datagrid('reload');
                                                                                         }
                                                                                     }
                                                                                 });
@@ -1885,8 +2000,8 @@
                             } else {
                                 toastr.error("Balance Debit Cannot match on Balance Credit");
                             }
-                    //     }
-                    // });
+                        }
+                    });
                 }
             }]
         });
@@ -1897,8 +2012,12 @@
                     $("#dn_number").combobox('setValue', '-');
                     $("#dn_number").combobox('readonly', true);
                     $("#preview").linkbutton('disable');
+                }else if(val == "RM"){
+                    $("#preview").linkbutton('disable');
                 }else if(val == "SCRAP"){
                     $("#preview").linkbutton('disable');
+                    $("#dn_number").combobox('setValue', '-');
+                    $("#dn_number").combobox('readonly', true);
                 }else{
                     $("#dn_number").combobox('clear');
                     $("#dn_number").combobox('readonly', false);
@@ -2028,34 +2147,103 @@
     }
 
     function statusformat(value, row) {
-        if (value == 0) {
-            return "<b style='color:green;'>OPEN</b>";
-        } else {
-            return "<b style='color:red;'>CLOSED</b>";
+        if(row.cancel == "0"){
+            if (value == 0) {
+                return "<b style='color:green;'>OPEN</b>";
+            } else {
+                return "<b style='color:red;'>CLOSED</b>";
+            }
+        }else{
+            return "<b style='color:red;'>CANCEL</b>";
         }
     }
 
     function statusStyle(value, row, index) {
-        if (value == 0) {
-            return 'background-color:#C8FFCC;';
+        if(row.cancel == "0"){
+            if (value == 0) {
+                return 'background-color:#C8FFCC;';
+            } else {
+                return 'background-color:#FFC8C8;';
+            }
         } else {
             return 'background-color:#FFC8C8;';
         }
     }
 
     function irnformat(value, row) {
-        if (value == "" || value == null) {
-            return "<b style='color:orange;'>PENDING</b>";
-        } else {
-            return "<b style='color:green;'>POSTED</b>";
+        if(row.cancel == "0"){
+            if (value == "" || value == null) {
+                return "<b style='color:orange;'>PENDING</b>";
+            } else {
+                return "<b style='color:green;'>POSTED</b>";
+            }
+        }else{
+            return "<b style='color:red;'>CANCEL</b>";
         }
     }
 
     function irnStyle(value, row, index) {
-        if (value == "" || value == null) {
-            return 'background-color:#ffdcab;';
-        } else {
-            return 'background-color:#C8FFCC;';
+        if(row.cancel == "0"){
+            if (value == "" || value == null) {
+                return 'background-color:#ffdcab;';
+            } else {
+                return 'background-color:#C8FFCC;';
+            }
+        }else{
+            return 'background-color:#FFC8C8;';
         }
+    }
+    
+    function BtnCancel(val, row) {
+        if (val == 0) {
+            if(row.status == 0 && (row.irn == "" || row.irn == null)){
+                var onClick = "cancelSi('"+row.number+"')";
+                return '<a class="btn btn-danger w-100" style="pointer-events: visible; opacity:1;" target="_blank" onClick="'+onClick+'"><i class="fa fa-times"></i> Cancel</a>';
+            }else{
+                return '-';
+            }
+        }else{
+            return 'CANCELED';
+        }
+    }
+
+    function cancelSi(number){
+        $.messager.prompt('Cancel Sales Invoices', 'Are you sure you want to cancel the sales invoices? <br><br>'+
+            '<ul>'+
+                '<li>Delivery Note can no longer be used, Status Change to Cancel</li>'+
+                '<li>Delivery Order can no longer be used, Status Change to Cancel</li>'+
+                '<li>Delivery Schedules can be Opened Again</li>'+
+                '<li>Shipping Order can Deleted, Serial No returned to Original</li>'+
+                '<li>Journal Posting can Reversal, Please Confirm first to Finance</li>'+
+            '</ul><br>Please input The Password for Process', function(r){
+            if (r == "CANCELSI"){
+                Swal.fire({
+                    title: 'Please Wait...',
+                    showConfirmButton: false,
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    },
+                });
+
+                $.ajax({
+                    type: "post",
+                    url: "<?= base_url("finance/sales_invoices/cancelInvoice") ?>",
+                    data: "number=" + number,
+                    dataType: "json",
+                    success: function (label) {
+                        swal.close();
+                        $('#dg').datagrid('reload');
+
+                        if(label.theme == "error"){
+                            toastr.error("Cancel Invoices Failed because the status is close");
+                        }else{
+                            toastr.success("Cancel Sales Invices Success");
+                        }
+                    }
+                });
+            }
+        });
     }
 </script>

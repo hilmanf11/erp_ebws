@@ -780,8 +780,25 @@
                     var attachment = $("#attachment").textbox('getValue');
 
                     if(supplier_id != "" && delivery_no != "" && invoice_no != "" && invoice_date != ""){
-                        $('#dlg_insert').dialog('close');
+                        $('#dg2').datagrid('acceptChanges');
+                        var rows = $('#dg2').datagrid('getRows');
+                        var totalrows = rows.length;
+                        endEditing();
 
+                        for (let z = 0; z < totalrows; z++) {
+                            var jsonCheck = rows[z];
+                            if((parseFloat(jsonCheck.qty) - parseFloat(jsonCheck.delivery)) < 0){
+                                toastr.error("Please Check Invoice Qty cannot > Remain");
+                                return false;
+                            }
+
+                            if(parseFloat(jsonCheck.delivery) == 0){
+                                toastr.error("Invoice Qty Still 0");
+                                return false;
+                            }
+                        }
+                        
+                        $('#dlg_insert').dialog('close');
                         Swal.fire({
                             title: 'Please Wait...',
                             showConfirmButton: false,
@@ -791,12 +808,7 @@
                                 Swal.showLoading();
                             },
                         });
-
-                        $('#dg2').datagrid('acceptChanges');
-                        var rows = $('#dg2').datagrid('getRows');
-                        var totalrows = rows.length;
-                        endEditing();
-
+                        
                         requestData(totalrows, rows);
                         function requestData(total, json, number = 1, value = 0, success = 1, failed = 1) {
                             var i = (number - 1);
@@ -1016,7 +1028,7 @@
         });
 
         $("#filter_supplier").combogrid({
-            url: '<?php echo base_url('purchase/delivery_confirm_others/filterSupplier'); ?>',
+            url: '<?php echo base_url('master/suppliers/reads'); ?>',
             panelWidth: 300,
             idField: 'id',
             textField: 'name',

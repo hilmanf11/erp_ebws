@@ -95,17 +95,64 @@ class Sales_invoices extends CI_Controller
         echo json_encode($records);
     }
 
-    public function readScraps()
-    {
-        $records = $this->crud->query("SELECT DISTINCT `number` FROM scrap_booking WHERE `status` = '0' ORDER BY `number` ASC");
-        echo json_encode($records);
-    }
+    // public function readScraps()
+    // {
+    //     $records = $this->crud->query("SELECT DISTINCT `number` FROM scrap_booking WHERE `status` = '0' ORDER BY `number` ASC");
+    //     echo json_encode($records);
+    // }
 
     public function readScrapItem()
     {
-        $number = base64_decode($this->input->get('number'));
-        $records = $this->crud->query("SELECT b.id, b.number, b.number_customer, b.name, b.hsn_code, b.uom, a.qty FROM scrap_booking a JOIN item_fg b ON a.item_fg_id = b.id WHERE a.status = '0' and a.number = '$number' ORDER BY b.number ASC");
+        $post = isset($_POST['q']) ? $_POST['q'] : "";
+        $records = $this->crud->query("SELECT a.number as document_no, b.id, b.id as number, b.number as number_customer, b.name, b.hsn_code, b.uom, a.qty FROM scrap_booking a LEFT JOIN item_rm b ON a.item_id = b.id WHERE (a.number like '%$post%' or b.id like '%$post%' or b.number like '%$post%') and a.status = '0' ORDER BY b.number ASC");
         echo json_encode($records);
+    }
+
+    public function readFoc()
+    {
+        $records1 = $this->crud->query("SELECT DISTINCT a.number 
+            FROM rgp_transactions a 
+            JOIN item_rm b ON a.item_id = b.id
+            JOIN scan_item_rgp c ON a.number = c.rgp_number and a.item_id = c.item_id
+            JOIN item_categories d ON b.item_category_id = d.id
+            WHERE a.status_si = '0' and a.type = 'OUT' and d.number = 'RM' and a.process_type = 'FOC'
+            GROUP BY a.number 
+            ORDER BY a.number ASC");
+
+        $records2 = $this->crud->query("SELECT DISTINCT a.number 
+            FROM rgp_transactions a 
+            JOIN item_rm b ON a.item_id = b.id 
+            JOIN item_categories c ON b.item_category_id = c.id
+            WHERE a.status_si = '0' and a.type = 'OUT' and c.number != 'RM' and a.process_type = 'FOC'
+            GROUP BY a.number 
+            ORDER BY a.number ASC");
+
+        $explode = array_merge($records1, $records2);
+        echo json_encode($explode);
+    }
+
+    public function readFocItems()
+    {
+        $number = base64_decode($this->input->get('number'));
+        $records1 = $this->crud->query("SELECT DISTINCT b.id, b.id as number, b.number as number_customer, b.name, b.hsn_code, b.uom, SUM(c.qty) as qty, a.price 
+            FROM rgp_transactions a 
+            JOIN item_rm b ON a.item_id = b.id 
+            JOIN scan_item_rgp c ON a.number = c.rgp_number and a.item_id = c.item_id
+            JOIN item_categories d ON b.item_category_id = d.id
+            WHERE a.status_si = '0' and a.type = 'OUT' and a.number = '$number' and d.number = 'RM' and a.process_type = 'FOC'
+            GROUP BY a.id
+            ORDER BY b.number ASC");
+
+        $records2 = $this->crud->query("SELECT DISTINCT b.id, b.id as number, b.number as number_customer, b.name, b.hsn_code, b.uom, a.qty, a.price 
+            FROM rgp_transactions a 
+            JOIN item_rm b ON a.item_id = b.id 
+            JOIN item_categories c ON b.item_category_id = c.id 
+            WHERE a.status_si = '0' and a.type = 'OUT' and a.number = '$number' and c.number != 'RM' and a.process_type = 'FOC'
+            GROUP BY a.id
+            ORDER BY b.number ASC");
+
+        $explode = array_merge($records1, $records2);
+        echo json_encode($explode);
     }
 
     public function readSalesInvoices()
@@ -148,7 +195,7 @@ class Sales_invoices extends CI_Controller
         echo json_encode($arr);
     }
 
-    public function readGst(){
+    public function readGst($type = ""){
         $post = $this->input->post();
         $customer_id = $post['customer_id'];
         $plant = $post['plant'];
@@ -160,7 +207,19 @@ class Sales_invoices extends CI_Controller
 
         $customer_address = $this->crud->read("customer_address", [], ["customer_id" => $customer_id, "plant" => $plant]);
         $item_fg = $this->crud->read("item_fg", [], ["id" => $item_fg_id]);
-        $hsn = $this->crud->read("hsn", [], ["number" => $item_fg->hsn_code]);
+        $hsn = $this->crud->read("hsn", [], ["number" => @$item_fg->hsn_code]);
+        if(empty($hsn)){
+            $item_fg = $this->crud->read("item_rm", [], ["id" => $item_fg_id]);
+            $hsn = $this->crud->read("hsn", [], ["number" => $item_fg->hsn_code]);
+        }
+
+        if($type == "RM"){
+            $account_number = "30000004";
+            $account_name = "Sales of Raw Material";
+        }else{
+            $account_number = $item_fg->account_number;
+            $account_name = $item_fg->account_name;
+        }
 
         if($customer_address->bill_state == ""){
             $igst = 0;
@@ -177,7 +236,7 @@ class Sales_invoices extends CI_Controller
         }
 
         die(json_encode(
-            array("igst" => $igst, "cgst" => $cgst, "sgst" => $sgst, "account_number" => $item_fg->account_number, "account_name" => $item_fg->account_name)
+            array("igst" => $igst, "cgst" => $cgst, "sgst" => $sgst, "account_number" => $account_number, "account_name" => $account_name)
         ));
     }
 
@@ -384,10 +443,10 @@ class Sales_invoices extends CI_Controller
         $config = $this->db->get()->row();
 
         $this->db->select("a.delivery_note_no as dn_number, a.customer_order_no as customer_po, a.sales_order_no as so_number, b.uom,
-            a.item_fg_id, b.alias as number_customer, b.number as item_fg_number, b.name as item_fg_name, b.account_number, b.account_name, b.hsn_code, h.bill_state as state,
-            ((a.qty * c.price) * COALESCE(f.igst, 0) / 100) as igst,
-            ((a.qty * c.price) * COALESCE(f.sgst, 0) / 100) as sgst,
-            ((a.qty * c.price) * COALESCE(f.cgst, 0) / 100) as cgst,
+            a.item_fg_id, b.number_customer, b.number as item_fg_number, b.name as item_fg_name, b.account_number, b.account_name, b.hsn_code, h.bill_state as state,
+            ROUND((a.qty * c.price) * COALESCE(f.igst, 0) / 100, 2) as igst,
+            ROUND((a.qty * c.price) * COALESCE(f.sgst, 0) / 100, 2) as sgst,
+            ROUND((a.qty * c.price) * COALESCE(f.cgst, 0) / 100, 2) as cgst,
             d.currency, a.qty, c.price, (a.qty * c.price) as total,
             COALESCE(g.middle, 0) as rate,
             (CASE WHEN g.middle is null THEN 1 ELSE g.middle END) as rate");
@@ -530,10 +589,10 @@ class Sales_invoices extends CI_Controller
         } else {
             $number = base64_decode($this->input->get('number'));
 
-            $this->db->select('a.*, c.number as item_fg_number, c.number_customer, c.name as item_fg_name');
+            $this->db->select('a.*, a.item_no as item_fg_number, c.alias as number_customer, a.item_name as item_fg_name');
             $this->db->from('sales_invoices a');
             $this->db->join('customers b', 'a.customer_id = b.id');
-            $this->db->join('item_fg c', 'a.item_fg_id = c.id');
+            $this->db->join('item_fg c', 'a.item_fg_id = c.id', 'left');
             $this->db->where('a.number', $number);
             $this->db->order_by('a.trans_date', 'DESC');
             $this->db->order_by('a.number', 'ASC');
@@ -557,13 +616,14 @@ class Sales_invoices extends CI_Controller
                 $send = $this->crud->update('sales_invoices', ["id" => $post['id']], $post);
                 echo $send;
             } else {
-                $sales_invoices = $this->crud->reads('sales_invoices', [], ["dn_number" => $post['dn_number'], "item_no" => $post['item_no'], "customer_id" => $post['customer_id'], "trans_date" => $post['trans_date']]);
+                $sales_invoices = $this->crud->reads('sales_invoices', [], ["dn_number" => $post['dn_number'], "number" => $post['number'], "item_no" => $post['item_no'], "customer_id" => $post['customer_id']]);
                 if(count($sales_invoices) > 0){
                     die(json_encode(array("title" => "Available", "message" => "Data Already Created", "theme" => "error")));
                 }
 
                 $send = $this->crud->create('sales_invoices', $post);
                 $update = $this->crud->update('delivery_notes', ["delivery_note_no" => $post['dn_number'], "sales_order_no" => $post['so_number'], "item_fg_id" => $post['item_fg_id']], ["status" => "1"]);
+                $update = $this->crud->update('rgp_transactions', ["number" => $post['dn_number'], "item_id" => $post['item_fg_id']], ["status_si" => "1"]);
                 echo $send;
             }
         } else {
@@ -597,6 +657,217 @@ class Sales_invoices extends CI_Controller
         } else {
             show_error("Cannot Process your request");
         }
+    }
+
+    public function createPosting(){
+        $document_no = $this->input->post('number');
+
+        $datenow = date("Y-m-d");
+        $sql_menu = $this->db->query("SELECT * FROM menus_no WHERE menus_id = '20240227000005' and `status` = '0' and `start_date` <= '$datenow' and end_date >= '$datenow'");
+        $row_menu = $sql_menu->row();
+
+        if(@$row_menu->number == ""){
+            $voucher_no = "";
+        }else{
+            $number = @$row_menu->number;
+            $yearnow = date("y", strtotime($row_menu->start_date));
+            $yearend = date("y", strtotime($row_menu->end_date));
+
+            $whereDate = $number.$yearnow.$yearend."1";
+
+            $sqlGetID	= $this->db->query("SELECT max(`number`) as kode FROM journal_postings WHERE `number` like '%$whereDate%'");
+            $rowID = $sqlGetID->row();
+            $kode = $rowID->kode;
+            
+            if ($kode == NULL) {
+                $autoID = sprintf("%0".$row_menu->sequence."s", $kode + 1);
+                $autoNo = $whereDate.$autoID;
+            } else {
+                $urutan = (int) substr($kode, -6);
+                $urutan++;
+                $autoID	= sprintf("%0".$row_menu->sequence."s", $urutan);
+                $autoNo = $whereDate.$autoID;
+            }
+
+            $voucher_no = $autoNo;
+        }
+
+        $this->db->select("a.number, b.trans_date, b.so_number, b.customer_po, c.id as customer_id, CONCAT(c.name, ' | ', b.plant) as customer_name, b.currency, b.item_no, b.item_name, a.account_number, a.account_name, a.debit, a.credit, b.rate, a.flag");
+        $this->db->from('sales_invoice_journals a');
+        $this->db->join("(SELECT * FROM sales_invoices GROUP BY number) b", "b.number = a.number");
+        $this->db->join("customers c", "b.customer_id = c.id");
+        $this->db->where_in('a.number', $document_no);
+        $this->db->order_by('a.number', 'asc');
+        $this->db->order_by('a.flag', 'asc');
+        $journals = $this->db->get()->result_array();
+
+        $trans_date = "";
+        $customer_name = "";
+        $currency = "";
+
+        $original_debit = 0;
+        $original_credit = 0;
+        $local_debit = 0;
+        $local_credit = 0;
+
+        $grand_original_debit = 0;
+        $grand_original_credit = 0;
+        $grand_local_debit = 0;
+        $grand_local_credit = 0;
+
+        $data = array();
+        foreach ($journals as $journal) {
+            $number = $journal['number'];
+            $account_number = $journal['account_number'];
+            $account_name = $journal['account_name'];
+            $debit = $journal['debit'];
+            $credit = $journal['credit'];
+            $rate = $journal['rate'];
+
+            $this->db->select("a.trans_date, a.journal_type_id, a.customer_po, b.id as customer_id, CONCAT(b.name, ' | ', a.plant) as customer_name, a.item_no, a.item_name, a.currency, a.account_number, c.account_name, a.account_type, a.rate, a.total");
+            $this->db->from('sales_invoices a');
+            $this->db->join('customers b', 'a.customer_id = b.id');
+            $this->db->join('account_coa c', 'a.account_number = c.account_number');
+            $this->db->where('a.number', $number);
+            $this->db->where('a.account_number', $account_number);
+            $this->db->order_by('a.trans_date', 'asc');
+            $sales_invoices = $this->db->get()->result_array();
+
+            // $this->db->delete('journal_postings', ["document_no" => $number]);
+
+            if ($debit > 0 || $credit > 0) {
+                if (count($sales_invoices) > 0) {
+
+                    foreach ($sales_invoices as $sales_invoice) {
+                        $currency = $sales_invoice['currency'];
+                        $customer_name = $sales_invoice['customer_name'];
+                        $trans_date = $sales_invoice['trans_date'];
+
+                        // $transmonth = date('Y-m-01', strtotime($sales_invoice['trans_date']));
+                        // $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $transmonth, "currency_from" => $currency, "currency_to" => "INR"]);
+
+                        if ($currency != "INR") {
+                            if ($sales_invoice['account_type'] == "DEBIT") {
+                                $original_debit = $sales_invoice['total'];
+                                $original_credit = 0;
+                            } else {
+                                $original_debit = 0;
+                                $original_credit = $sales_invoice['total'];
+                            }
+
+                            if ($sales_invoice['account_type'] == "DEBIT") {
+                                $local_debit = round($sales_invoice['total'] * @$sales_invoice['rate']);
+                                $local_credit = 0;
+                            } else {
+                                $local_debit = 0;
+                                $local_credit = round($sales_invoice['total'] * @$sales_invoice['rate']);
+                            }
+
+                            $rates = @$sales_invoice['rate'];
+                        } else {
+                            if ($sales_invoice['account_type'] == "DEBIT") {
+                                $original_debit = $sales_invoice['total'];
+                                $original_credit = 0;
+                                $local_debit = $sales_invoice['total'];
+                                $local_credit = 0;
+                            } else {
+                                $original_debit = 0;
+                                $original_credit = $sales_invoice['total'];
+                                $local_debit = 0;
+                                $local_credit = $sales_invoice['total'];
+                            }
+
+                            $rates = 1;
+                        }
+
+                        $data[] = array(
+                            "journal_date" => date("Y-m-d"),
+                            "journal_type_id" => $sales_invoice['journal_type_id'],
+                            "number" => $voucher_no,
+                            "trans_date" => $sales_invoice['trans_date'],
+                            "document_no" => $number,
+                            "invoice_no" => $sales_invoice['customer_po'],
+                            "company_id" => $journal['customer_id'],
+                            "company_name" => $customer_name,
+                            "modul" => "SALES INVOICING",
+                            "account_number" => $sales_invoice['account_number'],
+                            "account_name" => $sales_invoice['account_name'],
+                            "description" => $customer_name . " | " . $number . " | " . $sales_invoice['customer_po'] . " | " . $sales_invoice['item_no'] . " | " . $sales_invoice['item_name'],
+                            "currency" => $sales_invoice['currency'],
+                            "original_debit" => $original_debit,
+                            "original_credit" => $original_credit,
+                            "rates" => $rates,
+                            "local_debit" => $local_debit,
+                            "local_credit" => $local_credit,
+                        );
+
+                        $grand_original_debit += $original_debit;
+                        $grand_original_credit += $original_credit;
+                        $grand_local_debit += $local_debit;
+                        $grand_local_credit += $local_credit;
+                    }
+                } else {
+                    // $transmonth = date('Y-m-01', strtotime($journal['trans_date']));
+                    // $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $transmonth, "currency_from" => $journal['currency'], "currency_to" => "INR"]);
+
+                    if ($journal['currency'] != "INR") {
+                        $original_debit = $debit;
+                        $original_credit = $credit;
+                        $local_debit = round($debit * @$rate, 2);
+                        $local_credit = round($credit * @$rate, 2);
+
+                        $rates = @$rate;
+                    } else {
+                        $original_debit = $debit;
+                        $original_credit = $credit;
+                        $local_debit = $debit;
+                        $local_credit = $credit;
+
+                        $rates = 1;
+                    }
+
+                    $data[] = array(
+                        "journal_date" => date("Y-m-d"),
+                        "journal_type_id" => $sales_invoice['journal_type_id'],
+                        "number" => $voucher_no,
+                        "trans_date" => $sales_invoice['trans_date'],
+                        "document_no" => $number,
+                        "invoice_no" => $journal['customer_po'],
+                        "company_id" => $journal['customer_id'],
+                        "company_name" => $journal['customer_name'],
+                        "modul" => "SALES INVOICING",
+                        "account_number" => $account_number,
+                        "account_name" => $account_name,
+                        "description" => $journal['customer_name'] . " | " . $journal['so_number'] . " | " . $journal['customer_po'] . " | " . $journal['item_no'] . " | " . $journal['item_name'],
+                        "currency" => $journal['currency'],
+                        "original_debit" => $original_debit,
+                        "original_credit" => $original_credit,
+                        "rates" => $rates,
+                        "local_debit" => $local_debit,
+                        "local_credit" => $local_credit,
+                    );
+
+                    $grand_original_debit += $original_debit;
+                    $grand_original_credit += $original_credit;
+                    $grand_local_debit += $local_debit;
+                    $grand_local_credit += $local_credit;
+                }
+            }
+        }
+
+        if($voucher_no == ""){
+            die(json_encode(array("title" => "Configuration", "message" => "Please Check Configuration in Serial No (Journal Posting) First", "theme" => "error")));
+        }
+
+        if(round($grand_local_debit, 2) != round($grand_local_credit, 2)){
+            die(json_encode(array("title" => "Failed", "message" => "Balance Debit (".$grand_local_debit.") Cannot match on Balance Credit (" . $grand_local_credit . ")", "theme" => "error")));
+        }
+
+        foreach ($data as $dt) {
+            $this->crud->create('journal_postings', $dt);
+        }
+
+        die(json_encode(array("title" => "Good Job", "message" => "Data Successfully Created to Journal Posting with Code GL No " . $voucher_no, "theme" => "success")));
     }
 
     public function update()
@@ -644,10 +915,108 @@ class Sales_invoices extends CI_Controller
             echo json_encode(array("theme" => "error", "message" => "Please delete packing list first"));
         } else {
             $send = $this->crud->delete('sales_invoices', $data);
-            $this->crud->delete('sales_invoice_journals', ["number" => $data['number']]);
-            $update = $this->crud->update('delivery_notes', ["delivery_note_no" => $data['dn_number']], ["status" => "0"]);
+            $this->db->delete('sales_invoice_journals', ["number" => $data['number']]);
+            $this->db->delete('journal_postings', ["document_no" => $data['number']]);
+            $this->crud->update('delivery_notes', ["delivery_note_no" => $data['dn_number']], ["status" => "0"]);
+            $this->crud->update('scrap_booking', ["number" => $data['dn_number']], ["status" => "0"]);
+            $this->crud->update('rgp_transactions', ["number" => $post['dn_number']], ["status_si" => "0"]);
             echo $send;
         }
+    }
+
+    public function numberJournal($id_menu)
+    {
+        $datenow = date("Y-m-d");
+        $sql_menu = $this->db->query("SELECT * FROM menus_no WHERE menus_id = '$id_menu' and `status` = '0' and `start_date` <= '$datenow' and end_date >= '$datenow'");
+        $row_menu = $sql_menu->row();
+
+        if(@$row_menu->number == ""){
+            //
+        }else{
+            $number = @$row_menu->number;
+            $yearnow = date("y", strtotime($row_menu->start_date));
+            $yearend = date("y", strtotime($row_menu->end_date));
+
+            $whereDate = $number.$yearnow.$yearend."1";
+
+            $sqlGetID	= $this->db->query("SELECT max(`number`) as kode FROM journal_postings WHERE `number` like '%$whereDate%'");
+            $rowID = $sqlGetID->row();
+            $kode = $rowID->kode;
+            
+            if ($kode == NULL) {
+                $autoID = sprintf("%0".$row_menu->sequence."s", $kode + 1);
+                $autoNo = $whereDate.$autoID;
+            } else {
+                $urutan = (int) substr($kode, -6);
+                $urutan++;
+                $autoID	= sprintf("%0".$row_menu->sequence."s", $urutan);
+                $autoNo = $whereDate.$autoID;
+            }
+
+            return $autoNo;
+        }
+    }
+
+    public function cancelInvoice()
+    {
+        $data = $this->input->post();
+        $sales_invoices = $this->crud->reads("sales_invoices", [], ["number" => $data['number']]);
+        $this->db->update('sales_invoices', ["cancel" => 1, "cancel_date" => date("Y-m-d H:i:s")], ["number" =>  $data['number']]);
+        $number = $this->numberJournal("20240227000005");
+        
+        $journal_postings = $this->crud->reads("journal_postings", [], ["document_no" => $data['number']]);
+        foreach ($journal_postings as $journal_posting) {
+            $data = array(
+                "journal_date" => $journal_posting->journal_date,
+                "journal_type_id" => $journal_posting->journal_type_id,
+                "modul" => $journal_posting->modul,
+                "remarks" => "CANCEL SALES INVOICE",
+                "document_no" => $journal_posting->document_no,
+                "invoice_no" => $journal_posting->invoice_no,
+                "number" => $number,
+                "company_id" => $journal_posting->company_id,
+                "company_name" => $journal_posting->company_name,
+                "trans_date" => $journal_posting->trans_date,
+                "description" => $journal_posting->description,
+                "account_number" => $journal_posting->account_number,
+                "account_name" => $journal_posting->account_name,
+                "currency" => $journal_posting->currency,
+                "original_debit" => $journal_posting->original_credit,
+                "original_credit" => $journal_posting->original_debit,
+                "rates" => $journal_posting->rates,
+                "local_debit" => $journal_posting->local_credit,
+                "local_credit" => $journal_posting->local_debit,
+            );
+
+            $this->crud->create("journal_postings", $data);
+        }
+
+        foreach ($sales_invoices as $sales_invoice) {
+            $this->db->update('delivery_notes', ["status" => 2], ["delivery_note_no" => $sales_invoice->dn_number, "item_fg_id" => $sales_invoice->item_fg_id]);
+            
+            $delivery_notes = $this->crud->reads("delivery_notes", [], ["delivery_note_no" => $sales_invoice->dn_number, "item_fg_id" => $sales_invoice->item_fg_id]);
+            foreach ($delivery_notes as $delivery_note) {
+                $shipping_orders = $this->crud->reads("shipping_orders", [], ["delivery_order_no" => $delivery_note->delivery_order_no, "item_fg_id" => $delivery_note->item_fg_id]);
+                $delivery_orders = $this->crud->reads("delivery_orders", [], ["delivery_order_no" => $delivery_note->delivery_order_no, "item_fg_id" => $delivery_note->item_fg_id]);
+
+                foreach ($shipping_orders as $shipping_order) {
+                    $this->db->update('scan_item_receipts_fg', ["status" => 0], ["checksheet_label" => $shipping_order->checksheet_label]);
+                }
+                
+                foreach ($delivery_orders as $delivery_order) {
+                    $this->db->update('sales_order_deliveries', ["status" => 0], [
+                        "item_fg_id" => $delivery_order->item_fg_id,
+                        "customer_id" => $delivery_order->customer_id,
+                        "trans_date" => $delivery_order->delivery_date
+                    ]);
+                }
+
+                $this->db->delete("shipping_orders", ["delivery_order_no" => $delivery_note->delivery_order_no, "item_fg_id" => $delivery_note->item_fg_id]);
+                $this->db->update('delivery_orders', ["status" => 2], ["delivery_order_no" => $delivery_note->delivery_order_no, "item_fg_id" => $delivery_note->item_fg_id]);
+            }
+        }
+
+        echo json_encode(array("theme" => "success"));
     }
 
     public function print_commercial($invoice_no)
@@ -666,8 +1035,7 @@ class Sales_invoices extends CI_Controller
         $imgIrn = "";
         if($sales_invoice->barcode != ""){
             // $this->createQrcodeIrn($sales_invoice->barcode, "assets/image/qrcode/", $sales_invoice->number);
-            // $imgIrn = '<img src="' . base_url('assets/image/qrcode/' . $sales_invoice->number . '.png?'.time()) . '" width="200"/>';
-            $imgIrn = '<img src="' . base_url('assets/qrcode/qrcode.php?s=qrm&sf=2&d='. $sales_invoice->barcode) . '" width="150"/>';
+            $imgIrn = '<img src="' . base_url('assets/qrcode/qrcode.php?s=qrm&sf=1&d='. $sales_invoice->barcode) . '" width="150px;"/>';
         }
 
         //Header Print
@@ -686,12 +1054,13 @@ class Sales_invoices extends CI_Controller
         $grand_qty = 0;
         $grand_total = 0;
         for ($i = 0; $i < $page; $i++) {
-            $this->db->select('a.*, g.ship_by, d.name as customer_name, c.hsn_code, c.alias as number_customer, c.name as item_fg_name, b.bill_address, b.ship_address, b.vendor_code, b.pan_no, b.gst_no, b.vendor_code, f.igst as p_igst, f.sgst as p_sgst, f.cgst as p_cgst');
+            $this->db->select('a.*, g.ship_by, d.name as customer_name, f.number as hsn_code, c.number_customer, (CASE WHEN c.alias IS NULL THEN a.item_no ELSE c.alias END) as alias, a.item_name as item_fg_name, b.bill_address, b.ship_address, b.vendor_code, b.pan_no, b.gst_no, b.vendor_code, f.igst as p_igst, f.sgst as p_sgst, f.cgst as p_cgst');
             $this->db->from('sales_invoices a');
             $this->db->join('customers d', 'a.customer_id = d.id');
             $this->db->join('customer_address b', 'a.customer_id = b.customer_id and a.plant = b.plant');
-            $this->db->join('item_fg c', 'a.item_fg_id = c.id');
-            $this->db->join('hsn f', 'c.hsn_code = f.number');
+            $this->db->join('item_fg c', 'a.item_fg_id = c.id', 'left');
+            $this->db->join('item_rm ca', 'a.item_fg_id = ca.id', 'left');
+            $this->db->join('hsn f', '(c.hsn_code = f.number or ca.hsn_code = f.number)', 'left');
             $this->db->join('delivery_notes g', 'a.dn_number = g.delivery_note_no', 'left');
             $this->db->join('delivery_orders e', 'g.delivery_order_no = e.delivery_order_no', 'left');
             $this->db->where('a.deleted', 0);
@@ -781,11 +1150,6 @@ class Sales_invoices extends CI_Controller
                                                     <td width="100">'.@$records[0]['customer_id'].'</td>
                                                 </tr>
                                                 <tr>
-                                                    <td><b>Deliver Doc</b></td>
-                                                    <td>:</td>
-                                                    <td>'.@$records[0]['dn_number'].'</td>
-                                                </tr>
-                                                <tr>
                                                     <td><b>PO Number</b></td>
                                                     <td>:</td>
                                                     <td>'.@$records[0]['customer_po'].'</td>
@@ -872,7 +1236,7 @@ class Sales_invoices extends CI_Controller
 
                     $html .= '  <tr>
                                     <td style="text-align:center; border-top: 0; border-bottom: 0; height:30px;">' . $no . '</td>
-                                    <td style="font-size:10px; border-top: 0; border-bottom: 0;">' . $records[$a]['number_customer'] . ' -<br>'.$records[$a]['item_fg_name'].'</td>
+                                    <td style="font-size:10px; border-top: 0; border-bottom: 0;">' . $records[$a]['alias'] . ' -<br>'.$records[$a]['item_fg_name'].'</td>
                                     <td style="font-size:10px; border-top: 0; border-bottom: 0;">' . $records[$a]['hsn_code'] . '</td>
                                     <td style="text-align:center; border-top: 0; border-bottom: 0;">' . number_format($records[$a]['qty']) . '</td>
                                     <td style="text-align:center; border-top: 0; border-bottom: 0;"><span style="font-size:10px;">' . $records[$a]['uom'] . '</span></td>
@@ -888,7 +1252,7 @@ class Sales_invoices extends CI_Controller
                                 </tr>';
                     $urutan = sprintf("%02s", $no - 1);
                     // $dataQr2 .= " $urutan ".$records[$a]['number_customer']." ".$records[$a]['hsn_code']." ".$records[$a]['price'];
-                    $dataQr2 .= $records[$a]['number_customer']."%09".$records[$a]['hsn_code']."%09".round($records[$a]['qty'])."%09".$records[$a]['price']."%09";
+                    $dataQr2 .= $records[$a]['alias']."%09".$records[$a]['hsn_code']."%09".round($records[$a]['qty'])."%09".$records[$a]['price']."%09";
                     $sub_qty += ($records[$a]['qty']);
                     $sub_total += ($records[$a]['price'] * $records[$a]['qty']);
                     $cgst += $records[$a]['cgst'];
@@ -916,20 +1280,8 @@ class Sales_invoices extends CI_Controller
                 $no++;
             }
 
-            $dataQr =   @$records[0]['vendor_code']."%09" . 
-                        @$records[0]['customer_po']."%09" .
-                        @$records[0]['number']."%09" .
-                        date("d.m.Y", strtotime(@$records[0]['trans_date']))."%09" .
-                        $config->gst_no."%09" .
-                        ($sub_total + ($cgst + $sgst + $igst))."%09" .
-                        $sub_total .
-                        "%090%09" .
-                        $sgst."%09" . 
-                        $igst."%09" . 
-                        $sgst."%09" . 
-                        $records[0]['tcs']."%09" .
-                        $dataQr2;
-                        
+            $dataQr = @$records[0]['vendor_code']."%09".@$records[0]['customer_po']."%09".@$records[0]['number']."%09".date("d.m.Y", strtotime(@$records[0]['trans_date']))."%09".
+                       $config->gst_no."%09".($sub_total + ($cgst + $sgst + $igst))."%09".$sub_total."%090%09".$sgst."%09".$igst."%09".$sgst."%09".$records[0]['tcs']."%09".$dataQr2;
             // $this->createQrcode($dataQr, "assets/image/qrcode/", $sales_invoice->number."-00");
             $imgIrn2 = '<img src="' . base_url('assets/qrcode/qrcode.php?s=qrm&sf=2&d='. $dataQr) . '"/>';
 
@@ -1084,10 +1436,10 @@ class Sales_invoices extends CI_Controller
         $subtotal = 0;
         $grand_total_all = 0;
         for ($i = 0; $i < $page; $i++) {
-            $this->db->select('a.*, b.name as customer_name, c.number as item_fg_number, c.number_customer, c.name as item_fg_name');
+            $this->db->select('a.*, b.name as customer_name, a.item_no as item_fg_number, c.alias as number_customer, a.item_name as item_fg_name, c.alias');
             $this->db->from('sales_invoices a');
             $this->db->join('customers b', 'a.customer_id = b.id');
-            $this->db->join('item_fg c', 'a.item_fg_id = c.id');
+            $this->db->join('item_fg c', 'a.item_fg_id = c.id', 'left');
             $this->db->like('a.number', $invoice_no);
             $this->db->order_by('a.trans_date', 'DESC');
             $this->db->limit(10, ($i * 10));
@@ -1238,7 +1590,7 @@ class Sales_invoices extends CI_Controller
                                 <td style="text-align:center">' . $no . '</td>
                                 <td>' . $record['so_number'] . '</td>
                                 <td>' . $record['dn_number'] . '</td>
-                                <td>' . $record['number_customer'] . '</td>
+                                <td>' . $record['alias'] . '</td>
                                 <td>' . $record['item_fg_name'] . '</td>
                                 <td>' . $record['uom'] . '</td>
                                 <td style="text-align:right;">' . @number_format(($record['qty']), 2) . '</td>
@@ -1446,10 +1798,10 @@ class Sales_invoices extends CI_Controller
         foreach ($records as $data) {
             $number = $data['number'];
 
-            $this->db->select('a.*, c.number as item_fg_number, c.number_customer, c.name as item_fg_name');
+            $this->db->select('a.*, a.item_no as item_fg_number, c.alias as number_customer, a.item_name as item_fg_name');
             $this->db->from('sales_invoices a');
             $this->db->join('customers b', 'a.customer_id = b.id');
-            $this->db->join('item_fg c', 'a.item_fg_id = c.id');
+            $this->db->join('item_fg c', 'a.item_fg_id = c.id', 'left');
             $this->db->where('a.number', $number);
             $this->db->order_by('a.status', 'ASC');
             $this->db->order_by('a.trans_date', 'DESC');
@@ -1540,9 +1892,9 @@ class Sales_invoices extends CI_Controller
             d.bill_state,
             d.ship_address,
             d.ship_state,
-            c.number as item_fg_number, 
-            c.number_customer, 
-            c.name as item_fg_name,
+            a.item_no as item_fg_number, 
+            c.alias as number_customer, 
+            a.item_name as item_fg_name,
             e.account_name,
             f.igst as igst_rate,
             f.sgst as sgst_rate,
@@ -1550,7 +1902,7 @@ class Sales_invoices extends CI_Controller
             ');
         $this->db->from('sales_invoices a');
         $this->db->join('customers b', 'a.customer_id = b.id');
-        $this->db->join('item_fg c', 'a.item_fg_id = c.id');
+        $this->db->join('item_fg c', 'a.item_fg_id = c.id', 'left');
         $this->db->join('customer_address d', 'a.customer_id = d.customer_id and a.plant = d.plant', 'left');
         $this->db->join('account_coa e', 'a.account_number = e.account_number', 'left');
         $this->db->join('hsn f', 'c.hsn_code = f.number', 'left');
@@ -1742,7 +2094,7 @@ class Sales_invoices extends CI_Controller
         $this->db->like('b.number', $filter_sales_invoice);
         $this->db->like('b.dn_number', $filter_dn_number);
         $this->db->like('b.customer_id', $filter_customer);
-        $this->db->like('a.plant', $filter_plant);
+        $this->db->like('b.plant', $filter_plant);
         $this->db->like('b.status', $filter_status);
         $this->db->group_by('a.number');
         $this->db->group_by('a.account_number');

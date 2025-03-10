@@ -82,7 +82,7 @@ class Report_serial_controls extends CI_Controller
         $this->db->from('config');
         $config = $this->db->get()->row();
 
-        $this->db->select('g.delivery_note_no, a.checksheet_number, d.delivery_order_no, d.delivery_order_date, d.sales_order_no, e.name as customer_name, h.number_customer as item_no, h.name as item_name, b.checksheet_label, b.qty');
+        $this->db->select('g.delivery_note_no, a.checksheet_number, d.delivery_order_no, d.delivery_order_date, d.sales_order_no, e.name as customer_name, h.number_customer as item_no, h.name as item_name, b.checksheet_label, b.qty, b.status');
         $this->db->from('item_fg h');
         $this->db->join('wip_receipts a', 'h.id = a.item_fg_id', 'left');
         $this->db->join('os_fg i', 'h.id = i.item_fg_id', 'left');
@@ -129,7 +129,7 @@ class Report_serial_controls extends CI_Controller
                 </div>
                 <div style="float: right; font-size: 12px; text-align: right;">
                     Print Date ' . date("d M Y H:i:s") . ' <br>
-                    Print By ' . $this->session->username . '  
+                    Print By ' . $this->session->username . '
                 </div>
                 <br><br><br>
                 <h3 style="margin:0;">CHECK SERIAL NO (FG)</h3>
@@ -153,9 +153,40 @@ class Report_serial_controls extends CI_Controller
             </tr>';
         $no = 1;
         foreach ($records as $data) {
-            if(empty($data['delivery_note_no'])){
+            $barcode_divides_fg = $this->crud->reads("barcode_divides_fg", ["label_no" => $data['checksheet_label']]);
+            foreach ($barcode_divides_fg as $barcode) {
+
+                if($barcode->status == "0"){
+                    $status = "OPEN";
+                    $style = "style='text-align: center; background: green; color:white;'";
+                }else{
+                    $status = "CLOSED";
+                    $style = "style='text-align: center; background: red; color:white;'";
+                }
+
+                $html .= '  <tr>
+                            <td style="text-align:center">' . $no . '</td>
+                            <td '.$style.'>' . $status . '</td>
+                            <td>' . $data['checksheet_number'] . '</td>
+                            <td>' . $data['delivery_note_no'] . '</td>
+                            <td>' . $data['delivery_order_no'] . '</td>
+                            <td>' . $data['delivery_order_date'] . '</td>
+                            <td>' . $data['sales_order_no'] . '</td>
+                            <td>' . $data['customer_name'] . '</td>
+                            <td>' . $data['item_no'] . '</td>
+                            <td>' . $data['item_name'] . '</td>
+                            <td>' . $barcode->label_divided . '</td>
+                            <td>' . number_format($barcode->qty, 2) . '</td>
+                        </tr>';
+
+            }
+
+            if(empty($data['delivery_note_no']) && $data['status'] == "0"){
                 $status = "OPEN";
                 $style = "style='text-align: center; background: green; color:white;'";
+            }elseif(count($barcode_divides_fg) > 0){
+                $status = "DIVIDED";
+                $style = "style='text-align: center; background: red; color:white;'";
             }else{
                 $status = "CLOSED";
                 $style = "style='text-align: center; background: red; color:white;'";

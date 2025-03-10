@@ -269,7 +269,7 @@ class Report_bank_statements extends CI_Controller
 
         $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#customers {border-collapse: collapse;width: 100%;font-size: 12px;}#customers td, #customers th {border: 1px solid #ddd;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: #ddd;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: center;color: black;}</style><body>
             <center>
-                <div style="float: left; font-size: 12px; text-align: left;">
+                <div style="font-size: 12px; text-align: left;">
                     <table style="width: 100%;">
                         <tr>
                             <td width="50" style="font-size: 12px; vertical-align: top; text-align: center; vertical-align:jus margin-right:10px;">
@@ -282,17 +282,11 @@ class Report_bank_statements extends CI_Controller
                         </tr>
                     </table>
                 </div>
-                <div style="float: right; font-size: 12px; text-align: right;">
-                    Print Date ' . date("d M Y H:i:s") . ' <br>
-                    Print By ' . $this->session->username . '  
-                </div>
             </center>
-            <br><br><br><br>
             <center>
                 <h3 style="margin:0;">BANK STATEMENT</h3>
                 <small>PERIOD : <b>' . $filter_from . '</b> To <b>' . $filter_to . '</b></small>
             </center>
-            <br>
             <table style="width: 50%; font-size:12px;">
                 <tr>
                     <td width="150">Account No</td>
@@ -365,7 +359,12 @@ class Report_bank_statements extends CI_Controller
         }
 
         $html .= '  <tr style="background:#EBEBEB;">
-                        <td colspan="6"><b>GRAND TOTAL</b></td>
+                        <td></td>
+                        <td><b>GRAND TOTAL</b></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
                         <td style="text-align:right;"><b>-</b></td>
                         <td style="text-align:right;"><b>' . number_format($grand_total_debit_local, 2) . '</b></td>
                         <td style="text-align:right;"><b>' . number_format($grand_total_credit_local, 2) . '</b></td>

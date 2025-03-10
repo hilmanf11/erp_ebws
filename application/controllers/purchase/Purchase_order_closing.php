@@ -141,6 +141,8 @@ class Purchase_order_closing extends CI_Controller
             $filter_to = $this->input->get('filter_to');
             $filter_po_no = $this->input->get('filter_po_no');
             $filter_suppliers = $this->input->get('filter_suppliers');
+            $filter_item_rm = $this->input->get('filter_item_rm');
+
             $page = $this->input->post('page');
             $rows = $this->input->post('rows');
 
@@ -188,6 +190,9 @@ class Purchase_order_closing extends CI_Controller
                 }
                 if($filter_suppliers != ""){
                     $this->db->where('d.id', $filter_suppliers);
+                }
+                if($filter_item_rm != ""){
+                    $this->db->where('b.id', $filter_item_rm);
                 }
                 $this->db->group_by('a.po_no');
                 $this->db->order_by('a.status', 'ASC');
@@ -255,6 +260,9 @@ class Purchase_order_closing extends CI_Controller
                 if ($filter_from != "" or $filter_to != "") {
                     $this->db->where('a.po_date >=', $filter_from);
                     $this->db->where('a.po_date <=', $filter_to);
+                }
+                if($filter_item_rm != ""){
+                    $this->db->where('b.id', $filter_item_rm);
                 }
                 $this->db->like('a.po_no', $id);
                 $this->db->like('d.id', $filter_suppliers);
@@ -711,6 +719,8 @@ class Purchase_order_closing extends CI_Controller
         $filter_to   = $this->input->get('filter_to');
         $filter_po_no = $this->input->get('filter_po_no');
         $filter_suppliers = $this->input->get('filter_suppliers');
+        $filter_item_rm = $this->input->get('filter_item_rm');
+
         //Config
         $this->db->select('*');
         $this->db->from('config');
@@ -736,6 +746,7 @@ class Purchase_order_closing extends CI_Controller
         }
         $this->db->like('a.po_no', $filter_po_no);
         $this->db->like('d.number', $filter_suppliers);
+        $this->db->like('b.id', $filter_item_rm);
         $this->db->order_by('a.po_date', 'DESC');
         $records = $this->db->get()->result_array();
         $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#customers {border-collapse: collapse;width: 100%;font-size: 12px;}#customers td, #customers th {border: 1px solid black;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: black;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: center;color: black;}</style><body>
@@ -811,8 +822,8 @@ class Purchase_order_closing extends CI_Controller
                         <td>' . $data['item_rm_number'] . '</td>
                         <td>' . $data['item_rm_name'] . '</td>
                         <td>' . number_format($data['qty'], 2) . '</td>
-                        <td>' . number_format($data['price'], 4, ",", ".") . '</td>
-                        <td>' . number_format(($data['total']), 2, ",", ".") . '</td>
+                        <td>' . number_format($data['price'], 4) . '</td>
+                        <td>' . number_format(($data['total']), 2) . '</td>
                         <td>' . $data['currency'] . '</td>
                         <td>' . $data['uom'] . '</td>
                         <td>' . $data['delivery_date'] . '</td>

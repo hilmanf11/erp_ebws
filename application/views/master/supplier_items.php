@@ -604,7 +604,7 @@
                                 var valid_date = $("#valid_date").datebox('getValue');
                                 var mpq = $("#mpq").numberbox('getValue');
                                 var moq = $("#moq").numberbox('getValue');
-                                var price = $("#moq").numberbox('getValue');
+                                var price = $("#price").numberbox('getValue');
                                 var leadtime = $("#leadtime").numberbox('getValue');
                                 var transit = $("#transit").numberbox('getValue');
 

@@ -586,73 +586,81 @@
                             },
                         });
 
-                        $('#dg_request').datagrid('acceptChanges');
-                        var rows = $('#dg_request').datagrid('getRows');
-                        var totalrows = rows.length;
-                        // endEditing();
+                        $.post("<?= base_url('purchase/purchase_order_receipt_others/checkInvoice') ?>", {bc_document: bc_document}, function(checkInv) {
+                            if(checkInv.theme == "error"){
+                                Swal.close();
+                                toastr.error("Invoice No already Created, Please Check!!");
+                                return false;
+                            }else{
+                                $('#dg_request').datagrid('acceptChanges');
+                                var rows = $('#dg_request').datagrid('getRows');
+                                var totalrows = rows.length;
+                                // endEditing();
 
-                        requestData(totalrows, rows);
-                        function requestData(total, json, number = 1, value = 0, success = 1, failed = 1) {
-                            var i = (number - 1);
-                            if (value < 100) {
-                                value = Math.floor((number / total) * 100);
+                                requestData(totalrows, rows);
+                                function requestData(total, json, number = 1, value = 0, success = 1, failed = 1) {
+                                    var i = (number - 1);
+                                    if (value < 100) {
+                                        value = Math.floor((number / total) * 100);
 
-                                if(json[i].qty_receipt > 0){
-                                    $.ajax({
-                                        type: "post",
-                                        url: '<?= base_url('purchase/purchase_order_receipt_others/create') ?>',
-                                        data: 'item_rm_id=' + json[i].item_rm_id +
-                                            '&supplier_id=' + json[i].supplier_id +
-                                            '&asset_code=' + json[i].asset_code +
-                                            '&asset_code_sub=' + json[i].asset_code_sub +
-                                            '&receipt_date=' + receipt_date +
-                                            '&receipt_no=' + receipt_no +
-                                            '&po_no=' + json[i].po_no +
-                                            '&id=' + json[i].id +
-                                            // '&bc_kind=' + bc_kind +
-                                            // '&bc_aju=' + bc_aju +
-                                            '&attachment=' + attachment +
-                                            '&bc_document=' + bc_document +
-                                            '&bc_date=' + bc_date +
-                                            '&awb_no=' + awb_no +
-                                            '&awb_date=' + awb_date +
-                                            // '&location=' + json[i].location +
-                                            '&qty_po=' + json[i].qty_po +
-                                            '&qty_delivery=' + json[i].qty_delivery +
-                                            '&qty_receipt=' + json[i].qty_receipt +
-                                            '&qty_mpq=' + json[i].mpq +
-                                            '&qty_label=' + json[i].qty_label,
-                                        dataType: "json",
-                                        success: function(result) {
-                                            if (i == (total - 1)) {
-                                                Swal.close();
-                                                Swal.fire({
-                                                    title: result.message,
-                                                    icon: result.theme,
-                                                    confirmButtonText: 'Ok',
-                                                    allowOutsideClick: false,
-                                                }).then((result) => {
-                                                    if (result.isConfirmed) {
-                                                        // window.location.reload();
-                                                        $('#dg').treegrid('reload');
-                                                        readReceiptNo();
+                                        if(json[i].qty_receipt > 0){
+                                            $.ajax({
+                                                type: "post",
+                                                url: '<?= base_url('purchase/purchase_order_receipt_others/create') ?>',
+                                                data: 'item_rm_id=' + json[i].item_rm_id +
+                                                    '&supplier_id=' + json[i].supplier_id +
+                                                    '&asset_code=' + json[i].asset_code +
+                                                    '&asset_code_sub=' + json[i].asset_code_sub +
+                                                    '&receipt_date=' + receipt_date +
+                                                    '&receipt_no=' + receipt_no +
+                                                    '&po_no=' + json[i].po_no +
+                                                    '&id=' + json[i].id +
+                                                    // '&bc_kind=' + bc_kind +
+                                                    // '&bc_aju=' + bc_aju +
+                                                    '&attachment=' + attachment +
+                                                    '&bc_document=' + bc_document +
+                                                    '&bc_date=' + bc_date +
+                                                    '&awb_no=' + awb_no +
+                                                    '&awb_date=' + awb_date +
+                                                    // '&location=' + json[i].location +
+                                                    '&qty_po=' + json[i].qty_po +
+                                                    '&qty_delivery=' + json[i].qty_delivery +
+                                                    '&qty_receipt=' + json[i].qty_receipt +
+                                                    '&qty_mpq=' + json[i].mpq +
+                                                    '&qty_label=' + json[i].qty_label,
+                                                dataType: "json",
+                                                success: function(result) {
+                                                    if (i == (total - 1)) {
+                                                        Swal.close();
+                                                        Swal.fire({
+                                                            title: result.message,
+                                                            icon: result.theme,
+                                                            confirmButtonText: 'Ok',
+                                                            allowOutsideClick: false,
+                                                        }).then((result) => {
+                                                            if (result.isConfirmed) {
+                                                                // window.location.reload();
+                                                                $('#dg').treegrid('reload');
+                                                                readReceiptNo();
+                                                            }
+                                                        });
                                                     }
-                                                });
-                                            }
 
-                                            requestData(total, json, number + 1, value, success + 1, failed + 0);
-                                        },
-                                        error: function(){
-                                            toastr.error("Cannot Process your Request");
-                                            requestData(total, json, number + 1, value, success + 1, failed + 0);
+                                                    requestData(total, json, number + 1, value, success + 1, failed + 0);
+                                                },
+                                                error: function(){
+                                                    toastr.error("Cannot Process your Request");
+                                                    requestData(total, json, number + 1, value, success + 1, failed + 0);
+                                                }
+                                            });
+                                        }else{
+                                            toastr.error("Qty Receipt for Part No "+json[i].item_rm_number+" <= 0");
+                                            swal.close();
                                         }
-                                    });
-                                }else{
-                                    toastr.error("Qty Receipt for Part No "+json[i].item_rm_number+" <= 0");
-                                    swal.close();
+                                    }
                                 }
                             }
-                        }
+                        }, 'json');
                     }else{
                         toastr.error("Please Complete Your input");    
                     }
@@ -875,11 +883,15 @@
 
     function btnStore(val, row){
         if (row.state == "closed") {
-            if(val > 0){
-                return "<a class='btn btn-success btn-sm' style='pointer-events: auto; opacity:1; width:100%;'><i class='fa fa-check'></i> Confirmed</a>";
+            if(row.status == 2){
+                return "<a class='btn btn-primary btn-sm' style='pointer-events: auto; opacity:1; width:100%;'><i class='fa fa-times'></i> Cancel</a>";
             }else{
-                var onClick = 'viewDetail("'+row.receipt_no+'")';
-                return "<a class='btn btn-danger btn-sm' style='pointer-events: auto; opacity:1; width:100%;' onClick='"+onClick+"'><i class='fa fa-edit'></i> Unconfirm</a>";
+                if(val > 0){
+                    return "<a class='btn btn-success btn-sm' style='pointer-events: auto; opacity:1; width:100%;'><i class='fa fa-check'></i> Confirmed</a>";
+                }else{
+                    var onClick = 'viewDetail("'+row.receipt_no+'")';
+                    return "<a class='btn btn-danger btn-sm' style='pointer-events: auto; opacity:1; width:100%;' onClick='"+onClick+"'><i class='fa fa-edit'></i> Unconfirm</a>";
+                }
             }
         }
     }

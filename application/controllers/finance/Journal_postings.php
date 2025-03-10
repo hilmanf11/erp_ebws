@@ -687,7 +687,7 @@ class Journal_postings extends CI_Controller
                                 "modul" => $modul,
                                 "account_number" => $purchase_invoice['account_number'],
                                 "account_name" => $purchase_invoice['account_name'],
-                                "description" => $supplier_name . " | " . $purchase_invoice['po_no'] . " | " . $purchase_invoice['invoice_no'] . " | " . $purchase_invoice['item_no'] . " | " . $purchase_invoice['item_name'],
+                                "description" => $purchase_invoice['po_no'] . " | " . $purchase_invoice['invoice_no'] . " | " . $purchase_invoice['item_no'] . " | " . $purchase_invoice['item_name'],
                                 "item_no" => $purchase_invoice['item_no'],
                                 "item_name" => $purchase_invoice['item_name'],
                                 "currency" => $purchase_invoice['currency'],
@@ -737,7 +737,7 @@ class Journal_postings extends CI_Controller
                             "modul" => $modul,
                             "account_number" => $account_number,
                             "account_name" => $account_name,
-                            "description" => $journal['supplier_name'] . " | " . $number . " | " . $journal['invoice_no'] . " | " . $journal['item_no'] . " | " . $journal['item_name'],
+                            "description" => $number . " | " . $journal['invoice_no'] . " | " . $journal['item_no'] . " | " . $journal['item_name'],
                             "item_no" => $journal['item_no'],
                             "item_name" => $journal['item_name'],
                             "currency" => $journal['currency'],
@@ -760,7 +760,7 @@ class Journal_postings extends CI_Controller
                 "original_debit" => round($grand_original_debit, 2),
                 "original_credit" => round($grand_original_credit, 2),
                 "local_debit" => round($grand_local_debit, 2),
-                "local_credit" => round($grand_local_debit, 2),
+                "local_credit" => round($grand_local_credit, 2),
             );
 
             $result['total'] = count($data);
@@ -862,7 +862,7 @@ class Journal_postings extends CI_Controller
                                 "modul" => $modul,
                                 "account_number" => $sales_invoice['account_number'],
                                 "account_name" => $sales_invoice['account_name'],
-                                "description" => $customer_name . " | " . $number . " | " . $sales_invoice['customer_po'] . " | " . $sales_invoice['item_no'] . " | " . $sales_invoice['item_name'],
+                                "description" => $number . " | " . $sales_invoice['customer_po'] . " | " . $sales_invoice['item_no'] . " | " . $sales_invoice['item_name'],
                                 "item_no" => $sales_invoice['item_no'],
                                 "item_name" => $sales_invoice['item_name'],
                                 "currency" => $sales_invoice['currency'],
@@ -907,7 +907,7 @@ class Journal_postings extends CI_Controller
                             "modul" => $modul,
                             "account_number" => $account_number,
                             "account_name" => $account_name,
-                            "description" => $journal['customer_name'] . " | " . $journal['so_number'] . " | " . $journal['customer_po'] . " | " . $journal['item_no'] . " | " . $journal['item_name'],
+                            "description" => $journal['so_number'] . " | " . $journal['customer_po'] . " | " . $journal['item_no'] . " | " . $journal['item_name'],
                             "item_no" => $sales_invoice['item_no'],
                             "item_name" => $sales_invoice['item_name'],
                             "currency" => $journal['currency'],
@@ -968,10 +968,10 @@ class Journal_postings extends CI_Controller
                 $account_name = $journal['account_name'];
                 $debit = $journal['debit'];
                 $credit = $journal['credit'];
-
-                // $transmonth = date('Y-m-01', strtotime($journal['payment_date']));
-                // $transmonth = $journal['payment_date'];
-                // $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $transmonth, "currency_from" => $journal['currency'], "currency_to" => "INR"]);
+                $description = $journal['description'];
+                $explode = explode(" | ", $description);
+                $purchase_invoice = @$explode[0];
+                $supplier_invoice = @$explode[1];
 
                 if ($journal['currency'] != "INR") {
                     $original_debit = $debit;
@@ -979,8 +979,6 @@ class Journal_postings extends CI_Controller
                     $local_debit = $journal['local_debit'];
                     $local_credit = $journal['local_credit'];
 
-                    // $rates = @$exchange->middle;
-                    // $rates = (abs($journal['local_debit'] + $journal['local_credit']) / abs($journal['debit'] + $journal['credit']));
                     $rates = $journal['rate'];
                 } else {
                     $original_debit = $debit;
@@ -994,13 +992,13 @@ class Journal_postings extends CI_Controller
                 $data[] = array(
                     "trans_date" => $journal['payment_date'],
                     "document_no" => $number,
-                    "invoice_no" => $journal['purchase_invoice'],
+                    "invoice_no" => $purchase_invoice,
                     "company_id" => $journal['supplier_id'],
                     "company_name" => $journal['supplier_name'] . " (" . $journal['other_account'] . ")",
                     "modul" => $modul,
                     "account_number" => $account_number,
                     "account_name" => $account_name,
-                    "description" => $journal['supplier_name'] . " (" . $journal['other_account'] . ") | " . $number . " | " . $journal['purchase_invoice'] . " | " . $journal['supplier_invoice'],
+                    "description" => "(" . $journal['other_account'] . ") | " . $number . " | " . $purchase_invoice . " | " . $supplier_invoice,
                     "currency" => $journal['currency'],
                     "original_debit" => $original_debit,
                     "original_credit" => $original_credit,
@@ -1053,6 +1051,10 @@ class Journal_postings extends CI_Controller
                 $account_name = $journal['account_name'];
                 $debit = $journal['local_debit'];
                 $credit = $journal['local_credit'];
+                $description = $journal['description'];
+                $explode = explode(" | ", $description);
+                $sales_invoice = @$explode[0];
+                $customer_invoice = @$explode[1];
 
                 // $transmonth = date('Y-m-01', strtotime($journal['receipt_date']));
                 // $transmonth = $journal['receipt_date'];
@@ -1077,13 +1079,13 @@ class Journal_postings extends CI_Controller
                 $data[] = array(
                     "trans_date" => $journal['receipt_date'],
                     "document_no" => $number,
-                    "invoice_no" => $journal['sales_invoice'],
+                    "invoice_no" => $sales_invoice,
                     "company_id" => $journal['customer_id'],
                     "company_name" => $journal['customer_name'] . " (" . $journal['other_account'] . ")",
                     "modul" => $modul,
                     "account_number" => $account_number,
                     "account_name" => $account_name,
-                    "description" => $journal['customer_name'] . " (" . $journal['other_account'] . ") | " . $number . " | " . $journal['sales_invoice'] . " | " . $journal['description'],
+                    "description" => "(" . $journal['other_account'] . ") | " . $number . " | " . $sales_invoice . " | " . $customer_invoice,
                     "currency" => $journal['currency'],
                     "original_debit" => $original_debit,
                     "original_credit" => $original_credit,
@@ -1164,7 +1166,7 @@ class Journal_postings extends CI_Controller
                     "modul" => $modul,
                     "account_number" => $account_number,
                     "account_name" => $account_name,
-                    "description" => $journal['supplier_name'] . " | " . $number . " | " . $journal['purchase_invoice_number'] . " | " . $journal['name'],
+                    "description" => $number . " | " . $journal['purchase_invoice_number'] . " | " . $journal['name'],
                     "currency" => $journal['currency'],
                     "original_debit" => $original_debit,
                     "original_credit" => $original_credit,

@@ -810,23 +810,15 @@
         var date_27 = $("#date_27").textbox('getValue');
         var date_28 = $("#date_28").textbox('getValue');
         
-        if(last_date == "28"){
-            var date_28 = $("#date_28").textbox('getValue');
-            var date_29 = 0;
-            var date_30 = 0;
-            var date_31 = 0;
-        }else if(last_date == "29"){
-            var date_28 = $("#date_28").textbox('getValue');
+        if(last_date == "29"){
             var date_29 = $("#date_29").textbox('getValue');
             var date_30 = 0;
             var date_31 = 0;
         }else if(last_date == "30"){
-            var date_28 = $("#date_28").textbox('getValue');
             var date_29 = $("#date_29").textbox('getValue');
             var date_30 = $("#date_30").textbox('getValue');
             var date_31 = 0;
         }else{
-            var date_28 = $("#date_28").textbox('getValue');
             var date_29 = $("#date_29").textbox('getValue');
             var date_30 = $("#date_30").textbox('getValue');
             var date_31 = $("#date_31").textbox('getValue');

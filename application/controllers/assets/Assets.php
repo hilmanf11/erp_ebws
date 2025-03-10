@@ -170,7 +170,7 @@ class Assets extends CI_Controller
         if ($this->input->post()) {
             $id = $this->input->post('id');
             $post = $this->input->post();
-            $send = $this->crud->update('assets', ["id" => $id], $post);
+            $send = $this->crud->update('assets', ["request_no" => $post['request_no'], "item_rm_id" => $post['item_rm_id']], $post);
             echo $send;
         } else {
             show_error("Cannot Process your request");

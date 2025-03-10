@@ -57,7 +57,7 @@ class Barcode_divides_fg extends CI_Controller
             }
 
             if(empty($records)){
-                $this->db->select("a.*, b.trans_date as receipt_date, a.id as reff, c.id as item_fg_id, c.number_customer as number, c.name, '' as customer_id");
+                $this->db->select("a.*, b.trans_date as receipt_date, b.id as reff, c.id as item_fg_id, c.number_customer as number, c.name, '' as customer_id");
                 $this->db->from('scan_item_receipts_fg a');
                 $this->db->join('os_fg b', 'b.id = a.workorder');
                 $this->db->join('item_fg c', 'b.item_fg_id = c.id');

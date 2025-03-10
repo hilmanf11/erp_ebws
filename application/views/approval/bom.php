@@ -8,24 +8,43 @@
     <thead>
         <tr>
             <th field="ck" checkbox="true"></th>
+            <th data-options="field:'detail',width:80,halign:'center',formatter:BtnDetail">Details</th>
             <th data-options="field:'drawing',width:80,halign:'center',formatter: btnDrawing">Drawing</th>
-            <th data-options="field:'item_fg_number',width:150,halign:'center'">Product No</th>
-            <th data-options="field:'item_fg_name',width:150,halign:'center'">Product Name</th>
-            <th data-options="field:'item_rm_number',width:150,halign:'center'">Part No</th>
-            <th data-options="field:'item_rm_name',width:150,halign:'center'">Part Name</th>
-            <th data-options="field:'maker',width:100,halign:'center'">Maker</th>
-            <th data-options="field:'type',width:100,halign:'center'">Type</th>
-            <th data-options="field:'main_process',width:100,halign:'center'">Process Main</th>
-            <th data-options="field:'product_family_name',width:150,halign:'center'">Product Family</th>
-            <th data-options="field:'uom',width:100,halign:'center'">Uom</th>
-            <th data-options="field:'composition',width:80,halign:'center',align:'right',formatter: numberformat">Composition</th>
-            <th data-options="field:'revision',width:100,halign:'center'">Rev</th>
-            <th data-options="field:'remark',width:100,halign:'center'">Remarks</th>
+            <th data-options="field:'item_fg_number',width:150,halign:'center'">Product No EBWS</th>
+            <th data-options="field:'number_customer',width:200,halign:'center'">Product No Customer</th>
+            <th data-options="field:'item_fg_name',width:120,halign:'center'">Product Name</th>
+            <th data-options="field:'uom',width:80,halign:'center'">Uom</th>
+            <th data-options="field:'revision',width:50,align:'center'">Rev</th>
             <th data-options="field:'created_by',width:120,halign:'center'">Create By</th>
             <th data-options="field:'created_date',width:150,halign:'center'">Create Date</th>
         </tr>
     </thead>
 </table>
+
+<div id="dlg_details" class="easyui-window" title="Detail Data" data-options="closed: true, modal:true, closed: true, minimizable:false, collapsible:false" style="width: 800px; height: 500px; top: 50px;">
+    <table id="dg_details" class="easyui-datagrid" style="width:100%;">
+        <thead>
+            <tr>
+                <th data-options="field:'item_rm_id',width:100,halign:'center'">Part No EBWS</th>
+                <th data-options="field:'item_rm_number',width:250,halign:'center'">Part No Supplier</th>
+                <th data-options="field:'item_rm_name',width:100,halign:'center'">Part Name</th>
+                <!-- <th data-options="field:'maker',width:100,halign:'center'">Maker</th>
+                <th data-options="field:'type',width:100,halign:'center'">Type</th> -->
+                <th data-options="field:'main_process',width:100,halign:'center'">Process Main</th>
+                <th data-options="field:'product_family_name',width:150,halign:'center'">Product Family</th>
+                <th data-options="field:'uom',width:80,halign:'center'">Uom</th>
+                <th data-options="field:'composition_old',width:80,halign:'center',align:'right',formatter: numberformat">QPA Prev</th>
+                <th data-options="field:'composition',width:80,halign:'center',align:'right',formatter: numberformat">QPA New</th>
+                <th data-options="field:'revision',width:50,align:'center'">Rev</th>
+                <th data-options="field:'remark',width:100,halign:'center'">Remarks</th>
+                <th data-options="field:'created_by',width:120,halign:'center'">Created By</th>
+                <th data-options="field:'created_date',width:150,halign:'center'">Created Date</th>
+                <th data-options="field:'updated_by',width:120,halign:'center'">Updated By</th>
+                <th data-options="field:'updated_date',width:150,halign:'center'">Updated Date</th>
+            </tr>
+        </thead>
+    </table>
+</div>
 
 <!-- TOOLBAR DATAGRID -->
 <div id="toolbar" style="height: 35px;">
@@ -206,5 +225,29 @@
         }else{
             return "<a class='btn btn-primary btn-sm' style='pointer-events: auto; opacity:1; width:100%;' target='_blank' href='<?= base_url('assets/documents/bom/') ?>"+val+"'><i class='fa fa-eye'></i> View</a>";
         }
+    }
+
+    function BtnDetail(val, row) {
+        var details = "details('"+row.item_fg_id+"','"+row.number_customer+"')";
+        return '<a class="btn btn-primary w-100" style="pointer-events: visible; opacity:1;" onClick="'+details+'"><i class="fa fa-eye"></i> View</a>';
+    }
+
+    function details(item_fg_id, number_customer) {
+        $("#dlg_details").window('open');
+        $('#dlg_details').window('setTitle', 'Detail of ' + number_customer);
+
+        $('#dg_details').datagrid({
+            url: '<?= base_url('approvals/approvalBomDetails/'.base64_encode($approved_to).'/'.base64_encode($approved_by)) ?>?item_fg_id=' + btoa(item_fg_id),
+            clientPaging: false,
+            remoteFilter: true,
+            rownumbers: true,
+            singleSelect: false,
+            fit:true,
+            rowStyler: function(index,row){
+                if (row.composition_old != row.composition){
+                    return 'background-color:#caffc7;font-weight:bold;';
+                }
+            }
+        });
     }
 </script>

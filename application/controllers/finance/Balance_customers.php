@@ -100,6 +100,7 @@ class Balance_customers extends CI_Controller
                 $send = $this->crud->update('account_balance_customers', ["customer_id" => $post['customer_ids'], "plant" => $post['plant']], [
                     // "plant" => $post['plant'],
                     // "customer_id" => $post['customer_ids'],
+                    "document_no" => $post['document_no'],
                     "account_number" => $post['account_number'],
                     "currency" => $post['currency'],
                     "currency_local" => $post['currency_local'],
@@ -112,6 +113,7 @@ class Balance_customers extends CI_Controller
             }else{
                 $send = $this->crud->create('account_balance_customers', [
                     "customer_id" => $post['customer_ids'],
+                    "document_no" => $post['document_no'],
                     "plant" => $post['plant'],
                     "account_number" => $post['account_number'],
                     "currency" => $post['currency'],
@@ -296,6 +298,7 @@ class Balance_customers extends CI_Controller
                 <th rowspan="2" width="20">No</th>
                 <th rowspan="2">Customer Code</th>
                 <th rowspan="2">Customer Name</th>
+                <th rowspan="2">Document No</th>
                 <th rowspan="2">Account Number</th>
                 <th rowspan="2">Account Name</th>
                 <th colspan="2">Original Currency</th>
@@ -314,8 +317,9 @@ class Balance_customers extends CI_Controller
         foreach ($records as $data) {
             $html .= '<tr>
                         <td>' . $no . '</td>
-                        <td>' . $data['customer_number'] . '</td>
+                        <td>' . $data['customer_ids'] . '</td>
                         <td>' . $data['customer_name'] . '</td>
+                        <td>' . $data['document_no'] . '</td>
                         <td>' . $data['account_number'] . '</td>
                         <td>' . $data['account_name'] . '</td>
                         <td>' . $data['currency'] . '</td>

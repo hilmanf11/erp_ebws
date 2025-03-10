@@ -388,10 +388,11 @@ class Journal_posting_banks extends CI_Controller
         if ($this->input->post()) {
 
             $post = $this->input->post();
+            $data = explode(" | ", $post['description']);
 
             if(empty($post['id'])){
                 $send = $this->crud->create('journal_postings', $post);
-                $this->db->update('journal_postings', ["status_bank" => 1], ["document_no" => $post['document_no']]);
+                $this->db->update('journal_postings', ["status_bank" => 1], ["number" => @$data[3]]);
             }else{
                 $send = $this->crud->update('journal_postings', ["id" => $post['id']], $post);
             }
@@ -408,7 +409,8 @@ class Journal_posting_banks extends CI_Controller
         $postings = $this->crud->reads("journal_postings", ["number" => $data['number']]);
 
         foreach ($postings as $posting) {
-            $this->db->update('journal_postings', ["status_bank" => 0], ["document_no" => $posting->document_no]);
+            $data = explode(" | ", $posting->description);
+            $this->db->update('journal_postings', ["status_bank" => 0], ["number" => @$data[3]]);
         }
 
         $send = $this->crud->delete('journal_postings', $data);

@@ -28,10 +28,10 @@ class Suppliers extends CI_Controller
         }
     }
     //GET DATA
-    public function reads()
+    public function reads($supplier_type = "")
     {
         $post = isset($_POST['q']) ? $_POST['q'] : "";
-        $send = $this->crud->reads('suppliers', ["name" => $post], ["status" => 0]);
+        $send = $this->crud->reads('suppliers', ["name" => $post, "supplier_type" => $supplier_type], ["status" => 0]);
         echo json_encode($send);
     }
 

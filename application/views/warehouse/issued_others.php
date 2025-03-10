@@ -29,11 +29,11 @@
 </table>
 <div id="toolbar" style="height: 200px; padding:10px;">
     <div style="width: 100%;">
-        <fieldset style="width: 80%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
+        <fieldset style="width: 100%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
             <legend><b>Form Filter Data</b></legend>
-            <div style="width: 50%; float: left;">
+            <div style="width: 40%; float: left;">
                 <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Period</span>
+                    <span style="width:35%; display:inline-block;">Requisition Date</span>
                     <input style="width:28%;" id="filter_from" value="<?= date("Y-m-01") ?>" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false"> To
                     <input style="width:28%;" id="filter_to" value="<?= date("Y-m-t") ?>" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
                 </div>
@@ -46,10 +46,28 @@
                     <a href="javascript:;" class="easyui-linkbutton" onclick="filter()"><i class="fa fa-search"></i> Filter Data</a>
                 </div>
             </div>
-            <div style="width: 50%; float: left;">
+            <div style="width: 30%; float: left;">
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Requisition Name</span>
+                    <input style="width:60%;" id="filter_request_name" class="easyui-combobox">
+                </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Part No</span>
                     <input style="width:60%;" id="filter_part_no" class="easyui-combogrid">
+                </div>
+            </div>
+            <div style="width: 30%; float: left;">
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Location Store</span>
+                    <input style="width:60%;" id="filter_location" class="easyui-combobox">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Status</span>
+                    <select style="width:60%;" id="filter_status" class="easyui-combobox" panelHeight="auto">
+                        <option value="">ALL</option>
+                        <option value="0">OPEN</option>
+                        <option value="1">CLOSE</option>
+                    </select>
                 </div>
             </div>
         </fieldset>
@@ -433,9 +451,13 @@
         var filter_from = $("#filter_from").datebox('getValue');
         var filter_to = $("#filter_to").datebox('getValue');
         var filter_request_no = $("#filter_request_no").combogrid('getValue');
+        var filter_request_name = $("#filter_request_name").combobox('getValue');
+        var filter_location = $("#filter_location").combobox('getValue');
+        var filter_status = $("#filter_status").combobox('getValue');
         var filter_part_no = $("#filter_part_no").combogrid('getValue');
 
-        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_request_no=" + filter_request_no + "&filter_part_no=" + filter_part_no;
+        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_request_no=" + filter_request_no + "&filter_request_name=" + 
+            filter_request_name + "&filter_location=" + filter_location + "&filter_part_no=" + filter_part_no + "&filter_status=" + filter_status;
 
         $('#dg').datagrid({
             url: '<?= base_url('warehouse/issued_others/datatables') ?>' + url,
@@ -459,9 +481,13 @@
         var filter_from = $("#filter_from").datebox('getValue');
         var filter_to = $("#filter_to").datebox('getValue');
         var filter_request_no = $("#filter_request_no").combogrid('getValue');
+        var filter_request_name = $("#filter_request_name").combobox('getValue');
+        var filter_location = $("#filter_location").combobox('getValue');
+        var filter_status = $("#filter_status").combobox('getValue');
         var filter_part_no = $("#filter_part_no").combogrid('getValue');
 
-        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_request_no=" + filter_request_no + "&filter_part_no=" + filter_part_no;
+        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_request_no=" + filter_request_no + "&filter_request_name=" + 
+            filter_request_name + "&filter_location=" + filter_location + "&filter_part_no=" + filter_part_no + "&filter_status=" + filter_status;
 
         window.location.assign('<?= base_url('warehouse/issued_others/print/excel') ?>' + url);
     }
@@ -568,7 +594,7 @@
 
         $('#filter_part_no').combogrid({
             url: '<?= base_url('master/item_rm/readNotRm/'); ?>',
-            panelWidth: 450,
+            panelWidth: 550,
             idField: 'id',
             textField: 'number',
             mode: 'remote',
@@ -578,15 +604,15 @@
                 [{
                     field: 'id',
                     title: 'Part ID',
-                    width: 150
+                    width: 100
                 }, {
                     field: 'number',
                     title: 'Part No',
-                    width: 150
+                    width: 200
                 }, {
                     field: 'name',
                     title: 'Part Name',
-                    width: 100
+                    width: 200
                 }]
             ],
         });
@@ -616,6 +642,32 @@
             ],
         });
 
+        $('#filter_request_name').combobox({
+            url: '<?= base_url('warehouse/issued_others/readRequestname'); ?>',
+            valueField: 'request_name',
+            textField: 'request_name',
+            prompt: 'Choose Request Name',
+            icons: [{
+                iconCls: 'icon-clear',
+                handler: function(e) {
+                    $(e.data.target).combobox('clear').combobox('textbox').focus();
+                }
+            }],
+        });
+
+        $('#filter_location').combobox({
+            url: '<?= base_url('master/location_others/reads'); ?>',
+            valueField: 'number',
+            textField: 'name',
+            prompt: 'Choose Location',
+            icons: [{
+                iconCls: 'icon-clear',
+                handler: function(e) {
+                    $(e.data.target).combobox('clear').combobox('textbox').focus();
+                }
+            }],
+        });
+
         $("#qty").numberbox({
             onChange: function(qty) {
                 var stock = $("#stock").numberbox('getValue');
@@ -634,7 +686,7 @@
         $('#location_other_number').combobox({
             url: '<?= base_url('master/location_others/reads'); ?>',
             valueField: 'number',
-            textField: 'number',
+            textField: 'name',
             prompt: 'Choose Location',
             icons: [{
                 iconCls: 'icon-clear',

@@ -51,7 +51,7 @@ class Report_outstanding_po extends CI_Controller
         if ($option == "excel") {
             $format  = date("Ymd");
             header("Content-type: application/vnd-ms-excel");
-            header("Content-Disposition: attachment; filename=sales_orders_$format.xls");
+            header("Content-Disposition: attachment; filename=outstanding_po_$format.xls");
         }
 
         $filter_from = base64_decode($this->input->get("filter_from"));
@@ -80,11 +80,11 @@ class Report_outstanding_po extends CI_Controller
         JOIN item_familys e ON a.item_family_id = e.id
         JOIN purchase_orders b ON a.id = b.item_rm_id
         JOIN suppliers f ON b.supplier_id = f.id
-        LEFT JOIN (SELECT item_rm_id, po_no, SUM(qty_receipt) AS qty_receipt FROM purchase_order_receipts WHERE receipt_date between '$filter_from' and '$filter_to' GROUP BY item_rm_id, po_no) c ON a.id = c.item_rm_id and b.po_no = c.po_no
+        LEFT JOIN (SELECT item_rm_id, po_no, SUM(qty_receipt) AS qty_receipt FROM purchase_order_receipts WHERE receipt_date between '$filter_from' and '$filter_to' and status != '2' GROUP BY item_rm_id, po_no) c ON a.id = c.item_rm_id and b.po_no = c.po_no
         LEFT JOIN (SELECT a.id, b.po_no, (COALESCE(SUM(b.qty), 0) - COALESCE(c.qty_receipt, 0)) AS begin_stock
             FROM item_rm a
             JOIN purchase_orders b ON a.id = b.item_rm_id
-            LEFT JOIN (SELECT item_rm_id, po_no, SUM(qty_receipt) AS qty_receipt FROM purchase_order_receipts WHERE receipt_date < '$filter_from' GROUP BY item_rm_id, po_no) c ON a.id = c.item_rm_id and b.po_no = c.po_no
+            LEFT JOIN (SELECT item_rm_id, po_no, SUM(qty_receipt) AS qty_receipt FROM purchase_order_receipts WHERE receipt_date < '$filter_from' and status != '2' GROUP BY item_rm_id, po_no) c ON a.id = c.item_rm_id and b.po_no = c.po_no
             WHERE b.po_date < '$filter_from' and b.supplier_id like '%$filter_supplier%' and a.id like '%$filter_product_no%' and b.po_no like '%$filter_purchase_order%'
             GROUP BY a.id, b.po_no) d ON a.id = d.id and b.po_no = d.po_no
         WHERE b.po_date BETWEEN '$filter_from' AND '$filter_to' and b.supplier_id like '%$filter_supplier%' and a.id like '%$filter_product_no%' and b.po_no like '%$filter_purchase_order%'
@@ -187,8 +187,8 @@ class Report_outstanding_po extends CI_Controller
                             </tr>
                             <tr>
                                 <th width="20"></th>
-                                <th width="20"></th>
                                 <th width="20">No</th>
+                                <th width="20">Status</th>
                                 <th>Trans Type</th>
                                 <th>Created By</th>
                                 <th>Trans Date</th>
@@ -235,7 +235,8 @@ class Report_outstanding_po extends CI_Controller
                         c.name as supplier_name,
                         a.receipt_no,
                         a.bc_document,
-                        a.qty_receipt
+                        a.qty_receipt,
+                        a.status
                     FROM purchase_order_receipts a 
                     JOIN item_rm b ON a.item_rm_id = b.id
                     JOIN suppliers c ON a.supplier_id = c.id
@@ -257,8 +258,8 @@ class Report_outstanding_po extends CI_Controller
                         $balance = ($begin + $qty);
                         $html .= '  <tr>
                                         <td></td>
-                                        <td>-</td>
                                         <td style="text-align:center">' . $nod . '</td>
+                                        <td>-</td>
                                         <td>PURCHASE ORDER</td>
                                         <td>' . $purchase->created_name . '</td>
                                         <td>' . $purchase->po_date . '</td>
@@ -277,10 +278,24 @@ class Report_outstanding_po extends CI_Controller
 
                     foreach ($receipts as $receipt) {
                         $balance = ($begin - $receipt->qty_receipt);
+
+                        if($receipt->status == 2){
+                            $qty_receipt = 0;
+                            $status = "CANCEL";
+                        }else{
+                            if($receipt->status == "0"){
+                                $status = "NOT SCAN";
+                            }else{
+                                $status = "SCAN IN";
+                            }
+
+                            $qty_receipt = $receipt->qty_receipt;
+                        }
+
                         $html .= '  <tr>
                                         <td></td>
-                                        <td>-</td>
                                         <td style="text-align:center">' . $nod . '</td>
+                                        <td>'.$status.'</td>
                                         <td>GATE ENTRY</td>
                                         <td>' . $receipt->created_name . '</td>
                                         <td>' . $receipt->receipt_date . '</td>
@@ -290,10 +305,10 @@ class Report_outstanding_po extends CI_Controller
                                         <td>' . $receipt->bc_document . '</td>
                                         <td style="text-align:right;">' . number_format($begin, 2) . '</td>
                                         <td style="text-align:right;">' . number_format(0) . '</td>
-                                        <td style="text-align:right;">' . number_format($receipt->qty_receipt, 2)  . '</td>
+                                        <td style="text-align:right;">' . number_format($qty_receipt, 2)  . '</td>
                                         <td style="text-align:right;">' . number_format($balance, 2)  . '</td>
                                     </tr>';
-                        $begin -= $receipt->qty_receipt;
+                        $begin -= $qty_receipt;
                         $nod++;
                     }
                 }

@@ -73,20 +73,23 @@ class Report_sales_registers extends CI_Controller
             d.bill_state,
             d.ship_address,
             d.ship_state,
-            c.number as item_fg_number, 
+            (CASE WHEN c.number is null THEN a.item_no ELSE c.number END) as item_fg_number, 
             c.number_customer, 
-            c.name as item_fg_name,
+            (CASE WHEN c.name is null THEN a.item_name ELSE c.name END) as item_fg_name,
             e.account_name,
             f.igst as igst_rate,
             f.sgst as sgst_rate,
-            f.cgst as cgst_rate
+            f.cgst as cgst_rate,
+            g.number as voucher_no,
+            g.remarks as voucher_remarks
         ');
         $this->db->from('sales_invoices a');
         $this->db->join('customers b', 'a.customer_id = b.id');
-        $this->db->join('item_fg c', 'a.item_fg_id = c.id');
+        $this->db->join('item_fg c', 'a.item_fg_id = c.id', 'left');
         $this->db->join('customer_address d', 'a.customer_id = d.customer_id and a.plant = d.plant', 'left');
         $this->db->join('account_coa e', 'a.account_number = e.account_number', 'left');
         $this->db->join('hsn f', 'c.hsn_code = f.number', 'left');
+        $this->db->join('journal_postings g', "a.number = g.document_no and g.modul = 'SALES INVOICING'");
         if ($filter_from != "") {
             $this->db->where("a.trans_date between '$filter_from' and '$filter_to'");
         }
@@ -102,6 +105,8 @@ class Report_sales_registers extends CI_Controller
         if($filter_item_no != ""){
             $this->db->where('a.item_fg_id', $filter_item_no);
         }
+        $this->db->group_by('a.id');
+        $this->db->group_by('g.remarks');
         $this->db->order_by('a.status', 'ASC');
         $this->db->order_by('a.customer_id', 'ASC');
         $this->db->order_by('a.number', 'ASC');
@@ -109,7 +114,7 @@ class Report_sales_registers extends CI_Controller
 
         $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#customers {border-collapse: collapse;width: 300%;font-size: 12px;}#customers td, #customers th {border: 1px solid #ddd;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: #ddd;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: center;color: black;}</style><body>
             <center>
-                <div style="float: left; font-size: 12px; text-align: left;">
+                <div style="font-size: 12px; text-align: left; margin-bottom:20px;">
                     <table style="width: 100%;">
                         <tr>
                             <td width="50" style="font-size: 12px; vertical-align: top; text-align: center; vertical-align:jus margin-right:10px;">
@@ -121,18 +126,11 @@ class Report_sales_registers extends CI_Controller
                         </tr>
                     </table>
                 </div>
-                <div style="float: right; font-size: 12px; text-align: right;">
-                    Print Date ' . date("d M Y H:i:s") . ' <br>
-                    Print By ' . $this->session->username . '  
-                </div>
             </center>
-            <br><br>
-            <center>
+            <center style="margin-bottom:20px;">
                 <h2>SALES REGISTER REPORT</h2>
                 <small>PERIOD '.$filter_from.' To '.$filter_to.'</small>
             </center>
-            <br><br>
-            
             <table id="customers" border="1">
                 <tr>
                     <th width="20">No</th>
@@ -190,7 +188,16 @@ class Report_sales_registers extends CI_Controller
             }else{
                 $cgst_rate = 0;
             }
-            $html .= '  <tr>
+
+            if($data['voucher_remarks'] == "CANCEL SALES INVOICE"){
+                $style = "style='color:red;'";
+                $minus = "-";
+            }else{
+                $style = "";
+                $minus = "";
+            }
+
+            $html .= '  <tr '.$style.'>
                             <td style="text-align:center">' . $no . '</td>
                             <td>' . $config->gst_no . '</td>
                             <td>' . $data['vendor_code'] . '</td>
@@ -214,16 +221,16 @@ class Report_sales_registers extends CI_Controller
                             <td>' . $data['item_fg_name'] . '</td>
                             <td>' . $data['account_name'] . '</td>
                             <td>' . $data['hsn_code'] . '</td>
-                            <td style="text-align:right;">' . $data['qty'] . '</td>
-                            <td style="text-align:right;">' . $data['total'] . '</td>
+                            <td style="text-align:right;">' . $minus.$data['qty'] . '</td>
+                            <td style="text-align:right;">' . $minus.$data['total'] . '</td>
                             <td style="text-align:right;">' . $igst_rate . '</td>
-                            <td style="text-align:right;">' . $data['igst'] . '</td>
+                            <td style="text-align:right;">' . $minus.$data['igst'] . '</td>
                             <td style="text-align:right;">' . $cgst_rate . '</td>
-                            <td style="text-align:right;">' . $data['cgst'] . '</td>
+                            <td style="text-align:right;">' . $minus.$data['cgst'] . '</td>
                             <td style="text-align:right;">' . $sgst_rate . '</td>
-                            <td style="text-align:right;">' . $data['sgst'] . '</td>
-                            <td></td>
-                            <td style="text-align:right;">' . $data['total2'] . '</td>
+                            <td style="text-align:right;">' . $minus.$data['sgst'] . '</td>
+                            <td>' . $minus.$data['tcs'] . '</td>
+                            <td style="text-align:right;">' . $minus.$data['total2'] . '</td>
                             <td>' . $data['account_number'] . '</td>
                             <td>' . $data['account_name'] . '</td>
                         </tr>';

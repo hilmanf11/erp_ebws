@@ -5,7 +5,7 @@
             <div style="width: 50%; float: left;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Trans Date</span>
-                    <input style="width:30%;" id="filter_from" value="<?= date("Y-m-01") ?>" class="easyui-datebox" data-options="prompt:'Start Date',formatter:myformatter,parser:myparser, editable:false">
+                    <input style="width:30%;" id="filter_from" value="<?= "2024-11-01" ?>" class="easyui-datebox" data-options="prompt:'Start Date',formatter:myformatter,parser:myparser, editable:false">
                     <input style="width:30%;" id="filter_to" value="<?= date("Y-m-t") ?>" class="easyui-datebox" data-options="prompt:'Finish Date',formatter:myformatter,parser:myparser, editable:false">
                 </div>
                 <div class="fitem">
@@ -101,7 +101,6 @@
     function reload() {
         window.location.reload();
     }
-
     $(function() {
         $('#filter_supplier').combobox({
             url: '<?php echo base_url('master/suppliers/reads'); ?>',
@@ -145,7 +144,7 @@
                     url: '<?= base_url('finance/report_purchase_registers/readPartNo/') ?>' + btoa(row.id),
                     panelWidth: 520,
                     idField: 'item_rm_id',
-                    textField: 'item_rm_number',
+                    textField: 'item_no',
                     mode: 'remote',
                     fitColumns: true,
                     prompt: "Choose Part No",
@@ -155,11 +154,11 @@
                             title: 'Part No EBWS',
                             width: 120
                         }, {
-                            field: 'item_rm_number',
+                            field: 'item_no',
                             title: 'Part No Supplier',
                             width: 250
                         }, {
-                            field: 'item_rm_name',
+                            field: 'item_name',
                             title: 'Description',
                             width: 200
                         }]
@@ -168,34 +167,9 @@
             }
         });
 
-        $('#filter_item_no').combogrid({
-            url: '<?= base_url('finance/report_purchase_registers/readPartNo') ?>',
-            panelWidth: 520,
-            idField: 'item_rm_id',
-            textField: 'item_rm_number',
-            mode: 'remote',
-            fitColumns: true,
-            prompt: "Choose Part No",
-            columns: [
-                [{
-                    field: 'item_rm_id',
-                    title: 'Part No EBWS',
-                    width: 120
-                }, {
-                    field: 'item_rm_number',
-                    title: 'Part No Supplier',
-                    width: 250
-                }, {
-                    field: 'item_rm_name',
-                    title: 'Description',
-                    width: 200
-                }]
-            ],
-        });
-
         $('#filter_item_familys').combogrid({
             url: '<?= base_url('master/item_familys/reads') ?>',
-            panelWidth: 320,
+            panelWidth: 420,
             idField: 'id',
             textField: 'name',
             mode: 'remote',
@@ -211,7 +185,7 @@
                 [{
                     field: 'number',
                     title: 'Product Family ID',
-                    width: 80
+                    width: 120
                 }, {
                     field: 'name',
                     title: 'Product Family Name',

@@ -2,20 +2,21 @@
     <thead>
         <tr>
             <th rowspan="2" field="ck" checkbox="true"></th>
-            <th rowspan="2" data-options="field:'trans_date',width:80,align:'center'">Trans Date</th>
+            <th rowspan="2" data-options="field:'status',width:80,align:'center', formatter: statusformat, styler:statusStyle">Status<br>Invoice</th>
+            <th rowspan="2" data-options="field:'trans_date',width:100,align:'center'">Trans Date</th>
             <th rowspan="2" data-options="field:'number',width:150,halign:'center'">Document No</th>
-            <th rowspan="2" data-options="field:'item_fg_number',width:150,halign:'center'">Product No EBWS</th>
-            <th rowspan="2" data-options="field:'item_fg_customer',width:150,halign:'center'">Product No Customer</th>
-            <th rowspan="2" data-options="field:'item_fg_name',width:200,halign:'center'">Description</th>
+            <th rowspan="2" data-options="field:'item_id',width:150,halign:'center'">Part No EBWS</th>
+            <th rowspan="2" data-options="field:'item_number',width:150,halign:'center'">Part No Supplier</th>
+            <th rowspan="2" data-options="field:'item_name',width:200,halign:'center'">Description</th>
             <th rowspan="2" data-options="field:'uom',width:80,halign:'center'">UOM</th>
             <th rowspan="2" data-options="field:'qty',width:80,halign:'center',align:'right',formatter:numberformat">Qty</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
         </tr>
         <tr>
-            <th data-options="field:'created_by',width:100,align:'center'"> By</th>
+            <th data-options="field:'created_by',width:120,align:'center'"> By</th>
             <th data-options="field:'created_date',width:150,align:'center'"> Date</th>
-            <th data-options="field:'updated_by',width:100,align:'center'"> By</th>
+            <th data-options="field:'updated_by',width:120,align:'center'"> By</th>
             <th data-options="field:'updated_date',width:150,align:'center'"> Date</th>
         </tr>
     </thead>
@@ -31,7 +32,7 @@
                 <input style="width:30%;" id="filter_to" value="<?= date("Y-m-t") ?>" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
             </div>
             <div class="fitem">
-                <span style="width:35%; display:inline-block;">Product No</span>
+                <span style="width:35%; display:inline-block;">Part No</span>
                 <input style="width:60%;" id="filter_items" class="easyui-combogrid">
             </div>
             <div class="fitem">
@@ -56,8 +57,8 @@
                 <input style="width:60%;" name="trans_date" id="trans_date" required="" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
             </div>
             <div class="fitem">
-                <span style="width:35%; display:inline-block;">Product No</span>
-                <input style="width:60%;" name="item_fg_id" id="item_fg_id" required="" class="easyui-combogrid">
+                <span style="width:35%; display:inline-block;">Part No</span>
+                <input style="width:60%;" name="item_id" id="item_id" required="" class="easyui-combogrid">
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">UOM</span>
@@ -210,14 +211,14 @@
             }]
         });
 
-        $('#item_fg_id').combogrid({
+        $('#item_id').combogrid({
             url: '<?= base_url('production/scrap_booking/readItems') ?>',
             panelWidth: 550,
             idField: 'id',
             textField: 'number',
             mode: 'remote',
             fitColumns: true,
-            prompt: "Select Product No",
+            prompt: "Select Part No",
             icons: [{
                 iconCls: 'icon-clear',
                 handler: function(e) {
@@ -226,12 +227,12 @@
             }],
             columns: [
                 [{
-                    field: 'number',
-                    title: 'Product No EBWS',
+                    field: 'id',
+                    title: 'Part No EBWS',
                     width: 150
                 }, {
-                    field: 'number_customer',
-                    title: 'Product No Customer',
+                    field: 'number',
+                    title: 'Part No Supplier',
                     width: 200
                 }, {
                     field: 'name',
@@ -252,7 +253,7 @@
         textField: 'number',
         mode: 'remote',
         fitColumns: true,
-        prompt: "Select Product No",
+        prompt: "Select Part No",
         icons: [{
             iconCls: 'icon-clear',
             handler: function(e) {
@@ -261,12 +262,12 @@
         }],
         columns: [
             [{
-                field: 'number',
-                title: 'Product No EBWS',
+                field: 'id',
+                title: 'Part No EBWS',
                 width: 150
             }, {
-                field: 'number_customer',
-                title: 'Product No Customer',
+                field: 'number',
+                title: 'Part No Supplier',
                 width: 200
             }, {
                 field: 'name',

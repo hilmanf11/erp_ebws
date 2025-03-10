@@ -395,6 +395,7 @@
                 number("<?= $menus_id ?>");
             }, 2000);
 
+            $("#note").textbox('setValue', 'REVERSAL');
             $("#receipt_date").datebox('enable');
             $("#receipt_type").combobox('enable');
             $("#customer_id").combogrid('enable');
@@ -477,7 +478,7 @@
                         account_number: rows[i].account_number,
                         account_name: rows[i].account_name,
                         account_type: rows[i].account_type,
-                        description: rows[i].description,
+                        description: rows[i].sales_invoice + " | " + rows[i].description,
                         currency: rows[i].currency,
                         receipt_date: receipt_date,
                         trans_date: rows[i].trans_date,
@@ -697,26 +698,8 @@
                     field: 'id'
                 });
 
-                $.ajax({
-                    method: 'post',
-                    url: '<?= base_url('finance/ar_receipts/deleteSingle') ?>',
-                    data: {
-                        id: row.id,
-                        sales_invoice: row.sales_invoice
-                    },
-                    success: function(result) {
-                        var result = eval('(' + result + ')');
-                        toastr.success(result.message);
-                    },
-                    error: function(jqXHR, textStatus, errorThrown) {
-                        //toastr.error("This data is already used in other modules, You must delete it First", "Error");
-                    },
-                    complete: function(data) {
-                        $('#dg').datagrid('reload');
-                    }
-                });
-
                 $('#dg2').datagrid('deleteRow', getRowIndex(target));
+                addJournal();
             }
         });
     }
@@ -1309,8 +1292,14 @@
                                             });
 
                                             if (totalrows > 0) {
-                                                for (let i = 0; i < totalrows; i++) {
-                                                    if (rows[i].sales_invoice) {
+                                                requestData(totalrows, rows);
+                                                $('#dlg_insert').dialog('close');
+
+                                                function requestData(total, json, jml = 1, value = 0) {
+                                                    if (value < 100) {
+                                                        value = Math.floor((jml / total) * 100);
+                                                        var i = (jml - 1);
+
                                                         $.ajax({
                                                             type: "post",
                                                             url: '<?= base_url('finance/ar_receipts/create') ?>',
@@ -1327,62 +1316,118 @@
                                                                 cheque_no: cheque_no,
                                                                 note: note,
                                                                 total_receipt: total_receipt,
-                                                                id: rows[i].id,
-                                                                sales_invoice: rows[i].sales_invoice,
-                                                                description: rows[i].description,
-                                                                so_number: rows[i].so_number,
-                                                                currency: rows[i].currency,
-                                                                amount: rows[i].amount,
-                                                                balance: rows[i].balance,
-                                                                receipt: rows[i].receipt,
-                                                                rate: rows[i].rate,
-                                                                remarks: rows[i].remarks,
-                                                                account_number: rows[i].account_number,
-                                                                account_type: rows[i].account_type,
+                                                                id: json[i].id,
+                                                                sales_invoice: json[i].sales_invoice,
+                                                                description: json[i].description,
+                                                                so_number: json[i].so_number,
+                                                                currency: json[i].currency,
+                                                                amount: json[i].amount,
+                                                                balance: json[i].balance,
+                                                                receipt: json[i].receipt,
+                                                                rate: json[i].rate,
+                                                                remarks: json[i].remarks,
+                                                                account_number: json[i].account_number,
+                                                                account_type: json[i].account_type,
                                                             },
                                                             dataType: "json",
                                                             success: function(result) {
-                                                                Swal.fire({
-                                                                    title: result.message,
-                                                                    icon: result.theme,
-                                                                    confirmButtonText: 'Ok',
-                                                                    allowOutsideClick: false,
-                                                                }).then((result) => {
-                                                                    if (result.isConfirmed) {
-                                                                        window.location.reload();
+                                                                requestData(total, json, jml + 1, value);
+                                                                if (jml == total) {
+                                                                    if (totalrows2 > 0) {
+                                                                        requestData2(totalrows2, rows2);
+                                                                        
+                                                                        function requestData2(total2, json2, jml2 = 1, value2 = 0) {
+                                                                            if (value2 < 100) {
+                                                                                value2 = Math.floor((jml2 / total2) * 100);
+                                                                                var z = (jml2 - 1);
+
+                                                                                $.ajax({
+                                                                                    type: "post",
+                                                                                    url: '<?= base_url('finance/ar_receipts/createJournals') ?>',
+                                                                                    data: {
+                                                                                        receipt_no: receipt_no,
+                                                                                        account_number: json2[z].account_number,
+                                                                                        account_name: json2[z].account_name,
+                                                                                        description: json2[z].description,
+                                                                                        debit: json2[z].debit,
+                                                                                        credit: json2[z].credit,
+                                                                                        local_debit: json2[z].local_debit,
+                                                                                        local_credit: json2[z].local_credit,
+                                                                                        flag: json2[z].flag,
+                                                                                    },
+                                                                                    dataType: "json",
+                                                                                    success: function(result2) {
+                                                                                        requestData2(total2, json2, jml2 + 1, value2);
+                                                                                        if (jml2 == total2) {
+                                                                                            Swal.close();
+
+                                                                                            Swal.fire({
+                                                                                                title: result2.message,
+                                                                                                icon: result2.theme,
+                                                                                                confirmButtonText: 'Ok',
+                                                                                                allowOutsideClick: false,
+                                                                                            }).then((result2) => {
+                                                                                                if (result2.isConfirmed) {
+                                                                                                    window.location.reload();
+                                                                                                }
+                                                                                            });
+
+                                                                                            // Swal.fire({
+                                                                                            //     title: 'Posting Journal',
+                                                                                            //     text: result2.message + ", Do you want to save journal posting to ?",
+                                                                                            //     icon: result2.theme,
+                                                                                            //     showCancelButton: true,
+                                                                                            //     allowOutsideClick: false,
+                                                                                            //     allowEscapeKey: false,
+                                                                                            //     confirmButtonText: 'Yes, Add to Journal!'
+                                                                                            // }).then((msg) => {
+                                                                                            //     if (msg.isConfirmed) {
+                                                                                            //         Swal.fire({
+                                                                                            //             title: 'Please Wait...',
+                                                                                            //             showConfirmButton: false,
+                                                                                            //             allowOutsideClick: false,
+                                                                                            //             allowEscapeKey: false,
+                                                                                            //             didOpen: () => {
+                                                                                            //                 Swal.showLoading();
+                                                                                            //             },
+                                                                                            //         });
+
+                                                                                            //         $.ajax({
+                                                                                            //             type: "post",
+                                                                                            //             url: '<?= base_url('finance/sales_invoices/createPosting') ?>',
+                                                                                            //             data: {
+                                                                                            //                 number: number
+                                                                                            //             },
+                                                                                            //             dataType: "json",
+                                                                                            //             success: function(result3) {
+                                                                                            //                 Swal.close();
+
+                                                                                            //                 Swal.fire({
+                                                                                            //                     title: result3.message,
+                                                                                            //                     icon: result3.theme,
+                                                                                            //                     confirmButtonText: 'Ok',
+                                                                                            //                     allowOutsideClick: false,
+                                                                                            //                 }).then((result3) => {
+                                                                                            //                     if (result3.isConfirmed) {
+                                                                                            //                         window.location.reload();
+                                                                                            //                     }
+                                                                                            //                 });
+
+                                                                                            //             }
+                                                                                            //         });
+                                                                                            //     }
+                                                                                            // });
+                                                                                        }
+                                                                                    }
+                                                                                });
+                                                                            }
+                                                                        }
                                                                     }
-                                                                });
+                                                                }
                                                             }
                                                         });
                                                     }
                                                 }
-
-                                                if (totalrows2 > 0) {
-                                                    for (let z = 0; z < totalrows2; z++) {
-                                                        $.ajax({
-                                                            type: "post",
-                                                            url: '<?= base_url('finance/ar_receipts/createJournals') ?>',
-                                                            data: {
-                                                                receipt_no: receipt_no,
-                                                                account_number: rows2[z].account_number,
-                                                                account_name: rows2[z].account_name,
-                                                                description: rows2[z].description,
-                                                                debit: rows2[z].debit,
-                                                                credit: rows2[z].credit,
-                                                                local_debit: rows2[z].local_debit,
-                                                                local_credit: rows2[z].local_credit,
-                                                                flag: rows2[z].flag,
-                                                            },
-                                                            dataType: "json",
-                                                            success: function(result2) {
-                                                                //
-                                                            }
-                                                        });
-                                                    }
-                                                }
-
-                                                $('#dg').datagrid('reload');
-                                                $('#dlg_insert').dialog('close');
                                             } else {
                                                 toastr.warning("please selections your data in table first");
                                             }

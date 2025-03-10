@@ -41,7 +41,7 @@
                 while (strtotime($firstDate) <= strtotime($endDate)) {
                     $working_date = date('d M', strtotime($firstDate));
 
-                    if (date('w', strtotime($firstDate)) !== '0' && date('w', strtotime($firstDate)) !== '6') {
+                    if (date('w', strtotime($firstDate)) !== '0') {
                         $hstyle = "";
                     }else{
                         $hstyle = "background-color:#FFB0B0";
@@ -66,7 +66,7 @@
                 while (strtotime($firstDate) <= strtotime($endDate)) {
                     $working_date = date('d M', strtotime($firstDate));
 
-                    if (date('w', strtotime($firstDate)) !== '0' && date('w', strtotime($firstDate)) !== '6') {
+                    if (date('w', strtotime($firstDate)) !== '0') {
                         $hstyle = "";
                     }else{
                         $hstyle = "background-color:#FFB0B0";
@@ -315,8 +315,8 @@
     }
 
     function pdf() {
-        // $("#printout").get(0).contentWindow.print();
-        toastr.info("Not Ready to This Function");
+        $("#printout").get(0).contentWindow.print();
+        // toastr.info("Not Ready to This Function");
     }
 
     function excel() {
@@ -407,7 +407,7 @@
         if (filter_month != "" && filter_year != "" && filter_revision != "") {
             $('#dg').datagrid({
                 url: '<?= base_url('planning/material_calculation/datatables') ?>' + url,
-                pagination: false,
+                pagination: true,
                 rownumbers: true,
                 singleSelect: true,
                 fit: true,
@@ -415,8 +415,8 @@
                 pageSize: 20,
             });
 
-            // $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
-            // $("#printout").attr('src', '<?= base_url('planning/material_calculation/print') ?>' + url);
+            $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
+            $("#printout").attr('src', '<?= base_url('planning/material_calculation/print') ?>' + url);
         }
 
         $('#filter_month').combobox({
@@ -498,13 +498,13 @@
             }],
             onSelect: function(row, val){
                 $('#filter_item_id').combogrid({
-                    url: '<?= base_url('planning/material_calculation/readProducts/') ?>' + row.number,
-                    panelWidth: 400,
-                    idField: 'item_id',
-                    textField: 'item_id',
+                    url: '<?= base_url('planning/material_calculation/readProducts/') ?>' + row.id,
+                    panelWidth: 550,
+                    idField: 'id',
+                    textField: 'number',
                     mode: 'remote',
                     fitColumns: true,
-                    prompt: "Select Product No",
+                    prompt: "Select Part No",
                     icons: [{
                         iconCls: 'icon-clear',
                         handler: function(e) {
@@ -513,17 +513,52 @@
                     }],
                     columns: [
                         [{
-                            field: 'item_id',
-                            title: 'Item ID',
+                            field: 'id',
+                            title: 'Part No EBWS',
+                            width: 100
+                        }, {
+                            field: 'number',
+                            title: 'Part No Supplier',
                             width: 200
                         }, {
-                            field: 'item_name',
-                            title: 'Item Name',
+                            field: 'name',
+                            title: 'Description',
                             width: 200
                         }]
                     ]
                 });
             }
+        });
+
+        $('#filter_item_id').combogrid({
+            url: '<?= base_url('planning/material_calculation/readProducts/') ?>',
+            panelWidth: 550,
+            idField: 'id',
+            textField: 'number',
+            mode: 'remote',
+            fitColumns: true,
+            prompt: "Select Part No",
+            icons: [{
+                iconCls: 'icon-clear',
+                handler: function(e) {
+                    $(e.data.target).combogrid('clear').combogrid('textbox').focus();
+                }
+            }],
+            columns: [
+                [{
+                    field: 'id',
+                    title: 'Part No EBWS',
+                    width: 100
+                }, {
+                    field: 'number',
+                    title: 'Part No Supplier',
+                    width: 200
+                }, {
+                    field: 'name',
+                    title: 'Description',
+                    width: 200
+                }]
+            ]
         });
     });
 

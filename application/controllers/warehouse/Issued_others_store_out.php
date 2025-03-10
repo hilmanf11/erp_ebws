@@ -48,11 +48,18 @@ class Issued_others_store_out extends CI_Controller
             $offset = ($page - 1) * $rows;
             $result = array();
             //Select Query
-            $this->db->select("*, SUM(qty) as total_qty");
-            $this->db->from('issued_others_store');
+            $this->db->select("coalesce(d.status,0) as status,a.document_in, a.request_no,a.trans_date, a.request_name,a.remarks,a.location_other_number,a.created_by,a.created_date,a.updated_by,a.updated_date,(coalesce(b.qty_in,0) - coalesce(c.qty_out,0)) as total_qty");
+            $this->db->from('issued_others_store a');
+            $this->db->join("(select request_no, sum(qty) as qty_in from issued_others_store where type='IN' group by request_no) b", "a.request_no = b.request_no", "left");
+            $this->db->join("(select request_no, sum(qty) as qty_out from issued_others_store where type='OUT' group by request_no) c", "a.request_no = c.request_no", "left");
+            $this->db->join("(select status, request_no from issued_others_store GROUP BY request_no,status ORDER BY status ASC ) d", "a.request_no = d.request_no", "left");
             if (@count($filters) > 0) {
                 foreach ($filters as $filter) {
-                    $this->db->like($filter->field, $filter->value);
+                    if ($filter->field == "status") {
+                        $this->db->like("d.status", $filter->value);
+                    } else {
+                        $this->db->like("a." . $filter->field, $filter->value);
+                    }
                 }
             }
             $this->db->group_by('request_no');
@@ -75,18 +82,22 @@ class Issued_others_store_out extends CI_Controller
     {
         $request_no = base64_decode($request_no);
 
-        //Select Query
-        $this->db->select("a.*, b.number as item_rm_number, b.name as item_rm_name, b.uom");
-        $this->db->from('issued_others_store a');
-        $this->db->join('item_rm b', 'a.item_rm_id = b.id');
-        $this->db->where('a.request_no', $request_no);
-        $this->db->order_by('b.number', 'DESC');
+        $query = $this->db->query("
+            select a.item_rm_id, d.number as item_rm_number, d.name as item_rm_name, d.uom, 
+                    (coalesce(b.qty_in,0) - coalesce(c.qty_out,0)) as stock, 
+                    (coalesce(b.qty_in,0) - coalesce(c.qty_out,0)) as qty,
+                    ((coalesce(b.qty_in,0) - coalesce(c.qty_out,0)) - (coalesce(b.qty_in,0) - coalesce(c.qty_out,0))) as balance,
+                    a.remarks
+            from (select request_no, item_rm_id, remarks from issued_others_store group by request_no,item_rm_id) a
+            left join (select request_no, item_rm_id, sum(qty) as qty_in from issued_others_store where type='IN' group by request_no, item_rm_id) b on a.request_no = b.request_no AND a.item_rm_id = b.item_rm_id
+            left join (select request_no, item_rm_id, sum(qty) as qty_out from issued_others_store where type='OUT' group by request_no, item_rm_id) c on a.request_no = c.request_no AND a.item_rm_id = c.item_rm_id
+            join item_rm d on a.item_rm_id = d.id
+            where a.request_no = '" . $request_no . "'
+            order by d.number desc
+    ")->result_array();
 
-        //Total Data
-        $totalRows = $this->db->count_all_results('', false);
-        //Get Data Array
-        $records = $this->db->get()->result_array();
-        //Mapping Data
+        $totalRows = count($query);
+        $records = $query;
         $result['total'] = $totalRows;
         $result = array_merge($result, ['rows' => $records]);
         echo json_encode($result);
@@ -96,11 +107,66 @@ class Issued_others_store_out extends CI_Controller
     public function update()
     {
         if ($this->input->post()) {
-            $item_rm_id   = $this->input->post('item_rm_id');
             $request_no   = $this->input->post('request_no');
+            $trans_date   = $this->input->post('trans_date');
+            $request_name   = $this->input->post('request_name');
+            $document_in   = $this->input->post('document_in');
+            $location_other_number   = $this->input->post('location_other_number');
+            $out_by   = $this->input->post('out_by');
+            $out_date   = $this->input->post('out_date');
+            $item_rm_id   = $this->input->post('item_rm_id');
+            $stock   = $this->input->post('stock');
+            $qty   = $this->input->post('qty');
+            $balance   = $this->input->post('balance');
+            $remarks   = $this->input->post('remarks');
+            $balance   = $this->input->post('balance');
 
-            $post = $this->input->post();
-            $send = $this->crud->update('issued_others_store', ["item_rm_id" => $item_rm_id, "request_no" => $request_no], $post);
+            // Sebagai OUT untuk transaksi store
+            $dataInStore =  array(
+                "request_no" => $request_no,
+                "trans_date" => $trans_date,
+                "request_name" => $request_name,
+                "document_in" => $document_in,
+                "location_other_number" => $location_other_number,
+                "out_by" => $out_by,
+                "out_date" => $out_date,
+                "item_rm_id" => $item_rm_id,
+                "stock" => $stock,
+                "qty" => $qty,
+                "balance" => $balance,
+                "remarks" => $remarks,
+                "type" => "OUT"
+            );
+
+            if ($qty == 0) {
+                $send = json_encode(array("title" => "Good Job", "message" => "Data Updated Successfully", "theme" => "success"));
+            } else {
+                if ($balance != "0") {
+                    $send = $this->crud->create('issued_others_store', $dataInStore);
+                } else {
+                    $issued_others_store = $this->crud->read("issued_others_store", [], ["request_no" => $request_no, "item_rm_id" => $item_rm_id, "status" => 1]);
+                    if (empty(@$issued_others_store->request_no)) {
+                        $send = $this->crud->create('issued_others_store', $dataInStore);
+                    }
+                    $this->crud->update('issued_others_store', ["request_no" => $request_no, "item_rm_id" => $item_rm_id], ["status" => 1]);
+                }
+            }
+            echo $send;
+        } else {
+            show_error("Cannot Process your request");
+        }
+    }
+
+    //UPDATE DATA
+    public function canceled()
+    {
+        if ($this->input->post()) {
+            $request_no   = $this->input->post('request_no');
+            $item_rm_id   = $this->input->post('item_rm_id');
+            $status   = $this->input->post('status');
+            $reason   = $this->input->post('reason');
+
+            $send = $this->crud->update('issued_others_store', ["request_no" => $request_no, "item_rm_id" => $item_rm_id], ["status" => $status, "reason" => $reason]);
             echo $send;
         } else {
             show_error("Cannot Process your request");
@@ -111,6 +177,8 @@ class Issued_others_store_out extends CI_Controller
     public function delete()
     {
         $data = $this->input->post();
+        $request_no = $data['request_no'];
+        $send = $this->crud->delete('issued_others_store', ["request_no" => $request_no, "type" => "OUT"]);
         $send = $this->crud->update('issued_others_store', $data, ["status" => 0, "reason" => ""]);
 
         echo $send;
@@ -129,12 +197,18 @@ class Issued_others_store_out extends CI_Controller
         $this->db->from('config');
         $config = $this->db->get()->row();
 
-        $this->db->select("a.*, b.number as item_rm_number, b.name as item_rm_name, b.uom");
-        $this->db->from('issued_others_store a');
-        $this->db->join('item_rm b', 'a.item_rm_id = b.id');
-        $this->db->order_by('a.request_no', 'DESC');
-        $this->db->order_by('a.item_rm_id', 'ASC');
-        $records = $this->db->get()->result_array();
+        $records = $this->db->query("
+        select a.request_no,a.trans_date,a.item_rm_id, d.number as item_rm_number, d.name as item_rm_name, d.uom, 
+                (coalesce(b.qty_in,0) - coalesce(c.qty_out,0)) as stock, 
+                (coalesce(b.qty_in,0) - coalesce(c.qty_out,0)) as qty,
+                ((coalesce(b.qty_in,0) - coalesce(c.qty_out,0)) - (coalesce(b.qty_in,0) - coalesce(c.qty_out,0))) as balance,
+                a.remarks,a.status,a.request_name,a.reason
+        from (select request_no, item_rm_id, remarks, request_name,trans_date, status,out_by,out_date,reason from issued_others_store group by request_no,item_rm_id,status) a
+        left join (select request_no, item_rm_id, sum(qty) as qty_in from issued_others_store where type='IN' group by request_no, item_rm_id) b on a.request_no = b.request_no AND a.item_rm_id = b.item_rm_id
+        left join (select request_no, item_rm_id, sum(qty) as qty_out from issued_others_store where type='OUT' group by request_no, item_rm_id) c on a.request_no = c.request_no AND a.item_rm_id = c.item_rm_id
+        join item_rm d on a.item_rm_id = d.id
+        order by a.request_no desc
+        ")->result_array();
 
         $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#customers {border-collapse: collapse;width: 100%;font-size: 12px;}#customers td, #customers th {border: 1px solid #ddd;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: #ddd;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: left;color: black;}</style><body>
         <center>
@@ -146,7 +220,7 @@ class Issued_others_store_out extends CI_Controller
                         </td>
                         <td style="font-size: 14px; text-align: left; margin:2px;">
                             <b>' . $config->name . '</b><br>
-                            <small>ISSUED CONSUMABLE</small>
+                            <small>ISSUED OTHER STORE</small>
                         </td>
                     </tr>
                 </table>
@@ -173,23 +247,24 @@ class Issued_others_store_out extends CI_Controller
                 <th>Issued</th>
                 <th>Balance</th>
                 <th>Remarks</th>
-                <th>Accepted By</th>
-                <th>Accepted Date</th>
                 <th>Reason</th>
             </tr>';
         $no = 1;
         foreach ($records as $data) {
             if ($data['status'] == 0) {
                 $status = "OPEN";
+                $style = "background:#c8ffcc; color:#2d8035";
             } elseif ($data['status'] == "1") {
                 $status = "CLOSED";
+                $style = "background:#ffc8c8; color:#ff1040";
             } else {
                 $status = "CANCEL";
+                $style = "background:#7285e9; color:#ffffff";
             }
 
             $html .= '<tr>
                         <td>' . $no . '</td>
-                        <td>' . $status . '</td>
+                        <td align="center" style="' . $style . '">' . $status . '</td>
                         <td style="mso-number-format:\@;">' . $data['item_rm_id'] . '</td>
                         <td style="mso-number-format:\@;">' . $data['item_rm_number'] . '</td>
                         <td style="mso-number-format:\@;">' . $data['item_rm_name'] . '</td>
@@ -201,8 +276,6 @@ class Issued_others_store_out extends CI_Controller
                         <td>' . $data['qty'] . '</td>
                         <td>' . $data['balance'] . '</td>
                         <td>' . $data['remarks'] . '</td>
-                        <td>' . $data['out_by'] . '</td>
-                        <td>' . $data['out_date'] . '</td>
                         <td>' . $data['reason'] . '</td>
                     </tr>';
             $no++;

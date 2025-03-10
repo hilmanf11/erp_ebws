@@ -30,7 +30,7 @@ class Customer_items extends CI_Controller
     }
     
     //GET DATA
-    public function reads($customer_id, $plant = "")
+    public function reads($customer_id = "", $plant = "")
     {
         $customer_id = base64_decode($customer_id);
         $plant = base64_decode($plant);
@@ -44,8 +44,8 @@ class Customer_items extends CI_Controller
         $post = isset($_POST['q']) ? $_POST['q'] : "";
         $send = $this->crud->query("SELECT b.id, b.number, b.name, b.number_customer, a.price, b.hsn_code
             FROM customer_items a 
-            JOIN item_fg b ON a.item_fg_id = b.id
-            WHERE a.customer_id = '$customer_id' $where_plant and (b.number_customer LIKE '%$post%' or b.number LIKE '%$post%')
+            JOIN item_fg b ON a.item_fg_id = b.id and b.approved_to = ''
+            WHERE a.customer_id like '%$customer_id%' $where_plant and (b.number_customer LIKE '%$post%' or b.number LIKE '%$post%') and a.approved_to = ''
             GROUP BY b.id");
         echo json_encode($send);
     }
@@ -68,7 +68,7 @@ class Customer_items extends CI_Controller
             $result = array();
             //Select Query
             $this->db->select('b.id as customer_id, b.number as customer_number, b.name as customer_name, b.type, b.status, a.plant, a.created_by, a.created_date, a.updated_by, a.updated_date, a.approved_by, a.approved_to, a.approved_date');
-            $this->db->from('customer_items a');
+            $this->db->from("(SELECT * FROM customer_items ORDER BY approved_to desc) a");
             $this->db->join('customers b', 'a.customer_id = b.id');
             $this->db->like('a.customer_id', $filter_customer_id);
             $this->db->like('a.plant', $filter_plant);
@@ -161,15 +161,22 @@ class Customer_items extends CI_Controller
             $customer_items = $this->crud->read("customer_items", [], ["customer_id" => $post['customer_id'], "item_fg_id" => $post['item_fg_id'], "plant" => $post['plant']]);
             $customer_item_histories = $this->crud->read("customer_item_histories", [], ["customer_id" => $post['customer_id'], "item_fg_id" => $post['item_fg_id'], "plant" => $post['plant'], "price" => $post['price']]);
             if (@$customer_items->customer_id != "") {
-                $send = $this->crud->update('customer_items', ["customer_id" => $post['customer_id'], "item_fg_id" => $post['item_fg_id'], "plant" => $post['plant']], $post);
+                if($customer_items->price != $post['price']){
+                    $send = $this->crud->update('customer_items', ["customer_id" => $post['customer_id'], "item_fg_id" => $post['item_fg_id'], "plant" => $post['plant']], $post);
+                    echo $send;
+                }else{
+                    $this->db->update('customer_items', $post, ["customer_id" => $post['customer_id'], "item_fg_id" => $post['item_fg_id'], "plant" => $post['plant']]);
+                    echo json_encode(array("title" => "Good Job", "message" => "Data Updated Successfully", "theme" => "success"));
+                }
+
                 if (@$customer_item_histories->customer_id == "") {
                     $send2 = $this->crud->create('customer_item_histories', $post);
                 }
             } else {
                 $send = $this->crud->create('customer_items', $post);
                 $send2 = $this->crud->create('customer_item_histories', $post);
+                echo $send;
             }
-            echo $send;
         } else {
             show_error("Cannot Process your request");
         }
@@ -300,20 +307,24 @@ class Customer_items extends CI_Controller
         if ($this->input->post()) {
             $data = $this->input->post('data');
 
-            //Cek Process Number          //table       //field        //field excel
-            $customer_items = $this->crud->read('customer_items', [], ["customer_id" => $data['customer_id'], "item_fg_id" => $data['item_fg_id'], "plant" => $data['plant']]);
+            $item_fg = $this->crud->read('item_fg', [], ["number" => $data['item_fg_id']]);
+            $customer_items = $this->crud->read('customer_items', [], ["customer_id" => $data['customer_id'], "item_fg_id" => @$item_fg->id, "plant" => $data['plant']]);
             $customer_address = $this->crud->read('customer_address', [], ["customer_id" => $data['customer_id'], "plant" => $data['plant']]);
 
             if (!empty($customer_items->customer_id)) {
                 echo json_encode(array("title" => "Duplicated", "message" => "Customer, Plant and Product No is Duplicate Data", "theme" => "error"));
             }else if(empty($customer_address)){
                 echo json_encode(array("title" => "Not Found", "message" => "Plant ".$data['plant']. " Not Found in Master Customer ID ".$data['customer_id'], "theme" => "error"));
+            }else if(empty($item_fg)){
+                echo json_encode(array("title" => "Not Found", "message" => "Product No ".$data['item_fg_id']. " Not Found", "theme" => "error"));
+            }else if($data['price'] <= 0){
+                echo json_encode(array("title" => "Failed", "message" => "Price cannot input 0", "theme" => "error"));
             } else {
                 $dataFinal = array(
                     //field
                     "customer_id" => $data['customer_id'],
                     "plant" => $data['plant'],
-                    "item_fg_id" => $data['item_fg_id'],
+                    "item_fg_id" => $item_fg->id,
                     "price" => $data['price'],
                     "start_date" => $data['start_date'],
                     "valid_date" => $data['valid_date'],

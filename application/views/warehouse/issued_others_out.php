@@ -189,7 +189,6 @@
                                                             qty: rows[i].qty,
                                                             balance: rows[i].balance,
                                                             remarks: rows[i].remarks,
-                                                            status: '1',
                                                             status_store: '0'
                                                         },
                                                         dataType: "json",
@@ -248,7 +247,7 @@
                                         if (rows[i].item_rm_id) {
                                             $.ajax({
                                                 type: "post",
-                                                url: '<?= base_url('warehouse/issued_others_out/update') ?>',
+                                                url: '<?= base_url('warehouse/issued_others_out/canceled') ?>',
                                                 data: {
                                                     request_no: request_no,
                                                     trans_date: trans_date,
@@ -411,6 +410,18 @@
                     width: 80,
                     halign: 'center',
                     title: "Balance",
+                    editor: {
+                        type: 'numberbox',
+                        options: {
+                            readonly: true,
+                            required: true
+                        }
+                    }
+                },{
+                    field: 'total_issued',
+                    width: 100,
+                    halign: 'center',
+                    title: "Total Issued",
                     editor: {
                         type: 'numberbox',
                         options: {

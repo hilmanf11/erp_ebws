@@ -8,8 +8,10 @@
             <th rowspan="2" data-options="field:'cgst',width:80,halign:'center'">CGST</th>
             <th rowspan="2" data-options="field:'sgst',width:80,halign:'center'">SGST</th>
             <th rowspan="2" data-options="field:'igst',width:80,halign:'center'">IGST</th>
-            <th rowspan="2" data-options="field:'account_number',width:150,halign:'center'"> Account No</th>
-            <th rowspan="2" data-options="field:'account_name',width:150,halign:'center'"> Account Name</th>
+            <th rowspan="2" data-options="field:'account_number',width:150,halign:'center'"> Account No 1</th>
+            <th rowspan="2" data-options="field:'account_name',width:150,halign:'center'"> Account Name 1</th>
+            <th rowspan="2" data-options="field:'account_number_1',width:150,halign:'center'"> Account No 2</th>
+            <th rowspan="2" data-options="field:'account_name_1',width:150,halign:'center'"> Account Name 2</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
         </tr>
@@ -51,12 +53,20 @@
                 <input style="width:60%;" name="igst" id="igst" required="" class="easyui-numberbox" data-options="precision:2">
             </div>
             <div class="fitem">
-                <span style="width:35%; display:inline-block;">Account No</span>
+                <span style="width:35%; display:inline-block;">Account No 1</span>
                 <input style="width:60%;" name="account_number" id="account_number" required="" class="easyui-combogrid">
             </div>
             <div class="fitem">
-                <span style="width:35%; display:inline-block;">Account Name</span>
+                <span style="width:35%; display:inline-block;">Account Name 1</span>
                 <input style="width:60%;" name="account_name" id="account_name" readonly class="easyui-textbox">
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Account No 2</span>
+                <input style="width:60%;" name="account_number_1" id="account_number_1" class="easyui-combogrid">
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Account Name 2</span>
+                <input style="width:60%;" name="account_name_1" id="account_name_1" readonly class="easyui-textbox">
             </div>
         </fieldset>
     </form>
@@ -225,6 +235,30 @@
             ],
             onSelect: function(val, record) {
                 $("#account_name").textbox("setValue", record.account_name);
+            }
+        });
+        
+        $('#account_number_1').combogrid({
+            url: '<?= base_url('finance/account_coa/reads') ?>',
+            panelWidth: 350,
+            idField: 'account_number',
+            textField: 'account_number',
+            mode: 'remote',
+            fitColumns: true,
+            prompt: "Choose Account No",
+            columns: [
+                [{
+                    field: 'account_number',
+                    title: 'Account No',
+                    width: 100
+                }, {
+                    field: 'account_name',
+                    title: 'Account Name',
+                    width: 200
+                }]
+            ],
+            onSelect: function(val, record) {
+                $("#account_name_1").textbox("setValue", record.account_name);
             }
         });
 

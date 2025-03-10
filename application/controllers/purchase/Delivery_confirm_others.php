@@ -41,7 +41,7 @@ class Delivery_confirm_others extends CI_Controller
     function readInvoice(){
         $post = isset($_POST['q']) ? $_POST['q'] : "";
         $supplier_id = base64_decode($this->input->get('supplier_id'));
-        $datas = $this->crud->query("SELECT invoice_no, invoice_date, awb_no, awb_date FROM purchase_confirm_others a WHERE a.status = 0 and a.supplier_id = '$supplier_id' and (po_date like '%$post%' or po_no like '%$post%') GROUP BY a.invoice_no");
+        $datas = $this->crud->query("SELECT invoice_no, invoice_date, awb_no, awb_date FROM purchase_confirm_others a WHERE a.status = 0 and a.supplier_id = '$supplier_id' and (invoice_date like '%$post%' or invoice_no like '%$post%') GROUP BY a.invoice_no");
         echo json_encode($datas);
     }
 

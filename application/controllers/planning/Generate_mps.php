@@ -113,9 +113,9 @@ class Generate_mps extends CI_Controller
             //     GROUP BY c.id) f", "a.id = f.item_fg_id", "left");
             $this->db->join("(SELECT z.id, SUM(z.qty_outstanding) AS outstanding FROM (
                 SELECT b.id, b.number_customer, a.qty_so, COALESCE(c.qty_delivery, 0) AS qty_delivery, (a.qty_so - COALESCE(c.qty_delivery, 0)) AS qty_outstanding
-                FROM (SELECT *, SUM(qty) AS qty_so FROM sales_orders WHERE `status` = 0 GROUP BY sales_order_no, item_fg_id) a
+                FROM (SELECT *, SUM(qty) AS qty_so FROM sales_orders WHERE `status` = 0 AND sales_order_no != '' GROUP BY sales_order_no, item_fg_id) a
                 JOIN item_fg b ON a.item_fg_id = b.id
-                LEFT JOIN (SELECT sales_order_no, item_fg_id, SUM(qty) AS qty_delivery FROM delivery_notes GROUP BY sales_order_no, item_fg_id) c ON a.sales_order_no = c.sales_order_no AND a.item_fg_id = c.item_fg_id
+                LEFT JOIN (SELECT sales_order_no, item_fg_id, SUM(qty) AS qty_delivery FROM delivery_notes WHERE `status` != '2' AND delivery_note_date < '$period' GROUP BY sales_order_no, item_fg_id) c ON a.sales_order_no = c.sales_order_no AND a.item_fg_id = c.item_fg_id
                 WHERE a.sales_order_date < '$period'
                 GROUP BY a.sales_order_no, a.item_fg_id) z
                 GROUP BY z.id) f", "a.id = f.id", "left");
@@ -199,9 +199,9 @@ class Generate_mps extends CI_Controller
                 LEFT JOIN (select a.item_fg_id, COALESCE(SUM(b.qty), 0) as qty_sto FROM os_fg a JOIN scan_item_receipts_fg b ON a.id = b.workorder WHERE a.trans_date < '$filter_cutoff' GROUP BY a.item_fg_id) b ON a.id = b.item_fg_id
                 LEFT JOIN (select a.item_fg_id, COALESCE(SUM(b.qty), 0) as qty_wip FROM wip_receipts a JOIN scan_item_receipts_fg b ON a.workorder = b.workorder and a.checksheet_number = b.checksheet_number WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') < '$filter_cutoff' GROUP BY a.item_fg_id) c ON a.id = c.item_fg_id
                 LEFT JOIN (SELECT a.item_fg_id, (CASE WHEN a.type = 'IN' THEN COALESCE(SUM(a.qty), 0) ELSE 0 END) as sto_qty_in, (CASE WHEN a.type = 'OUT' THEN COALESCE(SUM(a.qty), 0) ELSE 0 END) as sto_qty_out FROM sto_fg a WHERE a.trans_date < '$filter_cutoff' and (a.approved_to = '' or a.approved_to is null) GROUP BY item_fg_id) d ON a.id = d.item_fg_id
-                LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_in FROM rgp_transactions WHERE type = 'IN' and transaction_date < '$filter_cutoff' GROUP BY item_id) e ON a.id = e.item_id
-                LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_out FROM rgp_transactions WHERE type = 'OUT' and transaction_date < '$filter_cutoff' GROUP BY item_id) f ON a.id = f.item_id
-                LEFT JOIN (SELECT item_fg_id, delivery_note_date, COALESCE(SUM(qty), 0) as qty FROM delivery_notes WHERE DATE_FORMAT(created_date, '%Y-%m-%d') < '$filter_cutoff' GROUP BY item_fg_id) g ON a.id = g.item_fg_id
+                LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) as qty_rgp_in FROM rgp_transactions a JOIN scan_item_receipts_fg b ON a.rgp_id = b.checksheet_number and a.id = b.workorder WHERE a.type = 'IN' and a.transaction_date < '$filter_cutoff' GROUP BY a.item_id) e ON a.id = e.item_id
+                LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) as qty_rgp_out FROM rgp_transactions a JOIN scan_item_rgp b ON a.number = b.rgp_number and a.item_id = b.item_id WHERE a.type = 'OUT' and a.transaction_date < '$filter_cutoff' GROUP BY a.item_id) f ON a.id = f.item_id
+                LEFT JOIN (SELECT item_fg_id, delivery_note_date, COALESCE(SUM(qty), 0) as qty FROM delivery_notes WHERE DATE_FORMAT(created_date, '%Y-%m-%d') < '$filter_cutoff' and `status` != '2' GROUP BY item_fg_id) g ON a.id = g.item_fg_id
                 WHERE a.id = '$item_fg_id'
                 GROUP BY a.id
                 ORDER BY a.number");
@@ -1408,7 +1408,7 @@ class Generate_mps extends CI_Controller
             $this->db->from('generate_mps a');
             $this->db->join('generate_mps_details b', 'a.p_month = b.p_month and a.p_year = b.p_year and a.revision = b.revision and a.item_fg_id = b.item_fg_id');
             $this->db->join('customers c', 'a.customer_id = c.id');
-            $this->db->join('customer_items d', 'a.customer_id = d.customer_id and a.item_fg_id = d.item_fg_id');
+            $this->db->join('customer_items d', 'a.customer_id = d.customer_id and a.item_fg_id = d.item_fg_id', 'left');
             $this->db->join('item_fg e', 'a.item_fg_id = e.id');
             if ($filter_month != "" or $filter_year != "") {
                 $this->db->where('a.p_month', $filter_month);

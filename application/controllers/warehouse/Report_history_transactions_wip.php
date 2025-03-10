@@ -83,7 +83,7 @@ class Report_history_transactions_wip extends CI_Controller
                 Print By ' . $this->session->username . '  
             </div>
             <br><br><br>
-            <h3 style="margin:0;">INVENTORY HISTORY TRANSACTION (WIP)</h3>
+            <h3 style="margin:0;">INVENTORY HISTORY TRANSACTION (KANBAN)</h3>
             <small>PERIOD : <b>' . $filter_from . '</b> To <b>' . $filter_to . '</b></small>
         </center>
         <br>

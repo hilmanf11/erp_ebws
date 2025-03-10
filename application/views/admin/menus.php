@@ -8,6 +8,7 @@
             <th data-options="field:'link',width:200">Link</th>
             <th data-options="field:'sort',width:50">Sort</th>
             <th data-options="field:'financial',width:80,formatter:seriesnoformat">Series No</th>
+            <th data-options="field:'accounting',width:100">Lock<br>Accounting</th>
             <th data-options="field:'state',width:100">State</th>
         </tr>
     </thead>
@@ -43,6 +44,11 @@
                     <option value="1">YES</option>
                     <option value="0">NO</option>
                 </select>
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Lock Accounting</span>
+                <input name="accounting" value="YES" class="easyui-radiobutton">&nbsp; YES &nbsp; &nbsp;
+                <input name="accounting" value="NO" class="easyui-radiobutton">&nbsp; NO
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">State</span>

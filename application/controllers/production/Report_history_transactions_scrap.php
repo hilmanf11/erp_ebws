@@ -56,9 +56,9 @@ class Report_history_transactions_scrap extends CI_Controller
             a.uom, 
             COALESCE(0,0) as begin_stock,
             COALESCE(b.qty_in, 0) as qty_in
-        FROM item_fg a 
-        LEFT JOIN (select item_fg_id, COALESCE(SUM(qty), 0) as qty_in FROM scrap_booking WHERE trans_date between '$filter_from' and '$filter_to' GROUP BY item_fg_id) b ON a.id = b.item_fg_id 
-        WHERE a.id like '%$filter_items%' and a.harnes_type='11'
+        FROM item_rm a 
+        LEFT JOIN (select item_id, COALESCE(SUM(qty), 0) as qty_in FROM scrap_booking WHERE trans_date between '$filter_from' and '$filter_to' GROUP BY item_id) b ON a.id = b.item_id 
+        WHERE a.id like '%$filter_items%' and a.item_category_id='C02'
         GROUP BY a.id
         ORDER BY a.number");
 
@@ -100,14 +100,14 @@ class Report_history_transactions_scrap extends CI_Controller
                 </tr>';
         $no = 1;
         foreach ($records as $record) {
-            $item_fg_id = $record->id;
+            $item_id = $record->id;
 
             $endstock = $this->crud->query("SELECT
                 a.id,a.number,
                 (COALESCE(b.qty_in, 0)) as begin_stock
-            FROM item_fg a 
-            LEFT JOIN (select item_fg_id, COALESCE(SUM(qty), 0) as qty_in FROM scrap_booking WHERE trans_date < '$filter_from' GROUP BY item_fg_id) b ON a.id = b.item_fg_id
-            WHERE a.id = '$item_fg_id' and a.harnes_type='11'
+            FROM item_rm a 
+            LEFT JOIN (select item_id, COALESCE(SUM(qty), 0) as qty_in FROM scrap_booking WHERE trans_date < '$filter_from' GROUP BY item_id) b ON a.id = b.item_id
+            WHERE a.id = '$item_id' and a.item_category_id='C02'
             GROUP BY a.id
             ORDER BY a.number");
 
@@ -149,10 +149,10 @@ class Report_history_transactions_scrap extends CI_Controller
 
                     //BEGIN STOCK
                     $begin_trans = $this->crud->query("select 
-                    a.number,a.item_fg_id,b.name as username,a.trans_date, COALESCE(SUM(a.qty), 0) as qty 
+                    a.number,a.item_id,b.name as username,a.trans_date, COALESCE(SUM(a.qty), 0) as qty 
                     FROM scrap_booking a 
                     JOIN users b ON a.created_by = b.username
-                    WHERE a.item_fg_id = '$item_fg_id' and a.trans_date = '$working_date' GROUP BY a.number,a.item_fg_id");
+                    WHERE a.item_id = '$item_id' and a.trans_date = '$working_date' GROUP BY a.number,a.item_id");
 
                     // die($this->db->last_query());
                     //STO

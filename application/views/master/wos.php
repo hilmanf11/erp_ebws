@@ -111,7 +111,7 @@
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">CCT Range</span>
-                    <input style="width:60%;" name="cct_range" id="cct_range" required class="easyui-textbox">
+                    <input style="width:60%;" name="cct_range" id="cct_range" class="easyui-textbox">
                 </div>
             </div>
         </fieldset>
@@ -230,7 +230,7 @@
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Index</span>
-                <input style="width:60%;" name="order" id="order" required class="easyui-numberbox">
+                <input style="width:60%;" name="order" id="order" class="easyui-numberbox">
             </div>
         </fieldset>
     </form>
@@ -457,6 +457,15 @@
                     $('#frm_insert').form('submit', {
                         url: url_save,
                         onSubmit: function() {
+                            var circuit_no = $("#circuit_no").textbox('getValue');
+                            var hasLetter = /[a-zA-Z]/.test(circuit_no);
+                            var hasNumber = /[0-9]/.test(circuit_no);
+
+                            if (hasLetter && !hasNumber) {
+                                toastr.error("Circuit No should not contain only letters!!");
+                                return false;
+                            }
+
                             if($(this).form('validate') === true){
                                 $('#dlg_insert').dialog('close');
                                 

@@ -173,14 +173,16 @@ class Supply_requestions extends CI_Controller
     }
 
     function datatablesTemp(){
-        $workorder = $this->input->get('workorder');
+        $scrap_no = $this->input->get('scrap_no');
+        $rejection_no = $this->input->get('rejection_no');
 
         //Select Query
         $this->db->select('a.*, b.number as item_rm_number, b.name as item_rm_name');
         $this->db->from('scraps a');
         $this->db->join('item_rm b', 'a.item_rm_id = b.id');
         $this->db->where('a.deleted', 0);
-        $this->db->where('a.document', $workorder);
+        $this->db->where('a.document', $scrap_no);
+        $this->db->where('a.workorder', $rejection_no);
         $totalRows = $this->db->count_all_results('', false);
         $records = $this->db->get()->result_object();
 

@@ -332,6 +332,7 @@
                                                 if((parseInt(item.qty) - val) <= 0){
                                                     toastr.info("You cannot exceed qty and delivery");
                                                     $(ed11.target).numberbox('setValue', 0);
+                                                    $(ed9.target).numberbox('setValue', 0);
                                                 }else{
                                                     $(ed11.target).numberbox('setValue', (parseInt(item.qty) - val));
                                                 }
@@ -782,6 +783,24 @@
                                     return false;
                                 }
 
+                                $('#dg2').datagrid('acceptChanges');
+                                var rows = $('#dg2').datagrid('getRows');
+                                var totalrows = rows.length;
+                                endEditing();
+
+                                for (let z = 0; z < totalrows; z++) {
+                                    var jsonCheck = rows[z];
+                                    if((parseFloat(jsonCheck.qty) - parseFloat(jsonCheck.delivery)) < 0){
+                                        toastr.error("Please Check Invoice Qty cannot > Remain");
+                                        return false;
+                                    }
+
+                                    if(parseFloat(jsonCheck.delivery) == 0){
+                                        toastr.error("Invoice Qty Still 0");
+                                        return false;
+                                    }
+                                }
+
                                 $('#dlg_insert').dialog('close');
 
                                 Swal.fire({
@@ -793,11 +812,6 @@
                                         Swal.showLoading();
                                     },
                                 });
-
-                                $('#dg2').datagrid('acceptChanges');
-                                var rows = $('#dg2').datagrid('getRows');
-                                var totalrows = rows.length;
-                                endEditing();
 
                                 requestData(totalrows, rows);
                                 function requestData(total, json, number = 1, value = 0, success = 1, failed = 1) {

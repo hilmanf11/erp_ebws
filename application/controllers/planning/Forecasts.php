@@ -142,6 +142,7 @@ class Forecasts extends CI_Controller
             $this->db->like('a.item_fg_id', $filter_item_fg);
             $this->db->like('a.revision', $filter_revision);
             $this->db->group_by('a.customer_id');
+            $this->db->group_by('a.document_no');
             $this->db->group_by('a.plant');
             $this->db->group_by('a.p_month');
             $this->db->group_by('a.p_year');
@@ -166,6 +167,7 @@ class Forecasts extends CI_Controller
     {
         if ($this->input->get()) {
             $customer_id = base64_decode($this->input->get('customer_id'));
+            $document_no = base64_decode($this->input->get('document_no'));
             $item_fg_id = base64_decode($this->input->get('item_fg_id'));
             $plant = base64_decode($this->input->get('plant'));
             $p_month = base64_decode($this->input->get('p_month'));
@@ -177,6 +179,7 @@ class Forecasts extends CI_Controller
             $this->db->join('customers b', 'a.customer_id = b.id');
             $this->db->join('item_fg c', 'a.item_fg_id = c.id');
             $this->db->where('a.customer_id', $customer_id);
+            $this->db->where('a.document_no', $document_no);
             $this->db->where('a.plant', $plant);
             $this->db->where('a.p_month', $p_month);
             $this->db->where('a.p_year', $p_year);
@@ -247,6 +250,30 @@ class Forecasts extends CI_Controller
             $this->db->from('forecasts');
             $this->db->where('document_no', $document_no);
             $records = $this->db->get()->result_array();
+
+            // $sales_orders = $this->crud->reads("sales_orders", [], ["forecast_no" => $document_no]);
+            $html = "";
+            foreach ($records as $record) {
+                $customer_id = $record['customer_id'];
+                $item_fg_id = $record['item_fg_id'];
+
+                $item_fg = $this->crud->read("item_fg", [], ["id" => $record['item_fg_id']]);
+                
+                $customer_item = $this->db->query("SELECT * FROM customer_items WHERE customer_id = '$customer_id' and item_fg_id = '$item_fg_id' and approved_to = ''");
+                $row_customer_item = $customer_item->row();
+                
+                if(empty($row_customer_item->id)){
+                    $html .= "Product No ".@$item_fg->number_customer."<br>";
+                }
+            }
+
+            if($html != ""){
+                die(json_encode(array("title" => "Not Found", "message" => $html. " <br>Not Found in Customer Contract or Not Approved!", "theme" => "error")));
+            }
+            
+            // if(count($sales_orders) > 0){
+            //     die(json_encode(array("title" => "Failed", "message" => "Already Created Forecast in Sales Order! Please Delete First", "theme" => "error")));
+            // }
             
             $customer_id = $records[0]['customer_id'];
             $sales_order_date = date("Y-m-d");
@@ -324,33 +351,76 @@ class Forecasts extends CI_Controller
     }
 
     //CREATE DATA
-    public function create()
-    {
-        if ($this->input->post()) {
-            $post = $this->input->post();
+    // public function create()
+    // {
+    //     if ($this->input->post()) {
+    //         $post = $this->input->post();
 
-            $forecasts = $this->crud->read("forecasts", [], ["customer_id" => $post['customer_id'], "item_fg_id" => $post['item_fg_id'], "plant" => $post['plant'], "p_month" => $post['p_month'], "p_year" => $post['p_year']]);
-            $forecast_histories = $this->crud->read("forecast_histories", [], ["customer_id" => $post['customer_id'], "item_fg_id" => $post['item_fg_id'], "plant" => $post['plant'], "p_month" => $post['p_month'], "p_year" => $post['p_year'], "revision" => $post['revision'], "month_1" => $post['month_1'], "month_2" => $post['month_2'], "month_3" => $post['month_3'], "month_4" => $post['month_4'], "month_5" => $post['month_5'], "month_6" => $post['month_6'], "month_7" => $post['month_7'], "month_8" => $post['month_8'], "month_9" => $post['month_9'], "month_10" => $post['month_10'], "month_11" => $post['month_11'], "month_12" => $post['month_12']]);
+            // $forecasts = $this->crud->read("forecasts", [], ["customer_id" => $post['customer_id'], "item_fg_id" => $post['item_fg_id'], "plant" => $post['plant'], "p_month" => $post['p_month'], "p_year" => $post['p_year']]);
+            // $forecast_histories = $this->crud->read("forecast_histories", [], ["customer_id" => $post['customer_id'], "item_fg_id" => $post['item_fg_id'], "plant" => $post['plant'], "p_month" => $post['p_month'], "p_year" => $post['p_year'], "revision" => $post['revision'], "month_1" => $post['month_1'], "month_2" => $post['month_2'], "month_3" => $post['month_3'], "month_4" => $post['month_4'], "month_5" => $post['month_5'], "month_6" => $post['month_6'], "month_7" => $post['month_7'], "month_8" => $post['month_8'], "month_9" => $post['month_9'], "month_10" => $post['month_10'], "month_11" => $post['month_11'], "month_12" => $post['month_12']]);
 
-            if (@$forecasts->customer_id != "") {
-                if($post['p_month'] != date("m")){
-                    if(($forecasts->month_2 != $post['month_2']) || ($forecasts->month_3 != $post['month_3']) || ($forecasts->month_4 != $post['month_4']) || ($forecasts->month_5 != $post['month_5']) || ($forecasts->month_6 != $post['month_6']) || ($forecasts->month_7 != $post['month_7']) || ($forecasts->month_8 != $post['month_8']) || ($forecasts->month_9 != $post['month_9']) || ($forecasts->month_10 != $post['month_10']) || ($forecasts->month_11 != $post['month_11']) || ($forecasts->month_12 != $post['month_12'])){
-                        // show_error("Forecast in Period beside ". $post['p_month'] ." you can't edit");
-                        die(json_encode(array("title" => "Error", "message" => "Forecast you can't edit because of different periods", "theme" => "error")));
+            // if (@$forecasts->customer_id != "") {
+            //     if($post['p_month'] != date("m")){
+            //         if(($forecasts->month_2 != $post['month_2']) || ($forecasts->month_3 != $post['month_3']) || ($forecasts->month_4 != $post['month_4']) || ($forecasts->month_5 != $post['month_5']) || ($forecasts->month_6 != $post['month_6']) || ($forecasts->month_7 != $post['month_7']) || ($forecasts->month_8 != $post['month_8']) || ($forecasts->month_9 != $post['month_9']) || ($forecasts->month_10 != $post['month_10']) || ($forecasts->month_11 != $post['month_11']) || ($forecasts->month_12 != $post['month_12'])){
+            //             // show_error("Forecast in Period beside ". $post['p_month'] ." you can't edit");
+            //             die(json_encode(array("title" => "Error", "message" => "Forecast you can't edit because of different periods", "theme" => "error")));
+            //         }
+            //     }
+
+            //     $send = $this->crud->update('forecasts', ["customer_id" => $post['customer_id'], "item_fg_id" => $post['item_fg_id'], "plant" => $post['plant'], "p_month" => $post['p_month'], "p_year" => $post['p_year']], $post);
+            //     if (@$forecast_histories->customer_id == "") {
+            //         $send2 = $this->crud->create('forecast_histories', $post);
+            //     }
+            // } else {
+            //     $send = $this->crud->create('forecasts', $post);
+            //     $send2 = $this->crud->create('forecast_histories', $post);
+            // }
+            // echo $send;
+    //     } else {
+    //         show_error("Cannot Process your request");
+    //     }
+    // }
+
+    public function create(){
+        if($this->input->post()){
+            $jsonData = file_get_contents("php://input");
+            $post = json_decode($jsonData, true);
+            $datas = $post['data'];
+
+            $item_fg_id = array();
+            foreach ($datas as $data) {
+                $forecasts = $this->crud->read("forecasts", [], ["customer_id" => $data['customer_id'], "item_fg_id" => $data['item_fg_id'], "plant" => $data['plant'], "p_month" => $data['p_month'], "p_year" => $data['p_year']]);
+                $forecast_histories = $this->crud->read("forecast_histories", [], ["customer_id" => $data['customer_id'], "item_fg_id" => $data['item_fg_id'], "plant" => $data['plant'], "p_month" => $data['p_month'], "p_year" => $data['p_year'], "revision" => $data['revision'], "month_1" => $data['month_1'], "month_2" => $data['month_2'], "month_3" => $data['month_3'], "month_4" => $data['month_4'], "month_5" => $data['month_5'], "month_6" => $data['month_6'], "month_7" => $data['month_7'], "month_8" => $data['month_8'], "month_9" => $data['month_9'], "month_10" => $data['month_10'], "month_11" => $data['month_11'], "month_12" => $data['month_12']]);
+
+                if (@$forecasts->customer_id != "") {
+                    if($data['p_month'] != date("m")){
+                        if(($forecasts->month_2 != $data['month_2']) || ($forecasts->month_3 != $data['month_3']) || ($forecasts->month_4 != $data['month_4']) || ($forecasts->month_5 != $data['month_5']) || ($forecasts->month_6 != $data['month_6']) || ($forecasts->month_7 != $data['month_7']) || ($forecasts->month_8 != $data['month_8']) || ($forecasts->month_9 != $data['month_9']) || ($forecasts->month_10 != $data['month_10']) || ($forecasts->month_11 != $data['month_11']) || ($forecasts->month_12 != $data['month_12'])){
+                            // show_error("Forecast in Period beside ". $data['p_month'] ." you can't edit");
+                            die(json_encode(array("title" => "Error", "message" => "Forecast you can't edit because of different periods", "theme" => "error")));
+                        }
                     }
+
+                    $send = $this->crud->update('forecasts', ["customer_id" => $data['customer_id'], "item_fg_id" => $data['item_fg_id'], "plant" => $data['plant'], "p_month" => $data['p_month'], "p_year" => $data['p_year']], $data);
+                    if (@$forecast_histories->customer_id == "") {
+                        $this->crud->create('forecast_histories', $data);
+                    }
+                } else {
+                    $send = $this->crud->create('forecasts', $data);
+                    $this->crud->create('forecast_histories', $data);
                 }
 
-                $send = $this->crud->update('forecasts', ["customer_id" => $post['customer_id'], "item_fg_id" => $post['item_fg_id'], "plant" => $post['plant'], "p_month" => $post['p_month'], "p_year" => $post['p_year']], $post);
-                if (@$forecast_histories->customer_id == "") {
-                    $send2 = $this->crud->create('forecast_histories', $post);
-                }
-            } else {
-                $send = $this->crud->create('forecasts', $post);
-                $send2 = $this->crud->create('forecast_histories', $post);
+                $item_fg_id[] = $data['item_fg_id'];
             }
-            echo $send;
-        } else {
-            show_error("Cannot Process your request");
+
+            $this->db->where('document_no', @$datas[0]['document_no']);
+            $this->db->where_not_in('item_fg_id', $item_fg_id);
+            $this->db->delete('forecasts');
+        
+            $this->db->where('document_no', @$datas[0]['document_no']);
+            $this->db->where_not_in('item_fg_id', $item_fg_id);
+            $this->db->delete('forecast_histories');
+
+            die($send);
         }
     }
 
@@ -365,6 +435,10 @@ class Forecasts extends CI_Controller
             $customer_item = $this->crud->read("customer_items", [], ["customer_id" => $post['customer_id'], "item_fg_id" => $post['item_fg_id']]);
             $customer_address = $this->crud->read("customer_address", [], ["plant" => $post['plant']]);
             $sales_order_no = $this->input->get('sales_order_no');
+
+            if(empty($customer_item)){
+                die(json_encode(array("title" => "Not Found", "message" => " Product No " . $item_fg->number_customer . " and Customer " . $customer->name . " Not Found in Customer Contract!", "theme" => "error")));
+            }
 
             $sales_orders = $this->crud->read("sales_orders", [], ["customer_id" => $post['customer_id'], "item_fg_id" => $post['item_fg_id'], "forecast_no" => $post['document_no']]);
             if (!empty($sales_orders->customer_id)) {
@@ -384,10 +458,12 @@ class Forecasts extends CI_Controller
                     "price" => $customer_item->price,
                     "total" => ($post['month_1'] * $customer_item->price),
                     "plant" => @$post['plant'],
+                    "approved_to" => "",
                     "department" => @$customer_address->department,
                 );
 
-                $send = $this->crud->update('sales_orders', ["customer_id" => $post['customer_id'], "item_fg_id" => $post['item_fg_id'], "forecast_no" => $post['document_no']], $dataFinal);
+                $this->db->update('sales_orders', $dataFinal, ["customer_id" => $post['customer_id'], "item_fg_id" => $post['item_fg_id'], "forecast_no" => $post['document_no']]);
+                echo json_encode(array("title" => "Updated", "message" => "Data has been Updated", "theme" => "success"));
             } else {
                 $dataFinal = array(
                     "customer_id" => $post['customer_id'],
@@ -410,9 +486,9 @@ class Forecasts extends CI_Controller
                 );
                 
                 $send = $this->crud->create('sales_orders', $dataFinal);
+                $this->db->update('sales_orders', ["approved_to" => ""], ["sales_order_no" => $sales_order_no]);
+                echo $send;
             }
-
-            echo $send;
         } else {
             show_error("Cannot Process your request");
         }

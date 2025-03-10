@@ -36,8 +36,8 @@ class Inventory_wip extends CI_Controller
         $filter_from = $this->input->post('filter_from');
         $filter_to   = $this->input->post('filter_to');
         $filter_items = $this->input->post('filter_items');
-        $periode = date("Y-m", strtotime($filter_from));
-        $periode_bf = date("Y-m", strtotime("-1 month", strtotime($filter_from)));
+        $periode = date("Ym", strtotime($filter_from));
+        $periode_bf = date("Ym", strtotime("-1 month", strtotime($filter_from)));
         $month = date("m", strtotime($filter_from));
         $year = date("m", strtotime($filter_from));
 
@@ -47,70 +47,66 @@ class Inventory_wip extends CI_Controller
         //Item Receipts
         $records = $this->crud->query("SELECT
             a.id,
-            a.number, 
-            a.name, 
-            b.name as prodfam, 
-            c.name as uom,
-            COALESCE(d.price) as price
-        FROM items a 
-        JOIN item_familys b ON a.item_family_id = b.id
-        JOIN uom c ON a.uom_id = c.id
-        LEFT JOIN (SELECT DISTINCT item_id, price FROM inventory_wip WHERE trans_date < '$filter_from' and trans_type = 'SCAN FG' ORDER BY trans_date DESC LIMIT 1) d ON a.id = d.item_id
-        WHERE a.id like '%$filter_items%' and b.number = '001'
+            COALESCE(d.price) as price,
+            a.uom
+        FROM item_fg a 
+        LEFT JOIN (SELECT DISTINCT item_fg_id, price FROM inventory_wip WHERE trans_date < '$filter_from' and trans_type IN ('SCAN FG','BEGINING') ORDER BY trans_date DESC LIMIT 1) d ON a.id = d.item_fg_id
+        WHERE a.id like '%$filter_items%'
         GROUP BY a.id
         ORDER BY a.number");
         
         $data = array();
         foreach ($records as $record) {
-            $item_id = $record->id;
+            $item_fg_id = $record->id;
             
-            $begin = $this->crud->query("SELECT item_id, SUM(qty) as qty, SUM(amount) as amount, SUM(direct_material) as direct_material, SUM(direct_labor) as direct_labor, SUM(direct_foh) as direct_foh FROM inventory_wip WHERE trans_date < '$filter_from' and item_id = '$item_id' GROUP BY item_id");
+            $begin = $this->crud->query("SELECT item_fg_id, SUM(qty) as qty, SUM(amount) as amount, SUM(direct_material) as direct_material, SUM(direct_labor) as direct_labor, SUM(direct_foh) as direct_foh FROM inventory_wip WHERE trans_date < '$filter_from' and item_fg_id = '$item_fg_id' GROUP BY item_fg_id");
+
+            //PRODUCTION
+            $production_schedules = $this->crud->query("SELECT a.* FROM production_schedules a WHERE a.item_fg_id = '$item_fg_id' and a.trans_date between '$filter_from' and '$filter_to'");
 
             //RECEIPT
-            $receipts = $this->crud->query("SELECT a.* FROM production_schedules a WHERE a.item_id = '$item_id' and a.trans_date between '$filter_from' and '$filter_to'");
-
-            //DELIVERY
-            $returns = $this->crud->query("SELECT b.qty, b.workorder, b.created_by, DATE_FORMAT(b.created_date, '%Y-%m-%d') as trans_date, 
-                            b.checksheet_label
-                            FROM production_schedules a 
-                            LEFT JOIN checksheets e ON a.workorder = e.workorder
-                            LEFT JOIN scan_item_receipts_fg b ON e.number = b.checksheet_number and a.so_number = b.so_number and a.workorder = b.workorder
-                            WHERE a.item_id = '$item_id' and DATE_FORMAT(b.created_date, '%Y-%m-%d') between '$filter_from' and '$filter_to'
-                            GROUP BY b.checksheet_label");
+            $wip_receipts = $this->crud->query("SELECT b.*, a.item_fg_id, DATE_FORMAT(b.created_date, '%Y-%m-%d') as trans_date_label
+                            FROM wip_receipts a 
+                            JOIN scan_item_receipts_fg b ON a.checksheet_number = b.checksheet_number
+                            WHERE a.item_fg_id = '$item_fg_id' and DATE_FORMAT(b.created_date, '%Y-%m-%d') between '$filter_from' and '$filter_to'");
+            
+            //RGP
+            $os_fgs = $this->crud->query("SELECT b.*, a.item_fg_id, DATE_FORMAT(b.created_date, '%Y-%m-%d') as trans_date_label
+                            FROM os_fg a 
+                            JOIN scan_item_receipts_fg b ON a.id = b.workorder
+                            WHERE a.item_fg_id = '$item_fg_id' and DATE_FORMAT(b.created_date, '%Y-%m-%d') between '$filter_from' and '$filter_to'");
                             
-            //RETURN
-            $returns2 =  $this->crud->query("SELECT a.* FROM return_materials a 
-                            JOIN production_schedules b ON a.workorder = b.workorder
-                            WHERE b.item_id = '$item_id' and a.return_date between '$filter_from' and '$filter_to' GROUP BY a.return_id");
                             
-            //Wip Receipt
-            $in_qty = @$begin[0]->qty;
-            $in_dm = @$begin[0]->direct_material;
-            $in_dl = @$begin[0]->direct_labor;
-            $in_foh = @$begin[0]->direct_foh;
-            foreach ($receipts as $receipt) {
-                $costing_product_workorder = $this->crud->read("costing_product_workorders", [], ["item_id" => $item_id, "periode" => $periode, "workorder" => $receipt->workorder]);
+            $costing_product_workorder = $this->crud->read("costing_products", [], ["item_fg_id" => $item_fg_id, "periode" => $periode]);
 
-                $receipt_qty = $receipt->qty;
-                $direct_material = (@$costing_product_workorder->direct_material + @$costing_product_workorder->direct_requestion);
-                $direct_labor = (@$costing_product_workorder->direct_labor + @$costing_product_workorder->direct_overtime);
-                $direct_foh = @$costing_product_workorder->direct_foh;
-                $price_in = ((@$direct_material + $direct_labor + $direct_foh) / $receipt_qty);
+            $in_qty = empty(@$begin[0]->qty) ? 0 : @$begin[0]->qty;
+            $in_dm = empty(@$begin[0]->qty) ? 0 : @$begin[0]->direct_material;
+            $in_dl = empty(@$begin[0]->qty) ? 0 : @$begin[0]->direct_labor;
+            $in_foh = empty(@$begin[0]->qty) ? 0 : @$begin[0]->direct_foh;
+            foreach ($production_schedules as $production_schedule) {
+                $receipt_qty = $production_schedule->qty;
+                // $direct_material = (@$costing_product_workorder->direct_material + @$costing_product_workorder->direct_requestion);
+                // $direct_labor = (@$costing_product_workorder->direct_labor + @$costing_product_workorder->direct_overtime);
+                // $direct_foh = (int) @$costing_product_workorder->direct_foh;
+                // $price_in = ((@$direct_material + $direct_labor + $direct_foh) / $receipt_qty);
+                $price_in = $costing_product_workorder->direct_total;
                 $amount_in = ($receipt_qty * $price_in);
 
                 $data[] = array(
+                    "created_by" => $this->session->username,
+                    "created_date" => date("Y-m-d H:i:s"),
                     "period" => $periode,
-                    "item_id" => $item_id,
+                    "item_fg_id" => $item_fg_id,
                     "trans_type" => "PRODUCTION",
-                    "created_name" => $receipt->created_by,
-                    "trans_date" => $receipt->trans_date,
-                    "invoice_no" => $receipt->workorder,
-                    "document_no" => $receipt->so_number,
+                    "created_name" => $production_schedule->created_by,
+                    "trans_date" => $production_schedule->trans_date,
+                    "invoice_no" => "-",
+                    "document_no" => $production_schedule->workorder,
                     "uom" => $record->uom,
                     "qty" => $receipt_qty,
-                    "direct_material" => $direct_material,
-                    "direct_labor" => $direct_labor,
-                    "direct_foh" => $direct_foh,
+                    // "direct_material" => $direct_material,
+                    // "direct_labor" => $direct_labor,
+                    // "direct_foh" => $direct_foh,
                     "price" => $price_in,
                     "amount" => $amount_in,
                 );
@@ -121,64 +117,88 @@ class Inventory_wip extends CI_Controller
                 $in_foh += $direct_foh;
             }
 
-            //Delivery Note
-            foreach ($returns as $return) {
-                $direct_material = ((($in_dm / $in_qty) * $return->qty) * -1);
-                $direct_labor = ((($in_dl / $in_qty) * $return->qty) * -1);
-                $direct_foh = ((($in_foh / $in_qty) * $return->qty) * -1);
-                $price_out = (($direct_material + $direct_labor + $direct_foh) / $return->qty);
+            foreach ($wip_receipts as $wip_receipt) {
+                // $direct_material = ((($in_dm / $in_qty) * $wip_receipt->qty) * -1);
+                // $direct_labor = ((($in_dl / $in_qty) * $wip_receipt->qty) * -1);
+                // $direct_foh = ((($in_foh / $in_qty) * $wip_receipt->qty) * -1);
+                // $price_out = (($direct_material + $direct_labor + $direct_foh) / $wip_receipt->qty);
+                $price_out = $costing_product_workorder->direct_total;
 
                 $data[] = array(
+                    "created_by" => $this->session->username,
+                    "created_date" => date("Y-m-d H:i:s"),
                     "period" => $periode,
-                    "item_id" => $item_id,
+                    "item_fg_id" => $item_fg_id,
                     "trans_type" => "SCAN FG",
-                    "created_name" => $return->created_by,
-                    "trans_date" => $return->trans_date,
-                    "invoice_no" => $return->workorder,
-                    "document_no" => $return->checksheet_label,
+                    "created_name" => $wip_receipt->created_by,
+                    "trans_date" => $wip_receipt->trans_date_label,
+                    "invoice_no" => $wip_receipt->workorder,
+                    "document_no" => $wip_receipt->checksheet_label,
                     "uom" => $record->uom,
-                    "qty" => ($return->qty * -1),
-                    "direct_material" => $direct_material,
-                    "direct_labor" => $direct_labor,
-                    "direct_foh" => $direct_foh,
+                    "qty" => ($wip_receipt->qty * -1),
+                    // "direct_material" => $direct_material,
+                    // "direct_labor" => $direct_labor,
+                    // "direct_foh" => $direct_foh,
                     "price" => $price_out,
-                    "amount" => (($return->qty * $price_out) * -1),
+                    "amount" => (($wip_receipt->qty * $price_out) * -1),
                 );
 
-                $in_dm -= (($in_dm / $in_qty) * $return->qty);
-                $in_dl -= (($in_dl / $in_qty) * $return->qty);
-                $in_foh -= (($in_foh / $in_qty) * $return->qty);
-                $in_qty -= $return->qty;
+                $in_dm -= (($in_dm / $in_qty) * $wip_receipt->qty);
+                $in_dl -= (($in_dl / $in_qty) * $wip_receipt->qty);
+                $in_foh -= (($in_foh / $in_qty) * $wip_receipt->qty);
+                $in_qty -= $wip_receipt->qty;
             }
-
-            //Delivery Note
-            foreach ($returns2 as $return2) {
-                $direct_material = ((($in_dm / $in_qty) * $return2->qty) * -1);
-                $direct_labor = ((($in_dl / $in_qty) * $return2->qty) * -1);
-                $direct_foh = ((($in_foh / $in_qty) * $return2->qty) * -1);
-                $price_out = (($direct_material + $direct_labor + $direct_foh) / $return2->qty);
+            
+            foreach ($os_fgs as $os_fg) {
+                // $direct_material = ((($in_dm / $in_qty) * $os_fg->qty) * -1);
+                // $direct_labor = ((($in_dl / $in_qty) * $os_fg->qty) * -1);
+                // $direct_foh = ((($in_foh / $in_qty) * $os_fg->qty) * -1);
+                // $price_out = (($direct_material + $direct_labor + $direct_foh) / $os_fg->qty);
+                $price_out = $costing_product_workorder->direct_total;
 
                 $data[] = array(
+                    "created_by" => $this->session->username,
+                    "created_date" => date("Y-m-d H:i:s"),
                     "period" => $periode,
-                    "item_id" => $item_id,
+                    "item_fg_id" => $item_fg_id,
                     "trans_type" => "SCAN FG",
-                    "created_name" => $return2->return_name,
-                    "trans_date" => $return2->return_date,
-                    "invoice_no" => $return2->workorder,
-                    "document_no" => $return2->return_id,
+                    "created_name" => $os_fg->created_by,
+                    "trans_date" => $os_fg->trans_date_label,
+                    "invoice_no" => $os_fg->workorder,
+                    "document_no" => $os_fg->checksheet_label,
                     "uom" => $record->uom,
-                    "qty" => ($return2->qty * -1),
-                    "direct_material" => $direct_material,
-                    "direct_labor" => $direct_labor,
-                    "direct_foh" => $direct_foh,
+                    "qty" => ($os_fg->qty * -1),
+                    // "direct_material" => $direct_material,
+                    // "direct_labor" => $direct_labor,
+                    // "direct_foh" => $direct_foh,
                     "price" => $price_out,
-                    "amount" => (($return2->qty * $price_out) * -1),
+                    "amount" => (($os_fg->qty * $price_out) * -1),
                 );
 
-                $in_dm -= (($in_dm / $in_qty) * $return2->qty);
-                $in_dl -= (($in_dl / $in_qty) * $return2->qty);
-                $in_foh -= (($in_foh / $in_qty) * $return2->qty);
-                $in_qty -= $return2->qty;
+                $in_dm -= (($in_dm / $in_qty) * $os_fg->qty);
+                $in_dl -= (($in_dl / $in_qty) * $os_fg->qty);
+                $in_foh -= (($in_foh / $in_qty) * $os_fg->qty);
+                $in_qty -= $os_fg->qty;
+            }
+        }
+
+        foreach ($data as $dt) {
+            $inventory_wip = $this->crud->reads("inventory_wip", [], [
+                "item_fg_id" => $dt['item_fg_id'], 
+                "invoice_no" => $dt['invoice_no'],
+                "document_no" => $dt['document_no'], 
+                "trans_date" => $dt['trans_date']
+            ]);
+
+            if(count($inventory_wip) > 0){
+                $this->db->update('inventory_wip', $dt, [
+                    "item_fg_id" => $dt['item_fg_id'], 
+                    "invoice_no" => $dt['invoice_no'],
+                    "document_no" => $dt['document_no'], 
+                    "trans_date" => $dt['trans_date']
+                ]);
+            }else{
+                $this->db->insert('inventory_wip', $dt);
             }
         }
 
@@ -187,33 +207,12 @@ class Inventory_wip extends CI_Controller
         echo json_encode($result);
     }
 
-    public function create()
-    {
-        if ($this->input->post()) {
-            $post = $this->input->post('data');
 
-            $inventory_wip = $this->crud->reads("inventory_wip", [], [
-                "item_id" => $post['item_id'], 
-                "invoice_no" => $post['invoice_no'],
-                "document_no" => $post['document_no'], 
-                "trans_date" => $post['trans_date']
-            ]);
-
-            if(count($inventory_wip) > 0){
-                $send = $this->crud->update('inventory_wip', [
-                    "item_id" => $post['item_id'], 
-                    "invoice_no" => $post['invoice_no'],
-                    "document_no" => $post['document_no'], 
-                    "trans_date" => $post['trans_date']
-                ], $post);
-
-                echo $send;
-            }else{
-                $send = $this->crud->create('inventory_wip', $post);
-                echo $send;
-            }
-        } else {
-            show_error("Cannot Process your request");
+    public function formatNo($number, $decimal){
+        if($number >= 0){
+            return "<span>".number_format($number, $decimal)."</span>";
+        }else{
+            return "<span style='color:red;'>(".number_format(abs($number), $decimal).")</span>";
         }
     }
 
@@ -269,10 +268,10 @@ class Inventory_wip extends CI_Controller
 
         $records = $this->crud->query("SELECT
             a.id,
-            a.number, 
+            a.number_customer as number, 
             a.name, 
-            b.name as prodfam, 
-            c.name as uom,
+            'FINISH GOOD' as prodfam, 
+            a.uom,
             COALESCE(d.qty) as qty_in,
             COALESCE(d.direct_material) as direct_material_in,
             COALESCE(d.direct_labor) as direct_labor_in,
@@ -285,100 +284,56 @@ class Inventory_wip extends CI_Controller
             COALESCE(e.direct_foh) as direct_foh_out,
             COALESCE(e.price) as price_out,
             COALESCE(e.amount) as amount_out
-        FROM items a
-        JOIN item_familys b ON a.item_family_id = b.id
-        JOIN uom c ON a.uom_id = c.id
-        LEFT JOIN (SELECT item_id, price, SUM(qty) as qty, SUM(amount) as amount, SUM(direct_material) as direct_material, SUM(direct_labor) as direct_labor, SUM(direct_foh) as direct_foh FROM inventory_wip WHERE trans_date between '$filter_from' and '$filter_to' and trans_type = 'PRODUCTION' GROUP BY item_id) d ON a.id = d.item_id
-        LEFT JOIN (SELECT item_id, price, SUM(qty) as qty, SUM(amount) as amount, SUM(direct_material) as direct_material, SUM(direct_labor) as direct_labor, SUM(direct_foh) as direct_foh FROM inventory_wip WHERE trans_date between '$filter_from' and '$filter_to' and trans_type = 'SCAN FG' GROUP BY item_id) e ON a.id = e.item_id
-        WHERE a.id like '%$filter_items%' and b.number = '001'
+        FROM item_fg a
+        LEFT JOIN (SELECT item_fg_id, price, SUM(qty) as qty, SUM(amount) as amount, SUM(direct_material) as direct_material, SUM(direct_labor) as direct_labor, SUM(direct_foh) as direct_foh FROM inventory_wip WHERE trans_date between '$filter_from' and '$filter_to' and trans_type = 'PRODUCTION' GROUP BY item_fg_id) d ON a.id = d.item_fg_id
+        LEFT JOIN (SELECT item_fg_id, price, SUM(qty) as qty, SUM(amount) as amount, SUM(direct_material) as direct_material, SUM(direct_labor) as direct_labor, SUM(direct_foh) as direct_foh FROM inventory_wip WHERE trans_date between '$filter_from' and '$filter_to' and trans_type = 'SCAN FG' GROUP BY item_fg_id) e ON a.id = e.item_fg_id
+        WHERE a.id like '%$filter_items%'
         GROUP BY a.id
         ORDER BY a.number");
 
-        // $trial_balance = $this->crud->query("SELECT account_number, (SUM(ending_debit) - SUM(ending_credit)) as ending_tb FROM trial_balances 
-        //     WHERE period = '$period_tb' 
-        //     and account_number = '4512' GROUP BY account_number");
-
-        // $trial_balance_bf = $this->crud->query("SELECT account_number, (SUM(ending_debit) - SUM(ending_credit)) as ending_tb FROM trial_balances 
-        //     WHERE period = '$periode_tb_bf' 
-        //     and account_number = '4512' GROUP BY account_number");
-
-        $html .= '<table id="customers" style="width: 250%">
+        $html .= '<table id="customers" style="width: 100%">
                     <tr>
                         <th rowspan="2" width="20">No</th>
                         <th colspan="2" rowspan="2">Product No</th>
                         <th colspan="3" rowspan="2">Product Name</th>
                         <th rowspan="2">Uom</th>
-                        <th style="background-color:#CACACA;" colspan="6">Begining Stock</th>
-                        <th style="background-color:#B0FFA0;" colspan="6">In</th>
-                        <th style="background-color:#FFA0A0;" colspan="6">Out</th>
-                        <th style="background-color:#FCFFA0;" colspan="6">Ending Stock</th>
+                        <th  colspan="3">Begining Stock</th>
+                        <th  colspan="3">In</th>
+                        <th  colspan="3">Out</th>
+                        <th  colspan="3">Ending Stock</th>
                     </tr>
                     <tr>
-                        <th style="background-color:#CACACA;">Qty</th>
-                        <th style="background-color:#CACACA;">Material</th>
-                        <th style="background-color:#CACACA;">Labor</th>
-                        <th style="background-color:#CACACA;">FOH</th>
-                        <th style="background-color:#CACACA;">Price</th>
-                        <th style="background-color:#CACACA;">Amount</th>
-                        <th style="background-color:#B0FFA0;">Qty</th>
-                        <th style="background-color:#B0FFA0;">Material</th>
-                        <th style="background-color:#B0FFA0;">Labor</th>
-                        <th style="background-color:#B0FFA0;">FOH</th>
-                        <th style="background-color:#B0FFA0;">Price</th>
-                        <th style="background-color:#B0FFA0;">Amount</th>
-                        <th style="background-color:#FFA0A0;">Qty</th>
-                        <th style="background-color:#FFA0A0;">Material</th>
-                        <th style="background-color:#FFA0A0;">Labor</th>
-                        <th style="background-color:#FFA0A0;">FOH</th>
-                        <th style="background-color:#FFA0A0;">Price</th>
-                        <th style="background-color:#FFA0A0;">Amount</th>
-                        <th style="background-color:#FCFFA0;">Qty</th>
-                        <th style="background-color:#FCFFA0;">Material</th>
-                        <th style="background-color:#FCFFA0;">Labor</th>
-                        <th style="background-color:#FCFFA0;">FOH</th>
-                        <th style="background-color:#FCFFA0;">Price</th>
-                        <th style="background-color:#FCFFA0;">Amount</th>
+                        <th >Qty</th>
+                        <th >Price</th>
+                        <th >Amount</th>
+                        <th >Qty</th>
+                        <th >Price</th>
+                        <th >Amount</th>
+                        <th >Qty</th>
+                        <th >Price</th>
+                        <th >Amount</th>
+                        <th >Qty</th>
+                        <th >Price</th>
+                        <th >Amount</th>
                     </tr>';
 
         $noh = 1;
         $total_begin = 0;
-        $total_direct_material = 0;
-        $total_direct_labor = 0;
-        $total_direct_foh = 0;
         $total_begin_price = 0;
         $total_qty_in = 0;
-        $total_direct_material_in = 0;
-        $total_direct_labor_in = 0;
-        $total_direct_foh_in = 0;
         $total_qty_in_price = 0;
         $total_qty_out = 0;
-        $total_direct_material_out = 0;
-        $total_direct_labor_out = 0;
-        $total_direct_foh_out = 0;
         $total_qty_out_price = 0;
         $total_end = 0;
-        $total_direct_material_end = 0;
-        $total_direct_labor_end = 0;
-        $total_direct_foh_end = 0;
         $total_end_price = 0;
 
-        // $ending_qty_tb = 0;
-        // foreach ($records as $record) {
-        //     $item_id = $record->id;
-        //     $begin = $this->crud->query("SELECT item_id, SUM(qty) as qty, SUM(amount) as amount FROM inventory_wip WHERE trans_date < '$filter_from' and item_id = '$item_id' GROUP BY item_id");
-        //     $ending_qty_tb += abs((@$begin[0]->qty + $record->qty_in) - abs($record->qty_out));
-        // }
-
         foreach ($records as $record) {
-            $item_id = $record->id;
+            $item_fg_id = $record->id;
 
-            $begin = $this->crud->query("SELECT item_id, SUM(qty) as qty, SUM(amount) as amount, SUM(direct_material) as direct_material, SUM(direct_labor) as direct_labor, SUM(direct_foh) as direct_foh FROM inventory_wip WHERE trans_date < '$filter_from' and item_id = '$item_id' GROUP BY item_id");
-            $price = $this->crud->query("SELECT DISTINCT price FROM inventory_wip WHERE trans_date < '$filter_from' and trans_type = 'SCAN FG' and item_id = '$item_id' ORDER BY trans_date DESC");
+            $begin = $this->crud->query("SELECT item_fg_id, SUM(qty) as qty, SUM(amount) as amount, SUM(direct_material) as direct_material, SUM(direct_labor) as direct_labor, SUM(direct_foh) as direct_foh FROM inventory_wip WHERE trans_date < '$filter_from' and item_fg_id = '$item_fg_id' GROUP BY item_fg_id");
+            $price = $this->crud->query("SELECT DISTINCT price FROM inventory_wip WHERE trans_date < '$filter_from' and trans_type = 'SCAN FG' and item_fg_id = '$item_fg_id' ORDER BY trans_date DESC");
 
             $begin_qty = @$begin[0]->qty;
-            $begin_direct_material = @$begin[0]->direct_material;
-            $begin_direct_labor = @$begin[0]->direct_labor;
-            $begin_direct_foh = @$begin[0]->direct_foh;
             
             if($filter_from == date("2023-01-01", strtotime($filter_from))){
                 $begin_price = @$price[0]->price;
@@ -405,11 +360,8 @@ class Inventory_wip extends CI_Controller
                 $price_out = 0;
             }
 
-            $ending_qty = abs(@$begin[0]->qty + $record->qty_in - abs($record->qty_out));
-            $ending_direct_material = abs(@$begin[0]->direct_material + $record->direct_material_in - abs($record->direct_material_out));
-            $ending_direct_labor = abs(@$begin[0]->direct_labor + $record->direct_labor_in - abs($record->direct_labor_out));
-            $ending_direct_foh = abs(@$begin[0]->direct_foh + $record->direct_foh_in - abs($record->direct_foh_out));
-            $ending_amount = abs($begin_amount + $record->amount_in - abs($record->amount_out));
+            $ending_qty = (@$begin[0]->qty + $record->qty_in - abs($record->qty_out));
+            $ending_amount = ($begin_amount + $record->amount_in - abs($record->amount_out));
 
             if($ending_qty > 0){
                 $ending_price = ($ending_amount / $ending_qty);
@@ -422,30 +374,18 @@ class Inventory_wip extends CI_Controller
                             <td colspan="2">' . $record->number . '</td>
                             <td colspan="3">' . $record->name . '</td>
                             <td>' . $record->uom . '</td>
-                            <td style="text-align:right;">' . number_format($begin_qty, 2) . '</td>
-                            <td style="text-align:right;">' . number_format(@$begin[0]->direct_material, 2) . '</td>
-                            <td style="text-align:right;">' . number_format(@$begin[0]->direct_labor, 2) . '</td>
-                            <td style="text-align:right;">' . number_format(@$begin[0]->direct_foh, 2) . '</td>
-                            <td style="text-align:right;">' . number_format($begin_price, 6) . '</td>
-                            <td style="text-align:right;">' . number_format(@$begin_amount, 2) . '</td>
-                            <td style="text-align:right;">' . number_format($record->qty_in, 2) . '</td>
-                            <td style="text-align:right;">' . number_format($record->direct_material_in, 2) . '</td>
-                            <td style="text-align:right;">' . number_format($record->direct_labor_in, 2) . '</td>
-                            <td style="text-align:right;">' . number_format($record->direct_foh_in, 2) . '</td>
-                            <td style="text-align:right;">' . number_format($price_in, 6) . '</td>
-                            <td style="text-align:right;">' . number_format($record->amount_in, 2) . '</td>
-                            <td style="text-align:right;">' . number_format(abs($record->qty_out), 2) . '</td>
-                            <td style="text-align:right;">' . number_format(abs($record->direct_material_out), 2) . '</td>
-                            <td style="text-align:right;">' . number_format(abs($record->direct_labor_out), 2) . '</td>
-                            <td style="text-align:right;">' . number_format(abs($record->direct_foh_out), 2) . '</td>
-                            <td style="text-align:right;">' . number_format($price_out, 6) . '</td>
-                            <td style="text-align:right;">' . number_format(abs($record->amount_out), 2) . '</td>
-                            <td style="text-align:right;">' . number_format($ending_qty, 2) . '</td>
-                            <td style="text-align:right;">' . number_format($ending_direct_material, 2) . '</td>
-                            <td style="text-align:right;">' . number_format($ending_direct_labor, 2) . '</td>
-                            <td style="text-align:right;">' . number_format($ending_direct_foh, 2) . '</td>
-                            <td style="text-align:right;">' . number_format($ending_price, 6) . '</td>
-                            <td style="text-align:right;">' . number_format($ending_amount, 2) . '</td>
+                            <td style="text-align:right;">' . $this->formatNo($begin_qty, 2) . '</td>
+                            <td style="text-align:right;">' . $this->formatNo($begin_price, 4) . '</td>
+                            <td style="text-align:right;">' . $this->formatNo(@$begin_amount, 2) . '</td>
+                            <td style="text-align:right;">' . $this->formatNo($record->qty_in, 2) . '</td>
+                            <td style="text-align:right;">' . $this->formatNo($price_in, 4) . '</td>
+                            <td style="text-align:right;">' . $this->formatNo($record->amount_in, 2) . '</td>
+                            <td style="text-align:right;">' . $this->formatNo(($record->qty_out), 2) . '</td>
+                            <td style="text-align:right;">' . $this->formatNo($price_out, 4) . '</td>
+                            <td style="text-align:right;">' . $this->formatNo(($record->amount_out), 2) . '</td>
+                            <td style="text-align:right;">' . $this->formatNo($ending_qty, 2) . '</td>
+                            <td style="text-align:right;">' . $this->formatNo($ending_price, 4) . '</td>
+                            <td style="text-align:right;">' . $this->formatNo($ending_amount, 2) . '</td>
                         </tr>';
 
             if ($filter_display == "DETAIL") {
@@ -460,68 +400,44 @@ class Inventory_wip extends CI_Controller
                                 <th rowspan="2">Created By</th>
                                 <th rowspan="2">WO / DO</th>
                                 <th rowspan="2">Doc No</th>
-                                <th style="background-color:#CACACA;" colspan="6">Begining Stock</th>
-                                <th style="background-color:#B0FFA0;" colspan="6">In</th>
-                                <th style="background-color:#FFA0A0;" colspan="6">Out</th>
-                                <th style="background-color:#FCFFA0;" colspan="6">Ending Stock</th>
+                                <th colspan="3">Begining Stock</th>
+                                <th colspan="3">In</th>
+                                <th colspan="3">Out</th>
+                                <th colspan="3">Ending Stock</th>
                             </tr>
                             <tr>
-                                <th style="background-color:#CACACA;">Qty</th>
-                                <th style="background-color:#CACACA;">Material</th>
-                                <th style="background-color:#CACACA;">Labor</th>
-                                <th style="background-color:#CACACA;">FOH</th>
-                                <th style="background-color:#CACACA;">Price</th>
-                                <th style="background-color:#CACACA;">Amount</th>
-                                <th style="background-color:#B0FFA0;">Qty</th>
-                                <th style="background-color:#B0FFA0;">Material</th>
-                                <th style="background-color:#B0FFA0;">Labor</th>
-                                <th style="background-color:#B0FFA0;">FOH</th>
-                                <th style="background-color:#B0FFA0;">Price</th>
-                                <th style="background-color:#B0FFA0;">Amount</th>
-                                <th style="background-color:#FFA0A0;">Qty</th>
-                                <th style="background-color:#FFA0A0;">Material</th>
-                                <th style="background-color:#FFA0A0;">Labor</th>
-                                <th style="background-color:#FFA0A0;">FOH</th>
-                                <th style="background-color:#FFA0A0;">Price</th>
-                                <th style="background-color:#FFA0A0;">Amount</th>
-                                <th style="background-color:#FCFFA0;">Qty</th>
-                                <th style="background-color:#FCFFA0;">Material</th>
-                                <th style="background-color:#FCFFA0;">Labor</th>
-                                <th style="background-color:#FCFFA0;">FOH</th>
-                                <th style="background-color:#FCFFA0;">Price</th>
-                                <th style="background-color:#FCFFA0;">Amount</th>
+                                <th>Qty</th>
+                                <th>Price</th>
+                                <th>Amount</th>
+                                <th>Qty</th>
+                                <th>Price</th>
+                                <th>Amount</th>
+                                <th>Qty</th>
+                                <th>Price</th>
+                                <th>Amount</th>
+                                <th>Qty</th>
+                                <th>Price</th>
+                                <th>Amount</th>
                             </tr>';
                 $nod = 1;
                 for ($i = $start; $i <= $finish; $i += (60 * 60 * 24)) {
                     $working_date = date('Y-m-d', $i);
-                    $inventories = $this->crud->query("SELECT * FROM inventory_wip WHERE item_id = '$item_id' and trans_date = '$working_date'");
+                    $inventories = $this->crud->query("SELECT * FROM inventory_wip WHERE item_fg_id = '$item_fg_id' and trans_date = '$working_date'");
 
                     //Wip Receipt
                     foreach ($inventories as $inventory) {
                         if($inventory->trans_type == "PRODUCTION"){
                             $qty_in = $inventory->qty;
-                            $direct_material_in = $inventory->direct_material;
-                            $direct_labor_in = $inventory->direct_labor;
-                            $direct_foh_in = $inventory->direct_foh;
                             $price_in = $inventory->price;
                             $amount_in = $inventory->amount;
                             $qty_out = 0;
-                            $direct_material_out = 0;
-                            $direct_labor_out = 0;
-                            $direct_foh_out = 0;
                             $price_out = 0;
                             $amount_out = 0;
                         }else{
                             $qty_in = 0;
-                            $direct_material_in = 0;
-                            $direct_labor_in = 0;
-                            $direct_foh_in = 0;
                             $price_in = 0;
                             $amount_in = 0;
                             $qty_out = $inventory->qty;
-                            $direct_material_out = $inventory->direct_material;
-                            $direct_labor_out = $inventory->direct_labor;
-                            $direct_foh_out = $inventory->direct_foh;
                             $price_out = $inventory->price;
                             $amount_out = $inventory->amount;
                         }
@@ -538,36 +454,21 @@ class Inventory_wip extends CI_Controller
                                         <td>' . $inventory->created_name . '</td>
                                         <td>' . $inventory->invoice_no . '</td>
                                         <td>' . $inventory->document_no . '</td>
-                                        <td style="text-align:right; background-color:#CACACA;">' . number_format($begin_qty, 2) . '</td>
-                                        <td style="text-align:right; background-color:#CACACA;">' . number_format($begin_direct_material, 2) . '</td>
-                                        <td style="text-align:right; background-color:#CACACA;">' . number_format($begin_direct_labor, 2) . '</td>
-                                        <td style="text-align:right; background-color:#CACACA;">' . number_format($begin_direct_foh, 2) . '</td>
-                                        <td style="text-align:right; background-color:#CACACA;">' . number_format($begin_price, 6) . '</td>
-                                        <td style="text-align:right; background-color:#CACACA;">' . number_format(abs($begin_amount), 2) . '</td>
-                                        <td style="text-align:right; background-color:#B0FFA0;">' . number_format($qty_in, 2) . '</td>
-                                        <td style="text-align:right; background-color:#B0FFA0;">' . number_format($direct_material_in, 2) . '</td>
-                                        <td style="text-align:right; background-color:#B0FFA0;">' . number_format($direct_labor_in, 2) . '</td>
-                                        <td style="text-align:right; background-color:#B0FFA0;">' . number_format($direct_foh_in, 2) . '</td>
-                                        <td style="text-align:right; background-color:#B0FFA0;">' . number_format($price_in, 6) . '</td>
-                                        <td style="text-align:right; background-color:#B0FFA0;">' . number_format($amount_in, 2) . '</td>
-                                        <td style="text-align:right; background-color:#FFA0A0;">' . number_format(abs($qty_out), 2)  . '</td>
-                                        <td style="text-align:right; background-color:#FFA0A0;">' . number_format(abs($direct_material_out), 2)  . '</td>
-                                        <td style="text-align:right; background-color:#FFA0A0;">' . number_format(abs($direct_labor_out), 2)  . '</td>
-                                        <td style="text-align:right; background-color:#FFA0A0;">' . number_format(abs($direct_foh_out), 2)  . '</td>
-                                        <td style="text-align:right; background-color:#FFA0A0;">' . number_format(abs($price_out), 6)  . '</td>
-                                        <td style="text-align:right; background-color:#FFA0A0;">' . number_format(abs($amount_out), 2)  . '</td>
-                                        <td style="text-align:right; background-color:#FCFFA0;">' . number_format($qty_end, 2)  . '</td>
-                                        <td style="text-align:right; background-color:#FCFFA0;">' . number_format(abs($begin_direct_material + $direct_material_in - abs($direct_material_out)), 2)  . '</td>
-                                        <td style="text-align:right; background-color:#FCFFA0;">' . number_format(abs($begin_direct_labor + $direct_labor_in - abs($direct_labor_out)), 2)  . '</td>
-                                        <td style="text-align:right; background-color:#FCFFA0;">' . number_format(abs($begin_direct_foh + $direct_foh_in - abs($direct_foh_out)), 2)  . '</td>
-                                        <td style="text-align:right; background-color:#FCFFA0;">' . number_format($price_end, 6)  . '</td>
-                                        <td style="text-align:right; background-color:#FCFFA0;">' . number_format($amount_end, 2)  . '</td>
+                                        <td style="text-align:right;">' . $this->formatNo($begin_qty, 2) . '</td>
+                                        <td style="text-align:right;">' . $this->formatNo($begin_price, 4) . '</td>
+                                        <td style="text-align:right;">' . $this->formatNo(abs($begin_amount), 2) . '</td>
+                                        <td style="text-align:right;">' . $this->formatNo($qty_in, 2) . '</td>
+                                        <td style="text-align:right;">' . $this->formatNo($price_in, 4) . '</td>
+                                        <td style="text-align:right;">' . $this->formatNo($amount_in, 2) . '</td>
+                                        <td style="text-align:right;">' . $this->formatNo(abs($qty_out), 2)  . '</td>
+                                        <td style="text-align:right;">' . $this->formatNo(abs($price_out), 4)  . '</td>
+                                        <td style="text-align:right;">' . $this->formatNo(abs($amount_out), 2)  . '</td>
+                                        <td style="text-align:right;">' . $this->formatNo($qty_end, 2)  . '</td>
+                                        <td style="text-align:right;">' . $this->formatNo($price_end, 4)  . '</td>
+                                        <td style="text-align:right;">' . $this->formatNo($amount_end, 2)  . '</td>
                                     </tr>';
 
                         $begin_qty += ($qty_in - abs($qty_out));
-                        $begin_direct_material += ($direct_material_in) - abs($direct_material_out);
-                        $begin_direct_labor += ($direct_labor_in) - abs($direct_labor_out);
-                        $begin_direct_foh += ($direct_foh_in) - abs($direct_foh_out);
                         $begin_amount += ($amount_in - abs($amount_out));
                         $begin_price = (abs($begin_amount) / $begin_qty);
                         $nod++;
@@ -578,54 +479,30 @@ class Inventory_wip extends CI_Controller
             $noh++;
 
             $total_begin += @$begin_qty;
-            $total_direct_material += @$begin[0]->direct_material;
-            $total_direct_labor += @$begin[0]->direct_labor;
-            $total_direct_foh += @$begin[0]->direct_foh;
             $total_begin_price += @$begin_amount;
             $total_qty_in += $record->qty_in;
-            $total_direct_material_in += $record->direct_material_in;
-            $total_direct_labor_in += $record->direct_labor_in;
-            $total_direct_foh_in += $record->direct_foh_in;
             $total_qty_in_price += $record->amount_in;
             $total_qty_out += $record->qty_out;
-            $total_direct_material_out += $record->direct_material_out;
-            $total_direct_labor_out += $record->direct_labor_out;
-            $total_direct_foh_out += $record->direct_foh_out;
             $total_qty_out_price += $record->amount_out;
             $total_end += $ending_qty;
-            $total_direct_material_end += $ending_direct_material;
-            $total_direct_labor_end += $ending_direct_labor;
-            $total_direct_foh_end += $ending_direct_foh;
             $total_end_price += $ending_amount;
         }
 
         if ($filter_display == "RECAP") {
             $html .= '  <tr>
                             <td colspan="7" style="text-align:right;"><b>GRAND TOTAL</b></td>
-                            <td style="text-align:right;"><b>' . number_format($total_begin, 2) . '</b></td>
-                            <td style="text-align:right;"><b>' . number_format($total_direct_material, 2) . '</b></td>
-                            <td style="text-align:right;"><b>' . number_format($total_direct_labor, 2) . '</b></td>
-                            <td style="text-align:right;"><b>' . number_format($total_direct_foh, 2) . '</b></td>
+                            <td style="text-align:right;"><b>' . $this->formatNo($total_begin, 2) . '</b></td>
                             <td style="text-align:right;"><b>-</b></td>
-                            <td style="text-align:right;"><b>' . number_format($total_begin_price, 2) . '</b></td>
-                            <td style="text-align:right;"><b>' . number_format($total_qty_in, 2) . '</b></td>
-                            <td style="text-align:right;"><b>' . number_format($total_direct_material_in, 2) . '</b></td>
-                            <td style="text-align:right;"><b>' . number_format($total_direct_labor_in, 2) . '</b></td>
-                            <td style="text-align:right;"><b>' . number_format($total_direct_foh_in, 2) . '</b></td>
+                            <td style="text-align:right;"><b>' . $this->formatNo($total_begin_price, 2) . '</b></td>
+                            <td style="text-align:right;"><b>' . $this->formatNo($total_qty_in, 2) . '</b></td>
                             <td style="text-align:right;"><b>-</b></td>
-                            <td style="text-align:right;"><b>' . number_format(abs(round($total_direct_material_in, 2) + round($total_direct_labor_in, 2) + round($total_direct_foh_in, 2)), 2) . '</b></td>
-                            <td style="text-align:right;"><b>' . number_format(abs($total_qty_out), 2) . '</b></td>
-                            <td style="text-align:right;"><b>' . number_format(abs($total_direct_material_out), 2) . '</b></td>
-                            <td style="text-align:right;"><b>' . number_format(abs($total_direct_labor_out), 2) . '</b></td>
-                            <td style="text-align:right;"><b>' . number_format(abs($total_direct_foh_out), 2) . '</b></td>
+                            <td style="text-align:right;"><b>' . $this->formatNo($total_qty_in_price, 2) . '</b></td>
+                            <td style="text-align:right;"><b>' . $this->formatNo(abs($total_qty_out), 2) . '</b></td>
                             <td style="text-align:right;"><b>-</b></td>
-                            <td style="text-align:right;"><b>' . number_format(abs(round($total_direct_material_out, 2) + round($total_direct_labor_out, 2) + round($total_direct_foh_out, 2)), 2) . '</b></td>
-                            <td style="text-align:right;"><b>' . number_format($total_end, 2) . '</b></td>
-                            <td style="text-align:right;"><b>' . number_format($total_direct_material_end, 2) . '</b></td>
-                            <td style="text-align:right;"><b>' . number_format($total_direct_labor_end, 2) . '</b></td>
-                            <td style="text-align:right;"><b>' . number_format($total_direct_foh_end, 2) . '</b></td>
+                            <td style="text-align:right;"><b>' . $this->formatNo($total_qty_out_price, 2) . '</b></td>
+                            <td style="text-align:right;"><b>' . $this->formatNo($total_end, 2) . '</b></td>
                             <td style="text-align:right;"><b>-</b></td>
-                            <td style="text-align:right;"><b>' . number_format(abs(round($total_direct_material_end, 2) + round($total_direct_labor_end, 2) + round($total_direct_foh_end, 2)), 2) . '</b></td>
+                            <td style="text-align:right;"><b>' . $this->formatNo($total_end_price, 2) . '</b></td>
                         </tr>';
         }
 

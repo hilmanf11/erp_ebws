@@ -152,138 +152,140 @@
         //SAVE DATA
         $('#dlg_detail').dialog({
             buttons: [{
-                text: 'Save',
-                iconCls: 'icon-ok',
-                handler: function() {
-                    var status = $("#status").numberbox('getValue');
+                    text: 'Save',
+                    iconCls: 'icon-ok',
+                    handler: function() {
+                        var status = $("#status").numberbox('getValue');
 
-                    if (status == 0) {
-                        $.messager.confirm('Warning', 'Are you sure you want to save this data', function(r) {
-                            if (r) {
-                                var request_no = $("#request_no").textbox('getValue');
-                                var trans_date = $("#trans_date").datebox('getValue');
-                                var request_name = $("#request_name").textbox('getValue');
-                                var out_date = $("#out_date").datebox('getValue');
-                                var location_other_number = $("#location_other_number").textbox('getValue');
-                                var document_in = $("#document_in").textbox('getValue');
+                        if (status == 0) {
+                            $.messager.confirm('Warning', 'Are you sure you want to save this data', function(r) {
+                                if (r) {
+                                    var request_no = $("#request_no").textbox('getValue');
+                                    var trans_date = $("#trans_date").datebox('getValue');
+                                    var request_name = $("#request_name").textbox('getValue');
+                                    var out_date = $("#out_date").datebox('getValue');
+                                    var location_other_number = $("#location_other_number").textbox('getValue');
+                                    var document_in = $("#document_in").textbox('getValue');
 
-                                $('#dg_detail').datagrid('acceptChanges');
-                                var rows = $('#dg_detail').datagrid('getRows');
-                                var totalrows = rows.length;
+                                    $('#dg_detail').datagrid('acceptChanges');
+                                    var rows = $('#dg_detail').datagrid('getRows');
+                                    var totalrows = rows.length;
 
-                                if (totalrows > 0) {
-                                    for (let i = 0; i < totalrows; i++) {
-                                        if (rows[i].balance >= 0) {
-                                            $.ajax({
-                                                type: "post",
-                                                url: '<?= base_url('warehouse/issued_others_store_out/update') ?>',
-                                                data: {
-                                                    request_no: request_no,
-                                                    trans_date: trans_date,
-                                                    request_name: request_name,
-                                                    document_in: document_in,
-                                                    location_other_number: location_other_number,
-                                                    out_by: "<?= $this->session->name ?>",
-                                                    out_date: out_date,
-                                                    item_rm_id: rows[i].item_rm_id,
-                                                    qty: rows[i].qty,
-                                                    balance: rows[i].balance,
-                                                    remarks: rows[i].remarks,
-                                                    status: '1'
-                                                },
-                                                dataType: "json",
-                                                success: function(result) {
-                                                    Swal.fire({
-                                                        title: result.message,
-                                                        icon: result.theme,
-                                                        confirmButtonText: 'Ok',
-                                                        allowOutsideClick: false,
-                                                    }).then((result) => {
-                                                        if (result.isConfirmed) {
-                                                            window.location.reload();
-                                                        }
-                                                    });
-                                                }
-                                            });
-                                        } else {
-                                            toastr.error("Failed to Save Data, Balance cannot empty");
+                                    if (totalrows > 0) {
+                                        for (let i = 0; i < totalrows; i++) {
+                                            if (rows[i].balance >= 0) {
+                                                $.ajax({
+                                                    type: "post",
+                                                    url: '<?= base_url('warehouse/issued_others_store_out/update') ?>',
+                                                    data: {
+                                                        request_no: request_no,
+                                                        trans_date: trans_date,
+                                                        request_name: request_name,
+                                                        document_in: document_in,
+                                                        location_other_number: location_other_number,
+                                                        out_by: "<?= $this->session->name ?>",
+                                                        out_date: out_date,
+                                                        item_rm_id: rows[i].item_rm_id,
+                                                        stock: rows[i].stock,
+                                                        qty: rows[i].qty,
+                                                        balance: rows[i].balance,
+                                                        remarks: rows[i].remarks
+                                                    },
+                                                    dataType: "json",
+                                                    success: function(result) {
+                                                        Swal.fire({
+                                                            title: result.message,
+                                                            icon: result.theme,
+                                                            confirmButtonText: 'Ok',
+                                                            allowOutsideClick: false,
+                                                        }).then((result) => {
+                                                            if (result.isConfirmed) {
+                                                                window.location.reload();
+                                                            }
+                                                        });
+                                                    }
+                                                });
+                                            } else {
+                                                toastr.error("Failed to Save Data, Balance cannot empty");
+                                            }
                                         }
+
+                                        $('#dg').datagrid('reload');
+                                        $('#dlg_detail').dialog('close');
+                                    } else {
+                                        toastr.warning("Please Select data in the table first!");
                                     }
-
-                                    $('#dg').datagrid('reload');
-                                    $('#dlg_detail').dialog('close');
-                                } else {
-                                    toastr.warning("Please Select data in the table first!");
                                 }
-                            }
-                        });
-                    } else {
-                        toastr.error("The Data Already Created");
+                            });
+                        } else {
+                            toastr.error("The Data Already Created");
+                        }
                     }
-                }
-            }, {
-                text: 'Cancel',
-                handler: function() {
-                    var status = $("#status").numberbox('getValue');
+                },
+                // {
+                //     text: 'Cancel',
+                //     handler: function() {
+                //         var status = $("#status").numberbox('getValue');
 
-                    if (status == 0) {
-                        $.messager.prompt('Reason', 'Please input the reason, why the Request is Cancel ?', function(r) {
-                            if (r) {
-                                var request_no = $("#request_no").textbox('getValue');
-                                var trans_date = $("#trans_date").datebox('getValue');
-                                var request_name = $("#request_name").textbox('getValue');
-                                var out_date = $("#out_date").datebox('getValue');
+                //         if (status == 0) {
+                //             $.messager.prompt('Reason', 'Please input the reason, why the Request is Cancel ?', function(r) {
+                //                 if (r) {
+                //                     var request_no = $("#request_no").textbox('getValue');
+                //                     var trans_date = $("#trans_date").datebox('getValue');
+                //                     var request_name = $("#request_name").textbox('getValue');
+                //                     var out_date = $("#out_date").datebox('getValue');
 
-                                $('#dg_detail').datagrid('acceptChanges');
-                                var rows = $('#dg_detail').datagrid('getRows');
-                                var totalrows = rows.length;
+                //                     $('#dg_detail').datagrid('acceptChanges');
+                //                     var rows = $('#dg_detail').datagrid('getRows');
+                //                     var totalrows = rows.length;
 
-                                if (totalrows > 0) {
-                                    for (let i = 0; i < totalrows; i++) {
-                                        if (rows[i].item_rm_id) {
-                                            $.ajax({
-                                                type: "post",
-                                                url: '<?= base_url('warehouse/issued_others_store_out/update') ?>',
-                                                data: {
-                                                    request_no: request_no,
-                                                    trans_date: trans_date,
-                                                    request_name: request_name,
-                                                    out_date: out_date,
-                                                    out_by: "<?= $this->session->name ?>",
-                                                    item_rm_id: rows[i].item_rm_id,
-                                                    remarks: rows[i].remarks,
-                                                    status: '2',
-                                                    reason: r
-                                                },
-                                                dataType: "json",
-                                                success: function(result) {
-                                                    Swal.fire({
-                                                        title: result.message,
-                                                        icon: result.theme,
-                                                        confirmButtonText: 'Ok',
-                                                        allowOutsideClick: false,
-                                                    }).then((result) => {
-                                                        if (result.isConfirmed) {
-                                                            window.location.reload();
-                                                        }
-                                                    });
-                                                }
-                                            });
-                                        }
-                                    }
+                //                     if (totalrows > 0) {
+                //                         for (let i = 0; i < totalrows; i++) {
+                //                             if (rows[i].item_rm_id) {
+                //                                 $.ajax({
+                //                                     type: "post",
+                //                                     url: '<?= base_url('warehouse/issued_others_store_out/update') ?>',
+                //                                     data: {
+                //                                         request_no: request_no,
+                //                                         trans_date: trans_date,
+                //                                         request_name: request_name,
+                //                                         out_date: out_date,
+                //                                         out_by: "<?= $this->session->name ?>",
+                //                                         item_rm_id: rows[i].item_rm_id,
+                //                                         remarks: rows[i].remarks,
+                //                                         status: '2',
+                //                                         reason: r
+                //                                     },
+                //                                     dataType: "json",
+                //                                     success: function(result) {
+                //                                         Swal.fire({
+                //                                             title: result.message,
+                //                                             icon: result.theme,
+                //                                             confirmButtonText: 'Ok',
+                //                                             allowOutsideClick: false,
+                //                                         }).then((result) => {
+                //                                             if (result.isConfirmed) {
+                //                                                 window.location.reload();
+                //                                             }
+                //                                         });
+                //                                     }
+                //                                 });
+                //                             }
+                //                         }
 
-                                    $('#dg').datagrid('reload');
-                                    $('#dlg_detail').dialog('close');
-                                } else {
-                                    toastr.warning("Please Select data in the table first!");
-                                }
-                            }
-                        });
-                    } else {
-                        toastr.error("The Data Already Created");
-                    }
-                }
-            }]
+                //                         $('#dg').datagrid('reload');
+                //                         $('#dlg_detail').dialog('close');
+                //                     } else {
+                //                         toastr.warning("Please Select data in the table first!");
+                //                     }
+                //                 }
+                //             });
+                //         } else {
+                //             toastr.error("The Data Already Created");
+                //         }
+                //     }
+                // }
+            ]
         });
 
         $('#item_rm_id').combogrid({

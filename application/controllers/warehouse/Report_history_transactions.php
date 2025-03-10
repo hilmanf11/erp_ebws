@@ -124,7 +124,7 @@ class Report_history_transactions extends CI_Controller
             b.name as prodfam, 
             a.uom, 
             COALESCE(h.begin_stock,0) AS begin_stock,
-            (COALESCE(SUM(c.qty_sto),0) + COALESCE(dd.sto_qty_in,0) + COALESCE(e.qty_receipt, 0) + COALESCE(j.qty_rgp_in, 0)) AS qty_in,
+            (COALESCE(SUM(c.qty_sto),0) + COALESCE(dd.sto_qty_in,0) + COALESCE(g.return_qty, 0) + COALESCE(e.qty_receipt, 0) + COALESCE(j.qty_rgp_in, 0)) AS qty_in,
             (COALESCE(f.qty, 0) + COALESCE(i.qty_reject, 0) + COALESCE(k.qty_rgp_out, 0) + COALESCE(d.sto_qty_out, 0)) AS qty_out,
             ((COALESCE(h.begin_stock,0) + COALESCE(SUM(c.qty_sto),0) + COALESCE(j.qty_rgp_in, 0) + COALESCE(SUM(dd.sto_qty_in),0) + COALESCE(e.qty_receipt, 0) + COALESCE(g.return_qty, 0)) - COALESCE(f.qty, 0) - COALESCE(d.sto_qty_out, 0) - COALESCE(i.qty_reject, 0) - COALESCE(k.qty_rgp_out, 0)) AS end_stock
         FROM item_rm a 
@@ -135,8 +135,8 @@ class Report_history_transactions extends CI_Controller
         LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) as qty_receipt FROM purchase_order_receipts a JOIN scan_item_receipts b ON a.receipt_id  = b.receipt_id WHERE a.receipt_date between '$filter_from' and '$filter_to' GROUP BY item_rm_id) e ON a.id = e.item_rm_id
         LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as qty FROM issued_material_details WHERE DATE_FORMAT(created_date, '%Y-%m-%d') between '$filter_from' and '$filter_to' GROUP BY item_rm_id) f ON a.id = f.item_rm_id
         LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) as qty_reject FROM purchase_order_receipts a JOIN scan_item_rejections b ON a.receipt_id  = b.receipt_id WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') between '$filter_from' and '$filter_to' GROUP BY item_rm_id) i ON a.id = i.item_rm_id
-        LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) as qty_rgp_in FROM rgp_transactions a JOIN scan_item_receipts b ON a.rgp_id = b.receipt_id WHERE a.type = 'IN' and a.transaction_date between '$filter_from' and '$filter_to' GROUP BY a.item_id) j ON a.id = j.item_id
-        LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_out FROM rgp_transactions WHERE type = 'OUT' and transaction_date between '$filter_from' and '$filter_to' GROUP BY item_id) k ON a.id = k.item_id
+        LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) as qty_rgp_in FROM rgp_transactions a JOIN scan_item_rgp b ON a.number = b.rgp_number and a.item_id = b.item_id WHERE a.type = 'IN' and a.transaction_date between '$filter_from' and '$filter_to' GROUP BY a.item_id) j ON a.id = j.item_id
+        LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) as qty_rgp_out FROM rgp_transactions a JOIN scan_item_rgp b ON a.number = b.rgp_number and a.item_id = b.item_id WHERE a.type = 'OUT' and a.transaction_date between '$filter_from' and '$filter_to' GROUP BY a.item_id) k ON a.id = k.item_id
         LEFT JOIN (SELECT a.item_rm_id, SUM(c.qty) as return_qty
             FROM return_materials a 
             JOIN return_material_labels b ON a.return_id = b.return_id
@@ -154,8 +154,8 @@ class Report_history_transactions extends CI_Controller
             LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) AS qty_receipt FROM purchase_order_receipts a JOIN scan_item_receipts b ON a.receipt_id  = b.receipt_id WHERE a.receipt_date < '$filter_from' GROUP BY item_rm_id) e ON a.id = e.item_rm_id
             LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) AS qty FROM issued_material_details WHERE DATE_FORMAT(created_date, '%Y-%m-%d') < '$filter_from' GROUP BY item_rm_id) f ON a.id = f.item_rm_id
             LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) AS qty_reject FROM purchase_order_receipts a JOIN scan_item_rejections b ON a.receipt_id  = b.receipt_id WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') < '$filter_from' GROUP BY item_rm_id) h ON a.id = h.item_rm_id
-            LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) as qty_rgp_in FROM rgp_transactions a JOIN scan_item_receipts b ON a.rgp_id = b.receipt_id WHERE a.type = 'IN' and a.transaction_date < '$filter_from' GROUP BY a.item_id) j ON a.id = j.item_id
-            LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_out FROM rgp_transactions WHERE type = 'OUT' and transaction_date < '$filter_from' GROUP BY item_id) k ON a.id = k.item_id
+            LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) as qty_rgp_in FROM rgp_transactions a JOIN scan_item_rgp b ON a.number = b.rgp_number and a.item_id = b.item_id WHERE a.type = 'IN' and a.transaction_date < '$filter_from' GROUP BY a.item_id) j ON a.id = j.item_id
+            LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) as qty_rgp_out FROM rgp_transactions a JOIN scan_item_rgp b ON a.number = b.rgp_number and a.item_id = b.item_id WHERE a.type = 'OUT' and a.transaction_date < '$filter_from' GROUP BY a.item_id) k ON a.id = k.item_id
             LEFT JOIN (SELECT a.item_rm_id, SUM(c.qty) AS return_qty
             FROM return_materials a 
             JOIN return_material_labels b ON a.return_id = b.return_id
@@ -206,6 +206,9 @@ class Report_history_transactions extends CI_Controller
                     <th width="100">Ending<br>Stock</th>
                 </tr>';
         $no = 1;
+        $qty_begin = 0;
+        $qty_in = 0;
+        $qty_out = 0;
         foreach ($records as $record) {
             $item_rm_id = $record->id;
 
@@ -257,9 +260,9 @@ class Report_history_transactions extends CI_Controller
                 UNION
                 SELECT 'RETURN MATERIAL' AS trans_type, d.name AS created_by, a.return_date AS trans_date, '-' AS supplier_id, '-' AS supplier_name, a.return_no AS document_no, b.label_no AS invoice_no, b.qty AS qty_in, '0' AS qty_out FROM return_materials a JOIN return_material_labels b ON a.return_id = b.return_id JOIN scan_item_receipts c ON a.return_id = c.receipt_id JOIN users d ON a.created_by = d.username WHERE a.item_rm_id = '$item_rm_id' GROUP BY b.label_no
                 UNION 
-                SELECT CONCAT(a.process_type, ' IN') AS trans_type, a.created_by, a.transaction_date AS trans_date, '-' AS supplier_id, '-' AS supplier_name, a.number AS document_no, a.rgp_number AS invoice_no, b.qty AS qty_in, '0' AS qty_out FROM rgp_transactions a JOIN scan_item_receipts b ON a.rgp_id = b.receipt_id WHERE a.type = 'IN' AND a.item_id = '$item_rm_id'
+                SELECT 'RGP IN' AS trans_type, a.created_by, a.transaction_date AS trans_date, b.id AS supplier_id, b.name AS supplier_name, c.rgp_number AS document_no, c.label_no AS invoice_no, c.qty AS qty_in, '0' AS qty_out FROM rgp_transactions a LEFT JOIN suppliers b ON a.company_id = b.id JOIN scan_item_rgp c ON a.number = c.rgp_number and a.item_id = c.item_id WHERE a.type = 'IN' AND a.item_id = '$item_rm_id' GROUP BY c.id
                 UNION
-                SELECT CONCAT(a.process_type, ' OUT') AS trans_type, a.created_by, a.transaction_date AS trans_date, '-' AS supplier_id, '-' AS supplier_name, a.number AS document_no, a.rgp_number AS invoice_no, '0' AS qty_in, a.qty AS qty_out FROM rgp_transactions a WHERE a.type = 'OUT' AND a.item_id = '$item_rm_id'
+                SELECT 'RGP OUT' AS trans_type, a.created_by, a.transaction_date AS trans_date, b.id AS supplier_id, b.name AS supplier_name, c.rgp_number AS document_no, c.label_no AS invoice_no, '0' AS qty_in, c.qty AS qty_out FROM rgp_transactions a LEFT JOIN suppliers b ON a.company_id = b.id JOIN scan_item_rgp c ON a.number = c.rgp_number and a.item_id = c.item_id WHERE a.type = 'OUT' AND a.item_id = '$item_rm_id' GROUP BY c.id
                 ) z WHERE z.trans_date between '$filter_from' and '$filter_to' ORDER BY z.trans_date ASC");
 
                 $nod = 1;
@@ -303,8 +306,20 @@ class Report_history_transactions extends CI_Controller
                     $nod++;
                 }
             }
+
+            $qty_begin += @$record->begin_stock;
+            $qty_in += $record->qty_in;
+            $qty_out += $record->qty_out;
             $no++;
         }
+
+        $html .= '  <tr>
+                        <td style="text-align:right" colspan="9">GRAND TOTAL</td>
+                        <td style="text-align:right;">' . number_format($qty_begin, 2) . '</td>
+                        <td style="text-align:right;">' . number_format($qty_in, 2) . '</td>
+                        <td style="text-align:right;">' . number_format($qty_out, 2) . '</td>
+                        <td style="text-align:right;">' . number_format($qty_begin + $qty_in - $qty_out, 2) . '</td>
+                    </tr>';
         
         $html .= '</table></body></html>';
         echo $html;

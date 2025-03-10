@@ -39,7 +39,7 @@ class Report_grn extends CI_Controller
         if ($option == "excel") {
             $format  = date("Ymd");
             header("Content-type: application/vnd-ms-excel");
-            header("Content-Disposition: attachment; filename=sales_orders_$format.xls");
+            header("Content-Disposition: attachment; filename=grn_report_$format.xls");
         }
         
         $filter_from = base64_decode($this->input->get("filter_from"));
@@ -56,12 +56,12 @@ class Report_grn extends CI_Controller
             c.name as item_rm_name, 
             d.name as item_family_name, 
             c.uom,
-            count(g.id) as total_scan');
+            g.total_scan');
         $this->db->from('purchase_order_receipts a');
         $this->db->join('suppliers b', 'a.supplier_id = b.id');
         $this->db->join('item_rm c', 'a.item_rm_id = c.id');
         $this->db->join('item_familys d', 'c.item_family_id = d.id');
-        $this->db->join('scan_item_receipts g', 'g.receipt_id = a.receipt_id', 'left');
+        $this->db->join('(SELECT receipt_id, COUNT(id) as total_scan FROM scan_item_receipts GROUP BY receipt_id) g', 'g.receipt_id = a.receipt_id', 'left');
         $this->db->where('a.deleted', 0);
         if ($filter_from != "" and $filter_to != "") {
             $this->db->where('a.receipt_date >=', $filter_from);
@@ -77,10 +77,10 @@ class Report_grn extends CI_Controller
             $this->db->where('a.po_no', $filter_po_no);
         }
         if ($filter_status == "0") {
-            $this->db->having("a.qty_label != total_scan");
+            $this->db->where("a.qty_label > COALESCE(g.total_scan, 0)");
         }
         if ($filter_status == "1") {
-            $this->db->having("a.qty_label = total_scan");
+            $this->db->where("a.qty_label = g.total_scan");
         }
         $this->db->group_by('a.receipt_id');
         $this->db->order_by('b.name', 'ASC');

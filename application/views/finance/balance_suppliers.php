@@ -18,7 +18,13 @@
             <th rowspan="2" field="ck" checkbox="true"></th>
             <th rowspan="2" data-options="field:'supplier_ids',width:80,halign:'center'">Code</th>
             <th rowspan="2" data-options="field:'supplier_name',width:300,halign:'center'">Supplier Name</th>
-            <th rowspan="2" data-options="field:'supplier_type',width:100,halign:'center'">Supplier<br>Type</th>
+            <th rowspan="2" data-options="field:'supplier_type',width:120,halign:'center'">Supplier Type</th>
+            <th rowspan="2" data-options="field:'document_no',width:150,halign:'center', editor: {
+                    type: 'textbox',
+                    options: {
+                        required: true
+                    }
+                }">Document No</th>
             <th rowspan="2" data-options="field:'account_number',width:150,halign:'center', 
                 editor: {
                     type: 'combobox',

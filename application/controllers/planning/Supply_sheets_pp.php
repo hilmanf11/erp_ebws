@@ -430,136 +430,21 @@ class Supply_sheets_pp extends CI_Controller
         if ($this->input->post()) {
             if ($this->form_validation->run() == TRUE) {
                 $post = $this->input->post();
-                $item_rm_id = $post['item_rm_id'];
+                // $item_rm_id = $post['item_rm_id'];
 
-                $item_rm = $this->crud->read("item_rm", [], ["id" => $item_rm_id]);
-                $wip_balances = $this->crud->read("wip_balances", [], ["item_rm_id" => $item_rm_id], "", "id", "desc");
-                $supplier_items = $this->crud->read("supplier_items", [], ["item_rm_id" => $item_rm_id]);
+                // $item_rm = $this->crud->read("item_rm", [], ["id" => $item_rm_id]);
+                // $wip_balances = $this->crud->read("wip_balances", [], ["item_rm_id" => $item_rm_id], "", "id", "desc");
+                // $supplier_items = $this->crud->read("supplier_items", [], ["item_rm_id" => $item_rm_id]);
                 $supply_sheets = $this->crud->reads("supply_sheets", [], ["request_no" => $post['request_no'], "item_fg_id" => $post['item_fg_id'], "item_rm_id" => $post['item_rm_id']]);
-                $dateNow = date("Y-m-d");
-
-                // $cekData = $this->crud->query("SELECT a.request_no, a.item_rm_id, COALESCE(a.qty_act, 0) as qty_supply, COALESCE(SUM(b.qty), 0) as qty_issued 
-                // FROM supply_sheets a 
-                // LEFT JOIN issued_material_details b ON a.request_no = b.request_no and a.item_rm_id = b.item_rm_id 
-                // WHERE a.item_rm_id = '$item_rm_id' and a.type = 'PP' and a.period != '202410' 
-                // GROUP BY a.item_rm_id, a.request_no HAVING (qty_supply - COALESCE(SUM(b.qty), 0)) > 0");
-
-                //Stock kWarehouse RM
-                $stockWarehouse = $this->crud->query("SELECT
-                    a.id,
-                    a.number, 
-                    a.name, 
-                    b.name as prodfam, 
-                    a.uom, 
-                    COALESCE(0,0) as begin_stock,
-                    (COALESCE(SUM(e.qty),0) + COALESCE(g.return_qty, 0)) as qty_in,
-                    f.qty as qty_out,
-                    (COALESCE(SUM(e.qty),0) - COALESCE(f.qty, 0) + COALESCE(g.return_qty, 0)) as end_stock
-                FROM item_rm a 
-                JOIN item_familys b ON a.item_family_id = b.id
-                LEFT JOIN purchase_order_receipts d ON a.id = d.item_rm_id and d.receipt_date <= '$dateNow'
-                LEFT JOIN os_rm h ON a.id = h.item_rm_id and h.trans_date <= '$dateNow'
-                LEFT JOIN scan_item_receipts e ON d.receipt_id = e.receipt_id or h.id = e.receipt_id
-                LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as qty FROM issued_material_details WHERE DATE_FORMAT(created_date, '%Y-%m-%d') <= '$dateNow' GROUP BY item_rm_id) f ON a.id = f.item_rm_id
-                LEFT JOIN (SELECT a.item_rm_id, SUM(c.qty) as return_qty
-                    FROM return_materials a 
-                    JOIN return_material_labels b ON a.return_id = b.return_id
-                    JOIN scan_item_receipts c ON a.return_id = c.receipt_id and b.label_no = c.label_no
-                    WHERE a.return_date <=  '$dateNow'
-                    GROUP BY a.item_rm_id) g ON a.id = g.item_rm_id
-                WHERE a.id like '$item_rm_id'
-                GROUP BY a.id
-                ORDER BY a.number");
-                
-                // if(empty($cekData)){
-                //     //
-                // }elseif($cekData[0]->qty_issued){
-                //     die(json_encode(array("title" => "Failed", "message" => "Part No EBWS. " . $item_rm->id . " | Part No Supplier. " . $item_rm->number . " | Kanban No. " . $cekData[0]->request_no . " Please Issued First because Issued still Empty", "theme" => "error")));
-                // }elseif($cekData[0]->qty_supply > $cekData[0]->qty_issued){
-                //     die(json_encode(array("title" => "Failed", "message" => "Part No EBWS. " . $item_rm->id . " | Part No Supplier. " . $item_rm->number . " | Kanban No. " . $cekData[0]->request_no . " Please Issued First because Qty Supply > Qty Issued", "theme" => "error")));
-                // }
+                // $dateNow = date("Y-m-d");
 
                 if (count($supply_sheets) > 0) {
                     show_error("Duplicate");
                 } else {
-                    $qIssued = $this->db->query("SELECT COALESCE(SUM(a.qty), 0) as balance 
-                        FROM scan_item_receipts a 
-                        JOIN purchase_order_receipts b ON a.receipt_id = b.receipt_id
-                        WHERE b.item_rm_id = '$item_rm_id' 
-                        GROUP BY b.item_rm_id");
-                    $dIssued = $qIssued->row();
-
-                    if (!empty($wip_balances->balance)) {
-                        if ($post['qty_act'] >= $wip_balances->balance) {
-                            //kalo items di hitung mpq
-                            if (@$supplier_items->calculate == "YES") {
-                                $begin = $wip_balances->balance;
-                                $need = $post['qty_act'];
-                                $issued = (ceil(($post['qty_act'] - $wip_balances->balance) / @$post['mpq']) * @$post['mpq']);
-                                $balance = (($wip_balances->balance + $issued) - $post['qty_act']);
-                                $warehouse = (@$stockWarehouse[0]->end_stock - $issued);
-                            } elseif (@$supplier_items->calculate == "NO") {
-                                $begin = $wip_balances->balance;
-                                $need = $post['qty_act'];
-                                $issued = abs(($post['qty_act'] - $wip_balances->balance));
-                                $balance = ($issued - $post['qty_act']);
-                                $warehouse = (@$stockWarehouse[0]->end_stock - $issued);
-                            } else {
-                                $begin = $wip_balances->balance;
-                                $need = $post['qty_act'];
-                                $issued = 0;
-                                $balance = 0;
-                                $warehouse = (@$stockWarehouse[0]->end_stock - $issued);
-                            }
-                        } else {
-                            $begin = $wip_balances->balance;
-                            $need = $post['qty_act'];
-                            $issued = 0;
-                            $balance = (($wip_balances->balance + $issued) - $post['qty_act']);
-                            $warehouse = (@$stockWarehouse[0]->end_stock);
-                        }
-                    } else {
-                        if ($post['qty_act'] >= @$post['mpq']) {
-                            $begin = 0;
-                            $need = $post['qty_act'];
-                            $issued = $post['qty_act'];
-                            $balance = 0;
-                            $warehouse = (@$stockWarehouse[0]->end_stock);
-                        } else {
-                            if (@$supplier_items->calculate == "YES") {
-                                $begin = 0;
-                                $need = $post['qty_act'];
-                                $issued = @$post['mpq'];
-                                $balance = (@$post['mpq'] - $post['qty_act']);
-                                $warehouse = (@$stockWarehouse[0]->end_stock);
-                            }else{
-                                $begin = 0;
-                                $need = $post['qty_act'];
-                                $issued = @$post['qty_act'];
-                                $balance = 0;
-                                $warehouse = (@$stockWarehouse[0]->end_stock);
-                            }
-                        }
-                    }
-
-                    if($warehouse <= 0){
-                        $warehouse = 0;
-                    }
-
                     if ($post['qty_req'] == 0) {
                         echo json_encode(array("title" => "Qty 0", "message" => $post['item_rm_no'] . " Qty 0", "theme" => "error"));
                     } else {
-                        $balance = $this->crud->create("wip_balances", [
-                            "item_rm_id" => $item_rm_id,
-                            "request_no" => $post['request_no'],
-                            "begin" => $begin,
-                            "need" => $need,
-                            "issued" => $issued,
-                            "balance" => $balance,
-                            "warehouse" => $warehouse
-                        ]);
-
-                        $send = $this->crud->create('supply_sheets', array_merge($post, array("qty_issued" => $issued)));
+                        $send = $this->crud->create('supply_sheets', $post);
                         if ($post['status'] == 0) {
                             $this->db->update("production_schedules", ["status" => 1], ["workorder" => $post['workorder']]);
                             echo $send;

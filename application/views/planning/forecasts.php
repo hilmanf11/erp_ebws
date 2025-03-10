@@ -239,6 +239,12 @@
                             },
                             dataType: "json",
                             success: function (forecast) {
+                                if(forecast.theme == "error"){
+                                    Swal.close();
+                                    toastr.error(forecast.message);
+                                    return false;
+                                }
+
                                 requestSalesOrder(forecast.total, forecast);
                                 function requestSalesOrder(total, json, number = 1, value = 0) {
                                     if (value < 100) {
@@ -251,6 +257,11 @@
                                             data: forecast[number - 1],
                                             success: function(result) {
                                                 var result = eval('(' + result + ')');
+
+                                                if(result.theme == "error"){
+                                                    toastr.error(result.message);
+                                                }
+                                                
                                                 requestSalesOrder(total, json, number + 1, value);
 
                                                 if (number == total) {
@@ -529,44 +540,6 @@
             return true;
         }
 
-        var dg = $('#dg2');
-        var row = dg.datagrid('getSelected');
-        var rowIndex = dg.datagrid('getRowIndex', row);
-
-        var ed = dg.datagrid('getEditor', {
-            index: editIndex,
-            field: 'item_fg_id'
-        });
-
-        var customer_id = $("#customer_id").combogrid('getValue');
-        // var p_month = $("#p_month").combobox('getValue');
-        // var p_year = $("#p_year").combobox('getValue');
-        // var revision = $("#revision").combobox('getValue');
-        var item_fg_id = $(ed.target).textbox('getValue');
-
-        $.ajax({
-            method: 'post',
-            url: '<?= base_url('planning/forecasts/delete') ?>',
-            data: {
-                customer_id: row.customer_id,
-                // p_month: row.p_month,
-                // p_year: row.p_year,
-                // revision: row.revision,
-                item_fg_id: item_fg_id,
-            },
-            success: function(result) {
-                var result = eval('(' + result + ')');
-                toastr.success(result.message);
-            },
-            error: function(jqXHR, textStatus, errorThrown) {
-                toastr.error("This data is already used in other modules, You must delete it First", "Error");
-                
-            },
-            complete: function(data) {
-                $('#dg').datagrid('reload');
-            }
-        });
-
         $('#dg2').datagrid('cancelEdit', editIndex).datagrid('deleteRow', editIndex);
         editIndex = undefined;
     }
@@ -706,7 +679,7 @@
                         dataType: "json",
                         success: function(result) {
                             ddv.datagrid({
-                                url: '<?= base_url('planning/forecasts/datatableDetails?customer_id=') ?>' + window.btoa(row.customer_id) + "&item_fg_id=" + window.btoa(filter_item_fg) + "&plant=" + btoa(row.plant) + "&p_month=" + window.btoa(row.p_month) + "&p_year=" + window.btoa(row.p_year) + "&revision=" + window.btoa(row.revision),
+                                url: '<?= base_url('planning/forecasts/datatableDetails?customer_id=') ?>' + window.btoa(row.customer_id) + "&document_no=" + window.btoa(row.document_no) + "&item_fg_id=" + window.btoa(filter_item_fg) + "&plant=" + btoa(row.plant) + "&p_month=" + window.btoa(row.p_month) + "&p_year=" + window.btoa(row.p_year) + "&revision=" + window.btoa(row.revision),
                                 singleSelect: true,
                                 rownumbers: true,
                                 columns: [
@@ -907,6 +880,11 @@
                     var totalrows = rows.length;
                     endEditing();
 
+                    if (totalrows == 0) {
+                        toastr.error("Data still Empty!!");
+                        return false;
+                    }
+
                     if(document_no != "" && plant != ""){
                         if(typeInsert == "add"){
                             var r = "";
@@ -932,73 +910,54 @@
                                 },
                             });
 
-                            requestData(totalrows, rows);
-                            function requestData(total, rows, number = 1, value = 0, success = 1, failed = 1) {
-                                var i = (number - 1);
-                                if (value < 100) {
-                                    value = Math.floor((number / total) * 100);
-                                    $.ajax({
-                                        type: "post",
-                                        url: '<?= base_url('planning/forecasts/create') ?>',
-                                        data: {
-                                            p_month: p_month,
-                                            p_year: p_year,
-                                            customer_id: customer_id,
-                                            plant: plant,
-                                            document_no: document_no,
-                                            issued_date: issued_date,
-                                            revision: revision,
-                                            reason: reason,
-                                            item_fg_id: rows[i].item_fg_id,
-                                            month_1: rows[i].month_1,
-                                            month_2: rows[i].month_2,
-                                            month_3: rows[i].month_3,
-                                            month_4: rows[i].month_4,
-                                            month_5: rows[i].month_5,
-                                            month_6: rows[i].month_6,
-                                            month_7: rows[i].month_7,
-                                            month_8: rows[i].month_8,
-                                            month_9: rows[i].month_9,
-                                            month_10: rows[i].month_10,
-                                            month_11: rows[i].month_11,
-                                            month_12: rows[i].month_12,
-                                            remark: rows[i].remark,
-                                        },
-                                        dataType: "json",
-                                        success: function(result) {
-                                            if (result.theme == "success") {
-                                                if (value >= 100) {
-                                                    Swal.close();
-                                                    Swal.fire({
-                                                        title: result.message,
-                                                        icon: result.theme,
-                                                        confirmButtonText: 'Ok',
-                                                        allowOutsideClick: false,
-                                                    }).then((result) => {
-                                                        if (result.isConfirmed) {
-                                                            window.location.reload();
-                                                        }
-                                                    });
-                                                }else{
-                                                    requestData(total, rows, number + 1, value, success + 1, failed + 0);
-                                                }
-                                            } else {
-                                                Swal.close();
-                                                Swal.fire({
-                                                    title: result.message,
-                                                    icon: result.theme,
-                                                    confirmButtonText: 'Ok',
-                                                    allowOutsideClick: false,
-                                                }).then((result) => {
-                                                    if (result.isConfirmed) {
-                                                        window.location.reload();
-                                                    }
-                                                });
-                                            }
-                                        },
+                            combined = [];
+                            for (let i = 0; i < totalrows; i++) {
+                                combined.push({
+                                    p_month: p_month,
+                                    p_year: p_year,
+                                    customer_id: customer_id,
+                                    plant: plant,
+                                    document_no: document_no,
+                                    issued_date: issued_date,
+                                    revision: revision,
+                                    reason: reason,
+                                    item_fg_id: rows[i].item_fg_id,
+                                    month_1: rows[i].month_1,
+                                    month_2: rows[i].month_2,
+                                    month_3: rows[i].month_3,
+                                    month_4: rows[i].month_4,
+                                    month_5: rows[i].month_5,
+                                    month_6: rows[i].month_6,
+                                    month_7: rows[i].month_7,
+                                    month_8: rows[i].month_8,
+                                    month_9: rows[i].month_9,
+                                    month_10: rows[i].month_10,
+                                    month_11: rows[i].month_11,
+                                    month_12: rows[i].month_12,
+                                    remark: rows[i].remark,
+                                });
+                            }
+
+                            $.ajax({
+                                type: "post",
+                                url: '<?= base_url('planning/forecasts/create') ?>',
+                                data: JSON.stringify({ data: combined }),
+                                dataType: "json",
+                                success: function (result) {
+                                    Swal.close();
+                                    
+                                    Swal.fire({
+                                        title: result.message,
+                                        icon: result.theme,
+                                        confirmButtonText: 'Ok',
+                                        allowOutsideClick: false,
+                                    }).then((result) => {
+                                        if (result.isConfirmed) {
+                                            window.location.reload();
+                                        }
                                     });
                                 }
-                            }
+                            });
                         }
                     }else{
                         toastr.error("Please Complete your data");
@@ -1141,6 +1100,37 @@
                 ]
             });
         }
+    });
+
+    $('#filter_item_fg').combogrid({
+        url: '<?= base_url('master/item_fg/reads') ?>',
+        panelWidth: 600,
+        idField: 'id',
+        textField: 'number',
+        mode: 'remote',
+        fitColumns: true,
+        prompt: "Choose Product No",
+        icons: [{
+            iconCls: 'icon-clear',
+            handler: function(e) {
+                $(e.data.target).combogrid('clear').combogrid('textbox').focus();
+            }
+        }],
+        columns: [
+            [{
+                field: 'number',
+                title: 'Product EBWS',
+                width: 150
+            },{
+                field: 'number_customer',
+                title: 'Product Customer',
+                width: 200
+            }, {
+                field: 'name',
+                title: 'Description',
+                width: 200
+            }]
+        ]
     });
 
     $('#filter_period_month').combobox({

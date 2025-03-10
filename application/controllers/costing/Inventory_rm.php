@@ -192,6 +192,30 @@ class Inventory_rm extends CI_Controller
                             WHERE a.type = 'OUT' AND a.trans_date BETWEEN '$filter_from' and '$filter_to' AND a.approved_to = ''
                             GROUP BY a.id
                             UNION
+                            SELECT
+                                a.id,
+                                a.item_id AS item_rm_id,
+                                a.transaction_date AS trans_date,
+                                a.qty AS qty_in,
+                                0 AS price_in,
+                                0 AS amount_in,
+                                0 AS qty_out 
+                            FROM rgp_transactions a
+                            WHERE a.type = 'IN' AND a.transaction_date BETWEEN '$filter_from' and '$filter_to'
+                            GROUP BY a.id
+                            UNION
+                            SELECT
+                                a.id,
+                                a.item_id AS item_rm_id,
+                                a.transaction_date AS trans_date,
+                                0 AS qty_in,
+                                0 AS price_in,
+                                0 AS amount_in,
+                                a.qty AS qty_out 
+                            FROM rgp_transactions a
+                            WHERE a.type = 'OUT' AND a.transaction_date BETWEEN '$filter_from' and '$filter_to'
+                            GROUP BY a.id
+                            UNION
                             SELECT 
                                 b.id,
                                 a.item_rm_id, 
@@ -294,6 +318,30 @@ class Inventory_rm extends CI_Controller
                                 WHERE a.type = 'OUT' AND a.trans_date < '$filter_from' AND a.approved_to = ''
                                 GROUP BY a.id
                                 UNION
+                                SELECT
+                                    a.id,
+                                    a.item_id AS item_rm_id,
+                                    a.transaction_date AS trans_date,
+                                    a.qty AS qty_in,
+                                    0 AS price_in,
+                                    0 AS amount_in,
+                                    0 AS qty_out 
+                                FROM rgp_transactions a
+                                WHERE a.type = 'IN' AND a.transaction_date < '$filter_from'
+                                GROUP BY a.id
+                                UNION
+                                SELECT
+                                    a.id,
+                                    a.item_id AS item_rm_id,
+                                    a.transaction_date AS trans_date,
+                                    0 AS qty_in,
+                                    0 AS price_in,
+                                    0 AS amount_in,
+                                    a.qty AS qty_out 
+                                FROM rgp_transactions a
+                                WHERE a.type = 'OUT' AND a.transaction_date < '$filter_from'
+                                GROUP BY a.id
+                                UNION
                                 SELECT 
                                     b.id,
                                     a.item_rm_id, 
@@ -332,7 +380,7 @@ class Inventory_rm extends CI_Controller
                 JOIN item_rm c ON zz.item_rm_id = c.id
                 JOIN item_familys d ON c.item_family_id = d.id
                 GROUP BY c.id
-                ORDER BY c.item_family_id, c.number asc"
+                ORDER BY d.number, c.number asc"
             );
 
             $html .= '<table id="customers" border="1" style="width: 100%">
@@ -375,8 +423,8 @@ class Inventory_rm extends CI_Controller
                 $html .= '  <tr>
                                 <td>' . $noh . '</td>
                                 <td>' . $itemReceipt->item_rm_id . '</td>
-                                <td>' . $itemReceipt->item_rm_number . '</td>
-                                <td>' . $itemReceipt->item_rm_name . '</td>
+                                <td style="mso-number-format:\@;">' . $itemReceipt->item_rm_number . '</td>
+                                <td style="mso-number-format:\@;">' . $itemReceipt->item_rm_name . '</td>
                                 <td>' . $itemReceipt->uom . '</td>
                                 <td>' . $itemReceipt->item_family_name . '</td>
                                 <td style="text-align:right;">' . $this->formatNo($itemReceipt->begin_qty) . '</td>
@@ -406,18 +454,18 @@ class Inventory_rm extends CI_Controller
 
             $html .= '  <tr>
                             <td colspan="6" style="text-align:right;"><b>GRAND TOTAL</b></td>
-                            <td style="text-align:right;"><b>' . $this->formatNo($total_begin_qty, 2) . '</b></td>
+                            <td style="text-align:right;"><b>' . $this->formatNo($total_begin_qty) . '</b></td>
                             <td style="text-align:right;">-</td>
-                            <td style="text-align:right;"><b>' . $this->formatNo($total_begin_amount, 2) . '</b></td>
-                            <td style="text-align:right;"><b>' . $this->formatNo($total_in_qty, 2) . '</b></td>
+                            <td style="text-align:right;"><b>' . $this->formatNo($total_begin_amount) . '</b></td>
+                            <td style="text-align:right;"><b>' . $this->formatNo($total_in_qty) . '</b></td>
                             <td style="text-align:right;">-</td>
-                            <td style="text-align:right;"><b>' . $this->formatNo($total_in_amount, 2) . '</b></td>
-                            <td style="text-align:right;"><b>' . $this->formatNo($total_out_qty, 2) . '</b></td>
+                            <td style="text-align:right;"><b>' . $this->formatNo($total_in_amount) . '</b></td>
+                            <td style="text-align:right;"><b>' . $this->formatNo($total_out_qty) . '</b></td>
                             <td style="text-align:right;">-</td>
-                            <td style="text-align:right;"><b>' . $this->formatNo($total_out_amount, 2) . '</b></td>
-                            <td style="text-align:right;"><b>' . $this->formatNo($total_bal_qty, 2) . '</b></td>
+                            <td style="text-align:right;"><b>' . $this->formatNo($total_out_amount) . '</b></td>
+                            <td style="text-align:right;"><b>' . $this->formatNo($total_bal_qty) . '</b></td>
                             <td style="text-align:right;">-</td>
-                            <td style="text-align:right;"><b>' . $this->formatNo($total_bal_amount, 2) . '</b></td>
+                            <td style="text-align:right;"><b>' . $this->formatNo($total_bal_amount) . '</b></td>
                         </tr>';
             $html .= '</table></body></html>';
         } else {
@@ -517,6 +565,44 @@ class Inventory_rm extends CI_Controller
                     WHERE a.type = 'OUT' AND a.trans_date BETWEEN '$filter_from' AND '$filter_to' AND a.approved_to = ''
                     GROUP BY a.id
                     UNION
+                    SELECT
+                        a.id,
+                        a.item_id AS item_rm_id,
+                        a.transaction_date AS receipt_date,
+                        CONCAT(a.process_type, ' ', a.type) AS trans_type,
+                        '-' AS po_date,
+                        a.number AS receipt_no,
+                        '-' AS po_no,
+                        a.reference_number AS bc_document,
+                        a.created_by,
+                        '-' AS bc_date,
+                        a.qty AS qty_in,
+                        0 AS price_in,
+                        0 AS amount_in,
+                        0 AS qty_out 
+                    FROM rgp_transactions a
+                    WHERE a.type = 'IN' AND a.transaction_date BETWEEN '$filter_from' AND '$filter_to'
+                    GROUP BY a.id
+                    UNION
+                    SELECT
+                        a.id,
+                        a.item_id AS item_rm_id,
+                        a.transaction_date AS receipt_date,
+                        CONCAT(a.process_type, ' ', a.type) AS trans_type,
+                        '-' AS po_date,
+                        a.number AS receipt_no,
+                        '-' AS po_no,
+                        a.reference_number AS bc_document,
+                        a.created_by,
+                        '-' AS bc_date,
+                        0 AS qty_in,
+                        0 AS price_in,
+                        0 AS amount_in,
+                        a.qty AS qty_out 
+                    FROM rgp_transactions a
+                    WHERE a.type = 'OUT' AND a.transaction_date BETWEEN '$filter_from' AND '$filter_to'
+                    GROUP BY a.id
+                    UNION
                     SELECT 
                         b.id,
                         a.item_rm_id, 
@@ -597,7 +683,7 @@ class Inventory_rm extends CI_Controller
                             SELECT
                                 id,
                                 item_rm_id,
-                                DATE_FORMAT(created_date, '%Y-%m-%d') AS receipt_date,
+                                DATE_FORMAT(created_date, '%Y-%m-%d') AS trans_date,
                                 0 AS qty_in,
                                 0 AS price_in,
                                 0 AS amount_in,
@@ -628,6 +714,30 @@ class Inventory_rm extends CI_Controller
                                 COALESCE(SUM(a.qty), 0) AS qty_out
                             FROM sto_rm a 
                             WHERE a.type = 'OUT' AND a.trans_date < '$filter_from' AND a.approved_to = ''
+                            GROUP BY a.id
+                            UNION
+                            SELECT
+                                a.id,
+                                a.item_id AS item_rm_id,
+                                a.transaction_date AS trans_date,
+                                a.qty as qty_in,
+                                0 AS price_in,
+                                0 AS amount_in,
+                                0 AS qty_out 
+                            FROM rgp_transactions a
+                            WHERE a.type = 'IN' AND a.transaction_date < '$filter_from'
+                            GROUP BY a.id
+                            UNION
+                            SELECT
+                                a.id,
+                                a.item_id AS item_rm_id,
+                                a.transaction_date AS trans_date,
+                                0 AS qty_in,
+                                0 AS price_in,
+                                0 AS amount_in,
+                                a.qty AS qty_out 
+                            FROM rgp_transactions a
+                            WHERE a.type = 'OUT' AND a.transaction_date < '$filter_from'
                             GROUP BY a.id
                             UNION
                             SELECT 
@@ -717,8 +827,8 @@ class Inventory_rm extends CI_Controller
                 $html .= '  <tr>
                                 <td>' . $nod . '</td>
                                 <td>' . $itemReceipt->item_rm_id . '</td>
-                                <td>' . $itemReceipt->item_rm_number . '</td>
-                                <td>' . $itemReceipt->item_rm_name . '</td>
+                                <td style="mso-number-format:\@;">' . $itemReceipt->item_rm_number . '</td>
+                                <td style="mso-number-format:\@;">' . $itemReceipt->item_rm_name . '</td>
                                 <td>' . $itemReceipt->trans_type . '</td>
                                 <td>' . $itemReceipt->created_by . '</td>
                                 <td>' . $itemReceipt->po_date . '</td>

@@ -325,6 +325,12 @@
                 if (r) {
                     for (var i = 0; i < rows.length; i++) {
                         var row = rows[i];
+
+                        if(row.status != 0){
+                            toastr.error("cannot delete because the status is close/cancel");
+                            return false;
+                        }
+
                         $.ajax({
                             method: 'post',
                             url: '<?= base_url('sales/delivery_orders/delete') ?>',
@@ -754,16 +760,20 @@
     function cellStyler(value, row, index) {
         if (value == 0) {
             return 'background: #53D636; color:white;';
-        } else {
+        } else if(value == 1){
             return 'background: #FF5F5F; color:white;';
+        } else {
+            return 'background: #b2c2ff; color:white;';
         }
     }
     //FORMATTER STATUS
     function cellFormatter(value) {
         if (value == 0) {
             return 'OPEN';
-        } else {
+        } else if (value == 1) {
             return 'CLOSE';
+        }else{
+            return 'CANCEL';
         }
     };
 

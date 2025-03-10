@@ -338,12 +338,8 @@
 
     function append() {
         var supplier_id = $("#supplier_id").combogrid('getValue');
-<<<<<<< Updated upstream
-        if (supplier_id != "") {
-=======
         var rfq_no = $("#rfq_no").textbox('getValue');
         if (supplier_id != "" && rfq_no != "") {
->>>>>>> Stashed changes
             if (endEditing()) {
                 $('#dg2').datagrid('appendRow', {
                     price: '0'
@@ -352,11 +348,7 @@
                 $('#dg2').datagrid('selectRow', editIndex).datagrid('beginEdit', editIndex);
             }
         } else {
-<<<<<<< Updated upstream
-            toastr.error("Please Choose Supplier first");
-=======
             toastr.error("Please Choose Supplier & RFQ No first");
->>>>>>> Stashed changes
         }
         // }
     }

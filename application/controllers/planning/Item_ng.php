@@ -103,9 +103,9 @@ class Item_ng extends CI_Controller
         $this->db->from('production_schedules a');
         $this->db->join('item_fg c', 'a.item_fg_id = c.id');
         $this->db->join('scan_item_receipts_fg f', 'a.workorder = f.workorder', 'left');
-        // $this->db->where("f.id", null);
+        $this->db->where("f.id", null);
         $this->db->like('a.workorder', $post);
-        $this->db->or_like('c.number_customer', $post);
+        $this->db->like('c.number_customer', $post);
         $this->db->group_by('a.workorder');
         $this->db->group_by('c.number_customer');
         $this->db->order_by('a.workorder', 'asc');

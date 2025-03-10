@@ -65,7 +65,7 @@ class Purchase_request_others extends CI_Controller
         $this->db->join('suppliers e', 'd.supplier_id = e.id');
         $this->db->join('makers f', 'd.maker_id = f.id', 'left');
         $this->db->where('a.status', 0);
-        // $this->db->where("(a.asset_code = '' or a.asset_code is null or a.asset_code = '-')");
+        $this->db->where("((a.item_category_id = 'ASSET' and asset_code != '') or (a.item_category_id != 'ASSET' and asset_code is null))");
         $this->db->where('d.supplier_id', $supplier_id);
         $this->db->where("a.approved_to", "");
         $this->db->order_by('b.number', 'ASC');
@@ -189,7 +189,7 @@ class Purchase_request_others extends CI_Controller
         //Select Query
         $id = $_POST['id'];
         if ($id === "0") {
-            $this->db->select('a.request_no, a.request_date, a.expected_date, a.item_category_id, a.asset_code, d.name as asset_name, d.qty as asset_qty, d.uom as asset_uom, a.request_name, sum(a.qty) as qty, a.status');
+            $this->db->select('a.request_no, a.request_date, a.expected_date, a.item_category_id, a.asset_code, d.name as asset_name, d.qty as asset_qty, d.uom as asset_uom, a.request_name, sum(a.qty) as qty, COUNT(a.id) as total_pr, a.status');
             $this->db->from('purchase_request_others a');
             $this->db->join('item_rm b', 'a.item_rm_id = b.id');
             $this->db->join('item_familys c', "b.item_family_id = c.id");
@@ -205,11 +205,6 @@ class Purchase_request_others extends CI_Controller
                 $this->db->where('a.request_date >=', $filter_from);
                 $this->db->where('a.request_date <=', $filter_to);
             }
-<<<<<<< Updated upstream
-            $this->db->like('a.item_category_id', $filter_category);
-            $this->db->like('a.request_no', $filter_request_no);
-            $this->db->like('a.request_name', $filter_request_name);
-=======
             if($filter_category != ""){
                 $this->db->where('a.item_category_id', $filter_category);
             }
@@ -219,7 +214,6 @@ class Purchase_request_others extends CI_Controller
             if($filter_request_name != ""){
                 $this->db->like('a.request_name', $filter_request_name);
             }
->>>>>>> Stashed changes
             $this->db->like('c.id', $filter_item_familys);
             $this->db->like('b.id', $filter_item_rm);
             $this->db->group_by('a.request_no');
@@ -231,6 +225,15 @@ class Purchase_request_others extends CI_Controller
             //Get Data Array
             $records = $this->db->get()->result_array();
             foreach ($records as $record) {
+                $request_no = $record['request_no'];
+                $purchase_order_other = $this->crud->query("SELECT a.request_no, COUNT(a.id) as total_po FROM purchase_order_others a JOIN item_rm b ON a.item_rm_id = b.id WHERE a.request_no='$request_no' and a.item_rm_id like '%$filter_item_rm%' and b.id like '%$filter_item_familys%' GROUP BY a.request_no");
+
+                if(@$purchase_order_other[0]->total_po == $record['total_pr']){
+                    $status = 1;
+                }else{
+                    $status = 0;
+                }
+
                 $arr[] = array(
                     "id" => $record['request_no'],
                     "request_no" => $record['request_no'],
@@ -239,7 +242,7 @@ class Purchase_request_others extends CI_Controller
                     "request_name" => $record['request_name'],
                     "item_category_id" => $record['item_category_id'],
                     "qty" => $record['qty'],
-                    "status" => $record['status'],
+                    "status" => $status,
                     "asset_code" => $record['asset_code'],
                     "asset_name" => $record['asset_name'],
                     "asset_qty" => $record['asset_qty'],
@@ -412,7 +415,7 @@ class Purchase_request_others extends CI_Controller
         if ($this->input->post()) {
             $data = $this->input->post('data');
             //Cek Process Number
-            $item = $this->crud->read('item_rm', [], ["id" => $data['item_rm_id']]);
+            $item = $this->crud->read('item_rm', [], ["id" => $data['item_rm_id'], "approved_to" => ""]);
             $purchase_request_others = $this->crud->read('purchase_request_others', [], ["request_no" => $data['request_no'], "item_rm_id" => $data['item_rm_id']]);
 
             if (empty($item->id)) {
@@ -620,19 +623,25 @@ class Purchase_request_others extends CI_Controller
         $this->db->join('item_familys c', "b.item_family_id = c.id");
         $this->db->join('purchase_order_others e', 'a.request_no = e.request_no and a.item_rm_id = e.item_rm_id', 'left');
         $this->db->where('a.deleted', 0);
-        if(!in_array($this->session->username, ["PURCHASE-03", "Purchase-01", "PURCHASE-02", "admin", "hariom_bhardwaj", "ITADMIN"])){
+        if(!in_array($this->session->username, ["PURCHASE-03", "Purchase-01", "PURCHASE-02", "admin", "hariom_bhardwaj", "ITADMIN", "Accounts01"])){
             $this->db->where('a.created_by', $this->session->username);
         }
         if ($filter_from != "" or $filter_to != "") {
             $this->db->where('a.request_date >=', $filter_from);
             $this->db->where('a.request_date <=', $filter_to);
         }
-        $this->db->like('a.item_category_id', $filter_category);
-        $this->db->like('a.request_no', $filter_request_no);
-        $this->db->like('a.request_name', $filter_request_name);
+        if($filter_category != ""){
+            $this->db->like('a.item_category_id', $filter_category);
+        }
+        if($filter_request_no != ""){
+            $this->db->like('a.request_no', $filter_request_no);
+        }
+        if($filter_request_name != ""){
+            $this->db->like('a.request_name', $filter_request_name);
+        }
         $this->db->like('c.id', $filter_item_familys);
         $this->db->like('b.id', $filter_item_rm);
-        $this->db->order_by('a.request_date', 'DESC');
+        $this->db->order_by('a.request_no', 'DESC');
         $records = $this->db->get()->result_array();
         
         $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#customers {border-collapse: collapse;width: 100%;font-size: 12px;}#customers td, #customers th {border: 1px solid black;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: black;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: center;color: black;}</style><body>

@@ -59,10 +59,10 @@
         var filter_transtype = $("#filter_transtype").combobox('getValue');
 
         url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_item_family=" + filter_item_family + "&filter_items=" + filter_items + "&filter_display=" + filter_display + "&filter_transtype=" + filter_transtype;
-        
+
         // if(filter_item_family != ""){
-            $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
-            $("#printout").attr('src', '<?= base_url('warehouse/report_history_transactions_other/print') ?>' + url);            
+        $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
+        $("#printout").attr('src', '<?= base_url('warehouse/report_history_transactions_other/print') ?>' + url);
         // }else{
         //     toastr.error("Please Choose Product Family First");
         // }
@@ -76,11 +76,11 @@
         var filter_items = $("#filter_items").combogrid('getValue');
         var filter_display = $("#filter_display").combobox('getValue');
         var filter_transtype = $("#filter_transtype").combobox('getValue');
-        
+
         url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_item_family=" + filter_item_family + "&filter_items=" + filter_items + "&filter_display=" + filter_display + "&filter_transtype=" + filter_transtype;
-        
+
         // if(filter_item_family != ""){
-            window.location.assign('<?= base_url('warehouse/report_history_transactions_other/print/excel') ?>' + url);
+        window.location.assign('<?= base_url('warehouse/report_history_transactions_other/print/excel') ?>' + url);
         // }else{
         //     toastr.error("Please Choose Product Family First");
         // }
@@ -131,7 +131,7 @@
                             field: 'id',
                             title: 'Part No EBWS',
                             width: 150
-                        },{
+                        }, {
                             field: 'number',
                             title: 'Part No Supplier',
                             width: 200
@@ -143,6 +143,37 @@
                     ]
                 });
             }
+        });
+
+        $('#filter_items').combogrid({
+            url: '<?= base_url('master/item_rm/readNotRm') ?>',
+            panelWidth: 550,
+            idField: 'id',
+            textField: 'number',
+            mode: 'remote',
+            fitColumns: true,
+            prompt: "Select Part No",
+            icons: [{
+                iconCls: 'icon-clear',
+                handler: function(e) {
+                    $(e.data.target).combogrid('clear').combogrid('textbox').focus();
+                }
+            }],
+            columns: [
+                [{
+                    field: 'id',
+                    title: 'Part No EBWS',
+                    width: 150
+                }, {
+                    field: 'number',
+                    title: 'Part No Supplier',
+                    width: 200
+                }, {
+                    field: 'name',
+                    title: 'Description',
+                    width: 200
+                }, ]
+            ]
         });
     });
 

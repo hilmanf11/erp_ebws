@@ -35,7 +35,15 @@ class Issued_others extends CI_Controller
     public function readRequestno()
     {
         $post = isset($_POST['q']) ? $_POST['q'] : "";
-        $sql = $this->db->query("SELECT DISTINCT request_no, request_name, trans_date FROM issued_others WHERE request_no like '%$post%' and request_name like '%$post%'");
+        $sql = $this->db->query("SELECT DISTINCT request_no, request_name, trans_date FROM issued_others_request WHERE request_no like '%$post%' and request_name like '%$post%'");
+        $results = $sql->result_array();
+        echo json_encode($results);
+    }
+
+    public function readRequestname()
+    {
+        $post = isset($_POST['q']) ? $_POST['q'] : "";
+        $sql = $this->db->query("SELECT DISTINCT request_name FROM issued_others_request ORDER BY request_name ASC");
         $results = $sql->result_array();
         echo json_encode($results);
     }
@@ -46,11 +54,12 @@ class Issued_others extends CI_Controller
         $sql = $this->db->query("SELECT a.item_rm_id, b.number as item_rm_number, b.name as item_rm_name, c.issued, (SUM(a.qty_receipt) - COALESCE(c.issued, 0)) as stock
             FROM purchase_order_receipt_others a 
             JOIN item_rm b ON a.item_rm_id = b.id 
-            LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as issued FROM issued_others WHERE `status` = '0' GROUP BY item_rm_id) c ON a.item_rm_id = c.item_rm_id
+            LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as issued FROM issued_others_request WHERE `status` = '0' GROUP BY item_rm_id) c ON a.item_rm_id = c.item_rm_id
             WHERE (b.id like '%$post%' or b.number like '%$post%') and a.store != 0
             GROUP BY a.item_rm_id
             HAVING (SUM(a.qty_receipt) - COALESCE(c.issued, 0)) > 0");
         $results = $sql->result_array();
+
         echo json_encode($results);
     }
 
@@ -69,7 +78,7 @@ class Issued_others extends CI_Controller
 
             $whereDate = $number . $yearnow . $yearend . "1";
 
-            $sqlGetID    = $this->db->query("SELECT max(request_no) as kode FROM issued_others WHERE request_no like '%$whereDate%'");
+            $sqlGetID    = $this->db->query("SELECT max(request_no) as kode FROM issued_others_request WHERE request_no like '%$whereDate%'");
             $rowID = $sqlGetID->row();
             $kode = $rowID->kode;
 
@@ -89,28 +98,52 @@ class Issued_others extends CI_Controller
 
     public function datatables()
     {
-        if ($this->input->get()) {
+        if ($this->input->post()) {
+            $filter_from = $this->input->get('filter_from');
+            $filter_to = $this->input->get('filter_to');
             $filter_request_no = $this->input->get('filter_request_no');
+            $filter_request_name = $this->input->get('filter_request_name');
+            $filter_location = $this->input->get('filter_location');
+            $filter_status = $this->input->get('filter_status');
             $filter_part_no = $this->input->get('filter_part_no');
+
+            //Pagination 1-10
+            $page = $this->input->post('page');
+            $rows = $this->input->post('rows');
+            $page   = isset($page) ? intval($page) : 1;
+            $rows   = isset($rows) ? intval($rows) : 20;
+            $offset = ($page - 1) * $rows;
+            $result = array();
 
             //Select Query
             $this->db->select('a.*, c.number as item_rm_number, c.name as item_rm_name, c.uom, d.name as location_other_name');
-            $this->db->from('issued_others a');
+            $this->db->from('issued_others_request a');
             $this->db->join('item_rm c', 'a.item_rm_id = c.id');
             $this->db->join('warehouse_location_others d', 'a.location_other_number = d.number', 'left');
             $this->db->where('a.deleted', 0);
-            $this->db->where('a.status', 0);
+            $this->db->where('a.trans_date >=', $filter_from);
+            $this->db->where('a.trans_date <=', $filter_to);
             if ($filter_request_no != "") {
                 $this->db->where('a.request_no', $filter_request_no);
             }
+            if ($filter_request_name != "") {
+                $this->db->where('a.request_name', $filter_request_name);
+            }
+            if ($filter_location != "") {
+                $this->db->where('a.location_other_number', $filter_location);
+            }
             if ($filter_part_no != "") {
                 $this->db->where('c.id', $filter_part_no);
+            }
+            if ($filter_status != "") {
+                $this->db->where('a.status', $filter_status);
             }
             $this->db->group_by('a.request_no');
             $this->db->group_by('c.id');
             $this->db->order_by('a.request_no', 'DESC');
             //Total Data
             $totalRows = $this->db->count_all_results('', false);
+            $this->db->limit($rows, $offset);
             //Get Data Array
             $records = $this->db->get()->result_array();
             //Mapping Data
@@ -124,13 +157,13 @@ class Issued_others extends CI_Controller
     {
         if ($this->input->post()) {
             $post = $this->input->post();
-            $issued_others = $this->crud->read("issued_others", [], ["request_no" => $post['request_no'], "item_rm_id" => $post['item_rm_id']]);
+            $issued_others_request = $this->crud->read("issued_others_request", [], ["request_no" => $post['request_no'], "item_rm_id" => $post['item_rm_id']]);
 
-            if (!$issued_others) {
-                $send = $this->crud->create('issued_others', $post);
+            if (!$issued_others_request) {
+                $send = $this->crud->create('issued_others_request', $post);
                 echo $send;
             } else {
-                $send = $this->crud->update('issued_others', ["request_no" => $post['request_no'], "item_rm_id" => $post['item_rm_id']], $post);
+                $send = $this->crud->update('issued_others_request', ["request_no" => $post['request_no'], "item_rm_id" => $post['item_rm_id']], $post);
                 echo $send;
             }
         } else {
@@ -143,7 +176,7 @@ class Issued_others extends CI_Controller
         if ($this->input->post()) {
             $post = $this->input->post();
             $id = $post['id'];
-            $send = $this->crud->update('issued_others', ["id" => $id], $post);
+            $send = $this->crud->update('issued_others_request', ["id" => $id], $post);
             echo $send;
         } else {
             show_error("Cannot Process your request");
@@ -154,14 +187,14 @@ class Issued_others extends CI_Controller
     public function delete()
     {
         $data = $this->input->post();
-        $send = $this->crud->delete('issued_others', $data);
+        $send = $this->crud->delete('issued_others_request', $data);
         echo $send;
     }
 
     public function print_request($request_no)
     {
-        $kanbans = $this->crud->reads('issued_others', [], ["request_no" => base64_decode($request_no)]);
-        $kanban = $this->crud->read('issued_others', [], ["request_no" => base64_decode($request_no)]);
+        $kanbans = $this->crud->reads('issued_others_request', [], ["request_no" => base64_decode($request_no)]);
+        $kanban = $this->crud->read('issued_others_request', [], ["request_no" => base64_decode($request_no)]);
         $warehouse_location_others = $this->crud->read('warehouse_location_others', [], ["number" => @$kanban->location_other_number]);
         $config = $this->db->get('config')->row();
         $rows = 8;
@@ -215,7 +248,7 @@ class Issued_others extends CI_Controller
         $subtotal = 0;
         for ($i = 0; $i < $page; $i++) {
             $this->db->select('a.*, b.number as item_number, b.name as item_name, b.uom');
-            $this->db->from('issued_others a');
+            $this->db->from('issued_others_request a');
             $this->db->join('item_rm b', 'a.item_rm_id = b.id');
             $this->db->where('a.deleted', 0);
             $this->db->like('a.request_no', base64_decode($request_no));
@@ -246,7 +279,7 @@ class Issued_others extends CI_Controller
                                         <tr>
                                             <td width="50">Request Date</td>
                                             <td width="10">:</td>
-                                            <td><b>' . @date("d F Y", strtotime($kanban->request_date)) . '</b></td>
+                                            <td><b>' . @date("d F Y", strtotime($kanban->trans_date)) . '</b></td>
                                         </tr>
                                         <tr>
                                             <td width="50">Request Name</td>
@@ -339,21 +372,36 @@ class Issued_others extends CI_Controller
         $this->db->from('config');
         $config = $this->db->get()->row();
 
+        $filter_from = $this->input->get('filter_from');
+        $filter_to = $this->input->get('filter_to');
         $filter_request_no = $this->input->get('filter_request_no');
+        $filter_request_name = $this->input->get('filter_request_name');
+        $filter_location = $this->input->get('filter_location');
+        $filter_status = $this->input->get('filter_status');
         $filter_part_no = $this->input->get('filter_part_no');
 
         //Select Query
         $this->db->select('a.*, c.number as item_rm_number, c.name as item_rm_name, c.uom, d.name as location_other_name');
-        $this->db->from('issued_others a');
+        $this->db->from('issued_others_request a');
         $this->db->join('item_rm c', 'a.item_rm_id = c.id');
-        $this->db->join('warehouse_location_others d', 'a.location_other_number = d.number');
+        $this->db->join('warehouse_location_others d', 'a.location_other_number = d.number', 'left');
         $this->db->where('a.deleted', 0);
-        $this->db->where('a.status', 0);
+        $this->db->where('a.trans_date >=', $filter_from);
+        $this->db->where('a.trans_date <=', $filter_to);
         if ($filter_request_no != "") {
             $this->db->where('a.request_no', $filter_request_no);
         }
+        if ($filter_request_name != "") {
+            $this->db->where('a.request_name', $filter_request_name);
+        }
+        if ($filter_location != "") {
+            $this->db->where('a.location_other_number', $filter_location);
+        }
         if ($filter_part_no != "") {
             $this->db->where('c.id', $filter_part_no);
+        }
+        if ($filter_status != "") {
+            $this->db->where('a.status', $filter_status);
         }
         $this->db->group_by('a.request_no');
         $this->db->group_by('c.id');

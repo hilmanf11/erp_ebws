@@ -137,19 +137,32 @@ class Wip_receipts extends CI_Controller
         return $workOrderNo;
     }
 
+    public function stockWip($item_rm_id){
+        $filter_from = date("Y-m-d");
+        $query = $this->db->query("SELECT a.id, (COALESCE(c.issued, 0) + COALESCE(g.adjustment, 0) - COALESCE(d.return, 0) - COALESCE(e.ng, 0) - COALESCE(f.scrap, 0) - COALESCE(h.rfg, 0)) AS begin
+            FROM item_rm a
+            JOIN item_familys b ON a.item_family_id = b.id
+            LEFT JOIN (SELECT item_rm_id, SUM(qty) AS issued FROM issued_material_details WHERE DATE_FORMAT(created_date, '%Y-%m-%d') <= '$filter_from' GROUP BY item_rm_id) c ON a.id = c.item_rm_id
+            LEFT JOIN (SELECT item_rm_id, SUM(qty) AS `return` FROM return_materials WHERE return_date <= '$filter_from' GROUP BY item_rm_id) d ON a.id = d.item_rm_id
+            LEFT JOIN (SELECT item_rm_id, SUM(qty) AS ng FROM scraps WHERE trans_date <= '$filter_from' and source = 'Vendor' GROUP BY item_rm_id) e ON a.id = e.item_rm_id
+            LEFT JOIN (SELECT item_rm_id, SUM(qty) AS scrap FROM scraps WHERE trans_date <= '$filter_from' and source = 'User' GROUP BY item_rm_id) f ON a.id = f.item_rm_id
+            LEFT JOIN (SELECT item_rm_id, SUM(qty) AS adjustment FROM sto_wip WHERE trans_date <= '$filter_from' GROUP BY item_rm_id) g ON a.id = g.item_rm_id
+            LEFT JOIN (SELECT item_rm_id, SUM(qty) AS rfg FROM wip_receipt_details WHERE trans_date <= '$filter_from' GROUP BY item_rm_id) h ON a.id = h.item_rm_id
+            WHERE a.item_category_id = 'C01' and a.id = '$item_rm_id'
+            GROUP BY a.id
+            ORDER BY a.number");
+        $data = $query->row();
+        return $data;
+    }
+
     public function datatablesTemp($period, $wp, $customer_id, $item_fg_id = "")
     {
         $this->dummy = $this->load->database('dummy', TRUE);
 
-        // $trans_date_from = base64_decode($trans_date_from);
-        // $trans_date_to = base64_decode($trans_date_to);
         $customer_id = base64_decode($customer_id);
         $item_fg_id = base64_decode($item_fg_id);
         $period = base64_decode($period);
         $wp = base64_decode($wp);
-        // $period = date("Ym", strtotime($trans_date_from));
-        
-        // $item_fg = $this->crud->read("item_fg", [], ["id" => $item_fg_id]);
 
         $this->db->select('a.*, c.qty_box, b.name as customer_name, c.number_customer');
         $this->db->from('production_schedules a');
@@ -167,14 +180,6 @@ class Wip_receipts extends CI_Controller
             $assy_number = $record['number_customer'];
             $mpp = $record['period'];
             $wp = sprintf("%02s", $record['wp'])."/".substr($mpp, -2);
-
-            // $sqlQty = $this->dummy->query("SELECT SUM(z.qty) as qty FROM (SELECT assy_number, mpp, wp, customer, COUNT(qty) as qty
-            //     from mst_scan_proses 
-            //     where kode_proses = '5' and assy_number = '$assy_number' and mpp = '$period' and wp = '$wp'
-            //     GROUP BY assy_number, mpp, wp, customer) z");
-            // $rowQty = $sqlQty->row();
-
-            // $qty_scan = empty(@$rowQty->qty) ? 0 : @$rowQty->qty;
 
             $sqlQty = $this->dummy->query("SELECT COUNT(x.serial_number) as qty FROM (
                 SELECT DISTINCT z.serial_number FROM (
@@ -209,11 +214,6 @@ class Wip_receipts extends CI_Controller
             }
             
             $qty_balance = (round($record['qty']) - round($rfg->qty_rfg));
-            // if($qty_balance >= $qty_scan){
-            //     $qty_scan2 = $qty_scan;
-            // }else{
-            //     $qty_scan2 = $qty_balance;
-            // }
 
             if($qty_scan2 > 0){
                 $arr[] = array(
@@ -227,60 +227,46 @@ class Wip_receipts extends CI_Controller
                     "qty_box" => $record['qty_box'],
                     "label_box" => ceil($qty_scan2 / $record['qty_box']),
                 );
-
-                // $qty_scan -= $qty_scan2;
-            // }else{
-                // $arr[] = array(
-                //     "workorder" => $record['workorder'],
-                //     "period" => $record['period'],
-                //     "wp" => $record['wp'],
-                //     "qty_receipt" => $record['qty'] ? 0 : $record['qty'],
-                //     "qty" => $record['qty'] ? 0 : $record['qty'],
-                //     "qty_box" => $record['qty_box'],
-                //     "label_box" => ceil(empty($record['qty']) ? 0 : $record['qty'] / $record['qty_box']),
-                // );
             }
         }
 
-        // $item_fg = $this->crud->read("item_fg", [], ["id" => $item_fg_id]);
-        // $item_fg_number = @$item_fg->number_customer;
-        // $qProses = $this->dummy->query("SELECT a.serial_number, a.assy_number, a.mpp, a.wp, a.customer, COUNT(a.qty) as qty, c.temp_woc_id
-        //     from mst_scan_proses a
-        //     left join wip_trx_mpp c ON a.assy_number = c.assy_no and a.wp = c.wp and a.mpp = c.periode
-        //     where a.kode_proses = '5' and status_before = 'false' and status_next = 'true' and sts_rfg is null
-        //     -- and a.tanggal_proses between '2024-11-01' and '$trans_date_to' and and a.assy_number = '$item_fg_number'
-        //     and a.mpp = '$period' and a.assy_number = '$item_fg_number'
-        //     GROUP BY a.serial_number, a.assy_number, a.mpp, a.wp, a.customer, c.temp_woc_id
-        //     ORDER BY mpp, wp asc");
-        // $dProses = $qProses->result();
-            
-        // $parr = array();
-        // $workorder = "";
-        // $period = "";
-        // $wp = "";
-        // $qty_receipt = 0;
-        // $qty = 0;
-        // foreach ($dProses as $proses) {
-        //     if(@$item_fg->qty_box > 0 && $proses->qty > 0){
-        //         $workorder = trim($proses->temp_woc_id);
-        //         $mpp = trim($proses->mpp);
-        //         $wp = trim($proses->wp);
-        //         $qty_receipt += empty(@$proses->qty) ? 0 : @$proses->qty;
-        //         $qty += empty(@$proses->qty) ? 0 : @$proses->qty;
-        //     }
-        // }
-
-        // $parr[] = array(
-        //     "workorder" => $workorder,
-        //     "period" => $mpp,
-        //     "wp" => $wp,
-        //     "qty_receipt" => $qty_receipt,
-        //     "qty" => $qty,
-        //     "qty_box" => @$item_fg->qty_box,
-        //     "label_box" => ceil(empty($qty) ? 0 : ($qty / @$item_fg->qty_box)),
-        // );
-
         echo json_encode($arr);
+    }
+
+    public function datatablesTemp2()
+    {
+        if ($this->input->post()) {
+
+            $item_fg_id = $this->input->post('item_fg_id');
+            $qty_rfg = $this->input->post('qty_rfg');
+
+            //Select Query
+            $this->db->select("a.item_rm_id, b.number AS item_rm_number, b.name AS item_rm_name, a.composition");
+            $this->db->from('bom a');
+            $this->db->join('item_rm b', 'a.item_rm_id = b.id');
+            $this->db->where('a.item_fg_id', $item_fg_id);
+            $this->db->order_by('b.number', 'ASC');
+            $records = $this->db->get()->result_array();
+            
+            $datas = [];
+            foreach ($records as $record) {
+                $wip = $this->stockWip($record['item_rm_id']);
+                $datas[] = array(
+                    "item_rm_id" => $record['item_rm_id'],
+                    "item_rm_number" => $record['item_rm_number'],
+                    "item_rm_name" => $record['item_rm_name'],
+                    "qpa" => $record['composition'],
+                    "rfg" => round($qty_rfg, 2),
+                    "qty" => round($qty_rfg * $record['composition'], 2),
+                    "wip" => empty(@$wip->begin) ? 0 : @$wip->begin,
+                );
+            }
+
+            //Mapping Data
+            $result['total'] = count($datas);
+            $result = array_merge($result, ['rows' => $datas]);
+            echo json_encode($result);
+        }
     }
 
     public function datatables()
@@ -339,7 +325,7 @@ class Wip_receipts extends CI_Controller
         if ($this->input->post()) {
             if ($this->form_validation->run() == TRUE) {
                 $post = $this->input->post();
-                $read = $this->crud->reads("wip_receipts", [], ["checksheet_number" => $post['checksheet_number']]);
+                $read = $this->crud->reads("wip_receipts", [], ["checksheet_number" => $post['checksheet_number'], "workorder" => $post['workorder']]);
                 // $item_fg_id = $post['item_fg_id'];
                 // $trans_date_from = $post['trans_date_from'];
                 // $trans_date_to = $post['trans_date_to'];
@@ -365,7 +351,7 @@ class Wip_receipts extends CI_Controller
                 // }
                 
                 if (count($read) > 0) {
-                    echo json_encode(array("title" => "Error", "message" => "Duplicate Checksheet Number", "theme" => "error"));
+                    echo json_encode(array("title" => "Error", "message" => "Duplicate Workorder", "theme" => "error"));
                 } else {
                     $send_wip_receipt = $this->crud->create('wip_receipts', $post);
                     $this->db->update('production_schedules', ["status_wip" => 1], ["workorder" => $post['workorder']]);
@@ -374,6 +360,33 @@ class Wip_receipts extends CI_Controller
             } else {
                 show_error(validation_errors());
             }
+        } else {
+            show_error("Cannot Process your request");
+        }
+    }
+
+    public function createDetails(){
+        if ($this->input->post()) {
+            $jsonData = file_get_contents("php://input");
+            $post = json_decode($jsonData, true);
+            $datas = $post['data'];
+
+            foreach ($datas as $data) {
+                $year = substr($data['period'], 0, 4);
+                $month = substr($data['period'], 4);
+                $wp = $data['wp'];
+                $period = $year."-".$month."-".$wp;
+                
+                $dataFinal = array_merge($data, array(
+                    "trans_date" => date("Y-m-d", strtotime($period)),
+                    "created_by" => $this->session->username,
+                    "created_date" => date("Y-m-d H:i:s") 
+                ));
+
+                $this->db->insert('wip_receipt_details', $dataFinal);
+            }
+
+            echo json_encode(array("message" => "Success"));
         } else {
             show_error("Cannot Process your request");
         }
@@ -446,6 +459,7 @@ class Wip_receipts extends CI_Controller
         //     $this->dummy->update("mst_scan_proses", ["sts_rfg" => null], ["serial_number" => $dProses[$i]->serial_number, "kode_proses" => '5']);
         // }
         
+        $this->db->delete('wip_receipt_details', ["checksheet_number" => $checksheet_number]);
         $send = $this->crud->delete('wip_receipt_boxs', ["checksheet_number" => $checksheet_number]);
 
         if($send){
@@ -745,13 +759,13 @@ class Wip_receipts extends CI_Controller
         // $this->db->join('uom e', 'd.uom_id = e.id');
         $this->db->where('a.deleted', 0);
         if ($filter_from != "" or $filter_to != "") {
-            $this->db->where("DATE_FORMAT(a.created_date, '%Y-%m-%d') >=", $filter_from);
-            $this->db->where("DATE_FORMAT(a.created_date, '%Y-%m-%d') <=", $filter_to);
+            $this->db->where('a.trans_date_from >=', $filter_from);
+            $this->db->where('a.trans_date_to <=', $filter_to);
         }
         $this->db->like('a.checksheet_number', $filter_checksheet);
         $this->db->like('a.workorder', $filter_workorder);
         $this->db->like('d.id', $filter_item_fg_id);
-        $this->db->order_by('a.created_date', 'DESC');
+        $this->db->order_by('a.trans_date_from', 'DESC');
         $this->db->order_by('a.checksheet_number', 'DESC');
         $records = $this->db->get()->result_array();
 

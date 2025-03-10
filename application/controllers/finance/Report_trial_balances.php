@@ -56,7 +56,7 @@ class Report_trial_balances extends CI_Controller
         
         $this->db->select('*');
         $this->db->from('account_group_details');
-        // $this->db->where("number", "17000000");
+        // $this->db->where("number", "19000000");
         $this->db->order_by('number', 'asc');
         $account_groups = $this->db->get()->result_array();
 
@@ -74,68 +74,99 @@ class Report_trial_balances extends CI_Controller
             $ending_debit = 0;
             $ending_credit = 0;
             $begin_balance = 0;
+            $text = "";
             foreach ($accounts as $account) {
                 $account_number = $account['account_number'];
-                // $this->db->select('account_number, account_name, 
-                //     COALESCE(SUM(local_debit)) as local_debit,
-                //     COALESCE(SUM(local_credit)) as local_credit');
-                // $this->db->from('journal_postings');
-                // $this->db->where('account_number', $account['account_number']);
-                // $this->db->where("journal_date BETWEEN '$filter_from' and '$filter_to'");
-                // $this->db->group_by('account_number');
-                // $journal = $this->db->get()->row();
+                $this->db->select('account_number, account_name, 
+                    COALESCE(SUM(local_debit), 0) as local_debit,
+                    COALESCE(SUM(local_credit), 0) as local_credit');
+                $this->db->from('journal_postings');
+                $this->db->where('account_number', $account_number);
+                $this->db->where("journal_date BETWEEN '$filter_from' and '$filter_to'");
+                $this->db->group_by('account_number');
+                $journal = $this->db->get()->row();
 
-                $query = $this->db->query("SELECT account_number, account_name, COALESCE(SUM(local_debit)) as local_debit, COALESCE(SUM(local_credit)) as local_credit
-                    FROM (
-                        (SELECT journal_date, `number`, account_number, account_name, modul, `description`, currency, SUM(local_debit) as local_debit, SUM(local_credit) as local_credit
-                        FROM journal_postings
-                        WHERE journal_date between '$filter_from' and '$filter_to' and account_number = '$account_number' and modul != 'BANK STATEMENT'
-                        GROUP BY `number`
-                        ) 
-                    UNION 
-                        (SELECT journal_date, `number`, account_number, account_name, modul, `description`, currency, 
-                        (CASE WHEN SUM(local_credit) > 0 THEN SUM(local_credit) ELSE 0 END) as local_credit,
-                        (CASE WHEN SUM(local_debit) > 0 THEN SUM(local_debit) ELSE 0 END) as local_debit
-                        FROM journal_postings
-                        WHERE journal_date between '$filter_from' and '$filter_to' and account_number = '$account_number' and modul = 'BANK STATEMENT'
-                        GROUP BY `number`
-                        )
-                    ) a GROUP BY account_number");
-                $journal = $query->row();
+                $trial_balances = $this->crud->read('trial_balances', [], ["account_number" => $account_number, "period" => $period_before]);
 
-                $trial_balances = $this->crud->reads('trial_balances', [], ["account_number" => $account['account_number'], "period" => $period_before]);
-                if(count($trial_balances) > 0){
-                    $journal_bf = $this->crud->read('trial_balances', [], ["account_number" => $account['account_number'], "period" => $period_before]);
-
-                    if($journal_bf->header == 0){
-                        $begin_debit += $journal_bf->ending_debit;
-                        $begin_credit += $journal_bf->ending_credit;
+                if(!empty($trial_balances->id)){
+                    if($trial_balances->header == 1){
+                        $begin_debit += $trial_balances->ending_debit;
+                        $begin_credit += $trial_balances->ending_credit;
                     }
                 }else{
                     $begin_debit += $account['local_debit'];
                     $begin_credit += $account['local_kredit'];
                 }
 
-                $local_debit += @$journal->local_debit;
-                $local_credit += @$journal->local_credit;
-            }
+                // if((@$journal->local_debit - @$journal->local_credit) > 0){
+                //     $journal_debit = (@$journal->local_debit - @$journal->local_credit);
+                //     $journal_credit = 0;
+                // }else{
+                //     $journal_debit = 0;
+                //     $journal_credit = abs(@$journal->local_debit - @$journal->local_credit);
+                // }
 
-            if(($begin_debit - $begin_credit) > 0){
-                $begin_debit = abs($begin_debit - $begin_credit);
-                $begin_credit = 0;
-            }else{
-                $begin_credit = abs($begin_debit - $begin_credit);
-                $begin_debit = 0;
-            }
+                $journal_debit = @$journal->local_debit;
+                $journal_credit = @$journal->local_credit;
+                
+                if($account_group['number'] != $account['account_number']){
+                    $local_debit += $journal_debit;
+                    $local_credit += $journal_credit;
 
-            $begin_balance = (($begin_debit + $local_debit) - ($begin_credit + $local_credit)); 
+                    if(!empty($trial_balances->id)){
+                        $journal_end_debit = (@$trial_balances->ending_debit + $journal_debit);
+                        $journal_end_credit = (@$trial_balances->ending_credit + $journal_credit);
 
-            if($begin_balance > 0){
-                $ending_debit = $begin_balance;
-                $ending_credit = 0;
-            }else{
-                $ending_debit = 0;
-                $ending_credit = abs($begin_balance);
+                        if(($journal_end_debit - $journal_end_credit) > 0){
+                            $ending_debit += ($journal_end_debit - $journal_end_credit);
+                            $journal_end_debit_f = ($journal_end_debit - $journal_end_credit);
+                            $journal_end_credit_f = 0;
+                        }else{
+                            $ending_credit += abs($journal_end_debit - $journal_end_credit);
+                            $journal_end_debit_f = 0;
+                            $journal_end_credit_f = abs($journal_end_debit - $journal_end_credit);
+                        }
+
+                        $data[] = array(
+                            "period" => $period,
+                            "account_number" => $account['account_number'],
+                            "account_name" => $account['account_name'],
+                            "begin_debit" => @$trial_balances->ending_debit,
+                            "begin_credit" => @$trial_balances->ending_credit,
+                            "local_debit" => $journal_debit,
+                            "local_credit" => $journal_credit,
+                            "ending_debit" => $journal_end_debit_f,
+                            "ending_credit" => $journal_end_credit_f,
+                            "header" => 1,
+                        );
+                    }else{
+                        $journal_end_debit = (@$account['local_debit'] + $journal_debit);
+                        $journal_end_credit = (@$account['local_kredit'] + $journal_credit);
+
+                        if(($journal_end_debit - $journal_end_credit) > 0){
+                            $ending_debit += ($journal_end_debit - $journal_end_credit);
+                            $journal_end_debit_f = ($journal_end_debit - $journal_end_credit);
+                            $journal_end_credit_f = 0;
+                        }else{
+                            $ending_credit += abs($journal_end_debit - $journal_end_credit);
+                            $journal_end_debit_f = 0;
+                            $journal_end_credit_f = abs($journal_end_debit - $journal_end_credit);
+                        }
+
+                        $data[] = array(
+                            "period" => $period,
+                            "account_number" => $account['account_number'],
+                            "account_name" => $account['account_name'],
+                            "begin_debit" => $account['local_debit'],
+                            "begin_credit" => $account['local_kredit'],
+                            "local_debit" => @$journal_debit,
+                            "local_credit" => @$journal_credit,
+                            "ending_debit" => $journal_end_debit_f,
+                            "ending_credit" => $journal_end_credit_f,
+                            "header" => 1,
+                        );
+                    }
+                }
             }
 
             $data[] = array(
@@ -150,64 +181,6 @@ class Report_trial_balances extends CI_Controller
                 "ending_credit" => $ending_credit,
                 "header" => 0,
             );
-
-            $journal_end_debit = 0;
-            $journal_end_credit = 0;
-            foreach ($accounts as $account) {
-                $account_number = $account['account_number'];
-                $query = $this->db->query("SELECT account_number, account_name, COALESCE(SUM(local_debit)) as local_debit, COALESCE(SUM(local_credit)) as local_credit
-                    FROM (
-                        (SELECT journal_date, `number`, account_number, account_name, modul, `description`, currency, SUM(local_debit) as local_debit, SUM(local_credit) as local_credit
-                        FROM journal_postings
-                        WHERE journal_date between '$filter_from' and '$filter_to' and account_number = '$account_number' and modul != 'BANK STATEMENT'
-                        GROUP BY `number`) 
-                    UNION 
-                        (SELECT journal_date, `number`, account_number, account_name, modul, `description`, currency, 
-                        (CASE WHEN SUM(local_credit) > 0 THEN SUM(local_credit) ELSE 0 END) as local_credit,
-                        (CASE WHEN SUM(local_debit) > 0 THEN SUM(local_debit) ELSE 0 END) as local_debit
-                        FROM journal_postings
-                        WHERE journal_date between '$filter_from' and '$filter_to' and account_number = '$account_number' and modul = 'BANK STATEMENT'
-                        GROUP BY `number`)
-                    ) a GROUP BY account_number");
-                $journal = $query->row();
-
-                $trial_balances = $this->crud->read('trial_balances', [], ["account_number" => $account['account_number'], "period" => $period_before]);
-                if(!empty($trial_balances)){
-                    $begin_balance_credit = $trial_balances->ending_credit;
-                    $begin_balance_debit = $trial_balances->ending_debit;
-                }else{
-                    $begin_balance_debit = $account['local_debit'];
-                    $begin_balance_credit = $account['local_kredit'];
-                }
-
-                $journal_debit = @$journal->local_debit;
-                $journal_credit = @$journal->local_credit;
-                $account_no = $account['account_number'];
-                $begin_balance = (($begin_balance_debit + $journal_debit) - ($begin_balance_credit + $journal_credit));
-
-                if($begin_balance > 0){
-                    $journal_end_debit = abs($begin_balance);
-                    $journal_end_credit = 0;
-                }else{
-                    $journal_end_debit = 0;
-                    $journal_end_credit = abs($begin_balance);
-                }
-
-                if($account_group['number'] != $account['account_number']){
-                    $data[] = array(
-                        "period" => $period,
-                        "account_number" => $account['account_number'],
-                        "account_name" => $account['account_name'],
-                        "begin_debit" => $begin_balance_debit,
-                        "begin_credit" => $begin_balance_credit,
-                        "local_debit" => $journal_debit,
-                        "local_credit" => $journal_credit,
-                        "ending_debit" => $journal_end_debit,
-                        "ending_credit" => $journal_end_credit,
-                        "header" => 1,
-                    );
-                }
-            }
         }
 
         $result['total'] = count($data);
@@ -226,12 +199,12 @@ class Report_trial_balances extends CI_Controller
             ]);
 
             if(count($trial_balances) > 0){
-                $send = $this->crud->update('trial_balances', [
+                $send = $this->db->update('trial_balances', $post, [
                     "period" => $post['period'], 
                     "account_number" => $post['account_number']
-                ], $post);
+                ]);
 
-                echo $send;
+                echo json_encode(array("title" => "Good Job", "message" => "Data Updated Successfully", "theme" => "success"));
             }else{
                 $send = $this->crud->create('trial_balances', $post);
                 echo $send;
@@ -262,22 +235,22 @@ class Report_trial_balances extends CI_Controller
         $config = $this->db->get()->row();
 
         $this->db->select('account_number, account_name, header,
-            SUM(begin_debit) as begin_debit, 
-            SUM(begin_credit) as begin_credit, 
-            SUM(local_debit) as local_debit, 
-            SUM(local_credit) as local_credit,
-            SUM(ending_debit) as ending_debit,
-            SUM(ending_credit) as ending_credit');
+            (begin_debit) as begin_debit, 
+            (begin_credit) as begin_credit, 
+            (local_debit) as local_debit, 
+            (local_credit) as local_credit,
+            (ending_debit) as ending_debit,
+            (ending_credit) as ending_credit');
         $this->db->from('trial_balances');
         $this->db->where('period >=', $period);
         $this->db->where('period <=', $period_to);
         $this->db->order_by('account_number', 'asc');
-        $this->db->group_by('account_number', 'asc');
+        // $this->db->group_by('account_number', 'asc');
         $trial_balances = $this->db->get()->result_array();
 
         $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#customers {border-collapse: collapse;width: 100%;font-size: 12px;}#customers td, #customers th {border: 1px solid #ddd;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: #ddd;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: center;color: black;}</style><body>
             <center>
-                <div style="float: left; font-size: 12px; text-align: left;">
+                <div style="font-size: 12px; text-align: left;">
                     <table style="width: 100%;">
                         <tr>
                             <td width="50" style="font-size: 12px; vertical-align: top; text-align: center; vertical-align:jus margin-right:10px;">
@@ -290,18 +263,11 @@ class Report_trial_balances extends CI_Controller
                         </tr>
                     </table>
                 </div>
-                <div style="float: right; font-size: 12px; text-align: right;">
-                    Print Date ' . date("d M Y H:i:s") . ' <br>
-                    Print By ' . $this->session->username . '  
-                </div>
             </center>
-            <br><br><br><br>
             <center>
                 <h3 style="margin:0;">TRIAL BALANCE</h3>
                 <small>PERIOD : <b>' . $filter_from . '</b> To <b>' . $filter_to . '</b></small>
             </center>
-            <br><br>
-            
             <table id="customers" border="1">
             <tr>
                 <th rowspan="3" width="20">No</th>
@@ -341,56 +307,37 @@ class Report_trial_balances extends CI_Controller
                 $font = '';
             }
 
-            $this->db->select('account_number, account_name, header,
-                SUM(begin_debit) as begin_debit, 
-                SUM(begin_credit) as begin_credit');
-            $this->db->from('trial_balances');
-            $this->db->where('period =', $period);
-            $this->db->where('account_number', $trial_balance['account_number']);
-            $this->db->order_by('account_number', 'asc');
-            $this->db->group_by('account_number', 'asc');
-            $begin_tb = $this->db->get()->row();
-
-            if(((@$begin_tb->begin_debit - @$begin_tb->begin_credit) + $trial_balance['local_debit'] - $trial_balance['local_credit']) > 0){
-                $balance_debit = (((@$begin_tb->begin_debit - @$begin_tb->begin_credit) + $trial_balance['local_debit']) - $trial_balance['local_credit']);
-                $balance_credit = 0;
-            }else{
-                $balance_debit = 0;
-                $balance_credit = abs(((@$begin_tb->begin_debit - @$begin_tb->begin_credit) + $trial_balance['local_debit']) - $trial_balance['local_credit']);
-            }
-
-            $final_balance = ((@$begin_tb->begin_debit + $trial_balance['local_debit']) - (@$begin_tb->begin_credit + $trial_balance['local_credit']));
+            $final_balance = (($trial_balance['begin_debit'] + $trial_balance['local_debit']) - ($trial_balance['begin_credit'] + $trial_balance['local_credit']));
 
             $html .= '  <tr '.$style.'>
                             <td style="'.$font.'">' . $no . '</td>
                             <td style="'.$font.'mso-number-format:\@;">' . $trial_balance['account_number'] . '</td>
                             <td style="'.$font.'">' . $trial_balance['account_name'] . '</td>
-                            <td style="text-align:right;'.$font.'">' . number_format(@$begin_tb->begin_debit, 2) . '</td>
-                            <td style="text-align:right;'.$font.'">' . number_format(@$begin_tb->begin_credit, 2) . '</td>
+                            <td style="text-align:right;'.$font.'">' . number_format($trial_balance['begin_debit'], 2) . '</td>
+                            <td style="text-align:right;'.$font.'">' . number_format($trial_balance['begin_credit'], 2) . '</td>
                             <td style="text-align:right;'.$font.'">' . number_format($trial_balance['local_debit'], 2) . '</td>
                             <td style="text-align:right;'.$font.'">' . number_format($trial_balance['local_credit'], 2) . '</td>
-                            <td style="text-align:right;'.$font.'">' . number_format($balance_debit, 2) . '</td>
-                            <td style="text-align:right;'.$font.'">' . number_format($balance_credit, 2) . '</td>
+                            <td style="text-align:right;'.$font.'">' . number_format($trial_balance['ending_debit'], 2) . '</td>
+                            <td style="text-align:right;'.$font.'">' . number_format($trial_balance['ending_credit'], 2) . '</td>
                             <td style="text-align:right;'.$font.'">' . number_format($final_balance, 2) . '</td>
                         </tr>';
 
-            if($trial_balance['header'] == 0){
-                $grand_total_begin_debit += @$begin_tb->begin_debit;
-                $grand_total_begin_credit += @$begin_tb->begin_credit;
+            if($trial_balance['header'] != 0){
+                $grand_total_begin_debit += $trial_balance['begin_debit'];
+                $grand_total_begin_credit += $trial_balance['begin_credit'];
                 $grand_total_local_debit += $trial_balance['local_debit'];
                 $grand_total_local_credit += $trial_balance['local_credit'];
-                $grand_total_ending_debit += $balance_debit;
-                $grand_total_ending_credit += $balance_credit;
+                $grand_total_ending_debit += $trial_balance['ending_debit'];
+                $grand_total_ending_credit += $trial_balance['ending_credit'];
                 $grand_total_final_balance += $final_balance;
             }
             $no++;
         }
 
-        // <td style="text-align:right;'.$font.'">' . number_format(@$begin_tb->begin_debit, 2) . '</td>
-        // <td style="text-align:right;'.$font.'">' . number_format(@$begin_tb->begin_credit, 2) . '</td>
-
         $html .= '  <tr style="background:#EBEBEB;">
-                        <td colspan="3"><b>GRAND TOTAL</b></td>
+                        <td></td>
+                        <td></td>
+                        <td><b>GRAND TOTAL</b></td>
                         <td style="text-align:right;"><b>' . number_format(@$grand_total_begin_debit, 2) . '</b></td>
                         <td style="text-align:right;"><b>' . number_format(@$grand_total_begin_credit, 2) . '</b></td>
                         <td style="text-align:right;"><b>' . number_format(@$grand_total_local_debit, 2) . '</b></td>

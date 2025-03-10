@@ -3,23 +3,23 @@
     <thead>
         <tr>
             <th rowspan="2" field="ck" checkbox="true"></th>
-            <th rowspan="2" data-options="field:'customer_name',width:300,halign:'center'">Customer Name</th>
+            <th rowspan="2" data-options="field:'customer_name',width:200,halign:'center'">Customer Name</th>
             <th rowspan="2" data-options="field:'plant',width:100,halign:'center'">Plant</th>
-            <th rowspan="2" data-options="field:'type',width:100,align:'center'">Type</th>
-            <th rowspan="2" data-options="field:'status',width:100,halign:'center', styler:cellStyler, formatter:cellFormatter">Status</th>
+            <th rowspan="2" data-options="field:'type',width:80,align:'center'">Type</th>
+            <th rowspan="2" data-options="field:'status',width:80,halign:'center', styler:cellStyler, formatter:cellFormatter">Status</th>
             <th colspan="4" data-options="field:'',width:100,align:'center'">Approved</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
         </tr>
         <tr>
-            <th data-options="field:'status_approved',width:100,align:'center', styler:styleApproved, formatter:formatApproved"> Status</th>
+            <th data-options="field:'status_approved',width:80,align:'center', styler:styleApproved, formatter:formatApproved"> Status</th>
             <th data-options="field:'approved_by',width:100,halign:'center'"> By</th>
-            <th data-options="field:'approved_to',width:150,halign:'center'">Next</th>
-            <th data-options="field:'approved_date',width:150,align:'center'"> Date</th>
-            <th data-options="field:'created_by',width:120,halign:'center'"> By</th>
-            <th data-options="field:'created_date',width:150,align:'center'"> Date</th>
-            <th data-options="field:'updated_by',width:120,halign:'center'"> By</th>
-            <th data-options="field:'updated_date',width:150,align:'center'"> Date</th>
+            <th data-options="field:'approved_to',width:100,halign:'center'">Next</th>
+            <th data-options="field:'approved_date',width:120,align:'center'"> Date</th>
+            <th data-options="field:'created_by',width:100,halign:'center'"> By</th>
+            <th data-options="field:'created_date',width:120,align:'center'"> Date</th>
+            <th data-options="field:'updated_by',width:100,halign:'center'"> By</th>
+            <th data-options="field:'updated_date',width:120,align:'center'"> Date</th>
         </tr>
     </thead>
 </table>
@@ -383,38 +383,6 @@
             return true;
         }
 
-        var dg = $('#dg2');
-        var row = dg.datagrid('getSelected');
-        var rowIndex = dg.datagrid('getRowIndex', row);
-
-        var ed = dg.datagrid('getEditor', {
-            index: editIndex,
-            field: 'item_fg_id'
-        });
-
-        var customer_id = $("#customer_id").combogrid('getValue');
-        var item_fg_id = $(ed.target).textbox('getValue');
-
-        $.ajax({
-            method: 'post',
-            url: '<?= base_url('master/customer_items/delete') ?>',
-            data: {
-                customer_id: row.customer_id,
-                item_fg_id: item_fg_id
-            },
-            success: function(result) {
-                var result = eval('(' + result + ')');
-                toastr.success(result.message);
-            },
-            error: function(jqXHR, textStatus, errorThrown) {
-                toastr.error("This data is already used in other modules, You must delete it First", "Error");
-                
-            },
-            complete: function(data) {
-                $('#dg').datagrid('reload');
-            }
-        });
-
         $('#dg2').datagrid('cancelEdit', editIndex).datagrid('deleteRow', editIndex);
         editIndex = undefined;
     }
@@ -573,7 +541,7 @@
                             field: 'item_fg_number',
                             title: 'Product No EBWS',
                             halign: 'center',
-                            width: 150
+                            width: 120
                         }, {
                             field: 'item_fg_customer',
                             title: 'Part No Customer',
@@ -583,7 +551,7 @@
                             field: 'item_fg_name',
                             title: 'Description',
                             halign: 'center',
-                            width: 200
+                            width: 120
                         }, {
                             field: 'currency',
                             title: 'Currency',
@@ -623,6 +591,28 @@
                             title: 'Remarks',
                             width: 150,
                             halign: 'center',
+                        }, {
+                            field: 'status_approved',
+                            title: 'Status',
+                            styler:styleApproved, 
+                            formatter:formatApproved,
+                            width: 100,
+                            halign: 'center',
+                        }, {
+                            field: 'approved_by',
+                            title: 'Approved By',
+                            width: 100,
+                            halign: 'center',
+                        }, {
+                            field: 'approved_to',
+                            title: 'Approved Next',
+                            width: 100,
+                            halign: 'center',
+                        }, {
+                            field: 'approved_date',
+                            title: 'Approved Date',
+                            width: 150,
+                            halign: 'center',
                         }]
                     ],
                     onResize: function() {
@@ -644,6 +634,18 @@
                 text: 'Send to Approval',
                 iconCls: 'icon-ok',
                 handler: function() {
+                    $('#dg2').datagrid('acceptChanges');
+                    var rows = $('#dg2').datagrid('getRows');
+                    var totalrows = rows.length;
+                    endEditing();
+
+                    for (let z = 0; z < totalrows; z++) {
+                        if(rows[z].price <= 0){
+                            toastr.error("Price cannot 0");
+                            return false;
+                        }
+                    }
+
                     $('#dlg_insert').dialog('close');
 
                     var customer_id = $("#customer_id").combogrid('getValue');
@@ -658,11 +660,6 @@
                             Swal.showLoading();
                         },
                     });
-
-                    $('#dg2').datagrid('acceptChanges');
-                    var rows = $('#dg2').datagrid('getRows');
-                    var totalrows = rows.length;
-                    endEditing();
 
                     requestData(totalrows, rows);
                     function requestData(total, json, number = 1, value = 0, success = 1, failed = 1) {

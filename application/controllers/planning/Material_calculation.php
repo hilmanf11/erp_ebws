@@ -39,13 +39,13 @@ class Material_calculation extends CI_Controller
     }
 
     public function readItemFamily(){
-        $prodfam = $this->crud->query("SELECT * FROM item_familys WHERE `number` != '06'");
+        $prodfam = $this->crud->query("SELECT * FROM item_familys WHERE `item_category_id` = 'C01'");
         echo json_encode($prodfam);
     }
 
-    public function readProducts($pfm_id){
+    public function readProducts($pfm_id = ""){
         $post = isset($_POST['q']) ? $_POST['q'] : "";
-        $items = $this->crud->query("SELECT * FROM item_rm WHERE pfm_id = '$pfm_id' and item_id like '%$post%'");
+        $items = $this->crud->query("SELECT * FROM item_rm WHERE item_family_id like '%$pfm_id%' and item_category_id = 'C01' and (`number` like '%$post%' or id like '%$post%')");
         echo json_encode($items);
     }
 
@@ -347,33 +347,41 @@ class Material_calculation extends CI_Controller
             $etaRow = $eta->row();
 
             $ith = $this->db->query("SELECT
-                    a.id,
-                    ((COALESCE(SUM(c.qty_sto),0) + COALESCE(e.qty_receipt, 0)  + COALESCE(d.sto_qty_in, 0) + COALESCE(g.return_qty, 0)) - COALESCE(f.qty, 0) - COALESCE(d.sto_qty_out, 0)) as qty
+                a.id,
+                a.number,
+                a.name,
+                a.uom,
+                b.name as product_family,
+                ((COALESCE(SUM(c.qty_sto),0) + COALESCE(dd.sto_qty_in, 0) + COALESCE(j.qty_rgp_in, 0) + COALESCE(e.qty_receipt, 0) + COALESCE(g.return_qty, 0)) - COALESCE(f.qty, 0) - COALESCE(d.sto_qty_out, 0) - COALESCE(k.qty_rgp_out, 0) - COALESCE(h.qty_reject, 0)) AS end_stock
                 FROM item_rm a 
-                JOIN item_familys b ON a.item_family_id = b.id and b.number != '006'
-                LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) as qty_sto FROM os_rm a JOIN scan_item_receipts b ON a.id  = b.receipt_id WHERE a.trans_date <= '$cutoff' GROUP BY item_rm_id) c ON a.id = c.item_rm_id
-                LEFT JOIN (SELECT a.item_rm_id, (CASE WHEN a.type = 'IN' THEN COALESCE(SUM(a.qty), 0) ELSE 0 END) as sto_qty_in, (CASE WHEN a.type = 'OUT' THEN COALESCE(SUM(a.qty), 0) ELSE 0 END) as sto_qty_out FROM sto_rm a WHERE a.trans_date <= '$cutoff' and a.approved_to = '' GROUP BY item_rm_id) d ON a.id = d.item_rm_id
-                LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) as qty_receipt FROM purchase_order_receipts a JOIN scan_item_receipts b ON a.receipt_id  = b.receipt_id WHERE a.receipt_date <= '$cutoff' GROUP BY item_rm_id) e ON a.id = e.item_rm_id
-                LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as qty FROM issued_material_details WHERE DATE_FORMAT(created_date, '%Y-%m-%d') <= '$cutoff' GROUP BY item_rm_id) f ON a.id = f.item_rm_id
-                LEFT JOIN (SELECT a.item_rm_id, SUM(c.qty) as return_qty
-                    FROM return_materials a 
-                    JOIN return_material_labels b ON a.return_id = b.return_id
-                    JOIN scan_item_receipts c ON a.return_id = c.receipt_id and b.label_no = c.label_no
-                    WHERE a.return_date <= '$cutoff'
-                    GROUP BY a.item_rm_id) g ON a.id = g.item_rm_id
-                WHERE a.id = '$item_rm_id'
-                GROUP BY a.id
-                ORDER BY a.number");
+                JOIN item_familys b ON a.item_family_id = b.id AND b.number != '006'
+                LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) AS qty_sto FROM os_rm a JOIN scan_item_receipts b ON a.id  = b.receipt_id WHERE a.trans_date <= '$cutoff' GROUP BY item_rm_id) c ON a.id = c.item_rm_id
+                LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(a.qty), 0) as sto_qty_out FROM sto_rm a WHERE a.type = 'OUT' and a.trans_date <= '$cutoff' and a.approved_to = '' GROUP BY item_rm_id) d ON a.id = d.item_rm_id
+                LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(a.qty), 0) as sto_qty_in FROM sto_rm a WHERE a.type = 'IN' and a.trans_date <= '$cutoff' and a.approved_to = '' GROUP BY item_rm_id) dd ON a.id = dd.item_rm_id
+                LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) AS qty_receipt FROM purchase_order_receipts a JOIN scan_item_receipts b ON a.receipt_id  = b.receipt_id WHERE a.receipt_date <= '$cutoff' GROUP BY item_rm_id) e ON a.id = e.item_rm_id
+                LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) AS qty FROM issued_material_details WHERE DATE_FORMAT(created_date, '%Y-%m-%d') <= '$cutoff' GROUP BY item_rm_id) f ON a.id = f.item_rm_id
+                LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) AS qty_reject FROM purchase_order_receipts a JOIN scan_item_rejections b ON a.receipt_id  = b.receipt_id WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') <= '$cutoff' GROUP BY item_rm_id) h ON a.id = h.item_rm_id
+                LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) as qty_rgp_in FROM rgp_transactions a JOIN scan_item_rgp b ON a.number = b.rgp_number and a.item_id = b.item_id WHERE a.type = 'IN' and a.transaction_date <= '$cutoff' GROUP BY a.item_id) j ON a.id = j.item_id
+                LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) as qty_rgp_out FROM rgp_transactions a JOIN scan_item_rgp b ON a.number = b.rgp_number and a.item_id = b.item_id WHERE a.type = 'OUT' and a.transaction_date <= '$cutoff' GROUP BY a.item_id) k ON a.id = k.item_id
+                LEFT JOIN (SELECT a.item_rm_id, SUM(c.qty) AS return_qty
+                FROM return_materials a 
+                JOIN return_material_labels b ON a.return_id = b.return_id
+                JOIN scan_item_receipts c ON a.return_id = c.receipt_id AND b.label_no = c.label_no
+                WHERE a.return_date <= '$cutoff'
+                GROUP BY a.item_rm_id) g ON a.id = g.item_rm_id
+            WHERE a.id = '$item_rm_id'
+            GROUP BY a.id
+            ORDER BY b.number, a.number");
             $ithRow = $ith->row();
 
-            $stock_hand = (@$ithRow->qty - $os_supply - $os_wo);
+            $stock_hand = (@$ithRow->end_stock - $os_supply - $os_wo);
 
             $postFinal = array_merge($post, array(
                 "os_supply" => $os_supply,
                 "os_wo" => $os_wo,
                 "balance_wip" => empty(@$generate_mrp->qty_wip) ? 0 : @$generate_mrp->qty_wip,
                 "eta" => empty(@$etaRow->total) ? 0 : @$etaRow->total,
-                "stock_whs" => empty(@$ithRow->qty) ? 0 : @$ithRow->qty,
+                "stock_whs" => empty(@$ithRow->end_stock) ? 0 : @$ithRow->end_stock,
                 "stock_hand" => $stock_hand,
                 "os_po" => empty(@$ospoRow->balance) ? 0 : @$ospoRow->balance,
                 "need_2" => empty(@$generate_mrp->need_2) ? 0 : @$generate_mrp->need_2,
@@ -421,23 +429,22 @@ class Material_calculation extends CI_Controller
         $filter_status = $this->input->get('filter_status');
         $filter_date = base64_decode($this->input->get('filter_date'));
 
-        $firstDate = date('01 M', strtotime($filter_year . "-" . $filter_month . "-01"));
-        $endDate = date('t M', strtotime($filter_year . "-" . $filter_month . "-01"));
+        $firstDate = date('Y-m-01', strtotime($filter_year . "-" . $filter_month . "-01"));
+        $endDate = date('Y-m-t', strtotime($filter_year . "-" . $filter_month . "-01"));
 
         $period_start = $filter_year."-".$filter_month."-01";
         $period_end = date("Y-m-t", strtotime($filter_year."-".$filter_month."-01"));
         
         $next_month = date("F", strtotime("+1 month", strtotime($filter_year."-".$filter_month."-01")));
 
-        $this->db->select("a.*, c.item_name as product_name, b.name as item_family, d.need_2");
+        $this->db->select("a.*, c.number as item_rm_number, b.name as item_rm_name, b.name as item_family_name");
         $this->db->from('generate_item_calculation a');
-        $this->db->join('item_rm c', 'a.item_rm_id = c.item_id');
-        $this->db->join('item_familys b', 'c.pfm_id = b.number');
-        $this->db->join('generate_mrp_finals d', 'a.item_rm_id = d.part_no and a.p_month = d.p_month and a.p_year = d.p_year and a.revision = d.revision', 'left');
+        $this->db->join('item_rm c', 'a.item_rm_id = c.id');
+        $this->db->join('item_familys b', 'c.item_family_id = b.id');
         $this->db->where('a.p_month', $filter_month);
         $this->db->where('a.p_year', $filter_year);
         $this->db->where('a.revision', $filter_revision);
-        $this->db->where('c.pfm_id', $filter_item_family);
+        $this->db->like('c.item_family_id', $filter_item_family);
         $this->db->like('a.item_rm_id', $filter_item_id);
         $this->db->order_by('b.number');
         $this->db->group_by('a.item_rm_id');
@@ -456,15 +463,15 @@ class Material_calculation extends CI_Controller
             $working_date = date("Y-m-d", strtotime($firstDate));
 
             $this->db->select('remarks');
-            $this->db->from('working_calendar');
+            $this->db->from('calendars');
             $this->db->where('working_date', $working_date);
             $holiday = $this->db->get()->row();
 
-            if (date('w', strtotime($firstDate)) !== '0' && date('w', strtotime($firstDate)) !== '6') {
+            if (date('w', strtotime($firstDate)) !== '0') {
                 if (@$holiday->remarks != null or @$holiday->remarks != "") {
                     $styles = 'background:#FFD974;';
-                    $cut_no += 0;
-                    $cut_content = "";
+                    $cut_no += 1;
+                    $cut_content = "W/P ". $cut_no;
                 } else{
                     $styles = "";
                     $cut_no += 1;
@@ -472,19 +479,19 @@ class Material_calculation extends CI_Controller
                 }
             } else {
                 $styles = 'background:#FFD974;';
-                $cut_no += 0;
-                $cut_content = "";
+                $cut_no += 1;
+                $cut_content = "W/P ". $cut_no;
             }
 
             //Setting Header
             $cut .= '<th width="50" colspan="4" style="text-align:center; ' . $styles . '">' . $cut_content . ' ('.$firstDate.')</th>';
-            $date .= '<th width="50" style="text-align:center; ' . $styles . '">ETA</th>
+            $date .= '<th width="50" style="text-align:center; ' . $styles . '">SCAN IN</th>
                       <th width="50" style="text-align:center; ' . $styles . '">NEED</th>
                       <th width="50" style="text-align:center; ' . $styles . '">SUPPLY</th>
                       <th width="50" style="text-align:center; ' . $styles . '">BAL</th>';
 
             $colspan++;
-            $firstDate = date("d M", strtotime("+1 day", strtotime($firstDate)));
+            $firstDate = date("Y-m-d", strtotime("+1 day", strtotime($firstDate)));
         }
 
         $date .= '  <th width="50" style="text-align:center;">WEEK 1</th>
@@ -502,71 +509,60 @@ class Material_calculation extends CI_Controller
 
         $content2 = "";
         foreach ($records as $record) {
+            $item_rm_id = $record['item_rm_id'];
             $content = '';
             $day = 1;
             $i = 0;
-            $firstDate2 = date('01 M', strtotime($filter_year . "-" . $filter_month . "-01"));
-            $endDate2 = date('t M', strtotime($filter_year . "-" . $filter_month . "-01"));
-
-            $item_id = $record['item_rm_id'];
-            $ith = $this->db->query("SELECT sum(ith_qty) as qty from ith where ith_item_id = '$item_id' and ith_date <= '$filter_date'");
-            $ithRow = $ith->row();
-
-            $queryEta = $this->db->query("SELECT SUM(por_receiveqty) as total from por where item_id = '$item_id' and por_docno not like '%PEMUTIHAN%' and por_date between '$period_start' and '$period_end'");
-            $totalEta = $queryEta->row();
-            $etaTotal = empty(@$totalEta->total) ? 0 : @$totalEta->total;
-
-            $stock_hand = (@$ithRow->qty - $record['os_supply'] - $record['os_wo']);
-            $balances = ($stock_hand + $etaTotal - $record['total']);
+            $firstDate2 = date('Y-m-01', strtotime($filter_year . "-" . $filter_month . "-01"));
+            $endDate2 = date('Y-m-t', strtotime($filter_year . "-" . $filter_month . "-01"));
+            $balances = ($record['stock_hand'] + $record['eta'] - $record['total']);
 
             if($balances > 0){
                 $free_stock = $balances;
-                $styles = "";
             }else{
                 $free_stock = 0;
-                $styles = 'background:#FFC2C2;';
             }
 
             $content .= "<tr>
                         <td>" . $no . "</td>
                         <td style='mso-number-format:\@;'>" . $record['item_rm_id'] . "</td>
-                        <td>" . $record['product_name'] . "</td>
-                        <td>" . $record['item_family'] . "</td>
-                        <td style='text-align:right;'>" . round(@$ithRow->qty) . "</td>
+                        <td style='mso-number-format:\@;'>" . $record['item_rm_number'] . "</td>
+                        <td style='mso-number-format:\@;'>" . $record['item_rm_name'] . "</td>
+                        <td>" . $record['item_family_name'] . "</td>
+                        <td style='text-align:right;'>" . round($record['stock_whs']) . "</td>
                         <td style='text-align:right;'>" . round($record['os_supply']) . "</td>
                         <td style='text-align:right;'>" . round($record['os_wo']) . "</td>
-                        <td style='text-align:right;'>" . round($stock_hand) . "</td>
-                        <td style='text-align:right;'>" . round($etaTotal) . "</td>
+                        <td style='text-align:right;'>" . round($record['stock_hand']) . "</td>
+                        <td style='text-align:right;'>" . round($record['eta']) . "</td>
                         <td style='text-align:right;'>" . round($record['total']) . "</td>
-                        <td style='text-align:right; ".$styles."'>". number_format(@$balances) ."</td>";
+                        <td style='text-align:right;'>". number_format(@$balances) ."</td>";
             
             //ini di ambil dari total ETA yang harian
             //$record['eta']
             $wp = "";
             $styles2 = "";
-            $balance = @$stock_hand;
+            $balance = $record['stock_hand'];
             while (strtotime($firstDate2) <= strtotime($endDate2)) {
                 $working_date2 = date("Y-m-d", strtotime($firstDate2));
 
-                // $delivery_schedule = $this->crud->read("delivery_schedules", [], ["part_no" => $item_id, "p_month" => $filter_month, "p_year" => $filter_year, "revision" => $filter_revision, "delivey_date_1" => $working_date2]);
-                // $qty_delivery_schedule = empty($delivery_schedule->delivey_qty_1) ? 0 : $delivery_schedule->delivey_qty_1;
-
-                $delivery_schedule = $this->db->query("SELECT SUM(por_receiveqty) as total from por where item_id = '$item_id' and por_docno not like '%PEMUTIHAN%' and por_date = '$working_date2'");
+                //ETA
+                $delivery_schedule = $this->db->query("SELECT item_rm_id, SUM(qty_receipt) as total FROM purchase_order_receipts WHERE item_rm_id = '$item_rm_id' and receipt_date = '$working_date2' GROUP BY item_rm_id");
                 $totalRow = $delivery_schedule->row();
-                $qty_delivery_schedule = empty(@$totalRow->total) ? 0 : @$totalRow->total;
+                $etaqty = empty(@$totalRow->total) ? 0 : @$totalRow->total;
                 
-                $ithSupply = $this->db->query("SELECT SUM(ith_qty) as supply from ith where ith_form like '%OU%' and ith_date = '$working_date2' and ith_item_id = '$item_id'");
+                //Supply
+                $ithSupply = $this->db->query("SELECT b.item_rm_id, COALESCE(SUM(a.qty), 0) as supply FROM issued_material_details a JOIN issued_materials b ON a.request_no = b.request_no WHERE b.item_rm_id = '$item_rm_id' and a.created_date between '$working_date2' and '$working_date2' GROUP BY a.item_rm_id");
                 $ithSupplyRow = $ithSupply->row();
 
                 $date_qty = $record["date_".$day];
-                $balance += ($qty_delivery_schedule - $date_qty);
+                $balance += round($etaqty - $date_qty);
 
                 $this->db->select('remarks');
-                $this->db->from('working_calendar');
+                $this->db->from('calendars');
                 $this->db->where('working_date', $working_date2);
                 $holiday = $this->db->get()->row();
 
-                if (date('w', strtotime($firstDate2)) !== '0' && date('w', strtotime($firstDate2)) !== '6') {
+                if (date('w', strtotime($firstDate2)) !== '0') {
                     if (@$holiday->remarks != null or @$holiday->remarks != ""){
                         $styles2 = 'background:#FFD974;';
                     }else{
@@ -580,27 +576,14 @@ class Material_calculation extends CI_Controller
                     $styles2 = 'background:#FFD974;';
                 }
 
-                $content .= "<td style='text-align:right; ".$styles2."'>".@$qty_delivery_schedule."</td>
+                $content .= "<td style='text-align:right; ".$styles2."'>".@$etaqty."</td>
                             <td style='text-align:right; ".$styles2."'>".round($date_qty)."</td>
                             <td style='text-align:right; ".$styles2."'>".abs(round(@$ithSupplyRow->supply))."</td>
                             <td style='text-align:right; ".$styles2."'>".round($balance)."</td>";
 
-                $firstDate2 = date("d M", strtotime("+1 day", strtotime($firstDate2)));
+                $firstDate2 = date("Y-m-d", strtotime("+1 day", strtotime($firstDate2)));
                 $day++;
             }
-
-            $ospo = $this->db->query("SELECT SUM(z.balance) as balance FROM (
-                SELECT a.item_id, b.poc_id, b.poc_reqdate, COALESCE(b.request, 0) as request, COALESCE(a.receive, 0) as receive, (COALESCE(b.request, 0) - COALESCE(a.receive, 0)) as balance
-                FROM (select item_id, poc_id, poc_reqdate, sum(poc_reqqty) as request from poc WHERE item_id = '$item_id' GROUP BY item_id, poc_id, poc_reqdate) b 
-                LEFT JOIN (select item_id, por_pocid, SUM(por_receiveqty) as receive from por WHERE item_id = '$item_id' GROUP BY por_pocid, item_id) a ON a.item_id = b.item_id and a.por_pocid = b.poc_id
-                WHERE (COALESCE(b.request, 0) - COALESCE(a.receive, 0)) > 0
-                ORDER BY b.poc_reqdate ASC) z");
-            $ospoRow = $ospo->row();
-
-            // die("SELECT a.item_id, a.request, b.receive, (a.request - b.receive) as balance 
-            // FROM (select item_id, SUM(por_pocreqqty) as request from por GROUP BY por_pocid, item_id) a 
-            // JOIN (select item_id, sum(por_receiveqty) as receive from por GROUP BY item_id) b ON a.item_id = b.item_id
-            // WHERE a.item_id = '$item_id' and (a.request - b.receive) >= 0");
 
             $content .= "   <td style='text-align:right; ".$styles."'>" . round($free_stock) . "</td>
                             <td style='text-align:right;'>" . round($record['need_2'] / 4) . "</td>
@@ -612,7 +595,7 @@ class Material_calculation extends CI_Controller
                             <td style='text-align:right;'>" . round($record['need_2'] / 4) . "</td>
                             <td style='text-align:right;'>" . round($balance - round($record['need_2'] / 4) - round($record['need_2'] / 4) - round($record['need_2'] / 4) - round($record['need_2'] / 4)) . "</td>
                             <td style='text-align:right;'>" . round($record['balance_wip']) . "</td>
-                            <td style='text-align:right;'>". round(@$ospoRow->balance) ."</td>
+                            <td style='text-align:right;'>". round($record['os_po']) ."</td>
                         </tr>";
 
             if($filter_status == "OK"){
@@ -653,11 +636,12 @@ class Material_calculation extends CI_Controller
         </center>
         <br><br><br>
 
-        <table id="customers" border="1" style="width:520%;">
+        <table id="customers" border="1" style="width:150%;">
             <tr>
                 <th style="text-align:center;" rowspan="3" width="20">NO</th>
-                <th style="text-align:center;" width="150" rowspan="3">PRODUCT NO</th>
-                <th style="text-align:center;" width="80" rowspan="3">PRODUCT NAME</th>
+                <th style="text-align:center;" width="150" rowspan="3">PART NO EBWS</th>
+                <th style="text-align:center;" width="150" rowspan="3">PART NO SUPPLIER</th>
+                <th style="text-align:center;" width="80" rowspan="3">DESCRIPTION</th>
                 <th style="text-align:center;" width="80" rowspan="3">PRODUCT FAMILY</th>
                 <th style="text-align:center;" width="50" rowspan="3">STOCK WHS</th>
                 <th style="text-align:center;" width="50" rowspan="3">OS SUPPLY</th>

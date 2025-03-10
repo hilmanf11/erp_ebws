@@ -150,11 +150,11 @@
                 <!-- Buat Validasi -->
                 <div class="fitem" hidden>
                     <span style="width:35%; display:inline-block;">Local Debit</span>
-                    <input style="width:60%;" id="local_debit" disabled class="easyui-numberbox">
+                    <input style="width:60%;" id="local_debit" disabled class="easyui-numberbox" data-options="precision: 2">
                 </div>
                 <div class="fitem" hidden>
                     <span style="width:35%; display:inline-block;">Local Credit</span>
-                    <input style="width:60%;" id="local_credit" disabled class="easyui-numberbox">
+                    <input style="width:60%;" id="local_credit" disabled class="easyui-numberbox" data-options="precision: 2">
                 </div>
             </div>
         </fieldset>
@@ -799,7 +799,7 @@
                     setTimeout(function() { 
                         btn.linkbutton('enable'); 
                     }, 3000);
-                    
+
                     $.ajax({
                         type: "post",
                         url: "<?= base_url('finance/journal_postings/number/' . $menus_id) ?>",

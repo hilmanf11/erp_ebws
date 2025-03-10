@@ -165,30 +165,27 @@ class Ar_receipts extends CI_Controller
             $description = $jsonData["description"];
             $total = $jsonData["receipt"];
             $currency = $jsonData['currency'];
-            $payment_date = $jsonData['receipt_date'];
-            $trans_date = $jsonData['trans_date'];
+            $rate = $jsonData['rate'];
+            // $payment_date = $jsonData['receipt_date'];
+            // $trans_date = $jsonData['trans_date'];
 
-            $search_date = date("d", strtotime($payment_date));
-            if ($search_date == "31") {
-                $payment_date = date("Y-m-d", strtotime('-10 days', strtotime($payment_date)));
-            }
+            // $search_date = date("d", strtotime($payment_date));
+            // if ($search_date == "31") {
+            //     $payment_date = date("Y-m-d", strtotime('-10 days', strtotime($payment_date)));
+            // }
 
-            $monthBf = date('Y-m-01', strtotime($trans_date));
-            $monthNow = date('Y-m-01', strtotime($payment_date));
+            // $monthBf = date('Y-m-01', strtotime($trans_date));
+            // $monthNow = date('Y-m-01', strtotime($payment_date));
 
-            if ($monthNow != $monthBf) {
-                $monthBf = date('Y-m-01', strtotime("-1 month", strtotime($payment_date)));
-            }
+            // if ($monthNow != $monthBf) {
+            //     $monthBf = date('Y-m-01', strtotime("-1 month", strtotime($payment_date)));
+            // }
 
-            $exchangeBf = $this->crud->read('exchange_rates', [], ["start_date" => $monthBf, "currency_from" => $currency, "currency_to" => "INR"]);
-            $exchangeNow = $this->crud->read('exchange_rates', [], ["start_date" => $monthNow, "currency_from" => $currency, "currency_to" => "INR"]);
+            // $exchangeBf = $this->crud->read('exchange_rates', [], ["start_date" => $monthBf, "currency_from" => $currency, "currency_to" => "INR"]);
+            // $exchangeNow = $this->crud->read('exchange_rates', [], ["start_date" => $monthNow, "currency_from" => $currency, "currency_to" => "INR"]);
 
             if ($currency != "INR") {
-                if ($exchangeBf) {
-                    $amount = ($total * $exchangeBf->middle);
-                } else {
-                    $amount = 0;
-                }
+                $amount = ($total * $rate);
             } else {
                 $amount = $total;
             }
@@ -292,135 +289,13 @@ class Ar_receipts extends CI_Controller
         echo json_encode($arr);
     }
 
-    // public function calculateJournal($journal_type_id = "", $bank_account = "", $rate = "")
-    // {
-    //     $journal_type_id = base64_decode($journal_type_id);
-    //     $bank_account = base64_decode($bank_account);
-    //     $rate = base64_decode($rate);
-
-    //     $banks = $this->crud->query("SELECT a.*, b.account_name FROM account_banks a 
-    //         JOIN account_coa b ON a.account_number = b.account_number 
-    //         WHERE a.account_number = '$bank_account'");
-
-    //     $jsonDatas = json_decode(file_get_contents("json/ar_receipts.json"), true);
-    //     $total = 0;
-    //     $grand_total = 0;
-    //     $flag = 2;
-
-    //     $mergedData = array();
-    //     foreach ($jsonDatas as $jsonData) {
-    //         $currency = $jsonData['currency'];
-    //         $receipt_date = $jsonData['receipt_date'];
-    //         $total = $jsonData["receipt"];
-
-    //         if ($jsonData['account_type'] == "DEBIT") {
-    //             $grand_total -= $total;
-    //         } else {
-    //             $grand_total += $total;
-    //         }
-    //     }
-
-    //     foreach ($banks as $bank) {
-    //         if ($currency != "INR") {
-    //             // $monthBf = date('Y-m-01', strtotime($receipt_date));
-    //             // $monthBf = $receipt_date;
-    //             // $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $monthBf, "currency_from" => $currency, "currency_to" => "INR"]);
-
-    //             // if ($exchange) {
-    //                 $amount = ($grand_total * $rate);
-    //             // } else {
-    //             //     $amount = 0;
-    //             // }
-    //         } else {
-    //             $amount = $grand_total;
-    //         }
-
-    //         $arrBanks[] = array(
-    //             "account_number" => $bank->account_number,
-    //             "account_name" => $bank->account_name,
-    //             "account_type" => "CREDIT",
-    //             "description" => "Receipt Bank",
-    //             "debit" => $grand_total,
-    //             "credit" => 0,
-    //             "local_debit" => round($amount, 2),
-    //             "local_credit" => 0,
-    //             "flag" => ($flag - 1),
-    //         );
-    //     }
-
-    //     foreach ($jsonDatas as $jsonData) {
-    //         $account_number = $jsonData["account_number"];
-    //         $account_name = $jsonData["account_name"];
-    //         $account_type = $jsonData["account_type"];
-    //         $description = @$jsonData["description"];
-    //         $currency = $jsonData['currency'];
-    //         $receipt_date = $jsonData['receipt_date'];
-    //         $total = $jsonData["receipt"];
-
-    //         // $monthBf = date('Y-m-01', strtotime($receipt_date));
-    //         // $monthBf = $receipt_date;
-    //         // $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $monthBf, "currency_from" => $currency, "currency_to" => "INR"]);
-
-    //         if ($currency != "INR") {
-    //             // if ($exchange) {
-    //                 $amount = ($total * $rate);
-    //             // } else {
-    //             //     $amount = 0;
-    //             // }
-    //         } else {
-    //             $amount = $total;
-    //         }
-
-    //         if (isset($mergedData[$account_number])) {
-    //             // Jika nomor akun sudah ada dalam hasil penggabungan, tambahkan nilai total ke nomor akun tersebut
-    //             if ($jsonData['account_number'] == $mergedData[$account_number] && $jsonData['account_type'] == "DEBIT") {
-    //                 $mergedData[$account_number]["debit"] += $total;
-    //             } elseif ($jsonData['account_number'] == $mergedData[$account_number] && $jsonData['account_type'] == "CREDIT") {
-    //                 $mergedData[$account_number]["credit"] += $total;
-    //             }
-    //         } else {
-    //             // Jika nomor akun belum ada dalam hasil penggabungan, tambahkan data baru
-    //             if ($jsonData['account_type'] == "DEBIT") {
-    //                 $mergedData[] = array(
-    //                     "account_number" => $account_number,
-    //                     "account_name" => $account_name,
-    //                     "account_type" => $account_type,
-    //                     "description" => $description,
-    //                     "debit" => $total,
-    //                     "credit" => 0,
-    //                     "local_debit" => round($amount, 2),
-    //                     "local_credit" => 0,
-    //                     "flag" => $flag,
-    //                 );
-    //             } elseif ($jsonData['account_type'] == "CREDIT") {
-    //                 $mergedData[] = array(
-    //                     "account_number" => $account_number,
-    //                     "account_name" => $account_name,
-    //                     "account_type" => $account_type,
-    //                     "description" => $description,
-    //                     "debit" => 0,
-    //                     "credit" => $total,
-    //                     "local_debit" => 0,
-    //                     "local_credit" => round($amount, 2),
-    //                     "flag" => $flag,
-    //                 );
-    //             }
-    //         }
-
-    //         $flag++;
-    //     }
-
-    //     $arr = array_merge($arrBanks, $mergedData);
-    //     echo json_encode($arr);
-    // }
-
     public function readInvoiceType()
     {
         $customer_id = $this->input->get('customer_id');
         $receipt_type = $this->input->get('receipt_type');
         $plant = base64_decode($this->input->get('plant'));
 
-        $records = $this->crud->query("SELECT `number`, journal_type_id FROM sales_invoices WHERE customer_id = '$customer_id' and plant = '$plant' and `status` = 0 GROUP BY `number` ORDER BY `number` ASC");
+        $records = $this->crud->query("SELECT `number`, journal_type_id FROM sales_invoices WHERE customer_id = '$customer_id' and plant = '$plant' and `status` = 0 and cancel = 0 GROUP BY `number` ORDER BY `number` ASC");
         echo json_encode($records);
     }
 
@@ -518,6 +393,7 @@ class Ar_receipts extends CI_Controller
         $this->db->join('ar_receipts b', 'a.number = b.sales_invoice', 'left');
         $this->db->where('a.deleted', 0);
         $this->db->where('a.status', 0);
+        $this->db->where('a.cancel', 0);
         $this->db->where_in('a.number', $sales_invoice_ex);
         $this->db->group_by('a.number');
         $this->db->order_by('a.number', 'asc');
@@ -668,10 +544,10 @@ class Ar_receipts extends CI_Controller
     {
         if ($this->input->post()) {
             $post = $this->input->post();
-            $purchase_invoice_journals = $this->crud->read('ar_receipt_journals', [], ["receipt_no" => $post['receipt_no'], "account_number" => $post['account_number'], "debit" => $post['debit'], "credit" => $post['credit']]);
+            $purchase_invoice_journals = $this->crud->read('ar_receipt_journals', [], ["receipt_no" => $post['receipt_no'], "account_number" => $post['account_number'], "debit" => $post['debit'], "credit" => $post['credit'], "flag" => $post['flag'], "description" => @$post['description']]);
 
             if (@$purchase_invoice_journals->id != "") {
-                $send = $this->crud->update('ar_receipt_journals', ["receipt_no" => $post['receipt_no'], "account_number" => $post['account_number'], "debit" => $post['debit'], "credit" => $post['credit']], $post);
+                $send = $this->crud->update('ar_receipt_journals', ["receipt_no" => $post['receipt_no'], "account_number" => $post['account_number'], "debit" => $post['debit'], "credit" => $post['credit'], "flag" => $post['flag'], "description" => $post['description']], $post);
                 echo $send;
             } else {
                 $send = $this->crud->create('ar_receipt_journals', $post);
@@ -1488,7 +1364,7 @@ class Ar_receipts extends CI_Controller
         }
         $this->db->like('a.receipt_no', $filter_receipt_no);
         $this->db->like('a.customer_id', $filter_customer);
-        $this->db->like('a.filter_plant', $filter_plant);
+        $this->db->like('a.plant', $filter_plant);
         $this->db->like('a.sales_invoice', $filter_invoice_no);
         $this->db->like('a.bank_account', $filter_bank_no);
         $this->db->like('a.receipt_by', $filter_receipt_by);
@@ -1605,7 +1481,7 @@ class Ar_receipts extends CI_Controller
         $this->db->from('config');
         $config = $this->db->get()->row();
 
-        $this->db->select('a.*, b.bank_account, b.receipt_date, b.receipt_by, b.sales_invoice, b.note, b.currency, c.name as customer_name, d.name as journal_type_name, e.account_name, f.bank_name');
+        $this->db->select('a.*, b.bank_account, b.receipt_date, b.receipt_by, b.sales_invoice, b.note, b.currency, c.name as customer_name, d.name as journal_type_name, e.account_name, f.bank_name, b.plant');
         $this->db->from('ar_receipt_journals a');
         $this->db->join('ar_receipts b', 'a.receipt_no = b.receipt_no');
         $this->db->join('customers c', 'b.customer_id = c.id');

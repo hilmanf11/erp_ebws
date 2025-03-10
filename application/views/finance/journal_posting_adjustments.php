@@ -5,7 +5,7 @@
             <th rowspan="2" data-options="field:'details',width:90,align:'center', formatter:btnDetails">Detail</th>
             <th rowspan="2" data-options="field:'journal_date',width:100,align:'center'">Posting Date</th>
             <th rowspan="2" data-options="field:'number',width:140,align:'center'">Voucher No</th>
-            <!-- <th rowspan="2" data-options="field:'journal_type_name',width:100,halign:'center'">Journal Type</th> -->
+            <th rowspan="2" data-options="field:'journal_type',width:100,halign:'center'">Journal<br>Category</th>
             <th rowspan="2" data-options="field:'document_no',width:200,halign:'center'">Invoice No</th>
             <th rowspan="2" data-options="field:'trans_date',width:120,halign:'center'">Invoice Date</th>
             <!-- <th rowspan="2" data-options="field:'modul',width:150,halign:'center'">Modul</th> -->
@@ -48,7 +48,7 @@
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Journal Type</span>
-                    <input style="width:60%;" id="filter_journal_type" class="easyui-combogrid">
+                    <input style="width:60%;" id="filter_journal_type_id" class="easyui-combogrid">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;"></span>
@@ -60,6 +60,17 @@
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Voucher No</span>
                     <input style="width:60%;" id="filter_voucher" class="easyui-textbox" />
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Journal Category</span>
+                    <select style="width:60%;" name="filter_journal_type" id="filter_journal_type" class="easyui-combobox" panelHeight="auto">
+                        <option value="GL - GL">GL - GL</option>
+                        <option value="GL - SUPPLIER">GL - SUPPLIER</option>
+                        <option value="GL - CUSTOMER">GL - CUSTOMER</option>
+                        <option value="GL - BANK">GL - BANK</option>
+                        <option value="GL - ASSET">GL - ASSET</option>
+                        <option value="ASSET - ASSET">ASSET - ASSET</option>
+                    </select>
                 </div>
             </div>
         </fieldset>
@@ -89,16 +100,17 @@
                 </div>
                 <div class="fitem" hidden>
                     <span style="width:35%; display:inline-block;">Journal Type</span>
-                    <input style="width:60%;" name="journal_type_id" id="journal_type" class="easyui-combogrid" required>
+                    <input style="width:60%;" name="journal_type_id" id="journal_type_id" class="easyui-combogrid" required>
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Journal Category</span>
-                    <select style="width:60%;" name="journal_category" id="journal_category" class="easyui-combobox" panelHeight="auto">
+                    <select style="width:60%;" name="journal_type" id="journal_type" class="easyui-combobox" panelHeight="auto">
                         <option value="GL - GL">GL - GL</option>
                         <option value="GL - SUPPLIER">GL - SUPPLIER</option>
                         <option value="GL - CUSTOMER">GL - CUSTOMER</option>
                         <option value="GL - BANK">GL - BANK</option>
                         <option value="GL - ASSET">GL - ASSET</option>
+                        <option value="ASSET - ASSET">ASSET - ASSET</option>
                     </select>
                 </div>
                 <div class="fitem">
@@ -124,11 +136,11 @@
                 <!-- Buat Validasi -->
                 <div class="fitem" hidden>
                     <span style="width:35%; display:inline-block;">Total Debit</span>
-                    <input style="width:60%;" id="local_debit" disabled class="easyui-numberbox">
+                    <input style="width:60%;" id="local_debit" disabled class="easyui-numberbox" data-options="precision: 2">
                 </div>
                 <div class="fitem" hidden>
                     <span style="width:35%; display:inline-block;">Total Credit</span>
-                    <input style="width:60%;" id="local_credit" disabled class="easyui-numberbox">
+                    <input style="width:60%;" id="local_credit" disabled class="easyui-numberbox" data-options="precision: 2">
                 </div>
             </div>
         </fieldset>
@@ -158,10 +170,11 @@
                             }
                         }}">Reference</th> -->
                     <th data-options="field:'description',width:200,editor: {type: 'textbox', options: {required: true}}">Description</th>
-                    <th data-options="field:'account_number',width:100, halign:'center', editor: {type: 'combogrid'}">Account No</th>
+                    <th data-options="field:'account_number',width:100, halign:'center', editor: {type: 'combogrid', options: {required: true}}">Account No</th>
                     <th data-options="field:'account_name',width:180, editor: {type: 'textbox', options: {readonly: true}}">Account Name</th>
-                    <th hidden data-options="field:'company_id',width:100,editor: {type: 'textbox', options: {readonly: true}}">Code</th>
-                    <th hidden data-options="field:'company_name',width:200,editor: {type: 'textbox', options: {readonly: true}}">Name</th>
+                    <th data-options="field:'company_id',width:100,editor: {type: 'textbox', options: {readonly: true}}">Code</th>
+                    <th data-options="field:'company_name',width:200,editor: {type: 'textbox', options: {readonly: true}}">Name</th>
+                    <th data-options="field:'qty',width:80,editor: {type: 'numberbox', options: {required: true}}">Qty</th>
                     <th data-options="field:'currency',width:80,editor: {type: 'textbox', options: {required: true, readonly: true}}">Currency</th>
                     <th data-options="field:'amount',width:100,halign:'center',align:'right',formatter:numberformatDefaultIdr,editor: {type: 'numberbox', options: {required: true, precision:2}}">Taxable<br>Amount</th>
                     <th data-options="field:'taxes',width:100, halign:'center', editor: {type: 'combogrid', options: {
@@ -260,11 +273,26 @@
                                     field: 'taxes_amount'
                                 });
 
+                                var ed6 = dg.datagrid('getEditor', {
+                                    index: rowIndex,
+                                    field: 'taxes'
+                                });
+
                                 var amount = $(ed.target).numberbox('getValue');
                                 var taxes_amount = $(ed5.target).numberbox('getValue');
+                                var taxes = $(ed6.target).numberbox('getValue');
+
                                 if(amount == '' && taxes_amount == ''){
                                     toastr.error('Please Complete the amount');
                                     $(ed4.target).combobox('clear');
+                                }else if(taxes == 'C1' || taxes == 'C2'){
+                                    if(db.name == 'DEBIT'){
+                                        $(ed1.target).numberbox('setValue', parseFloat(amount));
+                                        $(ed2.target).numberbox('setValue', 0);
+                                    }else {
+                                        $(ed1.target).numberbox('setValue', 0);
+                                        $(ed2.target).numberbox('setValue', parseFloat(amount));
+                                    }
                                 }else if(db.name == 'DEBIT'){
                                     $(ed1.target).numberbox('setValue', (parseFloat(amount) + parseFloat(taxes_amount)));
                                     $(ed2.target).numberbox('setValue', 0);
@@ -292,7 +320,8 @@
                 <th data-options="field:'trans_date',width:120,halign:'center'">Invoice Date</th>
                 <th data-options="field:'document_no',width:220,halign:'center'">Invoice No</th>
                 <!-- <th data-options="field:'invoice_no',width:150,halign:'center'">Supplier Invoice</th> -->
-                <th data-options="field:'company_name',width:200,halign:'center'">Company Name</th>
+                <th data-options="field:'company_id',width:150,halign:'center'">Code</th>
+                <th data-options="field:'company_name',width:250,halign:'center'">Name</th>
                 <th data-options="field:'account_number',width:100,halign:'center'">Account No</th>
                 <th data-options="field:'account_name',width:250,halign:'center'">Account Name</th>
                 <th data-options="field:'description',width:150,halign:'center'">Description</th>
@@ -366,8 +395,8 @@
 
         $("#journal_date").datebox('enable');
         $("#modul").textbox('enable');
-        $("#journal_type").combogrid('enable');
-        $("#journal_category").combobox('enable');
+        $("#journal_type_id").combogrid('enable');
+        $("#journal_type").combobox('enable');
         $("#document_no").textbox('enable');
         $("#number").textbox('enable');
         $("#append").linkbutton('enable');
@@ -375,8 +404,8 @@
         $("#modul").textbox('setValue', "ADJUSTMENT");
         $("#journal_date").datebox('setValue', "<?= date("Y-m-d") ?>");
         $("#document_date").datebox('setValue', "<?= date("Y-m-d") ?>");
-        $("#journal_category").combobox('setValue', 'GL - GL');
-        $("#journal_type").combogrid('setValue', '20241120000001');
+        $("#journal_type").combobox('setValue', 'GL - GL');
+        $("#journal_type_id").combogrid('setValue', '20241120000001');
 
         $('#dg2').datagrid({
             onBeforeEdit: function(index, row) {
@@ -447,8 +476,8 @@
     function append() {
         var modul = $("#modul").textbox('getValue');
         var journal_date = $("#journal_date").datebox('getValue');
-        var journal_category = $("#journal_category").combobox('getValue');
-        var journal_type = $("#journal_type").combogrid('getValue');
+        var journal_type = $("#journal_type").combobox('getValue');
+        var journal_type_id = $("#journal_type_id").combogrid('getValue');
 
         if(journal_type != ""){
             if (endEditing()) {
@@ -487,6 +516,7 @@
                     "debitcredit": debitcredit1,
                     "amount": (local_debit + local_credit),
                     "taxes_amount": 0,
+                    "qty": 0,
                     "local_debit": local_debit,
                     "local_credit": local_credit,
                 });
@@ -500,7 +530,16 @@
                     field: 'account_number'
                 });
 
-                var urls = '<?= base_url('finance/journal_posting_adjustments/readCoa?category=') ?>' + btoa(journal_category);
+                var ed2 = $('#dg2').datagrid('getEditor', {
+                    index: editIndex,
+                    field: 'qty'
+                });
+
+                if(journal_type == "ASSET - ASSET"){
+                    $(ed2.target).numberbox('readonly', false);
+                }
+
+                var urls = '<?= base_url('finance/journal_posting_adjustments/readCoa?category=') ?>' + btoa(journal_type);
 
                 $(ed.target).combogrid({
                     url: urls,
@@ -606,7 +645,7 @@
             $('#dg2').datagrid('selectRow', rowIndex).datagrid('beginEdit', rowIndex);
             editIndex = rowIndex;
 
-            var journal_category = $("#journal_category").combobox('getValue');
+            var journal_type = $("#journal_type").combobox('getValue');
 
             var ed = $('#dg2').datagrid('getEditor', {
                 index: rowIndex,
@@ -615,7 +654,7 @@
 
             var account_number = $(ed.target).combogrid('getValue');
 
-            var urls = '<?= base_url('finance/journal_posting_adjustments/readCoa?category=') ?>' + btoa(journal_category);
+            var urls = '<?= base_url('finance/journal_posting_adjustments/readCoa?category=') ?>' + btoa(journal_type);
 
             $(ed.target).combogrid({
                 url: urls,
@@ -732,11 +771,11 @@
 
             $("#modul").textbox('setValue', "ADJUSTMENT");
             $("#journal_date").datebox('setValue', row.journal_date);
-            $("#journal_category").combobox('setValue', row.modul);
-            $("#journal_type").combogrid('setValue', '20241120000001');
+            $("#journal_type").combobox('setValue', row.journal_type);
+            $("#journal_type_id").combogrid('setValue', '20241120000001');
             $("#document_no").textbox('setValue', row.document_no);
             $("#document_date").datebox('setValue', row.document_date);
-            $("#remarks").textbox('setValue', row.remarks);
+            $("#remarks").textbox('setValue', "REVERSAL");
 
             $("#journal_date").datebox('enable');
             $("#modul").textbox('enable');
@@ -779,41 +818,60 @@
     function deleterow(target, id) {
         $.messager.confirm('Confirm', 'Are you sure you want to delete this data?', function(r) {
             if (r) {
-                $.ajax({
-                    method: 'post',
-                    url: '<?= base_url('finance/journal_posting_adjustments/delete') ?>',
-                    data: {
-                        id: id,
-                    },
-                    success: function(result) {
-                        var result = eval('(' + result + ')');
-                        toastr.success(result.message);
-                    },
-                    error: function(jqXHR, textStatus, errorThrown) {
-                        $('#dg2').datagrid('deleteRow', getRowIndex(target));
-                        // toastr.error("This data is already used in other modules, You must delete it First", "Error");
-                    },
-                    complete: function(data) {
-                        $('#dg2').datagrid('reload');
+                $('#dg2').datagrid('deleteRow', getRowIndex(target));
 
-                        var rows = $('#dg2').datagrid('getRows');
-                        var totalrows = rows.length;
+                var rows = $('#dg2').datagrid('getRows');
+                var totalrows = rows.length;
 
-                        var original_debit = 0;
-                        var original_credit = 0;
-                        var local_debit = 0;
-                        var local_credit = 0;
-                        for (let i = 0; i < totalrows; i++) {
-                            original_debit += parseFloat(rows[i].original_debit);
-                            original_credit += parseFloat(rows[i].original_credit);
-                            local_debit += parseFloat(rows[i].local_debit);
-                            local_credit += parseFloat(rows[i].local_credit);
-                        }
+                var original_debit = 0;
+                var original_credit = 0;
+                var local_debit = 0;
+                var local_credit = 0;
+                for (let i = 0; i < totalrows; i++) {
+                    original_debit += parseFloat(rows[i].original_debit);
+                    original_credit += parseFloat(rows[i].original_credit);
+                    local_debit += parseFloat(rows[i].local_debit);
+                    local_credit += parseFloat(rows[i].local_credit);
+                }
 
-                        $("#local_debit").numberbox('setValue', local_debit);
-                        $("#local_credit").numberbox('setValue', local_credit);
-                    }
-                });
+                $("#local_debit").numberbox('setValue', local_debit);
+                $("#local_credit").numberbox('setValue', local_credit);
+
+                // $.ajax({
+                //     method: 'post',
+                //     url: '<?= base_url('finance/journal_posting_adjustments/delete') ?>',
+                //     data: {
+                //         id: id,
+                //     },
+                //     success: function(result) {
+                //         var result = eval('(' + result + ')');
+                //         toastr.success(result.message);
+                //     },
+                //     error: function(jqXHR, textStatus, errorThrown) {
+                //         $('#dg2').datagrid('deleteRow', getRowIndex(target));
+                //         // toastr.error("This data is already used in other modules, You must delete it First", "Error");
+                //     },
+                //     complete: function(data) {
+                //         $('#dg2').datagrid('reload');
+
+                //         var rows = $('#dg2').datagrid('getRows');
+                //         var totalrows = rows.length;
+
+                //         var original_debit = 0;
+                //         var original_credit = 0;
+                //         var local_debit = 0;
+                //         var local_credit = 0;
+                //         for (let i = 0; i < totalrows; i++) {
+                //             original_debit += parseFloat(rows[i].original_debit);
+                //             original_credit += parseFloat(rows[i].original_credit);
+                //             local_debit += parseFloat(rows[i].local_debit);
+                //             local_credit += parseFloat(rows[i].local_credit);
+                //         }
+
+                //         $("#local_debit").numberbox('setValue', local_debit);
+                //         $("#local_credit").numberbox('setValue', local_credit);
+                //     }
+                // });
             }
         });
     }
@@ -830,16 +888,16 @@
 
             $("#journal_date").datebox('disable');
             $("#modul").textbox('disable');
-            $("#journal_type").combogrid('disable');
+            $("#journal_type_id").combogrid('disable');
             $("#company_name").combobox('disable');
-            $("#document_no").combobox('disable');
+            // $("#document_no").combobox('disable');
             $("#number").textbox('disable');
             $("#append").linkbutton('enable');
 
             setTimeout(function() {
                 $("#number").textbox('setValue', row.number);
                 $("#modul").textbox('setValue', row.modul);
-                $("#journal_type").textbox('setValue', row.journal_type_id);
+                $("#journal_type_id").textbox('setValue', row.journal_type_id);
             }, 2000);
 
 
@@ -949,11 +1007,13 @@
     function filter() {
         var filter_from = $("#filter_from").datebox('getValue');
         var filter_to = $("#filter_to").datebox('getValue');
-        var filter_journal_type = $("#filter_journal_type").combogrid('getValue');
+        var filter_journal_type_id = $("#filter_journal_type_id").combogrid('getValue');
         var filter_voucher = $("#filter_voucher").textbox('getValue');
+        var filter_journal_type = $("#filter_journal_type").combobox('getValue');
 
         var url = "?filter_from=" + window.btoa(filter_from) +
             "&filter_to=" + window.btoa(filter_to) +
+            "&filter_journal_type_id=" + window.btoa(filter_journal_type_id) +
             "&filter_journal_type=" + window.btoa(filter_journal_type) +
             "&filter_voucher=" + window.btoa(filter_voucher);
 
@@ -977,11 +1037,13 @@
     function excel() {
         var filter_from = $("#filter_from").datebox('getValue');
         var filter_to = $("#filter_to").datebox('getValue');
-        var filter_journal_type = $("#filter_journal_type").combogrid('getValue');
+        var filter_journal_type_id = $("#filter_journal_type_id").combogrid('getValue');
         var filter_voucher = $("#filter_voucher").textbox('getValue');
+        var filter_journal_type = $("#filter_journal_type").combobox('getValue');
 
         var url = "?filter_from=" + window.btoa(filter_from) +
             "&filter_to=" + window.btoa(filter_to) +
+            "&filter_journal_type_id=" + window.btoa(filter_journal_type_id) +
             "&filter_journal_type=" + window.btoa(filter_journal_type) +
             "&filter_voucher=" + window.btoa(filter_voucher);
 
@@ -1030,7 +1092,8 @@
                     
                     var journal_date = $("#journal_date").datebox('getValue');
                     var modul = $("#modul").textbox('getValue');
-                    var journal_type = $("#journal_type").combogrid('getValue');
+                    var journal_type_id = $("#journal_type_id").combogrid('getValue');
+                    var journal_type = $("#journal_type").combobox('getValue');
                     var number = $("#number").textbox('getValue');
                     var remarks = $("#remarks").textbox('getValue');
                     var document_date = $("#document_date").datebox('getValue');
@@ -1043,6 +1106,31 @@
                     //var rows = $('#dg2').datagrid('getSelections');
                     var rows = $('#dg2').datagrid('getRows');
                     var totalrows = rows.length;
+
+                    var local_debit_total = 0;
+                    var local_credit_total = 0;
+
+                    for (let i = 0; i < totalrows; i++) {
+                        var data = rows[i];
+
+                        if(data.account_number == "" || data.account_name == ""){
+                            toastr.error("Account Not Valid, Please Check your data input and save again!!");
+                            return false;
+                        }
+
+                        if(data.local_debit == 0 && data.local_credit == 0){
+                            toastr.error("Debit and Credit Cannot 0, Please Check your data input and save again!!");
+                            return false;
+                        }
+
+                        local_debit_total += parseFloat(data.local_debit);
+                        local_credit_total += parseFloat(data.local_credit);
+                    }
+
+                    if(parseFloat(local_debit_total).toFixed(2) != parseFloat(local_credit_total).toFixed(2)){
+                        toastr.error("Debit and Credit Not Balances " + parseFloat(local_debit_total).toFixed(2) + " != " + parseFloat(local_credit_total).toFixed(2));
+                        return false;
+                    }
 
                     $.ajax({
                         type: "post",
@@ -1069,79 +1157,108 @@
                                                 },
                                             });
 
-                                            if (totalrows > 0) {
-                                                requestData(totalrows, rows);
-                                                $('#dlg_insert').dialog('close');
-                                                $('#dlg_generate').dialog('open');
+                                            $.ajax({
+                                                type: "post",
+                                                url: "<?= base_url('finance/journal_posting_adjustments/number/' . $menus_id) ?>",
+                                                dataType: "html",
+                                                success: function(numberValue) {
+                                                    if(numberValue == ""){
+                                                        Swal.close();
+                                                        toastr.info("Please Check Configuration in Serial No First");
+                                                        return false;
+                                                    }
 
-                                                function requestData(total, json, jml = 1, value = 0) {
-                                                    if (value < 100) {
-                                                        value = Math.floor((jml / total) * 100);
-                                                        var i = (jml - 1);
+                                                    if(proses == "UPDATE"){
+                                                        var numberFinal = number;
+                                                    }else{
+                                                        var numberFinal = numberValue;
+                                                    }
 
-                                                        $('#p_upload').progressbar('setValue', value);
-                                                        $('#p_start').html(jml);
-                                                        $('#p_finish').html(totalrows);
+                                                    $.ajax({
+                                                        method: 'post',
+                                                        url: '<?= base_url('finance/journal_posting_adjustments/delete') ?>',
+                                                        data: {
+                                                            number: numberFinal
+                                                        },
+                                                        success: function(result) {
+                                                            requestData(totalrows, rows);
+                                                            $('#dlg_insert').dialog('close');
+                                                            $('#dlg_generate').dialog('open');
+                                                        },
+                                                    });
 
-                                                        $.ajax({
-                                                            type: "post",
-                                                            url: '<?= base_url('finance/journal_posting_adjustments/create') ?>',
-                                                            data: {
-                                                                journal_date: journal_date,
-                                                                modul: modul,
-                                                                journal_type_id: journal_type,
-                                                                number: number,
-                                                                remarks: remarks,
-                                                                proses: proses,
-                                                                id: json[i].id,
-                                                                document_no: document_no,
-                                                                document_date: document_date,
-                                                                amount: json[i].amount,
-                                                                taxes: json[i].taxes,
-                                                                taxes_amount: json[i].taxes_amount,
-                                                                debitcredit: json[i].debitcredit,
-                                                                account_number: json[i].account_number,
-                                                                account_name: json[i].account_name,
-                                                                description: json[i].description,
-                                                                company_id: json[i].company_id,
-                                                                company_name: json[i].company_name,
-                                                                currency: json[i].currency,
-                                                                local_debit: json[i].local_debit,
-                                                                local_credit: json[i].local_credit
-                                                            },
-                                                            dataType: "json",
-                                                            success: function(result) {
-                                                                requestData(total, json, jml + 1, value);
+                                                    function requestData(total, json, jml = 1, value = 0) {
+                                                        if (value < 100) {
+                                                            value = Math.floor((jml / total) * 100);
+                                                            var i = (jml - 1);
 
-                                                                if (result.theme == "success") {
-                                                                    var title = "<b style='color: green;'>" + result.title + "</b> | " + result.message;
-                                                                } else {
-                                                                    var title = "<b style='color: red;'>" + result.title + "</b> | " + result.message;
+                                                            $('#p_upload').progressbar('setValue', value);
+                                                            $('#p_start').html(jml);
+                                                            $('#p_finish').html(totalrows);
+
+                                                            $.ajax({
+                                                                type: "post",
+                                                                url: '<?= base_url('finance/journal_posting_adjustments/create') ?>',
+                                                                data: {
+                                                                    journal_date: journal_date,
+                                                                    modul: modul,
+                                                                    journal_type_id: journal_type_id,
+                                                                    journal_type: journal_type,
+                                                                    number: numberFinal,
+                                                                    remarks: remarks,
+                                                                    proses: proses,
+                                                                    // id: json[i].id,
+                                                                    id: "",
+                                                                    document_no: document_no,
+                                                                    document_date: document_date,
+                                                                    amount: json[i].amount,
+                                                                    taxes: json[i].taxes,
+                                                                    taxes_amount: json[i].taxes_amount,
+                                                                    debitcredit: json[i].debitcredit,
+                                                                    account_number: json[i].account_number,
+                                                                    account_name: json[i].account_name,
+                                                                    description: json[i].description,
+                                                                    company_id: json[i].company_id,
+                                                                    company_name: json[i].company_name,
+                                                                    qty: json[i].qty,
+                                                                    currency: json[i].currency,
+                                                                    local_debit: json[i].local_debit,
+                                                                    local_credit: json[i].local_credit
+                                                                },
+                                                                dataType: "json",
+                                                                success: function(result) {
+                                                                    requestData(total, json, jml + 1, value);
+
+                                                                    if (result.theme == "success") {
+                                                                        var title = "<b style='color: green;'>" + result.title + "</b> | " + result.message;
+                                                                    } else {
+                                                                        var title = "<b style='color: red;'>" + result.title + "</b> | " + result.message;
+                                                                    }
+
+                                                                    $("#p_remarks").append(title + "<br>");
+
+                                                                    if (i == (totalrows - 1)) {
+                                                                        Swal.close();
+                                                                        $('#dlg_generate').dialog('close');
+
+                                                                        Swal.fire({
+                                                                            title: result.message,
+                                                                            icon: result.theme,
+                                                                            confirmButtonText: 'Ok',
+                                                                            allowOutsideClick: false,
+                                                                        }).then((result) => {
+                                                                            if (result.isConfirmed) {
+                                                                                // window.location.reload();
+                                                                                $("#dg").datagrid('reload');
+                                                                            }
+                                                                        });
+                                                                    }
                                                                 }
-
-                                                                $("#p_remarks").append(title + "<br>");
-
-                                                                if (i == (totalrows - 1)) {
-                                                                    Swal.close();
-                                                                    $('#dlg_generate').dialog('close');
-
-                                                                    Swal.fire({
-                                                                        title: result.message,
-                                                                        icon: result.theme,
-                                                                        confirmButtonText: 'Ok',
-                                                                        allowOutsideClick: false,
-                                                                    }).then((result) => {
-                                                                        if (result.isConfirmed) {
-                                                                            // window.location.reload();
-                                                                            $("#dg").datagrid('reload');
-                                                                        }
-                                                                    });
-                                                                }
-                                                            }
-                                                        });
+                                                            });
+                                                        }
                                                     }
                                                 }
-                                            }
+                                            });
                                         }
                                     });
                                 } else {
@@ -1234,7 +1351,7 @@
             }]
         });
 
-        $("#filter_journal_type").combogrid({
+        $("#filter_journal_type_id").combogrid({
             url: '<?= base_url('finance/journal_posting_adjustments/readJournalType?modul=') ?>',
             panelWidth: 360,
             idField: 'id',
@@ -1261,7 +1378,7 @@
             }],
         });
 
-        $("#journal_type").combogrid({
+        $("#journal_type_id").combogrid({
             url: '<?= base_url('finance/journal_posting_adjustments/readJournalType') ?>',
             panelWidth: 360,
             idField: 'id',

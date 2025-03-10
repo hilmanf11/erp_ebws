@@ -17,6 +17,7 @@
             <th data-options="field:'currency',width:80,align:'center'">Currency</th>
             <th data-options="field:'grandtotal',width:150,halign:'center',align:'right',formatter: numberformatPrice">Grand Total</th>
             <th data-options="field:'note',width:280,halign:'center'">Note</th>
+            <th data-options="field:'attachment',width:80,align:'center',formatter: btnDetails">Attachment</th>
             <!-- <th data-options="field:'remarks1',width:200,halign:'center'">Remarks Approval 1</th> -->
             <!-- <th data-options="field:'remarks2',width:200,halign:'center'">Remarks Approval 2</th> -->
             <!-- <th data-options="field:'remarks3',width:200,halign:'center'">Remarks Approval 3</th> -->
@@ -260,5 +261,15 @@
             singleSelect: false,
             fit:true,
         });
+    }
+
+    function btnDetails(val, row, index) {
+        var attachment = row.attachment;
+        
+        if (attachment != null && attachment != "") {
+            return '<a class="btn btn-primary w-100" target="_blank" href="<?= base_url('assets/documents/purchase_orders/') ?>'+row.attachment+'" style="pointer-events: visible; opacity:1;"><i class="fa fa-eye"></i> View</a>';
+        } else {
+            return '-';
+        }
     }
 </script>

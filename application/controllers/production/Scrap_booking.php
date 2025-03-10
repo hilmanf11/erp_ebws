@@ -13,7 +13,7 @@ class Scrap_booking extends CI_Controller
         $this->load->library('Ciqrcode');
         $this->load->model('crud');
         //Validasi Form
-        $this->form_validation->set_rules('item_fg_id', 'Part No', 'required|min_length[1]|max_length[30]');
+        $this->form_validation->set_rules('item_id', 'Part No', 'required|min_length[1]|max_length[30]');
     }
 
     public function index()
@@ -42,9 +42,9 @@ class Scrap_booking extends CI_Controller
     {
         $post = isset($_POST['q']) ? $_POST['q'] : "";
         $send = $this->crud->query("SELECT * 
-            FROM item_fg 
-            WHERE status = 0 and harnes_type='11'
-            and (id like '%$post%' or number like '%$post%' or name like '%$post%' or number_customer like '%$post%')");
+            FROM item_rm 
+            WHERE status = 0 and item_category_id = 'C02'
+            and (id like '%$post%' or number like '%$post%' or name like '%$post%' or name like '%$post%')");
         echo json_encode($send);
     }
 
@@ -80,17 +80,17 @@ class Scrap_booking extends CI_Controller
             $offset = ($page - 1) * $rows;
             $result = array();
             //Select Query
-            $this->db->select('a.*, b.number as item_fg_number, b.number_customer as item_fg_customer, b.name as item_fg_name, b.uom');
+            $this->db->select('a.*, b.number as item_number, b.name as item_name, b.uom');
             $this->db->from('scrap_booking a');
-            $this->db->join('item_fg b', 'a.item_fg_id = b.id');
+            $this->db->join('item_rm b', 'a.item_id = b.id');
             $this->db->join('uom c', 'b.uom = c.name');
             $this->db->where('a.deleted', 0);
             if ($filter_from != "" or $filter_to != "") {
                 $this->db->where('a.trans_date >=', $filter_from);
                 $this->db->where('a.trans_date <=', $filter_to);
             }
-            $this->db->like('a.item_fg_id', $filter_items);
-            $this->db->order_by('a.item_fg_id');
+            $this->db->like('a.item_id', $filter_items);
+            $this->db->order_by('a.item_id');
             //Total Data
             $totalRows = $this->db->count_all_results('', false);
             //Limit 1 - 10
@@ -155,17 +155,17 @@ class Scrap_booking extends CI_Controller
         $this->db->from('config');
         $config = $this->db->get()->row();
 
-        $this->db->select('a.*, b.number as item_fg_number, b.number_customer as item_fg_customer, b.name as item_fg_name, b.uom');
+        $this->db->select('a.*, b.number as item_number, b.name as item_name, b.uom');
         $this->db->from('scrap_booking a');
-        $this->db->join('item_fg b', 'a.item_fg_id = b.id');
+        $this->db->join('item_rm b', 'a.item_id = b.id');
         $this->db->join('uom c', 'b.uom = c.name');
         $this->db->where('a.deleted', 0);
         if ($filter_from != "" or $filter_to != "") {
             $this->db->where('a.trans_date >=', $filter_from);
             $this->db->where('a.trans_date <=', $filter_to);
         }
-        $this->db->like('a.item_fg_id', $filter_items);
-        $this->db->order_by('a.item_fg_id');
+        $this->db->like('a.item_id', $filter_items);
+        $this->db->order_by('a.item_id');
         $records = $this->db->get()->result_array();
 
         $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#customers {border-collapse: collapse;width: 100%;font-size: 12px;}#customers td, #customers th {border: 1px solid #ddd;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: #ddd;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: center;color: black;}</style><body>
@@ -205,9 +205,9 @@ class Scrap_booking extends CI_Controller
             $html .= '<tr>
                             <td style="text-align:center">' . $no . '</td>
                             <td>' . $data['trans_date'] . '</td>
-                            <td>' . $data['item_fg_number'] . '</td>
-                            <td>' . $data['item_fg_customer'] . '</td>
-                            <td>' . $data['item_fg_name'] . '</td>
+                            <td>' . $data['item_id'] . '</td>
+                            <td>' . $data['item_number'] . '</td>
+                            <td>' . $data['item_name'] . '</td>
                             <td>' . $data['uom'] . '</td>
                             <td>' . number_format($data['qty']) . '</td>
                         </tr>';

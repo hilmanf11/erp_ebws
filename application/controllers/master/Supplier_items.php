@@ -428,7 +428,7 @@ class Supplier_items extends CI_Controller
 
             //Cek Process Number          //table       //field        //field excel
             $supplier = $this->crud->read('suppliers', [], ["id" => $data['supplier_id']]);
-            $item_rm = $this->crud->read('item_rm', [], ["id" => $data['item_rm_id']]);
+            $item_rm = $this->crud->read('item_rm', [], ["id" => $data['item_rm_id'], "approved_to" => ""]);
             // $supplier_item_share = $this->crud->read('supplier_items', [], ["item_rm_id" => @$item_rm->id]);
             $supplier_items = $this->crud->read('supplier_items', [], ["supplier_id" => $data['supplier_id'], "item_rm_id" => @$item_rm->id]);
             // $supplier_item_histories = $this->crud->read("supplier_item_histories", [], ["supplier_id" => $data['supplier_id'], "item_rm_id" => @$item_rm->id, "price" => $data['price']]);
@@ -457,6 +457,8 @@ class Supplier_items extends CI_Controller
                 echo json_encode(array("title" => "Not Found", "message" => "Supplier Code " . $data['supplier_id'] . " Not Found", "theme" => "error"));
             }elseif(empty($item_rm->id)){
                 echo json_encode(array("title" => "Not Found", "message" => "Part No " . $data['item_rm_id'] . " Not Found", "theme" => "error"));
+            }elseif($data['price'] <= 0){
+                echo json_encode(array("title" => "Failed", "message" => "Price Cannot Input 0", "theme" => "error"));
             }elseif((@$rowSupItm->share_order + $data['share_order']) > 100){
                 echo json_encode(array("title" => "Share Order", "message" => "Share Order for Part No " . $data['item_rm_id'] . " Cannot >= 100", "theme" => "error"));
             }elseif($data['mpq'] <= 0 || $data['moq'] <= 0 || $data['share_order'] <= 0 || $data['leadtime'] <= 0){

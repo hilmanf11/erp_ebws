@@ -48,7 +48,7 @@ class Production_schedules extends CI_Controller
     public function readPeriod($types = "")
     {
         if($types == "period"){
-            $send = $this->crud->query("SELECT DISTINCT `period` FROM production_schedules WHERE `status` in ('0','1') and precut_status = 'YES' and `period` > '202410' ORDER BY `period` DESC");
+            $send = $this->crud->query("SELECT DISTINCT `period` FROM production_schedules WHERE `status` in ('0','1') and precut_status = 'YES' ORDER BY `period` DESC");
             echo json_encode($send);
         }else{
             $send = $this->crud->query("SELECT DISTINCT `period` FROM production_schedules WHERE `status` in ('0','1') and precut_status = 'YES' ORDER BY `period` DESC");
@@ -330,6 +330,7 @@ class Production_schedules extends CI_Controller
             $arr = array();
             foreach ($records as $record) {
                 $assy_number = $record['number_customer'];
+                $workorder = $record['workorder'];
                 $mpp = $record['period'];
                 $wp = sprintf("%02s", $record['wp'])."/".substr($mpp, -2);
 
@@ -354,16 +355,20 @@ class Production_schedules extends CI_Controller
                 $rowQty = $sqlQty->row();
                 $qty_scan = empty(@$rowQty->qty) ? 0 : @$rowQty->qty;
 
+                $rfg = $this->crud->query("SELECT workorder, SUM(qty) as qty FROM wip_receipts WHERE workorder = '$workorder' GROUP BY workorder");
+
                 if($qty_scan >= $record['qty']){
                     $status_wip2 = "1";
                 }else{
                     $status_wip2 = "0";
                 }
 
-                if($qty_scan >= $record['qty']){
+                if(@$rfg[0]->qty == 0){
+                    $status_wo = "0";
+                }elseif(@$rfg[0]->qty > 0){
                     $status_wo = "2";
                 }else{
-                    $status_wo = $record['status'];
+                    $status_wo = "1";
                 }
 
                 $arr[] = array_merge($record, [

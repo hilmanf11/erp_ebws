@@ -38,7 +38,7 @@ class Purchase_order_receipts extends CI_Controller
         $item_rm_number = base64_decode($this->input->get('item_rm_number'));
 
         //Select Query
-        $this->db->select('a.*, b.number, b.name, b.uom, c.name as item_family_name, f.mpq');
+        $this->db->select('a.*, b.number, b.name, b.uom, c.name as item_family_name, f.mpq, SUM(a.qty_receipt) as qty_receipt');
         $this->db->from('purchase_order_receipts a');
         $this->db->join('item_rm b', 'a.item_rm_id = b.id');
         $this->db->join('item_familys c', 'b.item_family_id = c.id');
@@ -273,7 +273,7 @@ class Purchase_order_receipts extends CI_Controller
                         "supplier_id" => $record['supplier_id'],
                         "supplier_name" => $record['supplier_name'],
                         "qty_label" => $record['qty_label'],
-                        "total_scan" => $purchase_order_label[0]->total_scan,
+                        "total_scan" => @$purchase_order_label[0]->total_scan,
                         "status" => $record['status'],
                         "state" => "closed",
                     );
@@ -293,14 +293,14 @@ class Purchase_order_receipts extends CI_Controller
                     b.currency, 
                     c.uom,
                     f.mpq,
-                    count(g.id) as total_scan');
+                    g.total_scan');
                 $this->db->from('purchase_order_receipts a');
                 $this->db->join('suppliers b', 'a.supplier_id = b.id');
                 $this->db->join('item_rm c', 'a.item_rm_id = c.id');
                 $this->db->join('item_familys d', 'c.item_family_id = d.id');
                 // $this->db->join('supplier_items e', 'b.id = e.supplier_id and c.id = e.item_rm_id');
                 $this->db->join('item_mpq f', 'b.id = f.supplier_id and c.id = f.item_rm_id', 'left');
-                $this->db->join('scan_item_receipts g', 'g.receipt_id = a.receipt_id', 'left');
+                $this->db->join('(SELECT receipt_id, COUNT(id) AS total_scan FROM scan_item_receipts GROUP BY receipt_id) g', 'g.receipt_id = a.receipt_id', 'left');
                 $this->db->where('a.deleted', 0);
                 if ($filter_from != "" and $filter_to != "") {
                     $this->db->where('a.receipt_date >=', $filter_from);
@@ -881,13 +881,13 @@ class Purchase_order_receipts extends CI_Controller
             b.currency, 
             c.uom,
             e.mpq,
-            count(g.id) as total_scan');
+            COALESCE(g.total_scan, 0) as total_scan');
         $this->db->from('purchase_order_receipts a');
         $this->db->join('suppliers b', 'a.supplier_id = b.id');
         $this->db->join('item_rm c', 'a.item_rm_id = c.id');
         $this->db->join('item_familys d', 'c.item_family_id = d.id');
         $this->db->join('item_mpq e', 'b.id = e.supplier_id and c.id = e.item_rm_id');
-        $this->db->join('scan_item_receipts g', 'g.receipt_id = a.receipt_id', 'left');
+        $this->db->join("(SELECT COUNT(id) as total_scan, receipt_id FROM scan_item_receipts GROUP BY receipt_id) g", 'g.receipt_id = a.receipt_id', 'left');
         $this->db->where('a.deleted', 0);
         if ($filter_from != "" and $filter_to != "") {
             $this->db->where('a.receipt_date >=', $filter_from);

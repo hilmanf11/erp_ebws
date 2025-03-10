@@ -90,7 +90,7 @@
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Kanban No</span>
-                    <input style="width:60%;" name="request_no" id="request_no" readonly class="easyui-textbox">
+                    <input style="width:60%;" name="request_no" id="request_no" readonly required class="easyui-textbox">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Request Name</span>
@@ -155,7 +155,7 @@
 </div>
 
 <!-- PDF -->
-<iframe id="printout" src="<?= base_url('planning/supply_sheets_pp/print') ?>" style="width: 100%;" hidden></iframe>
+<iframe id="printout" style="width: 100%;" hidden></iframe>
 <script>
     function formula(){
         Swal.fire({
@@ -634,8 +634,8 @@
             },
         });
         
-        $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
-        $("#printout").attr('src', '<?= base_url('planning/supply_sheets_pp/print') ?>' + url);
+        // $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
+        // $("#printout").attr('src', '<?= base_url('planning/supply_sheets_pp/print') ?>' + url);
     }
 
     function pdf() {
@@ -677,6 +677,11 @@
                     var request_name = $("#request_name").textbox('getValue');
                     var workorder = $("#workorder").textbox('getValue');
                     var item_fg_id = $("#item_fg_id").textbox('getValue');
+
+                    if(request_no == ""){
+                        toastr.error("Kanban No still empty!!");
+                        return false;
+                    }
                     
                     // $('#dg_request').datagrid('acceptChanges');
                     // var rows = $('#dg_request').datagrid('getRows');

@@ -95,8 +95,8 @@ class Issued_materials extends CI_Controller
                 LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) AS qty_receipt FROM purchase_order_receipts a JOIN scan_item_receipts b ON a.receipt_id  = b.receipt_id WHERE a.receipt_date <= '$date' GROUP BY item_rm_id) e ON a.id = e.item_rm_id
                 LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) AS qty FROM issued_material_details WHERE DATE_FORMAT(created_date, '%Y-%m-%d') <= '$date' GROUP BY item_rm_id) f ON a.id = f.item_rm_id
                 LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) AS qty_reject FROM purchase_order_receipts a JOIN scan_item_rejections b ON a.receipt_id  = b.receipt_id WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') <= '$date' GROUP BY item_rm_id) h ON a.id = h.item_rm_id
-                LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_in FROM rgp_transactions WHERE type = 'IN' and transaction_date <= '$date' GROUP BY item_id) j ON a.id = j.item_id
-                LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_out FROM rgp_transactions WHERE type = 'OUT' and transaction_date <= '$date' GROUP BY item_id) k ON a.id = k.item_id
+                LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) as qty_rgp_in FROM rgp_transactions a JOIN scan_item_rgp b ON a.number = b.rgp_number and a.item_id = b.item_id WHERE a.type = 'IN' and a.transaction_date <= '$date' GROUP BY a.item_id) j ON a.id = j.item_id
+                LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) as qty_rgp_out FROM rgp_transactions a JOIN scan_item_rgp b ON a.number = b.rgp_number and a.item_id = b.item_id WHERE a.type = 'OUT' and a.transaction_date <= '$date' GROUP BY a.item_id) k ON a.id = k.item_id
                 LEFT JOIN (SELECT a.item_rm_id, SUM(c.qty) AS return_qty
                 FROM return_materials a 
                 JOIN return_material_labels b ON a.return_id = b.return_id
@@ -226,7 +226,7 @@ class Issued_materials extends CI_Controller
             $item_rm_id = $records[0]['item_rm_id'];
             $qty_label = $records[0]['qty'];
 
-            if((round($this->readEndingStock($item_rm_id)) - round($qty_label)) <= 0){
+            if((round($this->readEndingStock($item_rm_id)) - round($qty_label)) < 0){
                 die(json_encode(array("title" => "Stock Empty", "message" => "Stock In Warehouse is Empty", "theme" => "error")));
             }
             
@@ -237,7 +237,7 @@ class Issued_materials extends CI_Controller
             
             $barcode_dividel = $this->crud->read("barcode_divides", [], ["label_no" => $post['label_no']]);
             $scan_item_rejections = $this->crud->read("scan_item_rejections", [], ["label_no" => $post['label_no']]);
-            if(!empty($scan_item_rejections) && !empty($barcode_dividel)){
+            if(!empty($scan_item_rejections) || !empty($barcode_dividel)){
                 die(json_encode(array("title" => "Not Registered", "message" => "This label already Scan Rejection or Barcode Divided", "theme" => "error")));
             }
 
@@ -277,6 +277,7 @@ class Issued_materials extends CI_Controller
                 LEFT JOIN purchase_order_labels b ON a.receipt_id = b.receipt_id
                 LEFT JOIN barcode_divides c ON b.label_no = c.label_no
                 LEFT JOIN issued_material_details d ON a.item_rm_id = d.item_rm_id and b.label_no = d.label_no
+                JOIN scan_item_receipts e ON b.label_no = e.label_no AND e.status = 0
                 WHERE a.item_rm_id = '$purchase_order_receipts->item_rm_id' and a.receipt_date < '$trans_date' AND d.label_no is null and c.label_no is null and b.status = 1 and a.status != 2
                 ORDER BY receipt_date ASC");
 
@@ -286,32 +287,39 @@ class Issued_materials extends CI_Controller
                         $customer = $this->crud->read("customers", [], ["id" => @$customer_item->customer_id]);
                         $item_rm = $this->crud->read("item_rm", [], ["id" => @$item_rm_id]);
 
-                        @$this->dummy->insert('serial_barcode_outgoing', [
-                            "serialno" => strtoupper($post['label_no']),
-                            "outscan" => date("Y-m-d H:i:s"),
-                            "outform" => "OU - ".$type." ".@$customer->number,
-                            "outdocno" => $request_no,
-                            "outqty" => round($qty_label),
-                            "itemid" => @$item_rm->number,
-                            "itemname" => @$item_rm->name,
-                            "outemployee" => $this->session->name,
-                            "outstatus" => "t",
-                        ]);
+                        $this->dummy->select('serialno');
+                        $this->dummy->from('serial_barcode_incoming');
+                        $this->dummy->where('serialno', strtoupper($post['label_no']));
+                        $serialno = $this->dummy->get()->result_array();
 
-                        @$this->dummy->insert('serial_barcode_incoming', [
-                            "serialno" => strtoupper($post['label_no']),
-                            "serialdate" => date("Y-m-d"),
-                            "scantime" => date("Y-m-d H:i:s"),
-                            "serialpo" => "PO ASTEK",
-                            "serialform" => "OU - ".$type." ".@$customer->number,
-                            "serialdocno" => $request_no,
-                            "serialqtyreceipt" => round($qty_label),
-                            "itemid" => @$item_rm->number,
-                            "itemname" => @$item_rm->name,
-                            "statusscanincoming" => "t",
-                            "statusreceive" => "t",
-                            "por_urut_poc" => 1,
-                        ]);
+                        if(count($serialno) == 0){
+                            @$this->dummy->insert('serial_barcode_outgoing', [
+                                "serialno" => strtoupper($post['label_no']),
+                                "outscan" => date("Y-m-d H:i:s"),
+                                "outform" => "OU - ".$type." ".@$customer->number,
+                                "outdocno" => $request_no,
+                                "outqty" => round($qty_label),
+                                "itemid" => @$item_rm->number,
+                                "itemname" => @$item_rm->name,
+                                "outemployee" => $this->session->name,
+                                "outstatus" => "t",
+                            ]);
+                            
+                            @$this->dummy->insert('serial_barcode_incoming', [
+                                "serialno" => strtoupper($post['label_no']),
+                                "serialdate" => date("Y-m-d"),
+                                "scantime" => date("Y-m-d H:i:s"),
+                                "serialpo" => "PO ASTEK",
+                                "serialform" => "OU - ".$type." ".@$customer->number,
+                                "serialdocno" => $request_no,
+                                "serialqtyreceipt" => round($qty_label),
+                                "itemid" => @$item_rm->number,
+                                "itemname" => @$item_rm->name,
+                                "statusscanincoming" => "t",
+                                "statusreceive" => "t",
+                                "por_urut_poc" => 1,
+                            ]);
+                        }
                         
                         $this->db->update('scan_item_receipts', ["status" => 1], ["label_no" => $post['label_no']]);
                         $send = $this->crud->create('issued_material_details', ["request_no" => $post['request_no'], "label_no" => $post['label_no'], "item_rm_id" => $item_rm_id, "qty" => $qty_label]);
@@ -346,37 +354,46 @@ class Issued_materials extends CI_Controller
                 LEFT JOIN purchase_order_labels b ON a.receipt_id = b.receipt_id
                 LEFT JOIN barcode_divides c ON b.label_no = c.label_no and c.type = 'SUPPLY'
                 LEFT JOIN issued_material_details d ON a.item_rm_id = d.item_rm_id and (b.label_no = d.label_no or c.label_divided = d.label_no)
+                JOIN scan_item_receipts e ON b.label_no = e.label_no AND e.status = 0
                 WHERE a.item_rm_id = '$purchase_order_receipts->item_rm_id' and a.receipt_date < '$receipt_date' AND c.status = 0 AND d.label_no is null and b.status = 1 and a.status != 2
                 ORDER BY receipt_date ASC");
 
                 if (($totalSupply[0]->qty + $qty_label) <= $qty || $qty == "0") {
                     if (count($checkItems) <= 0) {
-                        @$this->dummy->insert('serial_barcode_outgoing', [
-                            "serialno" => strtoupper($post['label_no']),
-                            "outscan" => date("Y-m-d H:i:s"),
-                            "outform" => "OU - ".$type." ".@$customer->number,
-                            "outdocno" => $request_no,
-                            "outqty" => round($qty_label),
-                            "itemid" => @$item_rm->number,
-                            "itemname" => @$item_rm->name,
-                            "outemployee" => $this->session->name,
-                            "outstatus" => "t",
-                        ]);
 
-                        @$this->dummy->insert('serial_barcode_incoming', [
-                            "serialno" => strtoupper($post['label_no']),
-                            "serialdate" => date("Y-m-d"),
-                            "scantime" => date("Y-m-d H:i:s"),
-                            "serialpo" => "PO ASTEK",
-                            "serialform" => "OU - ".$type." ".@$customer->number,
-                            "serialdocno" => $request_no,
-                            "serialqtyreceipt" => round($qty_label),
-                            "itemid" => @$item_rm->number,
-                            "itemname" => @$item_rm->name,
-                            "statusscanincoming" => "t",
-                            "statusreceive" => "t",
-                            "por_urut_poc" => 1,
-                        ]);
+                        $this->dummy->select('serialno');
+                        $this->dummy->from('serial_barcode_incoming');
+                        $this->dummy->where('serialno', strtoupper($post['label_no']));
+                        $serialno = $this->dummy->get()->result_array();
+
+                        if(count($serialno) == 0){
+                            @$this->dummy->insert('serial_barcode_outgoing', [
+                                "serialno" => strtoupper($post['label_no']),
+                                "outscan" => date("Y-m-d H:i:s"),
+                                "outform" => "OU - ".$type." ".@$customer->number,
+                                "outdocno" => $request_no,
+                                "outqty" => round($qty_label),
+                                "itemid" => @$item_rm->number,
+                                "itemname" => @$item_rm->name,
+                                "outemployee" => $this->session->name,
+                                "outstatus" => "t",
+                            ]);
+
+                            @$this->dummy->insert('serial_barcode_incoming', [
+                                "serialno" => strtoupper($post['label_no']),
+                                "serialdate" => date("Y-m-d"),
+                                "scantime" => date("Y-m-d H:i:s"),
+                                "serialpo" => "PO ASTEK",
+                                "serialform" => "OU - ".$type." ".@$customer->number,
+                                "serialdocno" => $request_no,
+                                "serialqtyreceipt" => round($qty_label),
+                                "itemid" => @$item_rm->number,
+                                "itemname" => @$item_rm->name,
+                                "statusscanincoming" => "t",
+                                "statusreceive" => "t",
+                                "por_urut_poc" => 1,
+                            ]);
+                        }
                         
                         $this->crud->update('barcode_divides', ["label_divided" => $post['label_no']], ["status" => 1]);
                         $send = $this->crud->create('issued_material_details', ["request_no" => $post['request_no'], "label_no" => $post['label_no'], "item_rm_id" => $item_rm_id, "qty" => $qty_label]);

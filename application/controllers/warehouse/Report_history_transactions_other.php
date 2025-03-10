@@ -73,27 +73,30 @@ class Report_history_transactions_other extends CI_Controller
             (COALESCE(h.begin_stock,0) + COALESCE(c.qty_receipt,0) + COALESCE(g.sto_qty_in, 0) + COALESCE(e.qty_rgp_in,0) - COALESCE(i.sto_qty_out, 0) - COALESCE(f.qty_rgp_out,0) - COALESCE(d.qty,0)) AS end_stock
         FROM item_rm a 
         JOIN item_familys b ON a.item_family_id = b.id and b.number != '006'
-        JOIN (SELECT item_rm_id, COALESCE(SUM(qty_receipt), 0) as qty_receipt FROM purchase_order_receipt_others WHERE receipt_date between '$filter_from' and '$filter_to' GROUP BY item_rm_id) c ON a.id = c.item_rm_id
-        LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as qty FROM issued_others WHERE trans_date between '$filter_from' and '$filter_to' and `status` = '1' GROUP BY item_rm_id) d ON a.id = d.item_rm_id
+        LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty_receipt), 0) as qty_receipt FROM purchase_order_receipt_others WHERE receipt_date between '$filter_from' and '$filter_to' GROUP BY item_rm_id) c ON a.id = c.item_rm_id
+        LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as qty FROM issued_others_request WHERE trans_date between '$filter_from' and '$filter_to' GROUP BY item_rm_id) d ON a.id = d.item_rm_id
         LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_in FROM rgp_transactions WHERE type = 'IN' and transaction_date between '$filter_from' and '$filter_to' GROUP BY item_id) e ON a.id = e.item_id
         LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_out FROM rgp_transactions WHERE type = 'OUT' and transaction_date between '$filter_from' and '$filter_to' GROUP BY item_id) f ON a.id = f.item_id
         LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as sto_qty_in FROM sto_ot WHERE type = 'IN' and trans_date between '$filter_from' and '$filter_to' and (approved_to = '' or approved_to is null) GROUP BY item_rm_id) g ON a.id = g.item_rm_id
         LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as sto_qty_out FROM sto_ot WHERE type = 'OUT' and trans_date between '$filter_from' and '$filter_to' and (approved_to = '' or approved_to is null) GROUP BY item_rm_id) i ON a.id = i.item_rm_id
         LEFT JOIN (SELECT
             a.id,
-            (c.qty_receipt + COALESCE(e.qty_rgp_in,0) + COALESCE(g.sto_qty_in, 0) - COALESCE(i.sto_qty_out, 0) - COALESCE(f.qty_rgp_out,0) - d.qty) AS begin_stock
+            (COALESCE(c.qty_receipt,0) + COALESCE(e.qty_rgp_in,0) + COALESCE(g.sto_qty_in, 0) - COALESCE(i.sto_qty_out, 0) - COALESCE(f.qty_rgp_out,0) - COALESCE(d.qty,0)) AS begin_stock
             FROM item_rm a 
             JOIN item_familys b ON a.item_family_id = b.id AND b.number != '006'
-            JOIN (SELECT item_rm_id, COALESCE(SUM(qty_receipt), 0) as qty_receipt FROM purchase_order_receipt_others WHERE receipt_date < '$filter_from' GROUP BY item_rm_id) c ON a.id = c.item_rm_id
-            LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as qty FROM issued_others WHERE trans_date < '$filter_from' and `status` = '1' GROUP BY item_rm_id) d ON a.id = d.item_rm_id
+            LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty_receipt), 0) as qty_receipt FROM purchase_order_receipt_others WHERE receipt_date < '$filter_from' GROUP BY item_rm_id) c ON a.id = c.item_rm_id
+            LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as qty FROM issued_others_request WHERE trans_date < '$filter_from' GROUP BY item_rm_id) d ON a.id = d.item_rm_id
             LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_in FROM rgp_transactions WHERE type = 'IN' and transaction_date < '$filter_from' GROUP BY item_id) e ON a.id = e.item_id
             LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_out FROM rgp_transactions WHERE type = 'OUT' and transaction_date < '$filter_from' GROUP BY item_id) f ON a.id = f.item_id
-            LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as sto_qty_in FROM sto_ot WHERE type = 'IN' and trans_date between '$filter_from' and '$filter_to' and (approved_to = '' or approved_to is null) GROUP BY item_rm_id) g ON a.id = g.item_rm_id
-            LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as sto_qty_out FROM sto_ot WHERE type = 'OUT' and trans_date between '$filter_from' and '$filter_to' and (approved_to = '' or approved_to is null) GROUP BY item_rm_id) i ON a.id = i.item_rm_id
+            LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as sto_qty_in FROM sto_ot WHERE type = 'IN' and trans_date < '$filter_from' and (approved_to = '' or approved_to is null) GROUP BY item_rm_id) g ON a.id = g.item_rm_id
+            LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as sto_qty_out FROM sto_ot WHERE type = 'OUT' and trans_date < '$filter_from' and (approved_to = '' or approved_to is null) GROUP BY item_rm_id) i ON a.id = i.item_rm_id
             GROUP BY a.id) h on a.id = h.id
-        WHERE a.id like '%$filter_items%' and b.number like '%$filter_item_family%'
+        JOIN item_categories j ON a.item_category_id = j.id 
+        WHERE a.id like '%$filter_items%' and b.number like '%$filter_item_family%' and j.id NOT IN ('C01','C08','C02')
         GROUP BY a.id
         ORDER BY a.number");
+
+        // die($this->db->last_query());
 
         $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#customers {border-collapse: collapse;width: 100%;font-size: 12px;}#customers td, #customers th {border: 1px solid #ddd;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: #ddd;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: center;color: black;}</style><body>
             <center>
@@ -105,7 +108,7 @@ class Report_history_transactions_other extends CI_Controller
                             </td>
                             <td style="font-size: 14px; text-align: left; margin:2px;">
                                 <b>' . $config->name . '</b><br>
-                                <small>'.$config->description.'</small>
+                                <small>' . $config->description . '</small>
                             </td>
                         </tr>
                     </table>
@@ -189,13 +192,13 @@ class Report_history_transactions_other extends CI_Controller
                         d.id as supplier_id,
                         d.name as supplier_name
                     FROM purchase_order_receipt_others a 
-                    JOIN users c ON a.created_by = c.username
-                    JOIN suppliers d ON a.supplier_id = d.id
+                    LEFT JOIN users c ON a.created_by = c.username
+                    LEFT JOIN suppliers d ON a.supplier_id = d.id
                     WHERE a.item_rm_id = '$item_rm_id' and a.receipt_date = '$working_date'
-                    GROUP BY a.receipt_no, a.bc_document");
+                    GROUP BY a.id");
 
                     //ISSUED
-                    $issueds = $this->crud->query("SELECT * FROM issued_others WHERE item_rm_id = '$item_rm_id' and trans_date = '$working_date'");
+                    $issueds = $this->crud->query("SELECT * FROM issued_others_request WHERE item_rm_id = '$item_rm_id' and trans_date = '$working_date'");
 
                     //STO
                     $sto_rms = $this->crud->query("SELECT
@@ -203,7 +206,7 @@ class Report_history_transactions_other extends CI_Controller
                         c.name as username
                     FROM sto_ot a 
                     JOIN users c ON a.created_by = c.username
-                    WHERE a.item_rm_id = '$item_rm_id' and a.trans_date = '$working_date'
+                    WHERE a.item_rm_id = '$item_rm_id' and a.trans_date = '$working_date' and (a.approved_to = '' or a.approved_to is null)
                     GROUP BY a.id");
 
                     //RGP TRANSACTION
@@ -234,12 +237,12 @@ class Report_history_transactions_other extends CI_Controller
                     //RGP
                     foreach ($rgps as $rgp) {
                         $user = $this->crud->read("users", [], ["username" => $rgp->created_by]);
-                        if($rgp->type == "IN"){
+                        if ($rgp->type == "IN") {
                             $balance = ($begin + $rgp->qty);
                             $rgp_status = "RGP IN";
                             $rgp_qty_in = $rgp->qty;
                             $rgp_qty_out = 0;
-                        }else{
+                        } else {
                             $rgp_status = "RGP OUT";
                             $balance = ($begin - $rgp->qty);
                             $rgp_qty_in = 0;
@@ -261,10 +264,10 @@ class Report_history_transactions_other extends CI_Controller
                                         <td style="text-align:right;">' . number_format($rgp_qty_out, 2)  . '</td>
                                         <td style="text-align:right;">' . number_format($balance, 2)  . '</td>
                                     </tr>';
-                        
-                        if($rgp->type == "IN"){
+
+                        if ($rgp->type == "IN") {
                             $begin += $rgp_qty_in;
-                        }else{
+                        } else {
                             $begin -= $rgp_qty_out;
                         }
 
@@ -296,12 +299,12 @@ class Report_history_transactions_other extends CI_Controller
 
                     //STO
                     foreach ($sto_rms as $sto_rm) {
-                        if($sto_rm->type == "IN"){
+                        if ($sto_rm->type == "IN") {
                             $type = "STO ADJUSTMENT IN";
                             $qty_in = $sto_rm->qty;
                             $qty_out = 0;
                             $balance = ($begin + $sto_rm->qty);
-                        }else{
+                        } else {
                             $type = "STO ADJUSTMENT OUT";
                             $qty_in = 0;
                             $qty_out = $sto_rm->qty;
@@ -323,9 +326,9 @@ class Report_history_transactions_other extends CI_Controller
                                         <td style="text-align:right;">' . number_format($qty_out)  . '</td>
                                         <td style="text-align:right;">' . number_format($balance, 2)  . '</td>
                                     </tr>';
-                        if($sto_rm->type == "IN"){
+                        if ($sto_rm->type == "IN") {
                             $begin += $sto_rm->qty;
-                        }else{
+                        } else {
                             $begin -= $sto_rm->qty;
                         }
 

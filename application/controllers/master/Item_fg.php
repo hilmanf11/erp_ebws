@@ -35,7 +35,7 @@ class item_fg extends CI_Controller
         //master/customers
         //master/customer_items
         $post = isset($_POST['q']) ? $_POST['q'] : "";
-        $send = $this->crud->query("SELECT * FROM item_fg WHERE `number` like '%$post%' or number_customer like '%$post%' or `name` like '%$post%'");
+        $send = $this->crud->query("SELECT * FROM item_fg WHERE (`number` like '%$post%' or number_customer like '%$post%' or `name` like '%$post%') and approved_to = ''");
         echo json_encode($send);
     }
 

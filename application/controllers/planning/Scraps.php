@@ -46,7 +46,8 @@ class Scraps extends CI_Controller
             JOIN item_ng b ON a.workorder = b.document AND a.item_rm_id = b.item_rm_id
             JOIN production_schedules c ON b.workorder = c.workorder
             JOIN item_fg d ON c.item_fg_id = d.id
-            WHERE (b.workorder like '%$post%' or d.number_customer like '%$post%') and a.status = 0 and (a.approved_to = '' or a.approved_to is null)");
+            WHERE (b.workorder like '%$post%' or d.number_customer like '%$post%') and a.status = 0 and (a.approved_to = '' or a.approved_to is null)
+            GROUP BY b.workorder, a.document, b.document, c.period, c.wp, c.item_fg_id, d.number_customer");
         echo json_encode($send);
     }
 
@@ -76,7 +77,7 @@ class Scraps extends CI_Controller
 
             $whereDate = $number.$yearnow.$yearend."1";
 
-            $sqlGetID	= $this->db->query("SELECT max(document) as kode FROM item_ng WHERE document like '%$whereDate%'");
+            $sqlGetID	= $this->db->query("SELECT max(document) as kode FROM scraps WHERE document like '%$whereDate%'");
             $rowID = $sqlGetID->row();
             $kode = $rowID->kode;
             
@@ -102,6 +103,8 @@ class Scraps extends CI_Controller
             $filter_document = $this->input->get('filter_document');
             $filter_family_id = $this->input->get('filter_family_id');
             $filter_item_rm_id = $this->input->get('filter_item_rm_id');
+            $filter_source = $this->input->get('filter_source');
+            $filter_status = $this->input->get('filter_status');
 
             $page = $this->input->post('page');
             $rows = $this->input->post('rows');
@@ -121,6 +124,8 @@ class Scraps extends CI_Controller
             }
             $this->db->like('a.document', $filter_document);
             $this->db->like('b.item_family_id', $filter_family_id);
+            $this->db->like('a.source', $filter_source);
+            $this->db->like('a.status', $filter_status);
             $this->db->like('b.id', $filter_item_rm_id);
             $this->db->order_by('a.trans_date', 'DESC');
             //Total Data
@@ -293,6 +298,8 @@ class Scraps extends CI_Controller
         $filter_document = $this->input->get('filter_document');
         $filter_family_id = $this->input->get('filter_family_id');
         $filter_item_rm_id = $this->input->get('filter_item_rm_id');
+        $filter_source = $this->input->get('filter_source');
+        $filter_status = $this->input->get('filter_status');
 
         //Config
         $this->db->select('*');
@@ -366,6 +373,8 @@ class Scraps extends CI_Controller
                 $this->db->where('a.trans_date <=', $filter_to);
             }
             $this->db->like('a.document', $filter_document);
+            $this->db->like('a.source', $filter_source);
+            $this->db->like('a.status', $filter_status);
             $this->db->where('b.id', $item_rm_id);
             $this->db->order_by('b.number', 'ASC');
             $this->db->order_by('a.trans_date', 'ASC');

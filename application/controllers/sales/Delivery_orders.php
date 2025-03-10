@@ -46,6 +46,7 @@ class Delivery_orders extends CI_Controller
         $this->db->where('a.customer_id', $customer_id);
         $this->db->where('a.item_fg_id', $item_fg_id);
         $this->db->where('a.plant', $plant);
+        $this->db->where('b.status', 0);
         $this->db->where("(b.qty - COALESCE(d.qty_do, 0)) > 0");
         $this->db->group_by('b.sales_order_no');
         $this->db->order_by('b.sales_order_no', 'asc');
@@ -130,7 +131,7 @@ class Delivery_orders extends CI_Controller
             (COALESCE(e.stock_fg, 0)) as stock_fg,
             COALESCE(b.qty - COALESCE(f.qty_do2, 0) - (a.qty - COALESCE(d.qty_do, 0)), 0) as balance');
         $this->db->from('sales_order_deliveries a');
-        $this->db->join('sales_orders b', 'a.item_fg_id = b.item_fg_id and a.customer_id = b.customer_id and a.plant = b.plant');
+        $this->db->join('sales_orders b', 'a.item_fg_id = b.item_fg_id and a.customer_id = b.customer_id and a.plant = b.plant and b.status = 0');
         $this->db->join('item_fg c', 'a.item_fg_id = c.id');
         $this->db->join("(SELECT customer_id, item_fg_id, plant, sales_order_no, SUM(qty_do) as qty_do FROM delivery_orders WHERE delivery_date = '$delivery_date' GROUP BY customer_id, item_fg_id, sales_order_no, plant) d", 'b.sales_order_no = d.sales_order_no and a.customer_id = d.customer_id and a.item_fg_id = d.item_fg_id and a.plant = d.plant', "LEFT");
         $this->db->join("(SELECT customer_id, item_fg_id, plant, sales_order_no, SUM(qty_do) as qty_do2 FROM delivery_orders GROUP BY customer_id, item_fg_id, sales_order_no, plant) f", 'b.sales_order_no = f.sales_order_no and a.customer_id = f.customer_id and a.item_fg_id = f.item_fg_id and a.plant = f.plant', "LEFT");
@@ -144,7 +145,7 @@ class Delivery_orders extends CI_Controller
             LEFT JOIN (SELECT a.item_fg_id, COALESCE(SUM(a.qty), 0) as sto_qty_out FROM sto_fg a WHERE a.type = 'OUT' and (a.approved_to = '' or a.approved_to is null) GROUP BY item_fg_id) h ON a.id = h.item_fg_id
             LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) as qty_rgp_in FROM rgp_transactions a JOIN scan_item_receipts_fg b ON  a.rgp_id = b.checksheet_number and a.id = b.workorder WHERE a.type = 'IN' GROUP BY a.item_id) e ON a.id = e.item_id
             LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_out FROM rgp_transactions WHERE type = 'OUT' GROUP BY item_id) f ON a.id = f.item_id
-            LEFT JOIN (SELECT item_fg_id, delivery_note_date, COALESCE(SUM(qty), 0) as qty FROM delivery_notes GROUP BY item_fg_id) g ON a.id = g.item_fg_id
+            LEFT JOIN (SELECT item_fg_id, delivery_note_date, COALESCE(SUM(qty), 0) as qty FROM delivery_notes WHERE `status` != '2' GROUP BY item_fg_id) g ON a.id = g.item_fg_id
             GROUP BY a.id
             ORDER BY a.number) e", 'a.item_fg_id = e.id', "LEFT");
         $this->db->where('a.trans_date', $delivery_date);
@@ -265,7 +266,8 @@ class Delivery_orders extends CI_Controller
                     "delivery_order_no" => $post['delivery_order_no'], 
                     "item_fg_id" => $post['item_fg_id'], 
                     "sales_order_no" => $post['sales_order_no']
-                ], ["remarks" => $post['remarks']]);
+                ], ["remarks" => $post['remarks'], "qty_do" => $post['qty_do']]);
+                
                 echo $send;
             } else {
                 if($post['stock'] >= $post['qty_do']){

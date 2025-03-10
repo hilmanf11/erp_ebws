@@ -45,6 +45,8 @@ class Shipping_orders extends CI_Controller
                 (SELECT a.checksheet_label, b.item_fg_id, a.workorder, a.checksheet_number FROM scan_item_receipts_fg a JOIN os_fg b ON a.workorder = b.id)
                 UNION
                 (SELECT a.checksheet_label, b.item_id as item_fg_id, a.workorder, a.checksheet_number FROM scan_item_receipts_fg a JOIN rgp_transactions b ON a.workorder = b.id)
+                UNION
+                (SELECT b.label_divided as checksheet_label, b.item_fg_id, a.workorder, a.checksheet_number FROM barcode_divides_fg b JOIN scan_item_receipts_fg a ON (a.checksheet_number = b.reff or a.workorder = b.reff))
             ) z ) d", 'a.item_fg_id = d.item_fg_id');
             $this->db->join('shipping_orders e', 'a.delivery_order_no = e.delivery_order_no AND d.checksheet_label = e.checksheet_label', 'left');
             $this->db->where('a.delivery_order_no', $delivery_order_no);
@@ -78,8 +80,8 @@ class Shipping_orders extends CI_Controller
             if(empty($records)){
                 $this->db->select("d.*, a.id as item_fg_id");
                 $this->db->from('item_fg a');
-                $this->db->join('os_fg c', 'a.id = c.item_fg_id', 'left');
-                $this->db->join('scan_item_receipts_fg d', '(c.id = d.workorder)');
+                $this->db->join('rgp_transactions c', 'a.id = c.item_id', 'left');
+                $this->db->join('scan_item_receipts_fg d', 'c.rgp_id = d.checksheet_number');
                 $this->db->where('d.checksheet_label', $checksheet_label);
                 $this->db->where('d.status', '0');
                 $totalRows = $this->db->count_all_results('', false);
@@ -88,12 +90,24 @@ class Shipping_orders extends CI_Controller
                 if(empty($records)){
                     $this->db->select("d.*, a.id as item_fg_id");
                     $this->db->from('item_fg a');
-                    $this->db->join('rgp_transactions c', 'a.id = c.item_id', 'left');
-                    $this->db->join('scan_item_receipts_fg d', 'c.rgp_id = d.workorder');
+                    $this->db->join('os_fg c', 'a.id = c.item_fg_id', 'left');
+                    $this->db->join('scan_item_receipts_fg d', '(c.id = d.workorder)');
                     $this->db->where('d.checksheet_label', $checksheet_label);
                     $this->db->where('d.status', '0');
                     $totalRows = $this->db->count_all_results('', false);
                     $records = $this->db->get()->result_array();
+
+                    if(empty($records)){
+                        $this->db->select("c.label_divided as checksheet_label, d.workorder, c.qty, c.reff as checksheet_number, a.id as item_fg_id");
+                        $this->db->from('item_fg a');
+                        $this->db->join('barcode_divides_fg c', 'a.id = c.item_fg_id', 'left');
+                        $this->db->join('scan_item_receipts_fg d', '(c.reff = d.checksheet_number or c.reff = d.workorder)');
+                        $this->db->where('c.label_divided', $checksheet_label);
+                        $this->db->where('c.status', '0');
+                        $this->db->group_by('c.label_divided');
+                        $totalRows = $this->db->count_all_results('', false);
+                        $records = $this->db->get()->result_array();
+                    }
                 }
             }
             
@@ -116,9 +130,9 @@ class Shipping_orders extends CI_Controller
                 $shipping_orders = $this->crud->read("shipping_orders", [], ["delivery_order_no" => $post['delivery_order_no'], "checksheet_label" => $post['checksheet_label']]);
                 $delivery_orders = $this->crud->read("delivery_orders", [], ["delivery_order_no" => $delivery_order_no, "item_fg_id" => $item_fg_id]);
 
-                $shipping = $this->db->query("SELECT a.item_fg_id, a.qty_do, SUM(b.qty) AS qty_shipping, (a.qty_do - SUM(b.qty)) as balance 
+                $shipping = $this->db->query("SELECT a.item_fg_id, a.qty_do, COALESCE(SUM(b.qty), 0) AS qty_shipping, (a.qty_do - COALESCE(SUM(b.qty), 0)) as balance 
                     FROM delivery_orders a 
-                    JOIN shipping_orders b ON a.delivery_order_no = b.delivery_order_no AND a.item_fg_id = b.item_fg_id
+                    LEFT JOIN shipping_orders b ON a.delivery_order_no = b.delivery_order_no AND a.item_fg_id = b.item_fg_id
                     WHERE a.delivery_order_no = '$delivery_order_no' and a.item_fg_id = '$item_fg_id'
                     GROUP BY a.item_fg_id");
                 $record = $shipping->row();
@@ -130,6 +144,7 @@ class Shipping_orders extends CI_Controller
                             if ((@$record->balance - $post['qty']) >= 0 || empty(@$record->item_fg_id)) {
                                 $send = $this->crud->create('shipping_orders', $post);
                                 $this->crud->update('scan_item_receipts_fg', ["checksheet_label" => $post['checksheet_label']], ["status" => "1"]);
+                                $this->crud->update('barcode_divides_fg', ["label_divided" => $post['checksheet_label']], ["status" => "1"]);
                                 echo $send;
                             } else {
                                 echo json_encode(array("title" => "Not Match", "message" => "Qty DO and Shipping already Done", "theme" => "error"));

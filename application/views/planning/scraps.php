@@ -34,9 +34,9 @@
 <div id="toolbar" style="height: 200px; padding:10px;">
     <!-- <div style="width: 100%; display: grid; grid-template-columns: auto auto auto; grid-gap: 5px; display: flex;"> -->
     <div style="width: 100%;">
-        <fieldset style="width: 60%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
+        <fieldset style="width: 80%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
             <legend><b>Form Filter Data</b></legend>
-            <div style="float: left; width: 50%;">
+            <div style="float: left; width: 40%;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Trans Date</span>
                     <input style="width:30%;" id="filter_from" value="<?= date("Y-m-01") ?>" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
@@ -51,7 +51,7 @@
                     <a href="javascript:;" class="easyui-linkbutton" onclick="filter()"><i class="fa fa-search"></i> Filter Data</a>
                 </div>
             </div>
-            <div style="float: left; width: 50%;">
+            <div style="float: left; width: 30%;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Product Family</span>
                     <input style="width:60%;" id="filter_family_id" class="easyui-combobox">
@@ -59,6 +59,24 @@
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Part No</span>
                     <input style="width:60%;" id="filter_item_rm_id" class="easyui-combogrid">
+                </div>
+            </div>
+            <div style="float: left; width: 30%;">
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Rejection By</span>
+                    <select style="width:60%;" id="filter_source" class="easyui-combobox" panelHeight="auto">
+                        <option value="">Choose All</option>
+                        <option value="User">User</option>
+                        <option value="Vendor">Vendor</option>
+                    </select>
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Status</span>
+                    <select style="width:60%;" id="filter_status" class="easyui-combobox" panelHeight="auto">
+                        <option value="">Choose All</option>
+                        <option value="0">Open</option>
+                        <option value="1">Close</option>
+                    </select>
                 </div>
             </div>
         </fieldset>
@@ -588,13 +606,22 @@
         var filter_document = $("#filter_document").combobox('getValue');
         var filter_family_id = $("#filter_family_id").combobox('getValue');
         var filter_item_rm_id = $("#filter_item_rm_id").combogrid('getValue');
+        var filter_source = $("#filter_source").combobox('getValue');
+        var filter_status = $("#filter_status").combobox('getValue');
 
-        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_document=" + filter_document + "&filter_family_id" + filter_family_id + "&filter_item_rm_id=" + filter_item_rm_id;
+        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_document=" + filter_document + 
+              "&filter_family_id" + filter_family_id + "&filter_item_rm_id=" + filter_item_rm_id + "&filter_source=" + filter_source + 
+              "&filter_status=" + filter_status;
+
         $('#dg').datagrid({
             url: '<?= base_url('planning/scraps/datatables') ?>' + url,
             pagination: true,
-            rownumbers: true
+            rownumbers: true,
+            fit: true,
+            pageList: [10, 50, 100, 500, 1000],
+            pageSize: 10,
         });
+
         $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
         $("#printout").attr('src', '<?= base_url('planning/scraps/print') ?>' + url);
     }
@@ -609,8 +636,12 @@
         var filter_document = $("#filter_document").combobox('getValue');
         var filter_family_id = $("#filter_family_id").combobox('getValue');
         var filter_item_rm_id = $("#filter_item_rm_id").combogrid('getValue');
+        var filter_source = $("#filter_source").combobox('getValue');
+        var filter_status = $("#filter_status").combobox('getValue');
 
-        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_document=" + filter_document + "&filter_family_id" + filter_family_id + "&filter_item_rm_id=" + filter_item_rm_id;
+        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_document=" + filter_document + 
+              "&filter_family_id" + filter_family_id + "&filter_item_rm_id=" + filter_item_rm_id + "&filter_source=" + filter_source + 
+              "&filter_status=" + filter_status;
         window.location.assign('<?= base_url('planning/scraps/print/excel') ?>' + url);
     }
 
@@ -619,14 +650,7 @@
     }
 
     $(function() {
-        $('#dg').datagrid({
-            url: '<?= base_url('planning/scraps/datatables') ?>',
-            pagination: true,
-            rownumbers: true,
-            fit: true,
-            pageList: [10, 50, 100, 500, 1000],
-            pageSize: 10,
-        });
+        filter();
 
         //Save Data
         $('#dlg_insert').dialog({

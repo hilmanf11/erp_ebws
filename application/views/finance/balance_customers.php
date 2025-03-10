@@ -19,6 +19,12 @@
             <th rowspan="2" data-options="field:'customer_ids',width:80,halign:'center'">Code</th>
             <th rowspan="2" data-options="field:'customer_name',width:300,halign:'center'">Customer Name</th>
             <th rowspan="2" data-options="field:'plant',width:100,halign:'center'">Plant</th>
+            <th rowspan="2" data-options="field:'document_no',width:150,halign:'center', editor: {
+                    type: 'textbox',
+                    options: {
+                        required: true
+                    }
+                }">Document No</th>
             <th rowspan="2" data-options="field:'account_number',width:150,halign:'center', 
                 editor: {
                     type: 'combobox',

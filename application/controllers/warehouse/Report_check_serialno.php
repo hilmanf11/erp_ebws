@@ -149,7 +149,7 @@ class Report_check_serialno extends CI_Controller
             //Details
             $this->db->select("a.label_divided as label_no,
                 e.name as supplier_name,
-                c.item_rm_id,
+                d.id as item_rm_id,
                 d.number as item_rm_number,
                 d.name as item_rm_name,
                 (CASE WHEN c.id is null THEN ba.receipt_id ELSE c.id END) as receipt_id,
@@ -176,14 +176,16 @@ class Report_check_serialno extends CI_Controller
             $this->db->join('barcode_divides h', 'a.label_divided = h.label_no', 'left');
             $this->db->where("DATE_FORMAT(a.created_date, '%Y-%m-%d') between '$filter_from' and '$filter_to'");
             // $this->db->where('a.type', "SUPPLY");
-            $this->db->like('a.label_divided', $filter_serial_no);
-            $this->db->or_like('a.label_no', $filter_serial_no);
+            if($filter_serial_no != ""){
+                $this->db->like('a.label_divided', $filter_serial_no);
+                $this->db->or_like('a.label_no', $filter_serial_no);
+            }
             // $this->db->like('e.id', $filter_supplier);
             if($filter_receipt != ""){
                 $this->db->where('c.id', $filter_receipt);
             }
             if($filter_product_no != ""){
-                $this->db->where('c.item_rm_id', $filter_product_no);
+                $this->db->where('d.id', $filter_product_no);
             }
             if ($filter_status == "0") {
                 $this->db->where('f.request_no is null');

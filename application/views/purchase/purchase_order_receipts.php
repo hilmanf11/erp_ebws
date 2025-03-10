@@ -971,6 +971,8 @@
         }else{
             if(row.status == "2"){
                 return "<b style='color:blue;'>CANCEL</b>";
+            }else{
+                return "<b style='color:green;'>OPEN</b>";
             }
         }
     }
@@ -989,6 +991,8 @@
         }else{
             if(row.status == "2"){
                 return 'background-color:#b2c2ff;';
+            }else{
+                return 'background-color:#C8FFCC;';
             }
         }
     }
@@ -1023,13 +1027,18 @@
 
     function BtnPrintLabel(val, row) {
         if (val != "closed") {
-            if (row.status == '0') {
+            if (row.total_scan == row.qty_label) {
+                return "-";
+            }else if (row.status == '0') {
                 var onClick = "checkQas('"+row.id+"','"+row.bc_document+"','"+row.item_rm_number+"','"+row.qty_label+"','"+row.qty_receipt+"','"+row.qty_mpq+"','"+row.receipt_id+"')";
                 return '<a class="btn btn-primary w-100" style="pointer-events: visible; opacity:1;" target="_blank" onClick="'+onClick+'"><i class="fa fa-print"></i> Print</a>';
-            }else if (row.total_scan == row.qty_label) {
-                return "-";
             } else if(row.status == "2"){
                 return "-";
+            }else{
+                if (row.status == '1') {
+                    var onClick = "checkQas('"+row.id+"','"+row.bc_document+"','"+row.item_rm_number+"','"+row.qty_label+"','"+row.qty_receipt+"','"+row.qty_mpq+"','"+row.receipt_id+"')";
+                    return '<a class="btn btn-primary w-100" style="pointer-events: visible; opacity:1;" target="_blank" onClick="'+onClick+'"><i class="fa fa-print"></i> Print</a>';
+                }
             }
         }
     }
@@ -1089,18 +1098,18 @@
                     },
                 });
 
-                $.ajax({
-                    type: "post",
-                    url: "<?= base_url("purchase/purchase_order_receipts/checkQas") ?>",
-                    data: "bc_document=" + bc_document + "&item_rm_number=" + btoa(item_rm_number),
-                    dataType: "json",
-                    success: function (qas) {
-                        swal.close();
+                // $.ajax({
+                //     type: "post",
+                //     url: "<?= base_url("purchase/purchase_order_receipts/checkQas") ?>",
+                //     data: "bc_document=" + bc_document + "&item_rm_number=" + btoa(item_rm_number),
+                //     dataType: "json",
+                //     success: function (qas) {
+                //         swal.close();
 
-                        if(qas == null){
-                            toastr.error("Receipt No and Part No in QAS not Found");
-                        }else{
-                            if(qas.label == "OK"){
+                //         if(qas == null){
+                //             toastr.error("Receipt No and Part No in QAS not Found");
+                //         }else{
+                //             if(qas.label == "OK"){
                                 $.ajax({
                                     type: "POST",
                                     async: true,
@@ -1179,12 +1188,12 @@
                                         }
                                     }
                                 });
-                            }else{
-                                toastr.error("Receipt No and Part No is NG");
-                            }
-                        }
-                    }
-                });
+                //             }else{
+                //                 toastr.error("Receipt No and Part No is NG");
+                //             }
+                //         }
+                //     }
+                // });
             }
         });
     }

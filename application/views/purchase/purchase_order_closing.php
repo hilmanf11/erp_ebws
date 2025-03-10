@@ -35,7 +35,7 @@
         </tr>
     </thead>
 </table>
-<div id="toolbar" style="height: 165px; padding:10px;">
+<div id="toolbar" style="height: 190px; padding:10px;">
     <!-- <div style="width: 100%; display: grid; grid-template-columns: auto auto auto; grid-gap: 5px; display: flex;"> -->
     <div style="width: 100%;">
         <fieldset style="width: 100%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
@@ -45,6 +45,10 @@
                     <span style="width:35%; display:inline-block;">Period</span>
                     <input style="width:28%;" id="filter_from" class="easyui-datebox" value="<?= date("Y-m-01") ?>" data-options="formatter:myformatter,parser:myparser, editable:false"> To
                     <input style="width:28%;" id="filter_to" class="easyui-datebox" value="<?= date("Y-m-t") ?>" data-options="formatter:myformatter,parser:myparser, editable:false">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Del. Sch No</span>
+                    <input style="width:60%;" id="filter_po_no" class="easyui-combogrid">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;"></span>
@@ -57,11 +61,9 @@
                     <span style="width:35%; display:inline-block;">Supplier</span>
                     <input style="width:60%;" id="filter_suppliers" class="easyui-combogrid">
                 </div>
-            </div>
-            <div style="width: 30%; float: left;">
                 <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Del. Sch No</span>
-                    <input style="width:60%;" id="filter_po_no" class="easyui-combogrid">
+                    <span style="width:35%; display:inline-block;">Part No</span>
+                    <input style="width:60%;" id="filter_item_rm" class="easyui-combogrid">
                 </div>
             </div>
         </fieldset>
@@ -310,6 +312,37 @@
                     }],
                 });
             }
+        });
+
+        $("#filter_item_rm").combogrid({
+            url: '<?php echo base_url('master/item_rm/reads'); ?>',
+            panelWidth: 600,
+            idField: 'id',
+            textField: 'number',
+            mode: 'remote',
+            fitColumns: true,
+            prompt: "Choose Part No",
+            columns: [
+                [{
+                    field: 'id',
+                    title: 'Part No EBWS',
+                    width: 120
+                }, {
+                    field: 'number',
+                    title: 'Part No Supplier',
+                    width: 200
+                }, {
+                    field: 'name',
+                    title: 'Description',
+                    width: 200
+                }]
+            ],
+            icons: [{
+                iconCls: 'icon-clear',
+                handler: function(e) {
+                    $(e.data.target).combogrid('clear').combogrid('textbox').focus();
+                }
+            }],
         });
 
         $("#filter_po_no").combobox({
@@ -755,8 +788,9 @@
         var filter_to = $("#filter_to").datebox('getValue');
         var filter_po_no = $("#filter_po_no").combogrid('getValue');
         var filter_suppliers = $("#filter_suppliers").combogrid('getValue');
+        var filter_item_rm = $("#filter_item_rm").combogrid('getValue');
 
-        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_po_no=" + filter_po_no + "&filter_suppliers=" + filter_suppliers;
+        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_po_no=" + filter_po_no + "&filter_suppliers=" + filter_suppliers + "&filter_item_rm=" + filter_item_rm;
 
         $('#dg').treegrid({
             url: '<?= base_url('purchase/purchase_order_closing/datatables') ?>' + url,
@@ -787,9 +821,9 @@
         var filter_from = $("#filter_from").datebox('getValue');
         var filter_to = $("#filter_to").datebox('getValue');
         var filter_po_no = $("#filter_po_no").combogrid('getValue');
-        var filter_suppliers = $("#filter_suppliers").combogrid('getValue');
+        var filter_item_rm = $("#filter_item_rm").combogrid('getValue');
 
-        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_po_no=" + filter_po_no + "&filter_suppliers=" + filter_suppliers;
+        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_po_no=" + filter_po_no + "&filter_suppliers=" + filter_suppliers + "&filter_item_rm=" + filter_item_rm;
         
         window.location.assign('<?= base_url('purchase/purchase_order_closing/print/excel') ?>' + url);
     }

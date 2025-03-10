@@ -54,6 +54,17 @@ class Wos extends CI_Controller
         echo json_encode($send);
     }
 
+    function validateInput($input) {
+        $hasLetter = preg_match('/[a-zA-Z]/', $input);
+        $hasNumber = preg_match('/[0-9]/', $input);
+
+        if ($hasLetter && !$hasNumber) {
+            return false;
+        }else{
+            return true;
+        }
+    }
+
     //GET DATATABLES
     public function datatables()
     {
@@ -246,6 +257,8 @@ class Wos extends CI_Controller
 
             if (empty($item_fg->id)) {
                 echo json_encode(array("title" => "Not Found", "message" => "Product No " . $data['item_fg_number'] . " is Not Found", "theme" => "error"));
+            }elseif ($this->validateInput($data['circuit_no']) === false){
+                echo json_encode(array("title" => "Not Allowed", "message" => "Circuit No " . $data['circuit_no'] . " should not contain only letters", "theme" => "error"));
             }elseif(empty($data['cct_range']) && empty($data['cct_order'])){
                 echo json_encode(array("title" => "Empty", "message" => "Product No " . $data['item_fg_number'] . " CCT Range and CCT Order still Empty", "theme" => "error"));
             }elseif(!empty($wos->item_fg_id)){

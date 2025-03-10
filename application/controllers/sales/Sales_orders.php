@@ -44,7 +44,7 @@ class Sales_orders extends CI_Controller
             JOIN item_fg b ON a.item_fg_id = b.id
             JOIN customers c ON a.customer_id = c.id
             LEFT JOIN delivery_orders d ON b.id = d.item_fg_id and d.status = 0 and c.id = d.customer_id and a.plant = d.plant
-            WHERE a.customer_id = '$customer_id' and a.plant = '$plant' and (b.number LIKE '%$post%' or b.name LIKE '%$post%') GROUP BY b.number");
+            WHERE a.customer_id = '$customer_id' and a.plant = '$plant' and (b.number LIKE '%$post%' or b.name LIKE '%$post%') and a.approved_to = '' GROUP BY b.number");
         echo json_encode($send);
     }
 
@@ -143,8 +143,8 @@ class Sales_orders extends CI_Controller
             $offset = ($page - 1) * $rows;
             $result = array();
             //Select Query
-            $this->db->select("a.*, b.name as customer_name, COALESCE(c.qty_delivery, 0) as qty_delivery, (a.qty_so - COALESCE(c.qty_delivery, 0)) as qty_outstanding");
-            $this->db->from('(select *, SUM(qty) as qty_so, SUM(total) as total_sub2 from sales_orders GROUP by sales_order_no) a');
+            $this->db->select("a.*, b.name as customer_name, COALESCE(c.qty_delivery, 0) as qty_delivery, SUM(a.qty) as qty_so, (SUM(a.qty) - COALESCE(c.qty_delivery, 0)) as qty_outstanding, SUM(total) as total_sub2");
+            $this->db->from('sales_orders a');
             $this->db->join('customers b', 'a.customer_id = b.id');
             $this->db->join("(select sales_order_no, SUM(qty) as qty_delivery from delivery_notes WHERE delivery_note_date BETWEEN '$filter_from' AND '$filter_to' GROUP by sales_order_no) c", 'a.sales_order_no = c.sales_order_no', 'left');
             if ($filter_from != "" && $filter_to != "") {
@@ -203,7 +203,7 @@ class Sales_orders extends CI_Controller
         if ($this->input->get()) {
             $sales_order_no = base64_decode($this->input->get('sales_order_no'));
 
-            $this->db->select('a.*, b.number as item_fg_number, b.name as item_fg_name, SUM(a.qty) AS qty, COALESCE(SUM(c.qty), 0) AS delivery, (SUM(a.qty) - COALESCE(SUM(c.qty), 0)) as outstanding');
+            $this->db->select('a.*, b.number_customer as item_fg_number, b.name as item_fg_name, SUM(a.qty) AS qty, COALESCE(SUM(c.qty), 0) AS delivery, (SUM(a.qty) - COALESCE(SUM(c.qty), 0)) as outstanding');
             $this->db->from('sales_orders a');
             $this->db->join('item_fg b', 'a.item_fg_id = b.id');
             $this->db->join('delivery_notes c', 'a.sales_order_no = c.sales_order_no AND a.item_fg_id = c.item_fg_id AND a.customer_id = c.customer_id AND a.plant = c.plant', 'left');
@@ -228,6 +228,9 @@ class Sales_orders extends CI_Controller
             $sales_orders = $this->crud->read("sales_orders", [], ["sales_order_no" => $post['sales_order_no'], "item_fg_id" => $post['item_fg_id']]);
             if (@$sales_orders->sales_order_no != "") {
                 $send = $this->crud->update('sales_orders', ["sales_order_no" => $post['sales_order_no'], "item_fg_id" => $post['item_fg_id']], $post);
+                if(@$sales_orders->qty == $post['qty']){
+                    $this->db->update('sales_orders', ["approved_to" => ""], ["sales_order_no" => $post['sales_order_no'], "item_fg_id" => $post['item_fg_id']]);
+                }
             } else {
                 $send = $this->crud->create('sales_orders', $post);
             }
@@ -244,6 +247,7 @@ class Sales_orders extends CI_Controller
             $closing_reason = $this->input->post('closing_reason');
 
             $this->db->update('sales_orders', ["closing_reason" => $closing_reason, "closing_date" => date("Y-m-d"), "status" => 1], ["sales_order_no" => $sales_order_no]);
+            echo json_encode(array("title" => "Close SO", "message" => "Success Closing this SO " . $sales_order_no, "theme" => "success"));
         }
     }
 
@@ -377,7 +381,7 @@ class Sales_orders extends CI_Controller
                 }
 
                 $cust_add = $this->crud->read('customer_address', [], ["customer_id" => $customer_id, "plant" => $plant]);
-                $customer_items = $this->crud->read('customer_items', [], ["item_fg_id" => $item_fg->id,"customer_id" => @$customer_id]);
+                $customer_items = $this->crud->read('customer_items', [], ["item_fg_id" => $item_fg->id, "customer_id" => @$customer_id]);
                 $price = $customer_items->price;
                 $total = ($qty * $price);
 
@@ -462,8 +466,12 @@ class Sales_orders extends CI_Controller
         if ($this->input->post()) {
             $data = $this->input->post('data'); //field excel
 
+            $customer_id = $data['customer_id'];
+            $item_fg_id = $data['item_fg_id'];
+
             $customers = $this->crud->read('customers', [], ["id" => $data['customer_id']]);
-            $customer_items = $this->crud->read('customer_items', [], ["item_fg_id" => $data['item_fg_id'], "customer_id" => $data['customer_id']]);
+            $customer_item = $this->db->query("SELECT * FROM customer_items WHERE customer_id = '$customer_id' and item_fg_id = '$item_fg_id' and approved_to != ''");
+            $row_customer_item = $customer_item->row();
             $item_fg = $this->crud->read('item_fg', [], ["id" => $data['item_fg_id']]);
 
             // Check for duplicate sales order by customer_order_no AND delivery_date
@@ -475,10 +483,12 @@ class Sales_orders extends CI_Controller
 
             if (empty($customers)) {
                 echo json_encode(array("title" => "Not Found", "message" => "Customers ID " . $data['customer_id'] . " Not Found", "theme" => "error"));
-            } else if (empty($customer_items)) {
-                echo json_encode(array("title" => "Not Match", "message" => "Product No " . $data['item_fg_id'] . " Not Match With Cust ID " . $data['customer_id'], "theme" => "error"));
+            } else if (empty($item_fg)) {
+                echo json_encode(array("title" => "Not Found", "message" => "Product No " . @$item_fg->number_customer . " Not Found in Master Item", "theme" => "error"));
+            } else if (empty($row_customer_item)) {
+                echo json_encode(array("title" => "Not Found", "message" => "Product No " . @$item_fg->number_customer . " Not Found in Customer Contract", "theme" => "error"));
             } else if (!empty($sales_orders->sales_order_no)) {
-                echo json_encode(array("title" => "Duplicated", "message" => "Product ID " . $data['item_fg_id'] . " and Customer Order No " . $data['customer_order_no'] . " with Delivery Date " . $data['delivery_date'] . " Duplicated", "theme" => "error"));
+                echo json_encode(array("title" => "Duplicated", "message" => "Product ID " . @$item_fg->number_customer . " and Customer Order No " . $data['customer_order_no'] . " with Delivery Date " . $data['delivery_date'] . " Duplicated", "theme" => "error"));
             } else if (empty($data['customer_id'])) {
                 $this->uploadcreateFailed();
             } else {
@@ -585,6 +595,7 @@ class Sales_orders extends CI_Controller
                 <th>Customer Name</th>
                 <th>Plant</th>
                 <th>Customer Order No</th>
+                <th>Forecast No</th>
                 <th>Sales Order No</th>
                 <th>Sales Order Date</th>
                 <th>Delivery Date</th>
@@ -614,6 +625,7 @@ class Sales_orders extends CI_Controller
                         <td>' . $data['customer_name'] . '</td>
                         <td>' . $data['plant'] . '</td>
                         <td>' . $data['customer_order_no'] . '</td>
+                        <td>' . $data['forecast_no'] . '</td>
                         <td>' . $data['sales_order_no'] . '</td>
                         <td>' . $data['sales_order_date'] . '</td>
                         <td>' . $data['delivery_date'] . '</td>

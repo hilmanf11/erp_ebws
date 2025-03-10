@@ -1,121 +1,109 @@
-<table id="dg" class="easyui-datagrid" style="width:100%;" toolbar="#toolbar" data-options="fit: true">
-    <thead data-options="frozen:true">
-        <tr>
-            <th field="ck" checkbox="true"></th>
-            <th data-options="field:'item_fg_number',width:100,halign:'center'">Product No<br>EBWS</th>
-            <th data-options="field:'number_customer',width:180,halign:'center'">Product No<br>Customer</th>
-        </tr>
-    </thead>
-    <thead>
-        <tr>
-            <th rowspan="2" data-options="field:'item_fg_name',width:150,halign:'center'">Description</th>
-            <th rowspan="2" data-options="field:'customer_name',width:200,halign:'center'">Customer</th>
-            <th rowspan="2" data-options="field:'plant',width:80,halign:'center'">Plant</th>
-            <th rowspan="2" data-options="field:'type',width:80,halign:'center'">Type</th>
-            <th rowspan="2"data-options="field:'total_qty',width:80,halign:'center',align:'right', formatter:numberformat">Total Qty</th>
-            <?php 
-                if($this->input->get('filter_month')){
-                    $filter_month = base64_decode($this->input->get('filter_month'));
-                    $filter_year = base64_decode($this->input->get('filter_year'));
-                    $filter_customer = base64_decode($this->input->get('filter_customer'));
-                    $filter_plant = base64_decode($this->input->get('filter_plant'));
-                    $filter_item_fg = base64_decode($this->input->get('filter_item_fg'));
-                }else{
-                    $filter_month = date("m");
-                    $filter_year = date("Y");
-                    $filter_customer = "";
-                    $filter_plant = "";
-                    $filter_item_fg = "";
-                }
-
-                $firstDate = date("Y-m-01", strtotime(date("$filter_year-$filter_month-01")));
-                $endDate = date("Y-m-t", strtotime(date("$filter_year-$filter_month")));
-                $tgl = 1;
-                while (strtotime($firstDate) <= strtotime($endDate)) {
-                    $working_date = date('d M', strtotime($firstDate));
-
-                    if (date('w', strtotime($firstDate)) !== '0') {
-                        $hstyle = "";
-                    }else{
-                        $hstyle = "background-color:#FFB0B0";
-                    }
-            ?>
-            <th rowspan="2" data-options="field:'qty_<?= $tgl ?>',width:80,halign:'center', align:'right',hstyler: function(value, row, index) { return '<?= $hstyle ?>'; }"><?= $working_date ?></th>
-            <?php
-                    $tgl++;
-                    $firstDate = date("Y-m-d", strtotime("+1 day", strtotime($firstDate)));
-                }
-            ?>
-            <th colspan="2" data-options="field:'',width:100,align:'center'">Created</th>
-            <th colspan="2" data-options="field:'',width:100,align:'center'">Updated</th>
-        </tr>
-        <tr>
-            <th data-options="field:'created_by',width:100,halign:'center'">By</th>
-            <th data-options="field:'created_date',width:150,halign:'center'">Date</th>
-            <th data-options="field:'updated_by',width:100,halign:'center'">By</th>
-            <th data-options="field:'updated_date',width:150,halign:'center'">Date</th>
-        </tr>
-    </thead>
-</table>
-
-<div id="toolbar" style="height: 160px; padding: 10px;">
+<div id="f" class="easyui-panel" style="width:99.5%; background: #F4F4F4;">
     <div style="width: 100%; display: grid; grid-template-columns: auto auto auto; grid-gap: 5px; display: flex;">
-        <fieldset style="width: 100%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
+        <fieldset style="width: 80%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; margin-left: 10px; border-radius:4px;">
             <legend><b>Form Filter Data</b></legend>
-            <div style="width: 30%; float: left;">
+            <div style="width: 50%; float: left;">
                 <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Period</span>
-                    <input style="width:30%;" name="filter_month" id="filter_month" value="<?= $filter_month ?>" class="easyui-combobox" data-options="prompt:'Month'">
-                    <input style="width:30%;" name="filter_year" id="filter_year" value="<?= $filter_year ?>" class="easyui-combobox" data-options="prompt:'Year'">
+                    <span style="width:35%; display:inline-block;">SO Date</span>
+                    <input style="width:30%;" id="filter_so_date_from" value="<?= date("Y-m-01") ?>" data-options="formatter:myformatter,parser:myparser" class="easyui-datebox">
+                    <input style="width:30%;" id="filter_so_date_to" value="<?= date("Y-m-t") ?>" data-options="formatter:myformatter,parser:myparser" class="easyui-datebox">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Customer Name</span>
+                    <input style="width:60%;" id="filter_customer_name" class="easyui-combobox">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Customer Order No</span>
+                    <input style="width:60%;" id="filter_customer_order_no" class="easyui-combobox">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Sales Order No</span>
+                    <input style="width:60%;" id="filter_sales_order_no" class="easyui-combobox">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;"></span>
                     <a href="javascript:;" class="easyui-linkbutton" onclick="filter()"><i class="fa fa-search"></i> Filter Data</a>
                 </div>
             </div>
-            <div style="width: 30%; float: left;">
-                <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Customer</span>
-                    <input style="width:60%;" id="filter_customer" value="<?= $filter_customer ?>" class="easyui-combobox">
-                </div>
-            </div>
-            <div style="width: 20%; float: left;">
-                <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Plant</span>
-                    <input style="width:60%;" id="filter_plant" value="<?= $filter_plant ?>" class="easyui-combobox">
-                </div>
-            </div>
-            <div style="width: 20%; float: left;">
+            <div style="width: 50%; float: left;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Product No</span>
-                    <input style="width:60%;" id="filter_item_fg" value="<?= $filter_item_fg ?>" class="easyui-combogrid">
+                    <input style="width:60%;" id="filter_item_fg" class="easyui-combobox">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Product Name</span>
+                    <input style="width:60%;" id="filter_item_fg_name" class="easyui-textbox">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Report Display</span>
+                    <select style="width:60%;" id="filter_display" class="easyui-combobox" panelHeight="auto">
+                        <option value="RECAP">RECAP</option>
+                        <option value="DETAIL">DETAIL</option>
+                    </select>
                 </div>
             </div>
         </fieldset>
     </div>
-    <?= $button ?>
+    <div style="margin-left: 10px; margin-bottom:5px;">
+        <?= $button ?>
+    </div>
 </div>
 
-<iframe id="printout" src="" style="width: 100%; height:90%; border: 0;" hidden></iframe>
+<div id="p" class="easyui-panel" title="Print Preview" style="width:100%;">
+    <iframe id="printout" src="" style="width: 100%; height: 450px; border: 0;"></iframe>
+</div>
 
 <script>
     function filter() {
-        var filter_month = $("#filter_month").combobox('getValue');
-        var filter_year = $("#filter_year").textbox('getValue');
-        var filter_customer = $("#filter_customer").combobox('getValue');
-        var filter_plant = $("#filter_plant").combobox('getValue');
-        var filter_item_fg = $("#filter_item_fg").combogrid('getValue');
+        var filter_so_date_from = $("#filter_so_date_from").datebox("getValue");
+        var filter_so_date_to = $("#filter_so_date_to").datebox("getValue");
+        var filter_customer_name = $("#filter_customer_name").combobox("getValue");
+        var filter_customer_order_no = $("#filter_customer_order_no").combobox("getValue");
+        var filter_sales_order_no = $("#filter_sales_order_no").combobox("getValue");
+        var filter_item_fg = $("#filter_item_fg").combobox("getValue");
+        var filter_item_fg_name = $("#filter_item_fg_name").textbox("getValue");
+        var filter_display = $("#filter_display").combobox("getValue");
 
-        var url = "?filter_month=" + window.btoa(filter_month) +
-            "&filter_year=" + window.btoa(filter_year) +
-            "&filter_customer=" + window.btoa(filter_customer) +
-            "&filter_plant=" + window.btoa(filter_plant) +
-            "&filter_item_fg=" + window.btoa(filter_item_fg);
+        var url = "?filter_so_date_from=" + window.btoa(filter_so_date_from) +
+            "&filter_so_date_to=" + window.btoa(filter_so_date_to) +
+            "&filter_customer_name=" + window.btoa(filter_customer_name) +
+            "&filter_customer_order_no=" + window.btoa(filter_customer_order_no) +
+            "&filter_sales_order_no=" + window.btoa(filter_sales_order_no) +
+            "&filter_item_fg=" + window.btoa(filter_item_fg) +
+            "&filter_item_fg_name=" + window.btoa(filter_item_fg_name) +
+            "&filter_display=" + window.btoa(filter_display);
 
-        if (filter_month == "" || filter_year == "") {
-                toastr.warning("Please select Period!", "Information");
+        if (filter_so_date_from == "" && filter_so_date_to == "") {
+            toastr.warning("Please Select Trans Date");
         } else {
-            window.location.assign(url);
+            $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
+            $("#printout").attr('src', '<?= base_url('sales/report_delivery_schedules/print') ?>' + url);
+        }
+    }
+
+    function excel() {
+        var filter_so_date_from = $("#filter_so_date_from").datebox("getValue");
+        var filter_so_date_to = $("#filter_so_date_to").datebox("getValue");
+        var filter_customer_name = $("#filter_customer_name").combobox("getValue");
+        var filter_customer_order_no = $("#filter_customer_order_no").combobox("getValue");
+        var filter_sales_order_no = $("#filter_sales_order_no").combobox("getValue");
+        var filter_item_fg = $("#filter_item_fg").combobox("getValue");
+        var filter_item_fg_name = $("#filter_item_fg_name").textbox("getValue");
+        var filter_display = $("#filter_display").combobox("getValue");
+
+        var url = "?filter_so_date_from=" + window.btoa(filter_so_date_from) +
+            "&filter_so_date_to=" + window.btoa(filter_so_date_to) +
+            "&filter_customer_name=" + window.btoa(filter_customer_name) +
+            "&filter_customer_order_no=" + window.btoa(filter_customer_order_no) +
+            "&filter_sales_order_no=" + window.btoa(filter_sales_order_no) +
+            "&filter_item_fg=" + window.btoa(filter_item_fg) +
+            "&filter_item_fg_name=" + window.btoa(filter_item_fg_name) +
+            "&filter_display=" + window.btoa(filter_display);
+
+        if (filter_so_date_from == "" && filter_so_date_to == "") {
+            toastr.warning("Please Select Trans Date");
+        } else {
+            window.location.assign('<?= base_url('sales/report_delivery_schedules/print/excel') ?>' + url);
         }
     }
 
@@ -123,139 +111,31 @@
         $("#printout").get(0).contentWindow.print();
     }
 
-    function excel() {
-        var filter_month = $("#filter_month").combobox('getValue');
-        var filter_year = $("#filter_year").textbox('getValue');
-        var filter_customer = $("#filter_customer").combobox('getValue');
-        var filter_plant = $("#filter_customer").combobox('getValue');
-        var filter_item_fg = $("#filter_item_fg").combogrid('getValue');
-
-        var url = "?filter_month=" + window.btoa(filter_month) +
-            "&filter_year=" + window.btoa(filter_year) +
-            "&filter_customer=" + window.btoa(filter_customer) +
-            "&filter_plant=" + window.btoa(filter_plant) +
-            "&filter_item_fg=" + window.btoa(filter_item_fg);
-
-        if (filter_month == "" || filter_year == "") {
-                toastr.warning("Please select Period!", "Information");
-        } else {
-            $.messager.alert('Info','Please Wait to Export to Excel');
-            window.location.assign('<?= base_url('sales/report_delivery_schedules/print/excel') ?>' + url);
-        }
-    }
-
     function reload() {
         window.location.reload();
     }
 
     $(function() {
-        var filter_month = $("#filter_month").combobox('getValue');
-        var filter_year = $("#filter_year").textbox('getValue');
-        var filter_customer = $("#filter_customer").combobox('getValue');
-        var filter_plant = $("#filter_plant").combobox('getValue');
-        var filter_item_fg = $("#filter_item_fg").combogrid('getValue');
-
-        var url = "?filter_month=" + window.btoa(filter_month) +
-            "&filter_year=" + window.btoa(filter_year) +
-            "&filter_customer=" + window.btoa(filter_customer) +
-            "&filter_plant=" + window.btoa(filter_plant) +
-            "&filter_item_fg=" + window.btoa(filter_item_fg);
-
-        if (filter_month != "" && filter_year != "") {
-            $('#dg').datagrid({
-                url: '<?= base_url('sales/report_delivery_schedules/datatables') ?>' + url,
-                pagination: true,
-                rownumbers: true,
-                singleSelect: true,
-                fit: true,
-                pageList: [20, 50, 100, 500, 1000],
-                pageSize: 20,
-                onLoadSuccess: function(data){
-                    var z = 0;
-                    for(var i=0; i < (data.total); i++){
-
-                        $('#dg').datagrid('mergeCells', {
-                            index: z,
-                            field: 'item_fg_number',
-                            rowspan: 3,
-                        });
-                        
-                        $('#dg').datagrid('mergeCells', {
-                            index: z,
-                            field: 'number_customer',
-                            rowspan: 3,
-                        });
-
-                        $('#dg').datagrid('mergeCells', {
-                            index: z,
-                            field: 'item_fg_name',
-                            rowspan: 3,
-                        });
-
-                        $('#dg').datagrid('mergeCells', {
-                            index: z,
-                            field: 'customer_name',
-                            rowspan: 3,
-                        });
-
-                        $('#dg').datagrid('mergeCells', {
-                            index: z,
-                            field: 'plant',
-                            rowspan: 3,
-                        });
-
-                        z += 3;
-                    }
-                }
-            });
-
-            $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
-            $("#printout").attr('src', '<?= base_url('sales/report_delivery_schedules/print') ?>' + url);
-        }
-
-        $('#filter_month').combobox({
-            url: '<?php echo base_url('planning/mst_data/readMonths'); ?>',
-            valueField: 'id',
-            textField: 'name',
-            prompt: 'Select Month',
-            icons: [{
-                iconCls: 'icon-clear',
-                handler: function(e) {
-                    $(e.data.target).combobox('clear').combobox('textbox').focus();
-                }
-            }],
-        });
-
-        $('#filter_year').combobox({
-            url: '<?php echo base_url('planning/mst_data/readYears'); ?>',
-            valueField: 'id',
-            textField: 'name',
-            prompt: 'Select Year',
-            icons: [{
-                iconCls: 'icon-clear',
-                handler: function(e) {
-                    $(e.data.target).combobox('clear').combobox('textbox').focus();
-                }
-            }],
-        });
-
-        $('#filter_customer').combobox({
+        $('#filter_customer_name').combobox({
             url: '<?php echo base_url('master/customers/reads'); ?>',
             valueField: 'id',
             textField: 'name',
-            prompt: 'Select Customer',
+            prompt: 'Select Customer Name',
             icons: [{
                 iconCls: 'icon-clear',
                 handler: function(e) {
                     $(e.data.target).combobox('clear').combobox('textbox').focus();
                 }
             }],
-            onSelect: function(row){
-                $('#filter_plant').combobox({
-                    url: '<?= base_url('master/customers/readAddress/') ?>' + btoa(row.id),
-                    valueField: 'plant',
-                    textField: 'plant',
-                    prompt: 'Select Plant',
+            onSelect: function(cus) {
+                var filter_so_date_from = $("#filter_so_date_from").datebox("getValue");
+                var filter_so_date_to = $("#filter_so_date_to").datebox("getValue");
+
+                $('#filter_customer_order_no').combobox({
+                    url: '<?php echo base_url('sales/report_delivery_schedules/readCustomerOrder?customer_id='); ?>' + cus.id + "&filter_so_date_from=" + window.btoa(filter_so_date_from) + "&filter_so_date_to=" + window.btoa(filter_so_date_to),
+                    valueField: 'customer_order_no',
+                    textField: 'customer_order_no',
+                    prompt: 'Select Customer Order No.',
                     icons: [{
                         iconCls: 'icon-clear',
                         handler: function(e) {
@@ -264,57 +144,90 @@
                     }],
                 });
 
-                $('#filter_item_fg').combogrid({
-                    url: '<?= base_url('master/customer_items/reads/') ?>' + btoa(row.id),
-                    panelWidth: 550,
-                    idField: 'id',
-                    textField: 'number_customer',
-                    mode: 'remote',
-                    fitColumns: true,
-                    prompt: "Select Product No",
+                $('#filter_sales_order_no').combobox({
+                    url: '<?php echo base_url('sales/report_delivery_schedules/readCustomerOrder?customer_id='); ?>' + cus.id + "&filter_so_date_from=" + window.btoa(filter_so_date_from) + "&filter_so_date_to=" + window.btoa(filter_so_date_to),
+                    valueField: 'sales_order_no',
+                    textField: 'sales_order_no',
+                    prompt: "Select Sales Order No",
                     icons: [{
                         iconCls: 'icon-clear',
                         handler: function(e) {
-                            $(e.data.target).combogrid('clear').combogrid('textbox').focus();
+                            $(e.data.target).combobox('clear').combobox('textbox').focus();
                         }
                     }],
-                    columns: [
-                        [{
-                            field: 'number',
-                            title: 'Product No EBWS',
-                            width: 150
-                        }, {
-                            field: 'number_customer',
-                            title: 'Product No Customer',
-                            width: 200
-                        }, {
-                            field: 'name',
-                            title: 'Description',
-                            width: 200
-                        }]
-                    ]
+                    onSelect: function(so) {
+                        $('#filter_item_fg').combogrid({
+                            url: '<?php echo base_url('sales/report_delivery_schedules/readItems?customer_id='); ?>' + cus.id +
+                                "&filter_so_date_from=" + window.btoa(filter_so_date_from) +
+                                "&filter_so_date_to=" + window.btoa(filter_so_date_to) +
+                                "&filter_sales_order_no=" + window.btoa(so.sales_order_no),
+                            panelWidth: 400,
+                            idField: 'id',
+                            textField: 'number',
+                            mode: 'remote',
+                            fitColumns: true,
+                            prompt: "Select Product No",
+                            icons: [{
+                                iconCls: 'icon-clear',
+                                handler: function(e) {
+                                    $(e.data.target).combogrid('clear').combogrid('textbox').focus();
+                                }
+                            }],
+                            columns: [
+                                [{
+                                    field: 'number',
+                                    title: 'Product No',
+                                    width: 200
+                                }, {
+                                    field: 'name',
+                                    title: 'Product Name',
+                                    width: 200
+                                }]
+                            ],
+                            onSelect: function(value, row) {
+                                $('#filter_item_fg_name').textbox('setValue', row.name);
+                            }
+
+                        });
+                    }
                 });
             }
         });
-    });
 
-    function numberformat(value, row) {
-        const formatter = new Intl.NumberFormat('ja-JP', {
-            minimumFractionDigits: 0
+            $('#filter_item_fg').combogrid({
+            url: '<?= base_url("master/item_fg/reads") ?>',
+            panelWidth: 400,
+            idField: 'id',
+            textField: 'number',
+            mode: 'remote',
+            fitColumns: true,
+            prompt: "Select Product No",
+            icons: [{
+                iconCls: 'icon-clear',
+                handler: function(e) {
+                    $(e.data.target).combogrid('clear').combogrid('textbox').focus();
+                }
+            }],
+            columns: [
+                [{
+                    field: 'number',
+                    title: 'Product No',
+                    width: 200
+                }, {
+                    field: 'name',
+                    title: 'Product Name',
+                    width: 200
+                }]
+            ],
+            onSelect: function(value, row) {
+                $('#filter_item_fg_name').textbox('setValue', row.name);
+            }
         });
 
-        return "<b>" + formatter.format(value) + "</b>";
-    }
 
-    function cellStyler(value, row, index) {
-        if (value >= 0) {
-            return 'font-weight:bold;';
-        } else {
-            return 'color:#FF5F5F; font-weight:bold;';
-        }
-    }
+    });
 
-    //Format Datepicker
+    // FORMAT tahun-bulan-tanggal
     function myformatter(date) {
         var y = date.getFullYear();
         var m = date.getMonth() + 1;
@@ -322,7 +235,6 @@
         return y + '-' + (m < 10 ? ('0' + m) : m) + '-' + (d < 10 ? ('0' + d) : d);
     }
 
-    //Format Datepicker
     function myparser(s) {
         if (!s) return new Date();
         var ss = (s.split('-'));

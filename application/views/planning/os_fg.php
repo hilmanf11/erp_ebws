@@ -14,7 +14,6 @@
             <th rowspan="2" data-options="field:'location',width:100,halign:'center'">Location</th>
             <th rowspan="2" data-options="field:'label',width:80,align:'center',formatter:BtnPrintLabel">Label</th>
             <th rowspan="2" data-options="field:'created_label',width:150,halign:'center'">Label Create</th>
-            <th rowspan="2" data-options="field:'remarks',width:200,halign:'center'">Remarks</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
         </tr>
@@ -73,10 +72,6 @@
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Qty</span>
                 <input style="width:30%;" name="qty" id="qty" data-options="precision:2" required class="easyui-numberbox">
-            </div>
-            <div class="fitem">
-                <span style="width:35%; display:inline-block;">Remarks</span>
-                <input style="width:60%;" name="remarks" id="remarks" class="easyui-textbox">
             </div>
         </fieldset>
     </form>

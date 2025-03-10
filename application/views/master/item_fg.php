@@ -447,7 +447,7 @@
                                     }
                                 },
                                 error: function(jqXHR, textStatus, errorThrown) {
-                                    toastr.error(jqXHR.statusText);
+                                    toastr.error("Delete Failed, Already Relation in another module");
                                     swal.close();
                                 },
                             });

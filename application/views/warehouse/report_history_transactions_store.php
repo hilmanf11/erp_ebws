@@ -63,7 +63,7 @@
         var filter_transtype = $("#filter_transtype").combobox('getValue');
         var filter_location_other_number = $("#filter_location_other_number").combobox('getValue');
 
-        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_item_family=" + filter_item_family + "&filter_items=" + filter_items + "&filter_display=" + filter_display + "&filter_transtype=" + filter_transtype+ "&filter_location_other_number=" + filter_location_other_number;
+        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_item_family=" + filter_item_family + "&filter_items=" + filter_items + "&filter_display=" + filter_display + "&filter_transtype=" + filter_transtype + "&filter_location_other_number=" + filter_location_other_number;
 
         // if(filter_item_family != ""){
         $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
@@ -83,7 +83,7 @@
         var filter_transtype = $("#filter_transtype").combobox('getValue');
         var filter_location_other_number = $("#filter_location_other_number").combobox('getValue');
 
-        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_item_family=" + filter_item_family + "&filter_items=" + filter_items + "&filter_display=" + filter_display + "&filter_transtype=" + filter_transtype+ "&filter_location_other_number=" + filter_location_other_number;
+        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_item_family=" + filter_item_family + "&filter_items=" + filter_items + "&filter_display=" + filter_display + "&filter_transtype=" + filter_transtype + "&filter_location_other_number=" + filter_location_other_number;
 
         // if(filter_item_family != ""){
         window.location.assign('<?= base_url('warehouse/report_history_transactions_store/print/excel') ?>' + url);
@@ -149,6 +149,37 @@
                     ]
                 });
             }
+        });
+
+        $('#filter_items').combogrid({
+            url: '<?= base_url('master/item_rm/readNotRm') ?>',
+            panelWidth: 550,
+            idField: 'id',
+            textField: 'number',
+            mode: 'remote',
+            fitColumns: true,
+            prompt: "Select Part No",
+            icons: [{
+                iconCls: 'icon-clear',
+                handler: function(e) {
+                    $(e.data.target).combogrid('clear').combogrid('textbox').focus();
+                }
+            }],
+            columns: [
+                [{
+                    field: 'id',
+                    title: 'Part No EBWS',
+                    width: 150
+                }, {
+                    field: 'number',
+                    title: 'Part No Supplier',
+                    width: 200
+                }, {
+                    field: 'name',
+                    title: 'Description',
+                    width: 200
+                }, ]
+            ]
         });
 
         $('#filter_location_other_number').combobox({

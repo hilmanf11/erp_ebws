@@ -114,6 +114,7 @@ class Balance_suppliers extends CI_Controller
             if($account_balance_suppliers){
                 $send = $this->crud->update('account_balance_suppliers', ["supplier_id" => $post['supplier_ids']], [
                     "supplier_id" => $post['supplier_ids'],
+                    "document_no" => $post['document_no'],
                     "account_number" => $post['account_number'],
                     "currency" => $post['currency'],
                     "currency_local" => $post['currency_local'],
@@ -126,6 +127,7 @@ class Balance_suppliers extends CI_Controller
             }else{
                 $send = $this->crud->create('account_balance_suppliers', [
                     "supplier_id" => $post['supplier_ids'],
+                    "document_no" => $post['document_no'],
                     "account_number" => $post['account_number'],
                     "currency" => $post['currency'],
                     "currency_local" => $post['currency_local'],
@@ -158,12 +160,13 @@ class Balance_suppliers extends CI_Controller
             $datas[] = array(
                 'supplier_id' => $data->val($i, 2),
                 'account_number' => $data->val($i, 3),
-                'currency' => $data->val($i, 4),
-                'balance' => $data->val($i, 5),
-                'currency_local' => $data->val($i, 6),
-                'balance_local' => $data->val($i, 7),
-                'debt_limit' => $data->val($i, 8),
-                'start_date' => $data->val($i, 9)
+                'document_no' => $data->val($i, 4),
+                'currency' => $data->val($i, 5),
+                'balance' => $data->val($i, 6),
+                'currency_local' => $data->val($i, 7),
+                'balance_local' => $data->val($i, 8),
+                'debt_limit' => $data->val($i, 9),
+                'start_date' => $data->val($i, 10)
             );
         }
         $datas['total'] = count($datas);
@@ -225,6 +228,7 @@ class Balance_suppliers extends CI_Controller
                     if($account_balance_suppliers){
                         $send = $this->crud->update('account_balance_suppliers', ["supplier_id" => @$suppliers->id], [
                             "supplier_id" => @$suppliers->id,
+                            "document_no" => $data['document_no'],
                             "account_number" => $data['account_number'],
                             "currency" => $data['currency'],
                             "currency_local" => $data['currency_local'],
@@ -236,6 +240,7 @@ class Balance_suppliers extends CI_Controller
                     }else{
                         $send = $this->crud->create('account_balance_suppliers', [
                             "supplier_id" => @$suppliers->id,
+                            "document_no" => $data['document_no'],
                             "account_number" => $data['account_number'],
                             "currency" => $data['currency'],
                             "currency_local" => $data['currency_local'],
@@ -302,6 +307,7 @@ class Balance_suppliers extends CI_Controller
                 <th rowspan="2" width="20">No</th>
                 <th rowspan="2">Supplier Code</th>
                 <th rowspan="2">Supplier Name</th>
+                <th rowspan="2">Document No</th>
                 <th rowspan="2">Account Number</th>
                 <th rowspan="2">Account Name</th>
                 <th colspan="2">Original Currency</th>
@@ -320,8 +326,9 @@ class Balance_suppliers extends CI_Controller
         foreach ($records as $data) {
             $html .= '<tr>
                     <td>' . $no . '</td>
-                    <td>' . $data['supplier_number'] . '</td>
+                    <td>' . $data['supplier_ids'] . '</td>
                     <td>' . $data['supplier_name'] . '</td>
+                    <td>' . $data['document_no'] . '</td>
                     <td>' . $data['account_number'] . '</td>
                     <td>' . $data['account_name'] . '</td>
                     <td>' . $data['currency'] . '</td>

@@ -1,13 +1,15 @@
 <!-- TABLE DATAGRID -->
 <table id="dg" class="easyui-datagrid" style="width:99.5%;" toolbar="#toolbar" data-options="
-    url: '<?= base_url('approvals/approvalGenerateMrpFinals/'.base64_encode($approved_to).'/'.base64_encode($approved_by)) ?>',
     pagination: false,
     clientPaging: false,
     rownumbers: true,
     fit: true">
     <thead>
         <tr>
+            <th field="ck" checkbox="true"></th>
             <th data-options="field:'detail',width:80,halign:'center',formatter:BtnDetail">Details</th>
+            <th data-options="field:'period',width:80,align:'center'">Period</th>
+            <th data-options="field:'revision',width:80,align:'center'">Revision</th>
             <th data-options="field:'supplier_id',width:100,halign:'center'">Supplier ID</th>
             <th data-options="field:'supplier_po',width:150,halign:'center'">Supplier PO</th>
             <th data-options="field:'supplier_name',width:300,halign:'center'">Supplier Name</th>
@@ -25,15 +27,26 @@
 
 <!-- TOOLBAR DATAGRID -->
 <div id="toolbar" style="height: 35px;">
+    <a href="javascript:void(0)" id="approveacheck" class="easyui-linkbutton" data-options="plain:true" onclick="approveAll()"><i class="fa fa-check"></i> Approve All</a>
+    <a href="javascript:void(0)" id="approveacheck" class="easyui-linkbutton" data-options="plain:true" onclick="disapproveAll()"><i class="fa fa-times"></i> Disapprove All</a>
+    <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="export_excel()"><i class="fa fa-file"></i> Export Excel Summary</a>
+    <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="export_excel2()"><i class="fa fa-file"></i> Export Excel Details</a>
     <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="reload()"><i class="fa fa-refresh"></i> Reload</a>
-    <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="export_excel()"><i class="fa fa-file"></i> Export Excel</a>
+
+    <div style="float: right;">
+        Period : 
+        <input style="width: 150px;" id="filter_month" value="<?= date("m") ?>" class="easyui-combobox" data-options="prompt:'Month'">
+        <input style="width: 80px;" id="filter_year" value="<?= date("Y") ?>" class="easyui-combobox" data-options="prompt:'Year'">
+        <input style="width: 80px;" id="filter_revision" class="easyui-combobox" data-options="prompt:'Rev'" panelHeight="auto">
+        <a href="javascript:;" class="easyui-linkbutton" onclick="filter()"><i class="fa fa-search"></i> Filter Data</a>
+    </div>
 </div>
 
 <!-- TOOLBAR DATAGRID -->
 <div id="toolbar2" style="height: 35px;">
     <a href="javascript:void(0)" id="approveacheck" class="easyui-linkbutton" data-options="plain:true" onclick="approve()"><i class="fa fa-check"></i> Approve</a>
 	<a href="javascript:void(0)" id="approveacheck" class="easyui-linkbutton" data-options="plain:true" onclick="disapprove()"><i class="fa fa-times"></i> Disapprove</a>
-    <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="export_excel2()"><i class="fa fa-file"></i> Export Excel</a>
+    <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="export_excel1()"><i class="fa fa-file"></i> Export Excel</a>
 </div>
 
 <div id="dlg_details" class="easyui-window" title="Detail Data" data-options="closed: true, modal:true, closed: true, minimizable:false, collapsible:false" style="width: 800px; height: 500px; top: 50px;">
@@ -84,7 +97,77 @@
 <script>
     $(function() {
         $('#dg').datagrid('enableFilter');
+
+        filter();
+
+        $('#filter_month').combobox({
+            url: '<?php echo base_url('planning/mst_data/readMonths'); ?>',
+            valueField: 'id',
+            textField: 'name',
+            prompt: 'Select Month',
+            onSelect: function(month){
+                var filter_year = $("#filter_year").combobox('getValue');
+
+                $('#filter_revision').combobox({
+                    url: '<?php echo base_url('planning/generate_mrp/readRevisions?filter_month='); ?>' + btoa(month.id) + "&filter_year=" + btoa(filter_year),
+                    valueField: 'revision',
+                    textField: 'revision',
+                    prompt: 'Rev',
+                    formatter: function(val){
+                        return "Revision " + val.revision; 
+                    },
+                    onLoadSuccess: function(row){
+                        $('#filter_revision').combobox('setValue', row.revision);
+                    }
+                });
+            }
+        });
+
+        $('#filter_year').combobox({
+            url: '<?php echo base_url('planning/mst_data/readYears'); ?>',
+            valueField: 'id',
+            textField: 'name',
+            prompt: 'Select Year',
+            onSelect: function(year){
+                var filter_month = $("#filter_month").combobox('getValue');
+
+                $('#filter_revision').combobox({
+                    url: '<?php echo base_url('planning/generate_mrp/readRevisions?filter_month='); ?>' + btoa(filter_month) + "&filter_year=" + btoa(year.id),
+                    valueField: 'revision',
+                    textField: 'revision',
+                    prompt: 'Rev',
+                    formatter: function(val){
+                        return "Revision " + val.revision; 
+                    },
+                    onLoadSuccess: function(row){
+                        $('#filter_revision').combobox('setValue', row.revision);
+                    }
+                });
+            }
+        });
     });
+
+    function filter() {
+        var filter_month = $("#filter_month").combobox('getValue');
+        var filter_year = $("#filter_year").combobox('getValue');
+        var filter_revision = $("#filter_revision").combobox('getValue');
+
+        $('#dg').datagrid('loading');
+
+        $.ajax({
+            url: '<?= base_url('approvals/approvalGenerateMrpFinals/'.base64_encode($approved_to).'/'.base64_encode($approved_by)) ?>',
+            type: 'POST',
+            data: {
+                filter_month: filter_month,
+                filter_year: filter_year,
+                filter_revision: filter_revision
+            },
+            dataType: 'json',
+            success: function(result) {
+                $('#dg').datagrid('loadData', result).datagrid('loaded');
+            }
+        });
+    }
 
     //RELOAD
     function reload() {
@@ -95,8 +178,75 @@
 		$('#dg').datagrid('toExcel', "approval_<?= $table ?>_summary.xls");
 	}
 
-    function export_excel() {
+    function export_excel2() {
+        var filter_month = $("#filter_month").combobox('getValue');
+        var filter_year = $("#filter_year").combobox('getValue');
+        var filter_revision = $("#filter_revision").combobox('getValue');
+
+		window.location.assign('<?= base_url('planning/generate_mrp/print/excel/' . base64_encode($approved_to) . '/' . base64_encode($approved_by)) ?>?filter_month=' + btoa(filter_month) + "&filter_year=" + btoa(filter_year) + "&filter_revision=" + btoa(filter_revision));
+	}
+
+    function export_excel1() {
 		$('#dg_details').datagrid('toExcel', "approval_<?= $table ?>_details.xls");
+	}
+
+    function approveAll() {
+		var rows = $('#dg').datagrid('getSelections');
+        if (rows.length > 0) {
+            $.messager.prompt('Remarks', 'Please input your Remarks!!', function(message){
+                if (message){
+                    Swal.fire({
+                        title: 'Please Wait...',
+                        showConfirmButton: false,
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        },
+                    });
+
+                    requestApprove(rows.length, rows);
+                    function requestApprove(total, json, number = 1, value = 0) {
+                        if (value < 100) {
+                            var row = json[number-1];
+                            value = Math.floor((number / total) * 100);
+
+                            $.ajax({
+                                method: 'post',
+                                url: '<?= base_url('approvals/approveAll') ?>',
+                                data: {
+                                    supplier_id: row.supplier_id,
+                                    period: row.period,
+                                    revision: row.revision,
+                                    tablename: "<?= $table ?>",
+                                    message: message
+                                },
+                                success: function(result) {
+                                    var result = eval('(' + result + ')');
+                                    requestApprove(total, json, number + 1, value);
+
+                                    if (number == total) {
+                                        Swal.close();
+                                        Swal.fire(
+                                            'Approve Completed',
+                                            'Approve Data has been completed, You cannot restore data that has been approved',
+                                            'success'
+                                        );
+                                    }
+                                },
+                                error: function(jqXHR, textStatus, errorThrown) {
+                                    toastr.error(jqXHR.statusText);
+                                },
+                            });
+
+                            $('#dg').datagrid('reload');
+                        }
+                    }
+                }
+            });
+        } else {
+            toastr.info("Please select one of the data in the table first");
+        }
 	}
 
 	function approve() {
@@ -151,6 +301,82 @@
                             });
                         }
                     }
+                }
+            });
+        } else {
+            toastr.info("Please select one of the data in the table first");
+        }
+	}
+
+    function disapproveAll() {
+		var rows = $('#dg').datagrid('getSelections');
+        if (rows.length > 0) {
+            Swal.fire({
+                title: 'Dispprove Data',
+                text: "Are you sure? You want to Dispprove this data!",
+                icon: 'warning',
+                showCancelButton: true,
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                confirmButtonText: 'Yes, Dispprove it!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.messager.prompt('Reason', 'Please input your reason!!', function(message){
+                        if (message){
+                            Swal.fire({
+                                title: 'Please Wait...',
+                                showConfirmButton: false,
+                                allowOutsideClick: false,
+                                allowEscapeKey: false,
+                                didOpen: () => {
+                                    Swal.showLoading();
+                                },
+                            });
+
+                            requestApprove(rows.length, rows);
+                            function requestApprove(total, json, number = 1, value = 0) {
+                                if (value < 100) {
+                                    var row = json[number-1];
+                                    value = Math.floor((number / total) * 100);
+
+                                    $.ajax({
+                                        method: 'post',
+                                        url: '<?= base_url('approvals/disapproveAll') ?>',
+                                        data: {
+                                            supplier_id: row.supplier_id,
+                                            period: row.period,
+                                            revision: row.revision,
+                                            tablename: "<?= $table ?>",
+                                            message: message
+                                        },
+                                        success: function(result) {
+                                            var result = eval('(' + result + ')');
+                                            requestApprove(total, json, number + 1, value);
+
+                                            if (number == total) {
+                                                $('#dg').datagrid('reload');
+                                                Swal.close();
+                                                Swal.fire(
+                                                    'Dispprove Completed',
+                                                    'Dispprove Data has been completed, You cannot restore data that has been Dispproved',
+                                                    'success'
+                                                );
+                                            }
+                                        },
+                                        error: function(jqXHR, textStatus, errorThrown) {
+                                            toastr.error(jqXHR.statusText);
+                                        },
+                                    });
+                                }
+                            }
+                        }else{
+                            Swal.fire(
+                                'Cannot Process',
+                                'Please Input your reason to Process Disapprove',
+                                'error'
+                            );
+                        }
+                    });
                 }
             });
         } else {
@@ -274,16 +500,16 @@
     }
 
     function BtnDetail(val, row) {
-        var details = "details('"+row.supplier_id+"','"+row.supplier_name+"')";
+        var details = "details('"+row.supplier_id+"','"+row.supplier_name+"','"+row.period+"','"+row.revision+"')";
         return '<a class="btn btn-primary w-100" style="pointer-events: visible; opacity:1;" onClick="'+details+'"><i class="fa fa-eye"></i> View</a>';
     }
 
-    function details(supplier_id = "", supplier_name = "") {
+    function details(supplier_id = "", supplier_name = "", period = "", revision = "") {
         $("#dlg_details").window('open');
         $('#dlg_details').window('setTitle', 'Detail of ' + supplier_name);
 
         $('#dg_details').datagrid({
-            url: '<?= base_url('approvals/approvalGenerateMrpFinalDetails/'.base64_encode($approved_to).'/'.base64_encode($approved_by)) ?>?supplier_id=' + btoa(supplier_id),
+            url: '<?= base_url('approvals/approvalGenerateMrpFinalDetails/'.base64_encode($approved_to).'/'.base64_encode($approved_by)) ?>?supplier_id=' + btoa(supplier_id) + "&period=" + btoa(period) + "&revision=" + btoa(revision),
             clientPaging: false,
             remoteFilter: true,
             rownumbers: true,

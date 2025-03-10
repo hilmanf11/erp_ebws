@@ -60,187 +60,133 @@ class Costing_products extends CI_Controller
         echo json_encode($arr);
     }
 
-    public function checkPurchaseInvoice(){
-        $month = $this->input->post('filter_month');
-        $year = $this->input->post('filter_year');
-        $periode = $year . '-' . $month;
-
-        $filter_from = date("Y-m-01", strtotime($periode));
-        $filter_to = date("Y-m-t", strtotime($periode));
-
-        $this->db->select('number');
-        $this->db->from('purchase_invoices');
-        $this->db->where('trans_date >=', $filter_from);
-        $this->db->where('trans_date <=', $filter_to);
-        $this->db->group_by('number');
-        $records_a = $this->db->get()->result_array();
-
-        $this->db->select('document_no');
-        $this->db->from('journal_postings');
-        $this->db->where('trans_date >=', $filter_from);
-        $this->db->where('trans_date <=', $filter_to);
-        $this->db->where('modul', 'PURCHASE INVOICING');
-        $this->db->group_by('document_no');
-        $records_b = $this->db->get()->result_array();
-
-        if(count($records_a) == count($records_b)){
-            echo 1;
-        }else{
-            echo 0;
-        }
+    public function dataSupplySheets($filter_from, $filter_to, $item_fg_id, $table){
+        $supply_sheets = $this->crud->query("SELECT a.item_rm_id, a.receipt_date, a.po_no, SUM(a.qty_out) AS qty, a.price_out, SUM(a.amount_out) AS amount FROM (
+            SELECT (@no_urut := @no_urut + 1) AS no_urut, 
+                c.number AS item_rm_number, c.name AS item_rm_name, c.uom, d.name AS item_family_name, z.created_by,
+                z.trans_type, z.po_date, z.receipt_date, z.receipt_no, z.po_no, z.bc_document, z.bc_date,
+                (CASE WHEN @item_rm_id = z.item_rm_id THEN '1' ELSE '0' END) AS typee,
+                @begin_qty := ROUND(CASE WHEN @item_rm_id = z.item_rm_id THEN @balance_qty ELSE COALESCE(bgin.begin_qty, 0) END, 2) AS begin_qty,
+                @begin_price := ROUND(CASE WHEN @item_rm_id = z.item_rm_id THEN @balance_price ELSE COALESCE(bgin.begin_price, 0) END, 4) AS begin_price,
+                @begin_amount := ROUND(CASE WHEN @item_rm_id = z.item_rm_id THEN @balance_amount ELSE COALESCE(bgin.begin_amount, 0) END, 4) AS begin_amount,
+                @item_rm_id := z.item_rm_id AS item_rm_id,
+                z.qty_in, 
+                ROUND(CASE WHEN z.price_in = 0 THEN @begin_price ELSE z.price_in END, 4) AS price_in,
+                ROUND(CASE WHEN z.amount_in = 0 THEN (z.qty_in * @begin_price) ELSE z.amount_in END, 4) AS amount_in,
+                z.qty_out, 
+                ROUND(CASE WHEN z.qty_in = 0 THEN @begin_price ELSE 0 END, 4) AS price_out, 
+                (CASE WHEN z.qty_in = 0 THEN ROUND(z.qty_out * @begin_price, 4) ELSE 0 END) AS amount_out,
+                @balance_price := COALESCE(ROUND((@begin_amount + z.amount_in - (CASE WHEN z.qty_in = 0 THEN ROUND(z.qty_out * @begin_price, 4) ELSE 0 END)) / (@begin_qty + z.qty_in - z.qty_out), 2), 0) AS balance_price,
+                @balance_qty := COALESCE(ROUND(@begin_qty + z.qty_in - z.qty_out, 2), 0) AS balance_qty,
+                @balance_amount := COALESCE(ROUND(@balance_qty * @balance_price, 4), 0) AS balance_amount
+            FROM (SELECT a.* FROM (
+                SELECT
+                    a.id,
+                    a.item_rm_id,
+                    a.receipt_date,
+                    'RECEIPT' AS trans_type,
+                    b.po_date,
+                    a.receipt_no,
+                    b.po_no,
+                    a.bc_document,
+                    a.created_by,
+                    a.bc_date,
+                    c.qty_receipt AS qty_in,
+                    b.price AS price_in,
+                    (c.qty_receipt * b.price) AS amount_in,
+                    0 AS qty_out
+                FROM purchase_order_receipts a
+                LEFT JOIN purchase_orders b ON a.item_rm_id = b.item_rm_id AND a.po_no = b.po_no
+                JOIN (SELECT receipt_id, SUM(qty) AS qty_receipt FROM scan_item_receipts GROUP BY receipt_id) c ON a.receipt_id = c.receipt_id
+                WHERE a.receipt_date BETWEEN '$filter_from' AND '$filter_to'
+                GROUP BY a.id
+                UNION
+                SELECT
+                    a.id,
+                    a.item_rm_id,
+                    DATE_FORMAT(a.created_date, '%Y-%m-%d') AS receipt_date,
+                    'ISSUED' AS trans_type,
+                    '-' AS po_date,
+                    '-' AS receipt_no,
+                    a.request_no AS po_no,
+                    a.label_no AS bc_document,
+                    a.created_by,
+                    '-' AS bc_date,
+                    0 AS qty_in,
+                    0 AS price_in,
+                    0 AS amount_in,
+                    a.qty AS qty_out
+                FROM issued_material_details a
+                JOIN $table b ON a.request_no = b.request_no AND a.item_rm_id = b.item_rm_id
+                WHERE DATE_FORMAT(a.created_date, '%Y-%m-%d') BETWEEN '$filter_from' AND '$filter_to' AND b.item_fg_id = '$item_fg_id'
+                GROUP BY a.id) a
+                ORDER BY a.item_rm_id, a.receipt_date ASC) z
+            LEFT JOIN (SELECT 
+                c.id AS item_rm_id, 
+                (COALESCE(a.qty, 0) + COALESCE(SUM(zz.qty_in), 0) - COALESCE(SUM(zz.qty_out), 0)) AS begin_qty, 
+                (CASE WHEN zz.balance_price IS NULL OR zz.balance_price = 0 THEN a.price ELSE zz.balance_price END) AS begin_price, 
+                ((COALESCE(a.qty, 0) + COALESCE(SUM(zz.qty_in), 0) - COALESCE(SUM(zz.qty_out), 0)) * (CASE WHEN zz.balance_price IS NULL OR zz.balance_price = 0 THEN a.price ELSE zz.balance_price END)) AS begin_amount
+                FROM item_rm c
+                LEFT JOIN (
+                SELECT (@no_urut := @no_urut + 1) AS no_urut, z.receipt_date,
+                    (CASE WHEN @item_rm_id = z.item_rm_id THEN '1' ELSE '0' END) AS typee,
+                    @begin_qty := ROUND(CASE WHEN @item_rm_id = z.item_rm_id THEN @balance_qty ELSE 0 END, 2) AS begin_qty,
+                    @begin_price := ROUND(CASE WHEN @item_rm_id = z.item_rm_id THEN @balance_price ELSE 0 END, 4) AS begin_price,
+                    @begin_amount := ROUND(CASE WHEN @item_rm_id = z.item_rm_id THEN @balance_amount ELSE 0 END, 4) AS begin_amount,
+                    @item_rm_id := z.item_rm_id AS item_rm_id,
+                    z.qty_in, 
+                    ROUND(CASE WHEN z.price_in = 0 THEN @begin_price ELSE z.price_in END, 4) AS price_in,
+                    ROUND(CASE WHEN z.amount_in = 0 THEN (z.qty_in * @begin_price) ELSE z.amount_in END, 4) AS amount_in,
+                    z.qty_out, 
+                    ROUND(CASE WHEN z.qty_in = 0 THEN @begin_price ELSE 0 END, 4) AS price_out, 
+                    (CASE WHEN z.qty_in = 0 THEN ROUND(z.qty_out * @begin_price, 4) ELSE 0 END) AS amount_out,
+                    @balance_price := COALESCE(ROUND((@begin_amount + z.amount_in - (CASE WHEN z.qty_in = 0 THEN ROUND(z.qty_out * @begin_price, 4) ELSE 0 END)) / (@begin_qty + z.qty_in - z.qty_out), 4), 0) AS balance_price,
+                    @balance_qty := COALESCE(ROUND(@begin_qty + z.qty_in - z.qty_out, 2), 0) AS balance_qty,
+                    @balance_amount := COALESCE(ROUND(@balance_qty * @balance_price, 4), 0) AS balance_amount
+                FROM (
+                SELECT a.* FROM (
+                    SELECT
+                        a.id,
+                        a.item_rm_id,
+                        a.receipt_date,
+                        c.qty_receipt AS qty_in,
+                        b.price AS price_in,
+                        (c.qty_receipt * b.price) AS amount_in,
+                        0 AS qty_out
+                    FROM purchase_order_receipts a
+                    LEFT JOIN purchase_orders b ON a.item_rm_id = b.item_rm_id AND a.po_no = b.po_no
+                    JOIN (SELECT receipt_id, SUM(qty) AS qty_receipt FROM scan_item_receipts GROUP BY receipt_id) c ON a.receipt_id = c.receipt_id
+                    WHERE a.receipt_date < '$filter_from'
+                    GROUP BY a.id
+                    UNION
+                    SELECT
+                        a.id,
+                        a.item_rm_id,
+                        DATE_FORMAT(a.created_date, '%Y-%m-%d') AS trans_date,
+                        0 AS qty_in,
+                        0 AS price_in,
+                        0 AS amount_in,
+                        a.qty AS qty_out
+                    FROM issued_material_details a
+                    JOIN $table b ON a.request_no = b.request_no AND a.item_rm_id = b.item_rm_id
+                    WHERE DATE_FORMAT(a.created_date, '%Y-%m-%d') < '$filter_from' AND b.item_fg_id = '$item_fg_id'
+                    GROUP BY a.id) a
+                    ORDER BY a.item_rm_id, a.receipt_date ASC
+                ) z,
+                (SELECT @no_urut := 0, @balance_qty := 0.0000, @balance_price := 0.0000, @balance_amount := 0.0000) AS zz
+                ORDER BY z.item_rm_id, z.receipt_date ASC) zz ON c.id = zz.item_rm_id
+                LEFT JOIN inventory_rm a ON c.id = a.item_rm_id
+                WHERE c.item_category_id = 'C01'
+                GROUP BY c.id) bgin ON z.item_rm_id = bgin.item_rm_id
+            JOIN item_rm c ON z.item_rm_id = c.id
+            JOIN item_familys d ON c.item_family_id = d.id,
+            (SELECT @no_urut := 0, @item_rm_id := 0) AS za
+            WHERE c.item_category_id = 'C01'
+            ORDER BY z.item_rm_id, z.receipt_date, no_urut ASC) a
+            WHERE a.trans_type = 'ISSUED'
+            GROUP BY a.item_rm_id, a.po_no");
+        return $supply_sheets;
     }
-
-    public function checkSalesInvoice(){
-        $month = $this->input->post('filter_month');
-        $year = $this->input->post('filter_year');
-        $periode = $year . '-' . $month;
-
-        $filter_from = date("Y-m-01", strtotime($periode));
-        $filter_to = date("Y-m-t", strtotime($periode));
-
-        $this->db->select('number');
-        $this->db->from('sales_invoices');
-        $this->db->where('trans_date >=', $filter_from);
-        $this->db->where('trans_date <=', $filter_to);
-        $this->db->group_by('number');
-        $records_a = $this->db->get()->result_array();
-
-        $this->db->select('document_no');
-        $this->db->from('journal_postings');
-        $this->db->where('trans_date >=', $filter_from);
-        $this->db->where('trans_date <=', $filter_to);
-        $this->db->where('modul', 'SALES INVOICING');
-        $this->db->group_by('document_no');
-        $records_b = $this->db->get()->result_array();
-
-        if(count($records_a) == count($records_b)){
-            echo 1;
-        }else{
-            echo 0;
-        }
-    }
-
-    // public function checkApPayment(){
-    //     $month = $this->input->post('filter_month');
-    //     $year = $this->input->post('filter_year');
-    //     $periode = $year . '-' . $month;
-
-    //     $filter_from = date("Y-m-01", strtotime($periode));
-    //     $filter_to = date("Y-m-t", strtotime($periode));
-
-    //     $this->db->select('payment_no');
-    //     $this->db->from('ap_payments');
-    //     $this->db->where('payment_date >=', $filter_from);
-    //     $this->db->where('payment_date <=', $filter_to);
-    //     $this->db->group_by('payment_no');
-    //     $records_a = $this->db->get()->result_array();
-
-    //     $this->db->select('document_no');
-    //     $this->db->from('journal_postings');
-    //     $this->db->where('trans_date >=', $filter_from);
-    //     $this->db->where('trans_date <=', $filter_to);
-    //     $this->db->where('modul', 'AP PAYMENT');
-    //     $this->db->group_by('document_no');
-    //     $records_b = $this->db->get()->result_array();
-
-    //     if(count($records_a) == count($records_b) && count($records_b) > 0){
-    //         echo 1;
-    //     }else{
-    //         echo 0;
-    //     }
-    // }
-
-    // public function checkArReceipt(){
-    //     $month = $this->input->post('filter_month');
-    //     $year = $this->input->post('filter_year');
-    //     $periode = $year . '-' . $month;
-
-    //     $filter_from = date("Y-m-01", strtotime($periode));
-    //     $filter_to = date("Y-m-t", strtotime($periode));
-
-    //     $this->db->select('receipt_no');
-    //     $this->db->from('ar_receipts');
-    //     $this->db->where('receipt_date >=', $filter_from);
-    //     $this->db->where('receipt_date <=', $filter_to);
-    //     $this->db->group_by('receipt_no');
-    //     $records_a = $this->db->get()->result_array();
-
-    //     $this->db->select('document_no');
-    //     $this->db->from('journal_postings');
-    //     $this->db->where('trans_date >=', $filter_from);
-    //     $this->db->where('trans_date <=', $filter_to);
-    //     $this->db->where('modul', 'AR RECEIPT');
-    //     $this->db->group_by('document_no');
-    //     $records_b = $this->db->get()->result_array();
-
-    //     if(count($records_a) == count($records_b) && count($records_b) > 0){
-    //         echo 1;
-    //     }else{
-    //         echo 0;
-    //     }
-    // }
-
-    // public function checkAsset(){
-    //     $month = $this->input->post('filter_month');
-    //     $year = $this->input->post('filter_year');
-    //     $periode = $year . '-' . $month;
-
-    //     $filter_from = date("Y-m-01", strtotime($periode));
-    //     $filter_to = date("Y-m-t", strtotime($periode));
-
-    //     $this->db->select('asset_no');
-    //     $this->db->from('asset_journals');
-    //     $this->db->where('periode', $periode);
-    //     $this->db->group_by('asset_no');
-    //     $records_a = $this->db->get()->result_array();
-
-    //     $this->db->select('document_no');
-    //     $this->db->from('journal_postings');
-    //     $this->db->where('journal_date >=', $filter_from);
-    //     $this->db->where('journal_date <=', $filter_to);
-    //     $this->db->where('modul', 'ASSET');
-    //     $this->db->group_by('document_no');
-    //     $records_b = $this->db->get()->result_array();
-
-    //     if(count($records_a) > 0 && count($records_b) > 0){
-    //         echo 1;
-    //     }else{
-    //         echo 0;
-    //     }
-    // }
-
-    // public function checkCurrency(){
-    //     $month = $this->input->post('filter_month');
-    //     $year = $this->input->post('filter_year');
-    //     $periode = $year . '-' . $month;
-
-    //     $filter_from = date("Y-m-01", strtotime($periode));
-    //     $filter_to = date("Y-m-t", strtotime($periode));
-
-    //     $this->db->select('number');
-    //     $this->db->from('journal_revaluations');
-    //     $this->db->where('period', $periode);
-    //     $this->db->group_by('number');
-    //     $records_a = $this->db->get()->result_array();
-
-    //     $this->db->select('document_no');
-    //     $this->db->from('journal_postings');
-    //     $this->db->where('trans_date >=', $filter_from);
-    //     $this->db->where('trans_date <=', $filter_to);
-    //     $this->db->where('modul', 'CURRENCY REVALUATION');
-    //     $this->db->group_by('document_no');
-    //     $records_b = $this->db->get()->result_array();
-
-    //     if(count($records_a) > 0 && count($records_b) > 0){
-    //         echo 1;
-    //     }else{
-    //         if(count($records_a) == 0){
-    //             echo 1;
-    //         }else{
-    //             echo 0;
-    //         }
-    //     }
-    // }
 
     public function getData()
     {
@@ -253,116 +199,100 @@ class Costing_products extends CI_Controller
             $filter_from = date("Y-m-01", strtotime($periode));
             $filter_to = date("Y-m-t", strtotime($periode));
 
-            $this->db->select('c.*');
+            $this->db->select('c.item_fg_id, a.number_customer, c.period, SUM(c.qty) AS qty');
             $this->db->from('item_fg a');
             $this->db->join('production_schedules c', "a.id = c.item_fg_id and c.month = '$month' and c.year = '$year'");
             $this->db->like('a.id', $item_fg_id);
-            $this->db->group_by('c.workorder');
+            $this->db->group_by('c.item_fg_id');
             $this->db->order_by('a.number', 'asc');
+            // $this->db->limit(1);
             $items = $this->db->get()->result_array();
 
-            $inventories_rm = $this->crud->reads('inventory_rm', [], ["period" => $periode]);
+            $result['total'] = count($items);
+            $result = array_merge($result, ['rows' => $items]);
+            echo json_encode($result);
 
-            $dataFinals = array();
-            if(count($inventories_rm) > 0){
-                $datas = array();
+        }
+    }
 
-                foreach ($items as $item) {
-                    $workorder = $item['workorder'];
+    public function getData2()
+    {
+        if ($this->input->post()) {
+            $month = $this->input->post('month');
+            $year = $this->input->post('year');
+            $item_fg_id = $this->input->post('item_fg_id');
+            $periode = $this->input->post('period');
+            $qty = $this->input->post('qty');
+            $periode2 = $year . "-" . $month . "-01";
 
-                    $supply_sheets = $this->crud->query("SELECT a.item_rm_id, a.trans_date, a.custom_no, SUM(a.qty) as qty, a.price, SUM(a.amount) as amount
-                        FROM inventory_rm a
-                        JOIN supply_sheets b ON a.custom_no = b.request_no and a.item_rm_id = b.item_rm_id
-                        WHERE a.trans_type = 'ISSUED' and a.trans_date BETWEEN '$filter_from' and '$filter_to' and b.workorder = '$workorder'
-                        GROUP BY a.custom_no, a.item_rm_id");
-                    
-                    $direct_material = 0;
-                    $costing_product_details = array();
-                    foreach ($supply_sheets as $supply_sheet) {
-                        $costing_product_details[] = array(
-                            "item_rm_id" => $supply_sheet->item_rm_id,
-                            "periode" => $periode,
-                            "workorder" => $item['workorder'],
-                            "supply_type" => "SUPPLY SHEET",
-                            "supply_date" => $supply_sheet->trans_date,
-                            "supply_no" => $supply_sheet->custom_no,
-                            "issued" => abs($supply_sheet->qty),
-                            "price" => abs($supply_sheet->price),
-                            "amount" => abs($supply_sheet->amount),
-                        );
+            $filter_from = date("Y-m-01", strtotime($periode2));
+            $filter_to = date("Y-m-t", strtotime($periode2));
 
-                        // $this->crud->create("costing_product_details", $arr);
-                        $direct_material += abs($supply_sheet->amount);
-                    }
+            
+            $supply_sheets = $this->dataSupplySheets($filter_from, $filter_to, $item_fg_id, "supply_sheets");
 
-                    $supply_materials = $this->crud->query("SELECT a.item_rm_id, a.trans_date, a.custom_no, SUM(a.qty) as qty, a.price, SUM(a.amount) as amount
-                        FROM inventory_rm a
-                        JOIN supply_materials b ON a.custom_no = b.request_no and a.item_rm_id = b.item_rm_id
-                        WHERE a.trans_type = 'ISSUED' and a.trans_date BETWEEN '$filter_from' and '$filter_to' and b.workorder = '$workorder'
-                        GROUP BY a.custom_no, a.item_rm_id");
+            $direct_material = 0;
+            $details = array();
+            foreach ($supply_sheets as $supply_sheet) {
+                $details[] = array(
+                    "item_fg_id" => $item_fg_id,
+                    "item_rm_id" => $supply_sheet->item_rm_id,
+                    "periode" => $periode,
+                    "supply_type" => "KANBAN MATERIAL",
+                    "supply_date" => $supply_sheet->receipt_date,
+                    "supply_no" => $supply_sheet->po_no,
+                    "issued" => abs($supply_sheet->qty),
+                    "price" => abs($supply_sheet->price_out),
+                    "amount" => abs($supply_sheet->amount),
+                    "created_by" => $this->session->username,
+                    "created_date" => date("Y-m-d H:i:s"),
+                );
 
-                    $non_supply = 0;
-                    foreach ($supply_materials as $supply_material) {
-                        $costing_product_details[] = array(
-                            "item_rm_id" => $supply_material->item_rm_id,
-                            "periode" => $periode,
-                            "workorder" => $item['workorder'],
-                            "supply_type" => "NON SUPPLY SHEET",
-                            "supply_date" => $supply_material->trans_date,
-                            "supply_no" => $supply_material->custom_no,
-                            "issued" => abs($supply_material->qty),
-                            "price" => abs($supply_material->price),
-                            "amount" => abs($supply_material->amount),
-                        );
-
-                        // $this->crud->create("costing_product_details", $arr);
-                        $non_supply += abs($supply_material->amount);
-                    }
-
-                    $supply_requestions = $this->crud->query("SELECT a.item_rm_id, a.trans_date, a.custom_no, SUM(a.qty) as qty, a.price, SUM(a.amount) as amount
-                    FROM inventory_rm a
-                    JOIN supply_requestions b ON a.custom_no = b.request_no and a.item_rm_id = b.item_rm_id
-                    WHERE a.trans_type = 'ISSUED' and a.trans_date BETWEEN '$filter_from' and '$filter_to' and b.workorder = '$workorder'
-                    GROUP BY a.custom_no, a.item_rm_id");
-
-                    $direct_requestion = 0;
-                    foreach ($supply_requestions as $supply_requestion) {
-                        $costing_product_details[] = array(
-                            "item_rm_id" => $supply_requestion->item_rm_id,
-                            "periode" => $periode,
-                            "workorder" => $item['workorder'],
-                            "supply_type" => "MATERIAL REQUESTION",
-                            "supply_date" => $supply_requestion->trans_date,
-                            "supply_no" => $supply_requestion->custom_no,
-                            "issued" => abs($supply_requestion->qty),
-                            "price" => abs($supply_requestion->price),
-                            "amount" => abs($supply_requestion->amount),
-                        );
-
-                        // $this->crud->create("costing_product_details", $arr);
-                        $direct_requestion += abs($supply_requestion->amount);
-                    }
-
-                    $dataFinals[] = array(
-                        "item_fg_id" => $item['item_fg_id'],
-                        "periode" => $periode,
-                        "wp" => $item['wp'],
-                        "workorder" => $item['workorder'],
-                        "qty" => $item['qty'],
-                        "umh" => 0,
-                        "total_umh" => 0,
-                        "direct_labor" => 0,
-                        "direct_foh" => 0,
-                        "direct_overtime" => 0,
-                        "direct_material" => $direct_material,
-                        "direct_requestion" => ($direct_requestion + $non_supply),
-                        "costing_product_details" => $costing_product_details
-                    );
-                }
+                $direct_material += abs($supply_sheet->amount);
             }
 
-            $result['total'] = count($dataFinals);
-            $result = array_merge($result, ['rows' => $dataFinals]);
+            $supply_materials = $this->dataSupplySheets($filter_from, $filter_to, $item_fg_id, "supply_materials");
+
+            $non_supply = 0;
+            foreach ($supply_materials as $supply_material) {
+                $details[] = array(
+                    "item_fg_id" => $item_fg_id,
+                    "item_rm_id" => $supply_material->item_rm_id,
+                    "periode" => $periode,
+                    "supply_type" => "SAMPLE REQUISITION",
+                    "supply_date" => $supply_material->receipt_date,
+                    "supply_no" => $supply_material->po_no,
+                    "issued" => abs($supply_material->qty),
+                    "price" => abs($supply_material->price_out),
+                    "amount" => abs($supply_material->amount),
+                    "created_by" => $this->session->username,
+                    "created_date" => date("Y-m-d H:i:s"),
+                );
+
+                $non_supply += abs($supply_material->amount);
+            }
+
+            $dataFinals = array(
+                "created_by" => $this->session->username,
+                "created_date" => date("Y-m-d H:i:s"),
+                "item_fg_id" => $item_fg_id,
+                "periode" => $periode,
+                "qty" => $qty,
+                "umh" => 0,
+                "total_umh" => 0,
+                "direct_labor" => 0,
+                "direct_foh" => 0,
+                "direct_overtime" => 0,
+                "direct_material" => $direct_material,
+                "direct_requestion" => $non_supply
+            );
+
+            $this->db->delete('costing_product_details', ["item_fg_id" => $item_fg_id, "periode" => $periode]);
+            $this->db->delete('costing_product_workorders', ["item_fg_id" => $item_fg_id, "periode" => $periode]);
+            $this->db->insert('costing_product_workorders', $dataFinals);
+
+            $result['total'] = count($details);
+            $result = array_merge($result, ['rows' => $details]);
             echo json_encode($result);
         }
     }
@@ -512,16 +442,16 @@ class Costing_products extends CI_Controller
     }
 
     public function datatableDetails(){
-        if ($this->input->get()) {
-            $periode = base64_decode($this->input->get('periode'));
-            $workorder = base64_decode($this->input->get('workorder'));
+        if ($this->input->post()) {
+            $periode = $this->input->post('periode');
+            $item_fg_id = $this->input->post('item_fg_id');
 
             //Select Query
             $this->db->select('a.*, b.number as item_rm_number, b.name as item_rm_name, b.uom');
             $this->db->from('costing_product_details a');
             $this->db->join('item_rm b', 'a.item_rm_id = b.id');
             $this->db->where('a.periode', $periode);
-            $this->db->like('a.workorder', $workorder);
+            $this->db->like('a.item_fg_id', $item_fg_id);
             $this->db->order_by('a.amount', 'desc');
 
             //Total Data
@@ -542,57 +472,12 @@ class Costing_products extends CI_Controller
         if ($this->input->post()) {
             $post = $this->input->post();
 
-            $costing_product_details = @$post['costing_product_details'];
-            if(!empty($costing_product_details)){
-                foreach ($costing_product_details as $costing_product_detail) {
-                    $read_costing_product_detail = $this->crud->read('costing_product_details', [], [
-                        "periode" => $costing_product_detail['periode'], 
-                        "item_rm_id" => $costing_product_detail['item_rm_id'],
-                        "workorder" => $costing_product_detail['workorder'],
-                        "supply_no" => $costing_product_detail['supply_no']
-                    ]);
-
-                    if (@$read_costing_product_detail->id != "") {
-                        $send = $this->crud->update('costing_product_details', [
-                            "periode" => $costing_product_detail['periode'], 
-                            "item_rm_id" => $costing_product_detail['item_rm_id'], 
-                            "workorder" => $costing_product_detail['workorder'],
-                            "supply_no" => $costing_product_detail['supply_no']
-                        ], $costing_product_detail);
-                    } else {
-                        $send = $this->crud->create('costing_product_details', $costing_product_detail);
-                    }
-                }
+            $sql = $this->db->insert('costing_product_details', $post);
+            if($sql){
+                die(json_encode(array("title" => "Good Job", "message" => "Data Save Already Successfully", "theme" => "success")));
+            }else{
+                die(json_encode(array("title" => "Failed", "message" => "Data Failed to Save Data", "theme" => "error")));
             }
-
-            $costing_product_workorder = $this->crud->read('costing_product_workorders', [], [
-                "periode" => $post['periode'], 
-                "item_fg_id" => $post['item_fg_id'],
-                "workorder" => $post['workorder']
-            ]);
-
-            $data = array(
-                "item_fg_id" => $post['item_fg_id'],
-                "periode" => $post['periode'],
-                "wp" => $post['wp'],
-                "workorder" => $post['workorder'],
-                "qty" => $post['qty'],
-                "umh" => $post['umh'],
-                "total_umh" => $post['total_umh'],
-                "direct_labor" => $post['direct_labor'],
-                "direct_foh" => $post['direct_foh'],
-                "direct_material" => $post['direct_material'],
-                "direct_overtime" => $post['direct_overtime'],
-                "direct_requestion" => $post['direct_requestion'],
-            );
-
-            if (@$costing_product_workorder->id != "") {
-                $send = $this->crud->update('costing_product_workorders', ["periode" => $post['periode'], "item_fg_id" => $post['item_fg_id'], "workorder" => $post['workorder']], $data);
-            } else {
-                $send = $this->crud->create('costing_product_workorders', $data);
-            }
-
-            echo $send;
         } else {
             show_error("Cannot Process your request");
         }
@@ -749,51 +634,15 @@ class Costing_products extends CI_Controller
 
             $html .= '  <tr>
                             <th colspan="16" style="background:#A3FF73;">Detail of Product No '.$data['item_no'].' - '.$data['item_name'].'</th>
-                        </tr>
-                        <tr>
-                            <th width="20">No</th>
-                            <th>Workorder</th>
-                            <th>Period / WP</th>
-                            <th>Qty</th>
-                            <th>UMH</th>
-                            <th>Total UMH</th>
-                            <th>Direct Material</th>
-                            <th>Direct Requestion</th>
-                            <th></th>
-                            <th></th>
                         </tr>';
-
-            $this->db->select('a.*, b.number as item_number, b.name as item_name');
-            $this->db->from('costing_product_workorders a');
-            $this->db->join('item_fg b', 'a.item_fg_id = b.id');
-            $this->db->where('a.periode', $filter_period);
-            $this->db->like('a.item_fg_id', $data['item_fg_id']);
-            $this->db->order_by('a.workorder', 'asc');
-            //Get Data Array
-            $workorders = $this->db->get()->result_array();
-
-            $nod = 1;
-            foreach ($workorders as $workorder) {
-                $html .= '  <tr>
-                                <td>' . $no.'.'.$nod . '</td>
-                                <td>' . $workorder['workorder'] . '</td>
-                                <td>' . $workorder['periode'] . ' /  '.$workorder['wp'].'</td>
-                                <td>' . $workorder['qty'] . '</td>
-                                <td>' . $workorder['umh'] . '</td>
-                                <td>' . $workorder['total_umh'] . '</td>
-                                <td>' . $workorder['direct_material'] . '</td>
-                                <td>' . $workorder['direct_requestion'] . '</td>
-                                <td></td>
-                                <td></td>
-                            </tr>';
                 
                     $html .= '  <tr>
                                     <th colspan="16" style="background:#FFDB73;">Detail of Workorder No '.$workorder['workorder'].'</th>
                                 </tr>
                                 <tr>
                                     <th width="20">No</th>
-                                    <th>Component No</th>
-                                    <th>Component Name</th>
+                                    <th>Part No EBWS</th>
+                                    <th>Part No Supplier</th>
                                     <th>Uom</th>
                                     <th>Supply Type</th>
                                     <th>Supply Date</th>
@@ -803,11 +652,11 @@ class Costing_products extends CI_Controller
                                     <th>Amount</th>
                                 </tr>';
 
-                $this->db->select('a.*, b.number as item_number, b.name as item_name, b.uom');
+                $this->db->select('a.*, b.id as item_number, b.number as item_name, b.uom');
                 $this->db->from('costing_product_details a');
                 $this->db->join('item_rm b', 'a.item_rm_id = b.id');
                 $this->db->where('a.periode', $filter_period);
-                $this->db->like('a.workorder', $workorder['workorder']);
+                $this->db->like('a.item_fg_id', $data['item_fg_id']);
                 $this->db->order_by('a.amount', 'desc');
                 $details = $this->db->get()->result_array();
 
@@ -827,8 +676,6 @@ class Costing_products extends CI_Controller
                                 </tr>';
                     $noc++;
                 }
-                $nod++;
-            }
             $no++;
         }
         $html .= '</table></body></html>';

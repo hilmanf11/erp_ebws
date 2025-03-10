@@ -127,7 +127,7 @@
         $('#workorder').combogrid({
             url: '<?= base_url('planning/scraps/readDocument') ?>',
             panelWidth: 550,
-            idField: 'scrap_no',
+            idField: 'workorder',
             textField: 'workorder',
             mode: 'remote',
             fitColumns: true,
@@ -158,7 +158,7 @@
                 }]
             ],
             onSelect: function(val, row){
-                $("#scrap_no").textbox('setValue', row.workorder);
+                $("#scrap_no").textbox('setValue', row.scrap_no);
                 $("#rejection_no").textbox('setValue', row.rejection_no);
                 $("#period").textbox('setValue', row.period);
                 $("#wp").textbox('setValue', row.wp);
@@ -223,14 +223,15 @@
     }
 
     function preview() {
-        var workorder = $("#workorder").combogrid('getValue');
+        var scrap_no = $("#scrap_no").textbox('getValue');
+        var rejection_no = $("#rejection_no").textbox('getValue');
 
-        if (workorder == "") {
+        if (scrap_no == "") {
             toastr.warning('Please Select Document', 'Required');
         } else {
             var lastIndex;
             var dg = $('#dg2').datagrid({
-                url: '<?= base_url('planning/supply_requestions/datatablesTemp') ?>?workorder=' + workorder,
+                url: '<?= base_url('planning/supply_requestions/datatablesTemp') ?>?scrap_no=' + scrap_no + "&rejection_no=" + rejection_no,
                 singleSelect: false,
                 idField: 'item_rm_id',
                 columns: [[

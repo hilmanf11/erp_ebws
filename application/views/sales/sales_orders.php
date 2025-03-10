@@ -330,7 +330,8 @@
                 $.messager.prompt('Reason SO', 'Why you want close this SO??', function(s){
                     if (s){
                         var sales_order_no = $("#sales_order_no").textbox('getValue');
-                        
+                        $('#dlg_insert').dialog('close');
+
                         Swal.fire({
                             title: 'Please Wait...',
                             showConfirmButton: false,
@@ -349,7 +350,6 @@
                             success: function (label) {
                                 swal.close();
                                 $('#dg').datagrid('reload');
-                                $("#dlg_insert").dialog("close");
 
                                 if(label.theme == "error"){
                                     toastr.error("Closing SO Failed");

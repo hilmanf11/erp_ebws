@@ -140,6 +140,7 @@
                             <option value="purchase">Non Down Payment</option>
                             <option value="dp">Down Payment</option>
                             <option value="others">Others</option>
+                            <option value="services">Services</option>
                         </select>
                     </div>
                     <div class="fitem">
@@ -481,7 +482,7 @@
 
                                 var ed = dg.datagrid('getEditor', {
                                     index: rowIndex,
-                                    field: 'total2'
+                                    field: 'total'
                                 });
 
                                 var ed1 = dg.datagrid('getEditor', {
@@ -547,7 +548,7 @@
                     </div>
                     <div class="fitem">
                         <b style="width:35%; display:inline-block;">FREIGHT</b>
-                        <input style="width:40%;" id="total_freight" name="total_freight" class="easyui-numberbox" data-options="precision:2,groupSeparator:','">
+                        <input style="width:40%;" id="total_freight" name="total_freight" disabled class="easyui-numberbox" data-options="precision:2,groupSeparator:','">
                     </div>
                     <div class="fitem">
                         <b style="width:35%; display:inline-block;">INVOICE VALUE</b>
@@ -944,7 +945,7 @@
         if (endEditing()) {
             var type = $("#type").combobox('getValue');
 
-            if(type == "others"){
+            // if(type == "others"){
                 $('#dg2').datagrid('appendRow', {
                     "action": 0,
                     "currency": "INR",
@@ -974,9 +975,9 @@
 
                 $(qty.target).numberbox('readonly', false);
                 $(price.target).numberbox('readonly', false);
-            }else{
-                toastr.info("Available only Other Type");
-            }
+            // }else{
+            //     toastr.info("Available only Other Type");
+            // }
         }
     }
 
@@ -1287,16 +1288,16 @@
                     for (var i = 0; i < rows.length; i++) {
                         var row = rows[i];
 
-                        // $.ajax({
-                        //     type: "post",
-                        //     url: "<?= base_url('closing/locks/checkLock') ?>",
-                        //     data: "period=" + row.trans_date + "&menus_id=<?= $menus_id ?>",
-                        //     dataType: "json",
-                        //     success: function (lock) {
-                        //         if(lock.total > 0){
-                        //             toastr.error("This period is not active by Accounting");
-                        //             return false;
-                        //         }
+                        $.ajax({
+                            type: "post",
+                            url: "<?= base_url('closing/locks/checkLock') ?>",
+                            data: "period=" + row.trans_date + "&menus_id=<?= $menus_id ?>",
+                            dataType: "json",
+                            success: function (lock) {
+                                if(lock.total > 0){
+                                    toastr.error("This period is not active by Accounting");
+                                    return false;
+                                }
 
                                 if(row.status == 0){
                                     if(row.gl_no == null){
@@ -1324,8 +1325,8 @@
                                 } else {
                                     toastr.error("AP Payment Status is closed");
                                 }
-                        //     }
-                        // });
+                            }
+                        });
                     }
                 }
             });
@@ -1701,16 +1702,16 @@
                     var total_grand = $("#total_grand").numberbox('getValue');
                     var total_dp = $("#total_dp").numberbox('getValue');
 
-                    // $.ajax({
-                    //     type: "post",
-                    //     url: "<?= base_url('closing/locks/checkLock') ?>",
-                    //     data: "period=" + trans_date + "&menus_id=<?= $menus_id ?>",
-                    //     dataType: "json",
-                    //     success: function (lock) {
-                    //         if(lock.total > 0){
-                    //             toastr.error("This period is not active by Accounting");
-                    //             return false;
-                    //         }
+                    $.ajax({
+                        type: "post",
+                        url: "<?= base_url('closing/locks/checkLock') ?>",
+                        data: "period=" + trans_date + "&menus_id=<?= $menus_id ?>",
+                        dataType: "json",
+                        success: function (lock) {
+                            if(lock.total > 0){
+                                toastr.error("This period is not active by Accounting");
+                                return false;
+                            }
 
                             if (parseFloat(balance_debit) == parseFloat(balance_credit)) {
                                 if (por_no == "" || invoice_no == "" || supplier_id == "" || total_grand == "") {
@@ -1724,6 +1725,15 @@
                                     var rows2 = $('#dg3').datagrid('getRows');
                                     var totalrows2 = rows2.length;
                                     endEditing2();
+
+                                    for (let jo = 0; jo < totalrows2; jo++) {
+                                        var dataJ = rows2[jo];
+
+                                        if(dataJ.account_number == "" || dataJ.account_name == ""){
+                                            toastr.error("Account Number Not Valid in Journals, Please Check your data input and save again!!");
+                                            return false;
+                                        }
+                                    }
 
                                     $.ajax({
                                         type: "post",
@@ -1804,52 +1814,113 @@
                                                             success: function(result) {
                                                                 requestData(total, json, jml + 1, value);
                                                                 if (jml == total) {
-                                                                    Swal.close();
-                                                                    Swal.fire({
-                                                                        title: result.message,
-                                                                        icon: result.theme,
-                                                                        confirmButtonText: 'Ok',
-                                                                        allowOutsideClick: false,
-                                                                    }).then((result) => {
-                                                                        if (result.isConfirmed) {
-                                                                            window.location.reload();
-                                                                        }
-                                                                    });
+                                                                    if (totalrows2 > 0) {
+                                                                        requestData2(totalrows2, rows2);
+                                                                        function requestData2(total2, json2, jml2 = 1, value2 = 0) {
+                                                                            if (value2 < 100) {
+                                                                                value2 = Math.floor((jml2 / total2) * 100);
+                                                                                var z = (jml2 - 1);
 
-                                                                    $('#dg').datagrid('reload');
+                                                                                if(json2[z].debit > 0 || json2[z].credit > 0){
+                                                                                    $.ajax({
+                                                                                        type: "post",
+                                                                                        url: '<?= base_url('finance/purchase_invoices/createJournals') ?>',
+                                                                                        data: {
+                                                                                            number: number,
+                                                                                            account_number: json2[z].account_number,
+                                                                                            account_name: json2[z].account_name,
+                                                                                            debit: json2[z].debit,
+                                                                                            credit: json2[z].credit,
+                                                                                            flag: json2[z].flag,
+                                                                                        },
+                                                                                        dataType: "json",
+                                                                                        success: function(result2) {
+                                                                                            requestData2(total2, json2, jml2 + 1, value2);
+                                                                                            
+                                                                                            if (jml2 == total2) {
+                                                                                                $.ajax({
+                                                                                                    type: "post",
+                                                                                                    url: '<?= base_url('finance/purchase_invoices/createAssets') ?>',
+                                                                                                    data: {
+                                                                                                        number: number
+                                                                                                    },
+                                                                                                    dataType: "json",
+                                                                                                    success: function(result4) {
+                                                                                                        Swal.close();
+
+                                                                                                        Swal.fire({
+                                                                                                            title: 'Posting Journal',
+                                                                                                            text: result2.message + ", Do you want to save journal posting to ?",
+                                                                                                            icon: result2.theme,
+                                                                                                            showCancelButton: true,
+                                                                                                            allowOutsideClick: false,
+                                                                                                            allowEscapeKey: false,
+                                                                                                            confirmButtonText: 'Yes, Add to Journal!'
+                                                                                                        }).then((msg) => {
+                                                                                                            if (msg.isConfirmed) {
+                                                                                                                Swal.fire({
+                                                                                                                    title: 'Please Wait...',
+                                                                                                                    showConfirmButton: false,
+                                                                                                                    allowOutsideClick: false,
+                                                                                                                    allowEscapeKey: false,
+                                                                                                                    didOpen: () => {
+                                                                                                                        Swal.showLoading();
+                                                                                                                    },
+                                                                                                                });
+
+                                                                                                                $.ajax({
+                                                                                                                    type: "post",
+                                                                                                                    url: '<?= base_url('finance/purchase_invoices/createPosting') ?>',
+                                                                                                                    data: {
+                                                                                                                        number: number
+                                                                                                                    },
+                                                                                                                    dataType: "json",
+                                                                                                                    success: function(result3) {
+                                                                                                                        Swal.close();
+
+                                                                                                                        Swal.fire({
+                                                                                                                            title: result3.message,
+                                                                                                                            icon: result3.theme,
+                                                                                                                            confirmButtonText: 'Ok',
+                                                                                                                            allowOutsideClick: false,
+                                                                                                                        }).then((result3) => {
+                                                                                                                            if (result3.isConfirmed) {
+                                                                                                                                window.location.reload();
+                                                                                                                            }
+                                                                                                                        });
+
+                                                                                                                    }
+                                                                                                                });
+                                                                                                            }
+                                                                                                        });
+                                                                                                    }, error: function(error){
+                                                                                                        Swal.close();
+                                                                                                        Swal.fire({
+                                                                                                            title: "Create Assets Failed",
+                                                                                                            icon: "error",
+                                                                                                            confirmButtonText: 'Ok',
+                                                                                                            allowOutsideClick: false,
+                                                                                                        }).then((result3) => {
+                                                                                                            if (result3.isConfirmed) {
+                                                                                                                window.location.reload();
+                                                                                                            }
+                                                                                                        });
+                                                                                                    }
+                                                                                                });
+                                                                                            }
+                                                                                        }
+                                                                                    });
+                                                                                }else{
+                                                                                    requestData2(total2, json2, jml2 + 1, value2);
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
                                                                 }
                                                             }
                                                         });
                                                     }
                                                 }
-
-                                                if (totalrows2 > 0) {
-                                                    for (let z = 0; z < totalrows2; z++) {
-                                                        $.ajax({
-                                                            type: "post",
-                                                            url: '<?= base_url('finance/purchase_invoices/createJournals') ?>',
-                                                            data: {
-                                                                number: number,
-                                                                account_number: rows2[z].account_number,
-                                                                account_name: rows2[z].account_name,
-                                                                debit: rows2[z].debit,
-                                                                credit: rows2[z].credit,
-                                                                flag: rows2[z].flag,
-                                                            },
-                                                            dataType: "json",
-                                                            success: function(result2) {
-                                                                // if (result2.theme == "success") {
-                                                                //     toastr.success(result2.message, result2.title);
-                                                                // } else {
-                                                                //     toastr.error(result2.message, result2.title);
-                                                                // }
-                                                            }
-                                                        });
-                                                    }
-                                                }
-
-                                                $('#dg').datagrid('reload');
-                                                $('#dlg_insert').dialog('close');
                                             } else {
                                                 toastr.warning("please selections your data in table first");
                                             }
@@ -1859,8 +1930,8 @@
                             } else {
                                 toastr.error("Balance Debit Cannot match on Balance Credit");
                             }
-                    //     }
-                    // });
+                        }
+                    });
                 }
             }]
         });
@@ -2016,9 +2087,21 @@
                                 $("#boe_no").textbox('setValue', row.awb_no);
                             }
                         });
-                    }else{
+                    }else if (type == "others") {
                         $("#por_no").combobox({
                             url: '<?= base_url('finance/purchase_invoices/readReceipt/other?supplier_id=') ?>' + row.id,
+                            valueField: 'receipt_no',
+                            textField: 'receipt_no',
+                            // multiple: true,
+                            prompt: "Choose Purchase Order Receipts",
+                            onSelect: function(row) {
+                                $("#invoice_no").textbox('setValue', row.bc_document);
+                                $("#boe_no").textbox('setValue', row.awb_no);
+                            }
+                        });
+                    }else if (type == "services") {
+                        $("#por_no").combobox({
+                            url: '<?= base_url('finance/purchase_invoices/readReceipt/service?supplier_id=') ?>' + row.id,
                             valueField: 'receipt_no',
                             textField: 'receipt_no',
                             // multiple: true,

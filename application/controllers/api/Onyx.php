@@ -110,6 +110,12 @@ class Onyx extends CI_Controller
         $itemLists = array();
         foreach ($sales_invoices as $sales_invoice) {
             $item_fg = $this->crud->read("item_fg", [], ["id" => @$sales_invoice->item_fg_id]);
+            $alias = $item_fg->alias;
+            // if(!$item_fg){
+            //     $item_fg = $this->crud->read("item_rm", [], ["id" => @$sales_invoice->item_fg_id]);
+            //     $alias = $item_fg->number;
+            // }
+
             $hsn = $this->crud->read("hsn", [], ["number" => @$sales_invoice->hsn_code]);
 
             if($customer_address->ship_state == $config->state){
@@ -180,7 +186,7 @@ class Onyx extends CI_Controller
                 "orgCntry" => null,
                 "othchrg" => 0,
                 "prdDesc" => $item_fg->name,
-                "prdNm" => $item_fg->name . " " . $item_fg->alias,
+                "prdNm" => $item_fg->name . " " . $alias,
                 "prdSlNo" => null,
                 "preTaxVal" => 0,
                 "qty" => $sales_invoice->qty,

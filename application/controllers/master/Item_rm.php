@@ -60,18 +60,18 @@ class Item_rm extends CI_Controller
 
     public function readItemCategory($item_category = "")
     {
-        if($item_category == "ASSET"){
-            $where_category = "and c.type IN ('OTHER','ASSET','SERVICE')";
-        }else{
-            $where_category = "and c.type = '$item_category'";
-        }
+        // if($item_category == "ASSET"){
+        //     $where_category = "and c.type IN ('ASSET','SERVICE')";
+        // }else{
+        //     $where_category = "and c.type = '$item_category'";
+        // }
 
         $post = isset($_POST['q']) ? $_POST['q'] : "";
         $send = $this->crud->query("SELECT a.*, b.name as item_family_name 
             FROM item_rm a 
             JOIN item_familys b ON a.item_family_id = b.id
             JOIN item_categories c ON a.item_category_id = c.id 
-            WHERE a.status = 0 $where_category
+            WHERE a.status = 0 and c.type = '$item_category' and a.approved_to = ''
             and (a.id like '%$post%' or a.number like '%$post%' or a.name like '%$post%')");
         echo json_encode($send);
     }

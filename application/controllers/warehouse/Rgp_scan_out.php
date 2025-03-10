@@ -61,15 +61,36 @@ class Rgp_scan_out extends CI_Controller
                 $totalRows = $this->db->count_all_results('', false);
                 $records = $this->db->get()->result_array();
 
-                if ($records == []) {
-                    // cek ke receipt FG
-                    $this->db->select("b.item_fg_id as item_id, a.checksheet_label as label_no,a.qty");
-                    $this->db->from('scan_item_receipts_fg a');
-                    $this->db->join('wip_receipts b', 'a.workorder = b.workorder and a.checksheet_number = b.checksheet_number');
-                    $this->db->where('a.checksheet_label', $label_no);
-                    $this->db->where('a.status', 0);
+                if($records == []){
+                    $this->db->select('a.label_divided as label_no, b.item_rm_id as item_id, a.qty');
+                    $this->db->from('barcode_divides a');
+                    $this->db->join('purchase_order_receipts b', 'a.reff = b.receipt_id');
+                    $this->db->where('a.label_divided', $label_no);
+                    $this->db->where('a.status', '0');
                     $totalRows = $this->db->count_all_results('', false);
                     $records = $this->db->get()->result_array();
+
+                    if ($records == []) {
+                        // cek ke receipt FG
+                        $this->db->select("b.item_fg_id as item_id, a.checksheet_label as label_no, a.qty");
+                        $this->db->from('scan_item_receipts_fg a');
+                        $this->db->join('wip_receipts b', 'a.workorder = b.workorder and a.checksheet_number = b.checksheet_number');
+                        $this->db->where('a.checksheet_label', $label_no);
+                        $this->db->where('a.status', 0);
+                        $totalRows = $this->db->count_all_results('', false);
+                        $records = $this->db->get()->result_array();
+
+                        if ($records == []) {
+                            // cek ke receipt FG
+                            $this->db->select("c.label_divided as label_no, c.item_fg_id as item_id, a.qty");
+                            $this->db->from('barcode_divides_fg a');
+                            $this->db->where('a.label_divided', $label_no);
+                            $this->db->where('a.status', '0');
+                            $this->db->group_by('a.label_divided');
+                            $totalRows = $this->db->count_all_results('', false);
+                            $records = $this->db->get()->result_array();
+                        }
+                    }
                 }
             }
 
@@ -130,6 +151,7 @@ class Rgp_scan_out extends CI_Controller
             if ($this->form_validation->run() == TRUE) {
                 $post   = $this->input->post();
                 $scan_item_rgp = $this->crud->read("scan_item_rgp", [], ["label_no" => $post['label_no']]);
+
                 if (!$scan_item_rgp) { // yg belum di scan
                     $rgp_transactions = $this->crud->read("rgp_transactions", [], ["number" => $post['rgp_number'], "item_id" => $post['item_id']]);
                     if (!empty(@$rgp_transactions->item_id)) {
@@ -144,23 +166,33 @@ class Rgp_scan_out extends CI_Controller
                         $item_fg = $this->crud->read("item_fg", [], ["id" => $post['item_id']]);
                         if (!empty(@$item_rm->id)) { // jika RM
                             $item_receipts = $this->crud->read("scan_item_receipts", [], ["label_no" => $post['label_no']]);
+                            if(!$item_receipts){
+                                $item_receipts = $this->crud->read("barcode_divides", [], ["label_divided" => $post['label_no']]);
+                            }
+                            
                             if (@$item_receipts->qty > @$cek_qty[0]->balance) {
                                 echo json_encode(array("title" => "Qty Label is Over", "message" => "Qty in Barcode more than with required Qty Item", "theme" => "error"));
                             } else {
                                 $send   = $this->crud->create('scan_item_rgp', $post);
                                 if ($send) {
                                     $this->crud->update('scan_item_receipts', ["label_no" => $post['label_no']], ["status" => 1]);
+                                    $this->crud->update('barcode_divides', ["label_divided" => $post['label_no']], ["status" => 1]);
                                     echo $send;
                                 }
                             }
                         } else { // jika FG
                             $item_receipts_fg = $this->crud->read("scan_item_receipts_fg", [], ["checksheet_label" => $post['label_no']]);
+                            if(!$item_receipts_fg){
+                                $item_receipts_fg = $this->crud->read("barcode_divides_fg", [], ["label_divided" => $post['label_no']]);
+                            }
+                            
                             if (@$item_receipts_fg->qty > @$cek_qty[0]->balance) {
                                 echo json_encode(array("title" => "Qty Label is Over", "message" => "Qty in Barcode more than with required Qty Item", "theme" => "error"));
                             } else {
-                                $send   = $this->crud->create('scan_item_rgp', $post);
+                                $send = $this->crud->create('scan_item_rgp', $post);
                                 if ($send) {
                                     $this->crud->update('scan_item_receipts_fg', ["checksheet_label" => $post['label_no']], ["status" => 1]);
+                                    $this->crud->update('barcode_divides_fg', ["label_divided" => $post['label_no']], ["status" => 1]);
                                     echo $send;
                                 }
                             }

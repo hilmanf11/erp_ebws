@@ -619,8 +619,8 @@
                 }
             },
         });
-        $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
-        $("#printout").attr('src', '<?= base_url('planning/supply_sheets/print') ?>' + url);
+        // $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
+        // $("#printout").attr('src', '<?= base_url('planning/supply_sheets/print') ?>' + url);
     }
 
     function pdf() {
@@ -662,6 +662,11 @@
                     var request_name = $("#request_name").textbox('getValue');
                     var workorder = $("#workorder").textbox('getValue');
                     var item_fg_id = $("#item_fg_id").textbox('getValue');
+
+                    if(request_no == ""){
+                        toastr.error("Kanban No still empty!!");
+                        return false;
+                    }
                     
                     $('#dg_request').datagrid('acceptChanges');
                     var rows = $('#dg_request').datagrid('getSelections');

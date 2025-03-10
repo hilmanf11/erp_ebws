@@ -372,8 +372,9 @@ class Generate_mrp extends CI_Controller
             $this->db->like('revision', $filter_revision);
             $this->db->group_by('revision');
             $rev = $this->db->get()->row();
+
             if($filter_revision == ""){
-                $revision = empty($rev->revision) ? 0 : ($rev->revision + 1);
+                $revision = empty($rev) ? 0 : ($rev->revision + 1);
             }else{
                 $revision = $filter_revision;
             }
@@ -409,7 +410,7 @@ class Generate_mrp extends CI_Controller
             }
             $this->db->group_by('b.ltpp_month2');
             $this->db->group_by('a.item_rm_id');
-            $this->db->having('SUM(b.prod_plan * a.composition) > 0');
+            // $this->db->having('SUM(b.prod_plan * a.composition) > 0');
             $this->db->order_by('a.item_rm_id', 'asc');
             $this->db->order_by('b.ltpp_month2', 'asc');
             $mpsDetails = $this->db->get()->result_array();
@@ -451,7 +452,7 @@ class Generate_mrp extends CI_Controller
             $rev = $this->db->get()->row();
 
             if($revision == ""){
-                $filter_revision = empty($rev->revision) ? 0 : ($rev->revision + 1);
+                $filter_revision = empty($rev) ? 0 : ($rev->revision + 1);
             }else{
                 $filter_revision = $revision;
             }
@@ -488,8 +489,8 @@ class Generate_mrp extends CI_Controller
                 LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) AS qty_receipt FROM purchase_order_receipts a JOIN scan_item_receipts b ON a.receipt_id  = b.receipt_id WHERE a.receipt_date <= '$filter_cutoff' GROUP BY item_rm_id) e ON a.id = e.item_rm_id
                 LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) AS qty FROM issued_material_details WHERE DATE_FORMAT(created_date, '%Y-%m-%d') <= '$filter_cutoff' GROUP BY item_rm_id) f ON a.id = f.item_rm_id
                 LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) AS qty_reject FROM purchase_order_receipts a JOIN scan_item_rejections b ON a.receipt_id  = b.receipt_id WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') <= '$filter_cutoff' GROUP BY item_rm_id) h ON a.id = h.item_rm_id
-                LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_in FROM rgp_transactions WHERE type = 'IN' and transaction_date <= '$filter_cutoff' GROUP BY item_id) j ON a.id = j.item_id
-                LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_out FROM rgp_transactions WHERE type = 'OUT' and transaction_date <= '$filter_cutoff' GROUP BY item_id) k ON a.id = k.item_id
+                LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) as qty_rgp_in FROM rgp_transactions a JOIN scan_item_rgp b ON a.number = b.rgp_number and a.item_id = b.item_id WHERE a.type = 'IN' and a.transaction_date <= '$filter_cutoff' GROUP BY a.item_id) j ON a.id = j.item_id
+                LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) as qty_rgp_out FROM rgp_transactions a JOIN scan_item_rgp b ON a.number = b.rgp_number and a.item_id = b.item_id WHERE a.type = 'OUT' and a.transaction_date <= '$filter_cutoff' GROUP BY a.item_id) k ON a.id = k.item_id
                 LEFT JOIN (SELECT a.item_rm_id, SUM(c.qty) AS return_qty
                 FROM return_materials a 
                 JOIN return_material_labels b ON a.return_id = b.return_id
@@ -501,7 +502,7 @@ class Generate_mrp extends CI_Controller
                 SELECT a.id, b.po_no, (COALESCE(SUM(b.qty), 0) - COALESCE(c.qty_receipt, 0)) AS begin_stock
                 FROM item_rm a
                 JOIN purchase_orders b ON a.id = b.item_rm_id
-                LEFT JOIN (SELECT item_rm_id, po_no, SUM(qty_receipt) AS qty_receipt FROM purchase_order_receipts GROUP BY item_rm_id, po_no) c ON a.id = c.item_rm_id AND b.po_no = c.po_no
+                LEFT JOIN (SELECT item_rm_id, po_no, SUM(qty_receipt) AS qty_receipt FROM purchase_order_receipts WHERE status != '2' GROUP BY item_rm_id, po_no) c ON a.id = c.item_rm_id AND b.po_no = c.po_no
                 WHERE b.status = 0
                 GROUP BY a.id, b.po_no) z
                 GROUP BY z.id) e", 'a.item_rm_id = e.id', 'left');
@@ -859,7 +860,7 @@ class Generate_mrp extends CI_Controller
             $this->db->group_by('revision');
             $rev = $this->db->get()->row();
             if($revision == ""){
-                $filter_revision = empty($rev->revision) ? 0 : ($rev->revision + 1);
+                $filter_revision = empty($rev) ? 0 : ($rev->revision + 1);
             }else{
                 $filter_revision = $revision;
             }
@@ -1116,14 +1117,17 @@ class Generate_mrp extends CI_Controller
         }
     }
 
-    public function print($option = "")
+    public function print($option = "", $approved_to = "", $approved_by = "")
     {
-        if ($this->input->get()) {
+        // if ($this->input->get()) {
             if ($option == "excel") {
                 $format  = date("Ymd");
                 header("Content-type: application/vnd-ms-excel");
                 header("Content-Disposition: attachment; filename=mrp_$format.xls");
             }
+
+            $approved_to = base64_decode($approved_to);
+            $approved_by = base64_decode($approved_by);
 
             //Config
             $this->db->select('*');
@@ -1147,7 +1151,7 @@ class Generate_mrp extends CI_Controller
             $need_2 = date("m/Y",  strtotime("-2 month", strtotime($filter_year."-".$filter_month."-01")));
             $need_3 = date("m/Y",  strtotime("-3 month", strtotime($filter_year."-".$filter_month."-01")));
 
-            $this->db->select('a.*, b.number as item_rm_number, b.name as item_rm_name, e.id as supplier_number, e.name as supplier_name, f.leadtime as leadtime2, f.transit, c.name as product_family, d.class, d.composition, d.safety');
+            $this->db->select('a.*, CONCAT(a.p_year, a.p_month) as period, b.number as item_rm_number, b.name as item_rm_name, e.id as supplier_number, e.name as supplier_name, f.leadtime as leadtime2, f.transit, c.name as product_family, d.class, d.composition, d.safety');
             $this->db->from('generate_mrp_finals a');
             $this->db->join('item_rm b', 'a.item_rm_id = b.id');
             $this->db->join('item_familys c', 'b.item_family_id = c.id');
@@ -1155,11 +1159,19 @@ class Generate_mrp extends CI_Controller
             $this->db->join('suppliers e', 'a.supplier_id = e.id');
             $this->db->join('supplier_items f', 'a.supplier_id = f.supplier_id and a.item_rm_id = f.item_rm_id');
             // $this->db->where('a.purchase_order >', 0);
-            $this->db->where('a.p_month', $filter_month);
-            $this->db->where('a.p_year', $filter_year);
-            $this->db->where('a.revision', $filter_revision);
-            $this->db->like('b.item_family_id', $filter_product_family);
-            $this->db->like('a.item_rm_id', $filter_part_no);
+            if($approved_to != ""){
+                $this->db->where('a.p_month', $filter_month);
+                $this->db->where('a.p_year', $filter_year);
+                $this->db->where('a.revision', $filter_revision);
+                $this->db->where('a.approved_to', $approved_to);
+                $this->db->where('a.approved_by', $approved_by);
+            }else{
+                $this->db->where('a.p_month', $filter_month);
+                $this->db->where('a.p_year', $filter_year);
+                $this->db->where('a.revision', $filter_revision);
+                $this->db->like('b.item_family_id', $filter_product_family);
+                $this->db->like('a.item_rm_id', $filter_part_no);
+            }
             // $this->db->where('leadtime >', 0);
             $this->db->group_by('a.item_rm_id');
             $this->db->group_by('a.supplier_id');
@@ -1214,6 +1226,7 @@ class Generate_mrp extends CI_Controller
                         <th rowspan="2" style="text-align:center;" width="20">No</th>
                         <th rowspan="2" style="text-align:center;" width="80">APPROVE</th>
                         <th rowspan="2" style="text-align:center;">APPROVED BY</th>
+                        <th rowspan="2" style="text-align:center;">PERIOD</th>
                         <th rowspan="2" style="text-align:center;">PART NO EBWS</th>
                         <th rowspan="2" style="text-align:center;">PART NO SUPPLIER</th>
                         <th rowspan="2" style="text-align:center;">DESCRIPTION</th>
@@ -1307,6 +1320,7 @@ class Generate_mrp extends CI_Controller
                                         <td>".$no."</td>
                                         <td style='text-align:center; $styleApp'>".$approved."</td>
                                         <td style='mso-number-format:\@;'>".trim($record['approved_by'])."</td>
+                                        <td style='mso-number-format:\@;'>".trim($record['period'])."</td>
                                         <td style='mso-number-format:\@;'>".trim($record['item_rm_id'])."</td>
                                         <td style='mso-number-format:\@;'>".trim($record['item_rm_number'])."</td>
                                         <td style='mso-number-format:\@;'>".$record['item_rm_name']."</td>
@@ -1358,6 +1372,6 @@ class Generate_mrp extends CI_Controller
 
             $html .= '</table></body></html>';
             echo $html;
-        }
+        // }
     }
 }

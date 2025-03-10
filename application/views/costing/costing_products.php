@@ -3,14 +3,15 @@
     <thead>
         <tr>
             <th rowspan="2" field="ck" checkbox="true"></th>
-            <th rowspan="2" data-options="field:'history',width:100,halign:'center',formatter:btnWorkorder">Detail</th>
+            <!-- <th rowspan="2" data-options="field:'history',width:100,halign:'center',formatter:btnWorkorder">Detail</th> -->
+            <th rowspan="2" data-options="field:'details',width:80,halign:'center',formatter:btnDetails">Detail</th>
             <th rowspan="2" data-options="field:'item_fg_number',width:120,halign:'center'">Product No EBWS</th>
             <th rowspan="2" data-options="field:'number_customer',width:150,halign:'center'">Product No Customer</th>
             <th rowspan="2" data-options="field:'item_fg_name',width:200,halign:'center'">Product Name</th>
             <th rowspan="2" data-options="field:'total_qty',width:100,halign:'center', align:'right',formatter:priceformat">Quantity</th>
             <th rowspan="2" data-options="field:'umh',width:100,halign:'center', align:'right',formatter:priceformat">UMH</th>
-            <th colspan="4" data-options="field:'',width:100,halign:'center'">Total Manufacture Cost</th>
-            <th rowspan="2" data-options="field:'direct_total',width:100,halign:'center', align:'right',formatter:priceformat">Cost Product</th>
+            <th colspan="3" data-options="field:'',width:100,halign:'center'">Total Manufacture Cost</th>
+            <th rowspan="2" data-options="field:'direct_total',width:100,halign:'center', align:'right',formatter:priceformat2">Cost Product</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
         </tr>
@@ -20,10 +21,10 @@
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> FOH</th>
         </tr> -->
         <tr>
-            <th data-options="field:'direct_material',width:100,halign:'center',align:'right',formatter:priceformat">Supply</th>
+            <th data-options="field:'direct_material',width:100,halign:'center',align:'right',formatter:priceformat">Kanban<br>Supply</th>
             <th data-options="field:'direct_requestion',width:100,halign:'center',align:'right',formatter:priceformat">Material<br>Requestion</th>
             <th data-options="field:'direct_material_total',width:100,halign:'center',align:'right',formatter:priceformat">Total</th>
-            <th data-options="field:'direct_material_pcs',width:100,halign:'center',align:'right',formatter:priceformat">Pcs</th>
+            <!-- <th data-options="field:'direct_material_pcs',width:100,halign:'center',align:'right',formatter:priceformat">Pcs</th> -->
             <!-- <th data-options="field:'direct_labor',width:100,halign:'center',align:'right',formatter:priceformat">Regular</th>
             <th data-options="field:'direct_overtime',width:100,halign:'center',align:'right',formatter:priceformat">Overtime</th>
             <th data-options="field:'direct_labor_total',width:100,halign:'center',align:'right',formatter:priceformat">Total</th>
@@ -39,8 +40,7 @@
 </table>
 
 <!-- FORM FILTER DATAGRID -->
-<div id="toolbar" style="height: 225px; padding: 10px;">
-    <!-- <div style="width: 100%; display: grid; grid-template-columns: auto auto auto; grid-gap: 5px; display: flex;"> -->
+<div id="toolbar" style="height: 235px; padding: 10px;">
     <div style="width: 100%; display: grid; grid-template-columns: auto auto auto; grid-gap: 5px; display: flex;">
         <fieldset style="width: 40%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
             <legend><b>Form Filter Data</b></legend>
@@ -60,44 +60,21 @@
         </fieldset>
         <fieldset style="width: 28%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
             <legend><b>Process Generate Data</b></legend>
-            <!-- <a href="javascript:;" style="float: left; color:green;" class="easyui-linkbutton" plain="true"><i class="fa fa-check"></i> SUCCESS : <b id="p_success">0</b></a>
-            <a href="javascript:;" style="float: right; color:red;" class="easyui-linkbutton" plain="true" onclick="downloadFailed()"><i class="fa fa-times"></i> FAILED : <b id="p_failed">0</b></a> -->
-            <b>Calculate Workorder</b>
-            <div id="p_upload" class="easyui-progressbar" style="width:100%; margin-top: 10px;"></div>
-            <center><b id="p_start">0</b> Of <b id="p_finish">0</b></center>
-            <b>Calculate Product No</b>
-            <div id="p_upload2" class="easyui-progressbar" style="width:100%; margin-top: 10px;"></div>
-            <center><b id="p_start2">0</b> Of <b id="p_finish2">0</b></center>
-            <!-- <div id="p_remarks" class="easyui-panel" style="width:100%; height:100px; padding:10px; margin-top: 10px; overflow: auto;">
-                <ul id="remarks">
-
-                </ul>
-            </div> -->
-        </fieldset>
-        <fieldset style="width: 30%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
-            <legend><b>Modul Check (Posting Journal)</b></legend>
-            <div style="width:50%; float: left;">
-                <div style="margin:12px;">
-                    <input class="easyui-checkbox" id="check_pi" value="on" readonly="true"> &nbsp; Purchase Invoicing
-                </div>
-                <div style="margin:12px;">
-                    <input class="easyui-checkbox" id="check_si" value="on" readonly="true"> &nbsp; Sales Invoicing
-                </div>
-                <!-- <div style="margin:12px;">
-                    <input class="easyui-checkbox" id="check_ap" value="on" readonly="true"> &nbsp; AP Payment
-                </div> -->
+            <div style="float: left; width: 50%;">
+                <b>Calculate Product No</b>
+                <div id="p_upload" class="easyui-progressbar" style="width:100%; margin-top: 10px;"></div>
+                <center><b id="p_start">0</b> Of <b id="p_finish">0</b></center>
             </div>
-            <!-- <div style="width:50%; float: left;">
-                <div style="margin:12px;">
-                    <input class="easyui-checkbox" id="check_ar" value="on" readonly="true"> &nbsp; AR Receipt
-                </div>
-                <div style="margin:12px;">
-                    <input class="easyui-checkbox" id="check_as" value="on" readonly="true"> &nbsp; Assets
-                </div>
-                <div style="margin:12px;">
-                    <input class="easyui-checkbox" id="check_cr" value="on" readonly="true"> &nbsp; Currency Revaluation
-                </div>
-            </div> -->
+            <div style="float: left; width: 50%;">
+                <b id="txt_item">-</b>
+                <div id="p_upload2" class="easyui-progressbar" style="width:100%; margin-top: 10px;"></div>
+                <center><b id="p_start2">0</b> Of <b id="p_finish2">0</b></center>
+            </div>
+            <div style="float: left; margin-top: 10px; width: 100%;">
+                <b>Calculate Costing Final</b>
+                <div id="p_upload3" class="easyui-progressbar" style="width:100%; margin-top: 10px;"></div>
+                <center><b id="p_start3">0</b> Of <b id="p_finish3">0</b></center>
+            </div>
         </fieldset>
     </div>
     <?= $button ?>
@@ -110,8 +87,8 @@
             <tr>
                 <th data-options="field:'details',width:80,halign:'center',formatter:btnDetails">Detail</th>
                 <th data-options="field:'periode',width:80,halign:'center'">Period</th>
-                <th data-options="field:'wp',width:40,halign:'center'">WP</th>
-                <th data-options="field:'workorder',width:150,halign:'center'">Workorder</th>
+                <!-- <th data-options="field:'wp',width:40,halign:'center'">WP</th> -->
+                <!-- <th data-options="field:'workorder',width:150,halign:'center'">Workorder</th> -->
                 <!-- <th data-options="field:'item_fg_number',width:120,halign:'center'">Product No EBWS</th> -->
                 <!-- <th data-options="field:'number_customer',width:200,halign:'center'">Product No Customer</th> -->
                 <!-- <th data-options="field:'item_fg_name',width:150,halign:'center'">Description</th> -->
@@ -141,7 +118,7 @@
                 <th data-options="field:'supply_date',width:100,halign:'center'">Supply Date</th>
                 <th data-options="field:'supply_no',width:150,halign:'center'">Supply No</th>
                 <th data-options="field:'issued',width:100,halign:'center',align:'right',formatter:priceformat">Issued</th>
-                <th data-options="field:'price',width:100,halign:'center',align:'right',formatter:priceformat">Price</th>
+                <th data-options="field:'price',width:100,halign:'center',align:'right',formatter:priceformat2">Price</th>
                 <th data-options="field:'amount',width:100,halign:'center',align:'right',formatter:priceformat">Amount</th>
             </tr>
         </thead>
@@ -151,137 +128,11 @@
 <!-- PDF -->
 <iframe id="printout" src="<?= base_url('costing/costing_products/print') ?>" style="width: 100%;" hidden></iframe>
 <script>
-    function componentCheck() {
-        var filter_month = $("#filter_month").combobox('getValue');
-        var filter_year = $("#filter_year").textbox('getValue');
-
-        $.ajax({
-            type: "post",
-            url: "<?= base_url('costing/costing_products/checkPurchaseInvoice') ?>",
-            data: "filter_month=" + filter_month +
-                "&filter_year=" + filter_year,
-            dataType: "json",
-            success: function(pi) {
-                if (pi > 0) {
-                    $('#check_pi').checkbox({
-                        checked: true
-                    });
-                } else {
-                    $('#check_pi').checkbox({
-                        checked: false
-                    });
-                }
-            }
-        });
-
-        $.ajax({
-            type: "post",
-            url: "<?= base_url('costing/costing_products/checkSalesInvoice') ?>",
-            data: "filter_month=" + filter_month +
-                "&filter_year=" + filter_year,
-            dataType: "json",
-            success: function(pi) {
-                if (pi > 0) {
-                    $('#check_si').checkbox({
-                        checked: true
-                    });
-                } else {
-                    $('#check_si').checkbox({
-                        checked: false
-                    });
-                }
-            }
-        });
-
-        // $.ajax({
-        //     type: "post",
-        //     url: "<?= base_url('costing/costing_products/checkApPayment') ?>",
-        //     data: "filter_month=" + filter_month +
-        //         "&filter_year=" + filter_year,
-        //     dataType: "json",
-        //     success: function(pi) {
-        //         if (pi > 0) {
-        //             $('#check_ap').checkbox({
-        //                 checked: true
-        //             });
-        //         } else {
-        //             $('#check_ap').checkbox({
-        //                 checked: false
-        //             });
-        //         }
-        //     }
-        // });
-
-        // $.ajax({
-        //     type: "post",
-        //     url: "<?= base_url('costing/costing_products/checkArReceipt') ?>",
-        //     data: "filter_month=" + filter_month +
-        //         "&filter_year=" + filter_year,
-        //     dataType: "json",
-        //     success: function(pi) {
-        //         if (pi > 0) {
-        //             $('#check_ar').checkbox({
-        //                 checked: true
-        //             });
-        //         } else {
-        //             $('#check_ar').checkbox({
-        //                 checked: false
-        //             });
-        //         }
-        //     }
-        // });
-
-        // $.ajax({
-        //     type: "post",
-        //     url: "<?= base_url('costing/costing_products/checkAsset') ?>",
-        //     data: "filter_month=" + filter_month +
-        //         "&filter_year=" + filter_year,
-        //     dataType: "json",
-        //     success: function(pi) {
-        //         if (pi > 0) {
-        //             $('#check_as').checkbox({
-        //                 checked: true
-        //             });
-        //         } else {
-        //             $('#check_as').checkbox({
-        //                 checked: false
-        //             });
-        //         }
-        //     }
-        // });
-
-        // $.ajax({
-        //     type: "post",
-        //     url: "<?= base_url('costing/costing_products/checkCurrency') ?>",
-        //     data: "filter_month=" + filter_month +
-        //         "&filter_year=" + filter_year,
-        //     dataType: "json",
-        //     success: function(pi) {
-        //         if (pi > 0) {
-        //             $('#check_cr').checkbox({
-        //                 checked: true
-        //             });
-        //         } else {
-        //             $('#check_cr').checkbox({
-        //                 checked: false
-        //             });
-        //         }
-        //     }
-        // });
-    };
-
     //ADD DATA
     function add() {
         var filter_month = $("#filter_month").combobox('getValue');
         var filter_year = $("#filter_year").combobox('getValue');
         var filter_item = $("#filter_item").combogrid('getValue');
-
-        var check_pi = $("#check_pi").checkbox('options');
-        var check_si = $("#check_si").checkbox('options');
-        // var check_ap = $("#check_ap").checkbox('options');
-        // var check_ar = $("#check_ar").checkbox('options');
-        // var check_as = $("#check_as").checkbox('options');
-        // var check_cr = $("#check_cr").checkbox('options');
 
         $.ajax({
             type: "post",
@@ -294,72 +145,115 @@
                     return false;
                 }
 
-                // if (check_pi.checked == true && check_si.checked == true && check_ap.checked == true && check_ar.checked == true && check_as.checked == true == check_cr.checked == true) {
-                if (check_pi.checked == true && check_si.checked == true) {
-                    $.messager.confirm('Warning', 'Are you sure you want to Generate this data?', function(r) {
-                        if (r) {
-                            Swal.fire({
-                                title: 'Please Wait for Generate Data',
-                                showConfirmButton: false,
-                                allowOutsideClick: false,
-                                allowEscapeKey: false,
-                                didOpen: () => {
-                                    Swal.showLoading();
-                                },
-                            });
+                $.messager.confirm('Warning', 'Are you sure you want to Calculate this period?', function(r) {
+                    if (r) {
+                        Swal.fire({
+                            title: 'Please Wait for Calculating Data',
+                            showConfirmButton: false,
+                            allowOutsideClick: false,
+                            allowEscapeKey: false,
+                            didOpen: () => {
+                                Swal.showLoading();
+                            },
+                        });
 
-                            $.ajax({
-                                type: "post",
-                                url: "<?= base_url('costing/costing_products/getData') ?>",
-                                data: "month=" + filter_month + "&year=" + filter_year + "&item_fg_id=" + filter_item,
-                                dataType: "json",
-                                success: function(get) {
-                                    Swal.close();
-                                    
-                                    if (get.total > 0) {
-                                        requestData(get.total, get.rows);
+                        $.ajax({
+                            type: "post",
+                            url: "<?= base_url('costing/costing_products/getData') ?>",
+                            data: "month=" + filter_month + "&year=" + filter_year + "&item_fg_id=" + filter_item,
+                            dataType: "json",
+                            success: function(get) {
+                                Swal.close();
+                                
+                                if (get.total > 0) {
+                                    requestData(get.total, get.rows);
 
-                                        function requestData(total, json, number = 1, value = 0, success = 1, failed = 1) {
-                                            if (value < 100) {
-                                                value = Math.floor((number / total) * 100);
-                                                $('#p_upload').progressbar('setValue', value);
-                                                $('#p_start').html(number);
-                                                $('#p_finish').html(total);
+                                    function requestData(total, json, number = 1, value = 0, success = 1, failed = 1) {
+                                        if (value < 100) {
+                                            value = Math.floor((number / total) * 100);
+                                            $('#p_upload').progressbar('setValue', value);
+                                            $('#p_start').html(number);
+                                            $('#p_finish').html(total);
 
-                                                var i = (number - 1);
+                                            var i = (number - 1);
+                                            $("#txt_item").html(json[i].number_customer);
 
-                                                $.ajax({
-                                                    type: "post",
-                                                    url: '<?= base_url('costing/costing_products/create') ?>',
-                                                    data: json[i],
-                                                    dataType: "json",
-                                                    success: function(result) {
-                                                        if (result.theme == "success") {
-                                                            requestData(total, json, number + 1, value, success + 1, failed + 0);
-                                                        } else {
-                                                            requestData(total, json, number + 1, value, success + 0, failed + 1);
+                                            Swal.fire({
+                                                title: 'Please Wait for Calculating Data',
+                                                showConfirmButton: false,
+                                                allowOutsideClick: false,
+                                                allowEscapeKey: false,
+                                                didOpen: () => {
+                                                    Swal.showLoading();
+                                                },
+                                            });
+
+                                            $.ajax({
+                                                type: "post",
+                                                url: "<?= base_url('costing/costing_products/getData2') ?>",
+                                                data: "item_fg_id=" + json[i].item_fg_id + "&workorder=" + json[i].workorder + "&period=" + json[i].period + "&qty=" + json[i].qty + "&month=" + filter_month + "&year=" + filter_year,
+                                                dataType: "json",
+                                                success: function(get2) {
+                                                    Swal.close();
+                                                    
+                                                    if (get2.total > 0) {
+                                                        requestData2(get2.total, get2.rows);
+
+                                                        function requestData2(total2, json2, number2 = 1, value2 = 0, success2 = 1, failed2 = 1) {
+                                                            if (value2 < 100) {
+                                                                value2 = Math.floor((number2 / total2) * 100);
+                                                                $('#p_upload2').progressbar('setValue', value2);
+                                                                $('#p_start2').html(number2);
+                                                                $('#p_finish2').html(total2);
+
+                                                                var z = (number2 - 1);
+
+                                                                $.ajax({
+                                                                    type: "post",
+                                                                    url: '<?= base_url('costing/costing_products/create') ?>',
+                                                                    data: json2[z],
+                                                                    dataType: "json",
+                                                                    success: function(result) {
+                                                                        if (result.theme == "success") {
+                                                                            requestData2(total2, json2, number2 + 1, value2, success2 + 1, failed2 + 0);
+                                                                        } else {
+                                                                            requestData2(total2, json2, number2 + 1, value2, success2 + 0, failed2 + 1);
+                                                                        }
+
+                                                                        if (value2 == 100) {
+                                                                            requestData(total, json, number + 1, value, success + 1, failed + 0);
+
+                                                                            if (value == 100) {
+                                                                                calculateProducts();
+                                                                                // Swal.fire('Good job!', 'Generate Costing Products Completed!', 'success');
+                                                                                // $("#dg").datagrid('reload');
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                });
+                                                            }
                                                         }
+                                                    } else {
+                                                        toastr.error("Data Kanban, Supply Material Not Found");
+                                                        requestData(total, json, number + 1, value, success + 1, failed + 0);
 
                                                         if (value == 100) {
-                                                            // Swal.fire('Good job!', 'Process Add Journal Entries Completed!', 'success');
-                                                            // $("#dg").datagrid('reload');
-
                                                             calculateProducts();
+                                                            // Swal.fire('Good job!', 'Generate Costing Products Completed!', 'success');
+                                                            // $("#dg").datagrid('reload');
                                                         }
                                                     }
-                                                });
-                                            }
+                                                }
+                                            });
                                         }
-                                    } else {
-                                        Swal.fire('Not Found!', 'Data Not Found, Please Generate First in Inventory RM', 'error');
                                     }
+                                } else {
+                                    Swal.fire('Not Found!', 'Data Production Schedules Not Found', 'error');
                                 }
-                            });
-                        }
-                    });
-                } else {
-                    toastr.info("Modul Check Not Complete ");
-                }
+                            }
+                        });
+                    }
+                });
             }
         });
     }
@@ -392,10 +286,10 @@
 
                     function requestData2(total, json, number = 1, value = 0, success = 1, failed = 1) {
                         if (value < 100) {
-                            value2 = Math.floor((number / total) * 100);
-                            $('#p_upload2').progressbar('setValue', value2);
-                            $('#p_start2').html(number);
-                            $('#p_finish2').html(total);
+                            value = Math.floor((number / total) * 100);
+                            $('#p_upload3').progressbar('setValue', value);
+                            $('#p_start3').html(number);
+                            $('#p_finish3').html(total);
 
                             var i = (number - 1);
 
@@ -406,12 +300,12 @@
                                 dataType: "json",
                                 success: function(result) {
                                     if (result.theme == "success") {
-                                        requestData2(total, json, number + 1, value2, success + 1, failed + 0);
+                                        requestData2(total, json, number + 1, value, success + 1, failed + 0);
                                     } else {
-                                        requestData2(total, json, number + 1, value2, success + 0, failed + 1);
+                                        requestData2(total, json, number + 1, value, success + 0, failed + 1);
                                     }
 
-                                    if (value2 == 100) {
+                                    if (value == 100) {
                                         Swal.fire('Good job!', 'Generate Costing Products Completed!', 'success');
                                         $("#dg").datagrid('reload');
                                     }
@@ -538,7 +432,7 @@
     }
 
     function btnDetails(val, row) {
-        var details = "viewDetails('" + row.periode + "','" + row.workorder + "')";
+        var details = "viewDetails('" + row.periode + "','" + row.item_fg_id + "')";
         return '<a class="btn btn-primary w-100" onClick="' + details + '" style="pointer-events: visible; opacity:1;"><i class="fa fa-eye"></i> View</a>';
     }
 
@@ -555,14 +449,21 @@
         });
     }
 
-    function viewDetails(periode, workorder) {
+    function viewDetails(periode, item_fg_id) {
         $("#dlg_details").dialog('open');
-        $('#dg_details').datagrid({
-            url: '<?= base_url('costing/costing_products/datatableDetails?periode=') ?>' + btoa(periode) + "&workorder=" + btoa(workorder),
-            pagination: false,
-            rownumbers: true,
-            fit:true,
-            showFooter: true
+        $('#dg_details').datagrid('loading');
+        
+        $.ajax({
+            url: '<?= base_url('costing/costing_products/datatableDetails') ?>',
+            type: 'POST',
+            data: {
+                periode: periode,
+                item_fg_id: item_fg_id
+            },
+            dataType: 'json',
+            success: function(result) {
+                $('#dg_details').datagrid('loadData', result).datagrid('loaded');
+            }
         });
     }
 
@@ -589,8 +490,16 @@
     }
 
     $(function() {
-        componentCheck();
         $("#add").html("Generate Data Cost");
+
+        $('#dg_details').datagrid({
+            pagination: true,
+            clientPaging: true,
+            rownumbers: true,
+            fit: true,
+            pageList: [20, 50, 100, 500, 1000],
+            pageSize: 20,
+        }).datagrid('enableFilter');
 
         //SETTING DATAGRID EASYUI
         $('#dg').datagrid({
@@ -609,9 +518,6 @@
                     $(e.data.target).combobox('clear').combobox('textbox').focus();
                 }
             }],
-            onChange: function(row){
-                componentCheck();
-            }
         });
 
         $('#filter_year').combobox({
@@ -625,9 +531,6 @@
                     $(e.data.target).combobox('clear').combobox('textbox').focus();
                 }
             }],
-            onChange: function(row){
-                componentCheck();
-            }
         });
 
         $('#filter_item').combogrid({
@@ -666,6 +569,15 @@
         if (value != null) {
             const formatter = new Intl.NumberFormat("ja-JP", {
                 minimumFractionDigits: 2
+            });
+            return "<b>" + formatter.format(value) + "</b>";
+        }
+    }
+
+    function priceformat2(value, row) {
+        if (value != null) {
+            const formatter = new Intl.NumberFormat("ja-JP", {
+                minimumFractionDigits: 4
             });
             return "<b>" + formatter.format(value) + "</b>";
         }

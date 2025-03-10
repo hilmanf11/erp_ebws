@@ -23,7 +23,7 @@
     </thead>
 </table>
 <!-- TOOLBAR DATAGRID -->
-<div id="toolbar" style="height: 150px; padding: 10px;">
+<div id="toolbar" style="height: 190px; padding: 10px;">
     <fieldset style="width: 100%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
         <legend><b>Form Filter Data</b></legend>
         <div style="width: 60%; float: left;">
@@ -32,12 +32,12 @@
                 <input style="width:18%;" id="filter_from" class="easyui-datebox" value="<?= date("Y-m-01") ?>" data-options="formatter:myformatter,parser:myparser, editable:false"> To
                 <input style="width:18%;" id="filter_to" class="easyui-datebox" value="<?= date('Y-m-d', strtotime('+14 days', strtotime(date('Y-m-01')))); ?>" data-options="formatter:myformatter,parser:myparser, editable:false">
                 <a href="javascript:;" class="easyui-linkbutton" onclick="filter()"><i class="fa fa-search"></i> Filter Data</a>
-                <!-- <a href="javascript:;" class="easyui-linkbutton c1" id="generate" onclick="generate()"><i class="fa fa-database"></i> Calculate WIP</a> -->
+                <a href="javascript:;" class="easyui-linkbutton c1" id="generate" onclick="generate()"><i class="fa fa-database"></i> Calculate WIP</a>
             </div>
         </div>
         <div style="width: 40%; float: left;">
             <div class="alert alert-warning">
-                The system takes data begin balance from date 2024-12-30 at the time of STO
+                It is recommended to calculate the data per week (maximum 2 weeks), the data will be saved and you will no longer need to calculate if the finished good quantity is correct.
             </div>
         </div>
     </fieldset>
@@ -242,17 +242,6 @@
             pageList: [20, 50, 100, 500, 1000],
             pageSize: 20,
         }).datagrid('enableFilter');
-
-        $("#filter_from").datebox({
-            onChange: function(val){
-                var selectedDate = new Date(val); 
-                var minDate = new Date("2024-12-30"); 
-                if (selectedDate < minDate) { 
-                    toastr.error("Error: The selected date must be after December 30, 2024."); 
-                    $("#filter_from").datebox('setValue', "2024-12-30");
-                }
-            }
-        });
 
         // UPLOAD DATA
         $('#dlg_upload').dialog({
