@@ -2,8 +2,8 @@
     <thead>
         <tr>
             <th rowspan="2" field="ck" checkbox="true"></th>
-            <th rowspan="2" data-options="field:'status_wip2',width:80,align:'center',formatter:statusformat,styler:statusStyle2">Status<br>Visual</th>
-            <th rowspan="2" data-options="field:'status_wo',width:80,align:'center',formatter:statusformat2,styler:statusStyle">Status<br>RFG</th>
+            <th rowspan="2" data-options="field:'status_wo',width:80,align:'center',formatter:statusformat,styler:statusStyle">Status WO</th>
+            <th rowspan="2" data-options="field:'status_wip2',width:80,align:'center',formatter:statusformat2,styler:statusStyle2">Status RFG</th>
             <th rowspan="2" data-options="field:'precut_status',width:80,align:'center',formatter:statusprecut,styler:styleprecut">Production<br>Order</th>
             <th rowspan="2" data-options="field:'period',width:80,align:'center'">Period</th>
             <th rowspan="2" data-options="field:'wp',width:80,align:'center'">WP</th>
@@ -162,15 +162,15 @@
 
     //Add Data
     function add() {
-        // toastr.info("Create Data Production Schedule from MPP");
-        $('#dlg_insert').dialog('open');
-        url_save = '<?= base_url('planning/production_schedules/create') ?>';
-        $('#frm_insert').form('clear');
-        $("#wp").numberbox('enable');
-        $("#customer_id").combogrid('enable');
-        $("#item_fg_id").combogrid('enable');
-        $("#month").combobox('setValue', "<?= date("m") ?>");
-        $("#year").combobox('setValue', "<?= date("Y") ?>");
+        toastr.info("Create Data Production Schedule from MPP");
+        // $('#dlg_insert').dialog('open');
+        // url_save = '<?= base_url('planning/production_schedules/create') ?>';
+        // $('#frm_insert').form('clear');
+        // $("#wp").numberbox('enable');
+        // $("#customer_id").combogrid('enable');
+        // $("#item_fg_id").combogrid('enable');
+        // $("#month").combobox('setValue', "<?= date("m") ?>");
+        // $("#year").combobox('setValue', "<?= date("Y") ?>");
     }
 
     //Edit Data

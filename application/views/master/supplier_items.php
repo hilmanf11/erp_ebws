@@ -770,8 +770,8 @@
             }],
             columns: [
                 [{
-                    field: 'number',
-                    title: 'Supplier No',
+                    field: 'id',
+                    title: 'Supplier ID',
                     width: 100
                 }, {
                     field: 'name',

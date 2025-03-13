@@ -241,11 +241,6 @@ class Delivery_confirm extends CI_Controller
                 $this->db->update('purchase_orders', ["status" => $status], ["po_no" => $post['po_no'], "item_rm_id" => $post['item_rm_id']]);
                 echo $send;
             }else{
-                $purchase_confirm = $this->crud->read("purchase_confirm", [], ["item_rm_id" => $post['item_rm_id'], "po_no" => $post['po_no'], "supplier_id" => $post['supplier_id'], "invoice_no" => $post['invoice_no']]);
-                if(!empty($purchase_confirm)){
-                    die(json_encode(array("title" => "Duplicate", "message" => "Part No ".$post['item_rm_id']." and ".$post['po_no']." is already Exists", "theme" => "error")));
-                }
-
                 if($post['balance'] > 0){
                     $status = 0;
                 }else{
@@ -345,15 +340,10 @@ class Delivery_confirm extends CI_Controller
         if ($this->input->post()) {
             $post = $this->input->post('data');
 
-            $item_rm_id = $post['item_rm_id'];
-            $po_no = $post['po_no'];
-            $supplier_id = $post['supplier_id'];
-
             $item_rm = $this->crud->read("item_rm", [], ["id" => $post['item_rm_id']]);
             $supplier = $this->crud->read("suppliers", [], ["id" => $post['supplier_id']]);
             $purchase_order = $this->crud->read("purchase_orders", [], ["item_rm_id" => $post['item_rm_id'], "po_no" => $post['po_no'], "supplier_id" => $post['supplier_id']]);
             $purchase_confirm = $this->crud->read("purchase_confirm", [], ["item_rm_id" => $post['item_rm_id'], "po_no" => $post['po_no'], "supplier_id" => $post['supplier_id'], "invoice_no" => $post['invoice_no']]);
-            $lastQty = $this->crud->query("SELECT SUM(delivery) as total_delivery FROM purchase_confirm WHERE item_rm_id = '$item_rm_id' and po_no = '$po_no' and supplier_id = '$supplier_id'");
 
             if(empty($item_rm)){
                 echo json_encode(array("title" => "Not Found", "message" => "Part No ".$post['item_rm_id']." Not Found in Master Items", "theme" => "error"));
@@ -363,8 +353,6 @@ class Delivery_confirm extends CI_Controller
                 echo json_encode(array("title" => "Not Found", "message" => "PO No ".$post['po_no']." Not Match", "theme" => "error"));
             }elseif(!empty($purchase_confirm)){
                 echo json_encode(array("title" => "Duplicate", "message" => "Part No ".$post['item_rm_id']." and ".$post['po_no']." is already Exists", "theme" => "error"));
-            }elseif((round($purchase_order->qty - @$lastQty[0]->total_delivery) - $post['delivery']) < 0){
-                echo json_encode(array("title" => "Not Match", "message" => "Qty Delivery not Match, The Outstanding Qty now (".round($purchase_order->qty - @$lastQty[0]->total_delivery).")", "theme" => "error"));
             }else{
                 if(@$purchase_order->qty > $post['delivery']){
                     $status = "0";

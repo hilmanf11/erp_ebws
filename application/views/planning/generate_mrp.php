@@ -85,10 +85,10 @@
                         <ul>
                             <li><b>Breakdown LTTP & BOM</b> is taken from (Generate LTTP x Bom)</li>
                             <li><b>WHS</b> is taken from Ending Stock in Store of Cut off</li>
-                            <li><b>WIP</b> is taken from Generate MPP - Issued If result Minus</li>
-                            <li><b>OS SUPPLIER</b> is taken from Purchase Order - Gate Entry of Cut Off</li>
+                            <li><b>WIP</b> is taken (-1 Month to Cutoff) from Production Schedules - Issued If result Minus</li>
+                            <li><b>OS SUPPLIER</b> is taken from Purchase Order (Open) - Gate Entry of Cut Off</li>
                             <li><b>TOTAL STOCK</b> is taken from (WHS + WIP + OS SUPPLIER)</li>
-                            <li><b>OS SUPPLY</b> Generate MPP - Issued If result Plus</li>
+                            <li><b>OS SUPPLY</b> is taken (-1 Month to Cutoff) from Production Schedules - Issued If result Plus</li>
                         </ul>
                         <center><b style="font-size:16px !important;">FORMULA</b><hr></center>
                         <ul>

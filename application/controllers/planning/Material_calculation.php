@@ -125,7 +125,7 @@ class Material_calculation extends CI_Controller
                     $etaqty = empty(@$totalRow->total) ? 0 : @$totalRow->total;
                     
                     //Supply
-                    $ithSupply = $this->db->query("SELECT b.item_rm_id, COALESCE(SUM(a.qty), 0) as supply FROM issued_material_details a JOIN issued_materials b ON a.request_no = b.request_no WHERE b.item_rm_id = '$item_id' and a.created_date between '$working_date' and '$working_date' GROUP BY a.item_rm_id");
+                    $ithSupply = $this->db->query("SELECT a.item_rm_id, COALESCE(SUM(a.qty), 0) as supply FROM issued_material_details a WHERE a.item_rm_id = '$item_id' and DATE_FORMAT(a.created_date, '%Y-%m-%d') = '$working_date' GROUP BY a.item_rm_id");
                     $ithSupplyRow = $ithSupply->row();
     
                     $date_qty = $record["date_".$day];
@@ -149,7 +149,6 @@ class Material_calculation extends CI_Controller
                 if($filter_status == "OK"){
                     if($free_stock > 0){
                         $dataFinal[] = array_merge($arr, [
-                            "id" => $record['id'],
                             "item_rm_id" => $item_id,
                             "item_rm_number" => $record['item_rm_number'],
                             "item_rm_name" => $record['item_rm_name'],
@@ -177,7 +176,6 @@ class Material_calculation extends CI_Controller
                 }elseif($filter_status == "SHORTAGE"){
                     if($free_stock == 0){
                         $dataFinal[] = array_merge($arr, [
-                            "id" => $record['id'],
                             "item_rm_id" => $item_id,
                             "item_rm_number" => $record['item_rm_number'],
                             "item_rm_name" => $record['item_rm_name'],
@@ -204,7 +202,6 @@ class Material_calculation extends CI_Controller
                     }
                 }else{
                     $dataFinal[] = array_merge($arr, [
-                        "id" => $record['id'],
                         "item_rm_id" => $item_id,
                         "item_rm_number" => $record['item_rm_number'],
                         "item_rm_name" => $record['item_rm_name'],
@@ -312,7 +309,7 @@ class Material_calculation extends CI_Controller
         FROM generate_mpp a
         JOIN bom b ON a.item_fg_id = b.item_fg_id
         WHERE a.p_month = '$filter_month' and a.p_year = '$filter_year' and a.revision = '$filter_revision'
-        GROUP BY a.item_fg_id, b.item_rm_id
+        GROUP BY a.item_fg_id, b.item_rm_id, a.customer_id
         ORDER BY a.item_fg_id, b.item_rm_id asc) z
         GROUP BY z.item_rm_id");
         $records = $query->result_array();
@@ -374,9 +371,11 @@ class Material_calculation extends CI_Controller
             ORDER BY b.number, a.number");
             $ithRow = $ith->row();
 
-            $stock_hand = (@$ithRow->end_stock - $os_supply - $os_wo);
+            $stock_hand = round(@$ithRow->end_stock - $os_supply - $os_wo);
 
             $postFinal = array_merge($post, array(
+                "created_date" => date("Y-m-d H:i:s"),
+                "created_by" => $this->session->username,
                 "os_supply" => $os_supply,
                 "os_wo" => $os_wo,
                 "balance_wip" => empty(@$generate_mrp->qty_wip) ? 0 : @$generate_mrp->qty_wip,
@@ -399,7 +398,7 @@ class Material_calculation extends CI_Controller
                     $post['date_31']))
             ));
 
-            if ($this->crud->create('generate_item_calculation', $postFinal)) {
+            if ($this->db->insert('generate_item_calculation', $postFinal)) {
                 echo json_encode(array("title" => "Good Job", "message" => $post['item_rm_id'] . " | Data Saved Successfully", "theme" => "success"));
             } else {
                 echo json_encode(array("title" => "Error", "message" => $post['item_rm_id'] . " | Data Unsaved", "theme" => "error"));
@@ -551,7 +550,7 @@ class Material_calculation extends CI_Controller
                 $etaqty = empty(@$totalRow->total) ? 0 : @$totalRow->total;
                 
                 //Supply
-                $ithSupply = $this->db->query("SELECT b.item_rm_id, COALESCE(SUM(a.qty), 0) as supply FROM issued_material_details a JOIN issued_materials b ON a.request_no = b.request_no WHERE b.item_rm_id = '$item_rm_id' and a.created_date between '$working_date2' and '$working_date2' GROUP BY a.item_rm_id");
+                $ithSupply = $this->db->query("SELECT a.item_rm_id, COALESCE(SUM(a.qty), 0) as supply FROM issued_material_details a WHERE a.item_rm_id = '$item_rm_id' and DATE_FORMAT(a.created_date, '%Y-%m-%d') = '$working_date2' GROUP BY a.item_rm_id");
                 $ithSupplyRow = $ithSupply->row();
 
                 $date_qty = $record["date_".$day];
@@ -594,8 +593,6 @@ class Material_calculation extends CI_Controller
                             <td style='text-align:right;'>" . round($balance - round($record['need_2'] / 4) - round($record['need_2'] / 4) - round($record['need_2'] / 4)) . "</td>
                             <td style='text-align:right;'>" . round($record['need_2'] / 4) . "</td>
                             <td style='text-align:right;'>" . round($balance - round($record['need_2'] / 4) - round($record['need_2'] / 4) - round($record['need_2'] / 4) - round($record['need_2'] / 4)) . "</td>
-                            <td style='text-align:right;'>" . round($record['balance_wip']) . "</td>
-                            <td style='text-align:right;'>". round($record['os_po']) ."</td>
                         </tr>";
 
             if($filter_status == "OK"){
@@ -653,8 +650,6 @@ class Material_calculation extends CI_Controller
                 <th style="text-align:center;" width="50" colspan="'.($colspan * 4).'">QUANTITY NEED FROM WORKORDER</th>
                 <th style="text-align:center;" width="50" rowspan="3">FREE STOCK</th>
                 <th style="text-align:center;" width="50" colspan="8" rowspan="2">'.$next_month.'</th>
-                <th style="text-align:center;" width="50" rowspan="3">Balance WIP</th>
-                <th style="text-align:center;" width="50" rowspan="3">OS PO</th>
             </tr>' . $cut . $date . $content2;
         echo $html;
     }

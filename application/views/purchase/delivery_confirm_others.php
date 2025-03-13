@@ -365,7 +365,6 @@
                     field: 'item_rm_number',
                     width: 200,
                     halign: 'center',
-                    hidden: true,
                     title: "Part No Supplier",
                     editor: {
                         type: 'textbox',
@@ -799,6 +798,7 @@
                         }
                         
                         $('#dlg_insert').dialog('close');
+
                         Swal.fire({
                             title: 'Please Wait...',
                             showConfirmButton: false,
@@ -808,7 +808,7 @@
                                 Swal.showLoading();
                             },
                         });
-                        
+
                         requestData(totalrows, rows);
                         function requestData(total, json, number = 1, value = 0, success = 1, failed = 1) {
                             var i = (number - 1);

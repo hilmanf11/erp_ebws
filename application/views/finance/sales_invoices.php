@@ -530,6 +530,13 @@
                                     $("#taxes").numberbox("setValue", 0);
                                 }
                             });
+                        }else if(type == "SCRAP"){
+                            $("#dn_number").combobox({
+                                url: '<?= base_url('finance/sales_invoices/readScraps') ?>',
+                                valueField: 'number',
+                                textField: 'number',
+                                prompt: "Choose Scrap No",
+                            });
                         }else if(type == "RM"){
                             $("#dn_number").combobox({
                                 url: '<?= base_url('finance/sales_invoices/readFoc') ?>',
@@ -895,11 +902,13 @@
             }else if(type == "SCRAP"){
                 $(qty.target).numberbox('readonly', false);
                 $(price.target).numberbox('readonly', false);
+                $(dn_number.target).textbox('setValue', dn_numberVal);
+                $(so_number.target).textbox('setValue', '-');
                 $(customer_po.target).textbox('setValue', '-');
 
                 $(item_fg_number.target).combogrid({
-                    url: "<?= base_url("finance/sales_invoices/readScrapItem") ?>",
-                    panelWidth: 800,
+                    url: "<?= base_url("finance/sales_invoices/readScrapItem?number=") ?>" + btoa(dn_numberVal),
+                    panelWidth: 650,
                     idField: 'number',
                     textField: 'number',
                     mode: 'remote', 
@@ -919,10 +928,6 @@
                             title: 'Description',
                             width: 150
                         },{
-                            field: 'document_no',
-                            title: 'Document No',
-                            width: 150
-                        },{
                             field: 'qty',
                             title: 'Qty',
                             width: 80
@@ -935,8 +940,6 @@
                         $(hsn_code.target).textbox('setValue', rows.hsn_code);
                         $(uom.target).combobox('setValue', rows.uom);
                         $(qty.target).numberbox('setValue', rows.qty);
-                        $(dn_number.target).textbox('setValue', rows.document_no);
-                        $(so_number.target).textbox('setValue', rows.document_no);
                     }
                 });
             }else if(type == "RM"){
@@ -1431,16 +1434,16 @@
                     for (var i = 0; i < rows.length; i++) {
                         var row = rows[i];
 
-                        $.ajax({
-                            type: "post",
-                            url: "<?= base_url('closing/locks/checkLock') ?>",
-                            data: "period=" + row.trans_date + "&menus_id=<?= $menus_id ?>",
-                            dataType: "json",
-                            success: function (lock) {
-                                if(lock.total > 0){
-                                    toastr.error("This period is not active by Accounting");
-                                    return false;
-                                }
+                        // $.ajax({
+                        //     type: "post",
+                        //     url: "<?= base_url('closing/locks/checkLock') ?>",
+                        //     data: "period=" + row.trans_date + "&menus_id=<?= $menus_id ?>",
+                        //     dataType: "json",
+                        //     success: function (lock) {
+                        //         if(lock.total > 0){
+                        //             toastr.error("This period is not active by Accounting");
+                        //             return false;
+                        //         }
 
                                 if (row.status != 0) {
                                     toastr.error("Cannot Delete because Sales Invoice status is closed");
@@ -1480,8 +1483,8 @@
                                         $('#dg').datagrid('reload');
                                     }
                                 });
-                            }
-                        });
+                        //     }
+                        // });
                     }
                 }
             });
@@ -1814,16 +1817,16 @@
                     var total_grand = $("#total_grand").numberbox('getValue');
                     var total_grand_local = $("#total_grand_local").numberbox('getValue');
 
-                    $.ajax({
-                        type: "post",
-                        url: "<?= base_url('closing/locks/checkLock') ?>",
-                        data: "period=" + trans_date + "&menus_id=<?= $menus_id ?>",
-                        dataType: "json",
-                        success: function (lock) {
-                            if(lock.total > 0){
-                                toastr.error("This period is not active by Accounting");
-                                return false;
-                            }
+                    // $.ajax({
+                    //     type: "post",
+                    //     url: "<?= base_url('closing/locks/checkLock') ?>",
+                    //     data: "period=" + trans_date + "&menus_id=<?= $menus_id ?>",
+                    //     dataType: "json",
+                    //     success: function (lock) {
+                    //         if(lock.total > 0){
+                    //             toastr.error("This period is not active by Accounting");
+                    //             return false;
+                    //         }
 
                             if (parseFloat(balance_debit) == parseFloat(balance_credit)) {
                                 if (due_date == "" || trans_date == "" || customer_id == "" || journal_type_id == "" || vehicle_no == "") {
@@ -2000,8 +2003,8 @@
                             } else {
                                 toastr.error("Balance Debit Cannot match on Balance Credit");
                             }
-                        }
-                    });
+                    //     }
+                    // });
                 }
             }]
         });
@@ -2012,12 +2015,8 @@
                     $("#dn_number").combobox('setValue', '-');
                     $("#dn_number").combobox('readonly', true);
                     $("#preview").linkbutton('disable');
-                }else if(val == "RM"){
+                }else if(val == "SCRAP" || val == 'RM'){
                     $("#preview").linkbutton('disable');
-                }else if(val == "SCRAP"){
-                    $("#preview").linkbutton('disable');
-                    $("#dn_number").combobox('setValue', '-');
-                    $("#dn_number").combobox('readonly', true);
                 }else{
                     $("#dn_number").combobox('clear');
                     $("#dn_number").combobox('readonly', false);

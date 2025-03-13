@@ -82,6 +82,8 @@ class Report_tds extends CI_Controller
         $this->db->order_by('a.invoice_date', 'ASC');
         $data1 = $this->db->get()->result_array();
 
+        // die(json_encode($data1));
+
         $this->db->select("a.company_id AS supplier_id, 
             a.supplier_name,
             a.pen,
@@ -92,7 +94,7 @@ class Report_tds extends CI_Controller
             b.account_name,
             b.invoice_no,
             b.trans_date AS invoice_date,
-            a.currency,
+            b.currency,
             COALESCE(ABS(d.local_debit - d.local_credit), 0) AS total,
             a.number AS posting_no,
             a.journal_date AS posting_date,
@@ -110,36 +112,7 @@ class Report_tds extends CI_Controller
         $this->db->order_by('a.number', 'ASC');
         $data2 = $this->db->get()->result_array();
 
-        $this->db->select("a.modul,
-            a.company_id AS supplier_id,
-            b.name AS supplier_name,
-            b.pen,
-            c.section AS tds,
-            (CASE WHEN SUBSTRING(b.pen, 4, 1) = 'P' THEN 'Non Company' ELSE 'Company' END) AS tds_status,
-            c.individual,
-            a.account_number,
-            a.account_name,
-            a.invoice_no,
-            a.trans_date AS invoice_date,
-            a.currency,
-            COALESCE(ABS(d.local_debit), 0) AS total,
-            a.number AS posting_no,
-            a.journal_date AS posting_date,
-            ABS(SUM(a.local_debit) - SUM(a.local_credit)) AS tds_amount");
-        $this->db->from("journal_postings a");
-        $this->db->join("suppliers b", "a.company_id = b.id");
-        $this->db->join('tds c', "a.account_number = c.account_number");
-        $this->db->join("(SELECT number, SUM(local_debit) AS local_debit, SUM(local_credit) AS local_credit FROM journal_postings WHERE account_number NOT IN ('20100003','20100004','20100005') GROUP BY number) d", "a.number = d.number", 'left');
-        $this->db->where("a.journal_date between '$filter_from' and '$filter_to'");
-        $this->db->where('a.modul', "AP PAYMENT");
-        $this->db->like('a.company_id', $filter_supplier);
-        $this->db->like('a.invoice_no', $filter_invoice_no);
-        $this->db->group_by('a.number');
-        $this->db->order_by('a.company_id', 'ASC');
-        $this->db->order_by('a.number', 'ASC');
-        $data3 = $this->db->get()->result_array();
-
-        $records = array_merge($data1, $data2, $data3);
+        $records = array_merge($data1, $data2);
 
         $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#customers {border-collapse: collapse;width: 100%;font-size: 12px;}#customers td, #customers th {border: 1px solid #ddd;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: #ddd;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: center;color: black;}</style><body>
             <center>

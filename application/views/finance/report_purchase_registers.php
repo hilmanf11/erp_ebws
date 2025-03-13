@@ -101,6 +101,7 @@
     function reload() {
         window.location.reload();
     }
+
     $(function() {
         $('#filter_supplier').combobox({
             url: '<?php echo base_url('master/suppliers/reads'); ?>',
@@ -144,7 +145,7 @@
                     url: '<?= base_url('finance/report_purchase_registers/readPartNo/') ?>' + btoa(row.id),
                     panelWidth: 520,
                     idField: 'item_rm_id',
-                    textField: 'item_no',
+                    textField: 'item_rm_number',
                     mode: 'remote',
                     fitColumns: true,
                     prompt: "Choose Part No",
@@ -154,11 +155,11 @@
                             title: 'Part No EBWS',
                             width: 120
                         }, {
-                            field: 'item_no',
+                            field: 'item_rm_number',
                             title: 'Part No Supplier',
                             width: 250
                         }, {
-                            field: 'item_name',
+                            field: 'item_rm_name',
                             title: 'Description',
                             width: 200
                         }]
@@ -167,9 +168,34 @@
             }
         });
 
+        $('#filter_item_no').combogrid({
+            url: '<?= base_url('finance/report_purchase_registers/readPartNo') ?>',
+            panelWidth: 520,
+            idField: 'item_rm_id',
+            textField: 'item_rm_number',
+            mode: 'remote',
+            fitColumns: true,
+            prompt: "Choose Part No",
+            columns: [
+                [{
+                    field: 'item_rm_id',
+                    title: 'Part No EBWS',
+                    width: 120
+                }, {
+                    field: 'item_rm_number',
+                    title: 'Part No Supplier',
+                    width: 250
+                }, {
+                    field: 'item_rm_name',
+                    title: 'Description',
+                    width: 200
+                }]
+            ],
+        });
+
         $('#filter_item_familys').combogrid({
             url: '<?= base_url('master/item_familys/reads') ?>',
-            panelWidth: 420,
+            panelWidth: 320,
             idField: 'id',
             textField: 'name',
             mode: 'remote',
@@ -185,7 +211,7 @@
                 [{
                     field: 'number',
                     title: 'Product Family ID',
-                    width: 120
+                    width: 80
                 }, {
                     field: 'name',
                     title: 'Product Family Name',

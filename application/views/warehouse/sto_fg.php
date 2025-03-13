@@ -11,6 +11,7 @@
             <th rowspan="2" data-options="field:'uom',width:80,align:'center'">Uom</th>
             <th rowspan="2" data-options="field:'type',width:80,align:'center'">Type</th>
             <th rowspan="2" data-options="field:'qty',width:80,halign:'center',align:'right',formatter:numberFormat">Qty</th>
+            <th rowspan="2" data-options="field:'remarks',width:200,halign:'center'">Remarks</th>
             <th colspan="3" data-options="field:'',width:100,halign:'center'">Approved</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
@@ -78,6 +79,10 @@
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Qty</span>
                 <input style="width:30%;" name="qty" id="qty" required class="easyui-numberbox">
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Remarks</span>
+                <input style="width:60%;" name="remarks" id="remarks" class="easyui-textbox">
             </div>
         </fieldset>
     </form>

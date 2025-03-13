@@ -95,16 +95,16 @@ class Sales_invoices extends CI_Controller
         echo json_encode($records);
     }
 
-    // public function readScraps()
-    // {
-    //     $records = $this->crud->query("SELECT DISTINCT `number` FROM scrap_booking WHERE `status` = '0' ORDER BY `number` ASC");
-    //     echo json_encode($records);
-    // }
+    public function readScraps()
+    {
+        $records = $this->crud->query("SELECT DISTINCT `number` FROM scrap_booking WHERE `status` = '0' ORDER BY `number` ASC");
+        echo json_encode($records);
+    }
 
     public function readScrapItem()
     {
-        $post = isset($_POST['q']) ? $_POST['q'] : "";
-        $records = $this->crud->query("SELECT a.number as document_no, b.id, b.id as number, b.number as number_customer, b.name, b.hsn_code, b.uom, a.qty FROM scrap_booking a LEFT JOIN item_rm b ON a.item_id = b.id WHERE (a.number like '%$post%' or b.id like '%$post%' or b.number like '%$post%') and a.status = '0' ORDER BY b.number ASC");
+        $number = base64_decode($this->input->get('number'));
+        $records = $this->crud->query("SELECT b.id, b.number, b.number_customer, b.name, b.hsn_code, b.uom, a.qty FROM scrap_booking a JOIN item_fg b ON a.item_fg_id = b.id WHERE a.status = '0' and a.number = '$number' ORDER BY b.number ASC");
         echo json_encode($records);
     }
 

@@ -25,8 +25,13 @@
 </table>
 
 <!-- TOOLBAR DATAGRID -->
-<div id="toolbar" style="height: 35px;">
-    <?= $button ?>
+<div id="toolbar" style="height: auto; padding:5px;">
+    <div class="fitem">
+        <?= $button ?>
+        <span style="width:60px; display:inline-block; margin-left:10px;">Part No</span>
+        <input style="width:20%;" id="filter_part_no" class="easyui-combogrid">
+        <a href="javascript:;" class="easyui-linkbutton" onclick="filter()"><i class="fa fa-search"></i> Filter Data</a>
+    </div>
 </div>
 
 <div id="toolbar2" style="height: auto; padding:10px;">
@@ -136,18 +141,32 @@
         window.location.reload();
     }
 
+    function filter() {
+        var filter_part_no = $("#filter_part_no").combogrid('getValue');
+        url = "?filter_part_no=" + window.btoa(filter_part_no);
+
+        $('#dg').datagrid('load', {
+            filter_part_no: filter_part_no
+        });
+
+        $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
+        $("#printout").attr('src', '<?= base_url('warehouse/issued_others_store_out/print') ?>' + url);
+    }
+
+    $('#dg').datagrid({
+        url: '<?= base_url('warehouse/issued_others_store_out/datatables') ?>',
+        pagination: true,
+        clientPaging: false,
+        remoteFilter: true,
+        rownumbers: true,
+        fit: true,
+        pageList: [20, 50, 100, 500, 1000],
+        pageSize: 20,
+    });
+
     $(function() {
-        //SETTING DATAGRID EASYUI
-        $('#dg').datagrid({
-            url: '<?= base_url('warehouse/issued_others_store_out/datatables') ?>',
-            pagination: true,
-            clientPaging: false,
-            remoteFilter: true,
-            rownumbers: true,
-            fit: true,
-            pageList: [20, 50, 100, 500, 1000],
-            pageSize: 20,
-        }).datagrid('enableFilter');
+
+        $('#dg').datagrid().datagrid('enableFilter');
 
         //SAVE DATA
         $('#dlg_detail').dialog({
@@ -222,69 +241,61 @@
                         }
                     }
                 },
-                // {
-                //     text: 'Cancel',
-                //     handler: function() {
-                //         var status = $("#status").numberbox('getValue');
+                {
+                    text: 'Cancel',
+                    handler: function() {
+                        $.messager.prompt('Cancel', 'Please input password', function(r) {
+                            if (r == "CANCELISSUED") {
+                                var request_no = $("#request_no").textbox('getValue');
+                                var trans_date = $("#trans_date").datebox('getValue');
+                                var request_name = $("#request_name").textbox('getValue');
+                                var out_date = $("#out_date").datebox('getValue');
 
-                //         if (status == 0) {
-                //             $.messager.prompt('Reason', 'Please input the reason, why the Request is Cancel ?', function(r) {
-                //                 if (r) {
-                //                     var request_no = $("#request_no").textbox('getValue');
-                //                     var trans_date = $("#trans_date").datebox('getValue');
-                //                     var request_name = $("#request_name").textbox('getValue');
-                //                     var out_date = $("#out_date").datebox('getValue');
+                                $('#dg_detail').datagrid('acceptChanges');
+                                var rows = $('#dg_detail').datagrid('getRows');
+                                var totalrows = rows.length;
 
-                //                     $('#dg_detail').datagrid('acceptChanges');
-                //                     var rows = $('#dg_detail').datagrid('getRows');
-                //                     var totalrows = rows.length;
+                                if (totalrows > 0) {
+                                    for (let i = 0; i < totalrows; i++) {
+                                        if (rows[i].item_rm_id) {
+                                            $.ajax({
+                                                type: "post",
+                                                url: '<?= base_url('warehouse/issued_others_store_out/canceled') ?>',
+                                                data: {
+                                                    request_no: request_no,
+                                                    item_rm_id: rows[i].item_rm_id,
+                                                    status: '2',
+                                                    reason: r
+                                                },
+                                                dataType: "json",
+                                                success: function(result) {
+                                                    Swal.fire({
+                                                        title: result.message,
+                                                        icon: result.theme,
+                                                        confirmButtonText: 'Ok',
+                                                        allowOutsideClick: false,
+                                                    }).then((result) => {
+                                                        if (result.isConfirmed) {
+                                                            window.location.reload();
+                                                        }
+                                                    });
+                                                }
+                                            });
+                                        }
+                                    }
 
-                //                     if (totalrows > 0) {
-                //                         for (let i = 0; i < totalrows; i++) {
-                //                             if (rows[i].item_rm_id) {
-                //                                 $.ajax({
-                //                                     type: "post",
-                //                                     url: '<?= base_url('warehouse/issued_others_store_out/update') ?>',
-                //                                     data: {
-                //                                         request_no: request_no,
-                //                                         trans_date: trans_date,
-                //                                         request_name: request_name,
-                //                                         out_date: out_date,
-                //                                         out_by: "<?= $this->session->name ?>",
-                //                                         item_rm_id: rows[i].item_rm_id,
-                //                                         remarks: rows[i].remarks,
-                //                                         status: '2',
-                //                                         reason: r
-                //                                     },
-                //                                     dataType: "json",
-                //                                     success: function(result) {
-                //                                         Swal.fire({
-                //                                             title: result.message,
-                //                                             icon: result.theme,
-                //                                             confirmButtonText: 'Ok',
-                //                                             allowOutsideClick: false,
-                //                                         }).then((result) => {
-                //                                             if (result.isConfirmed) {
-                //                                                 window.location.reload();
-                //                                             }
-                //                                         });
-                //                                     }
-                //                                 });
-                //                             }
-                //                         }
-
-                //                         $('#dg').datagrid('reload');
-                //                         $('#dlg_detail').dialog('close');
-                //                     } else {
-                //                         toastr.warning("Please Select data in the table first!");
-                //                     }
-                //                 }
-                //             });
-                //         } else {
-                //             toastr.error("The Data Already Created");
-                //         }
-                //     }
-                // }
+                                    $('#dg').datagrid('reload');
+                                    $('#dlg_detail').dialog('close');
+                                } else {
+                                    toastr.warning("Please Select data in the table first!");
+                                }
+                            } else {
+                                toastr.warning("Please Correct Typing!", "Information");
+                            }
+                        });
+                        $('.messager-input').attr('type', 'password');
+                    }
+                }
             ]
         });
 
@@ -454,6 +465,37 @@
             }
         }
     }
+
+    $('#filter_part_no').combogrid({
+        url: '<?= base_url('master/item_rm/readNotRm/'); ?>',
+        panelWidth: 550,
+        idField: 'id',
+        textField: 'number',
+        mode: 'remote',
+        fitColumns: true,
+        prompt: "Choose Part No",
+        columns: [
+            [{
+                field: 'id',
+                title: 'Part ID',
+                width: 100
+            }, {
+                field: 'number',
+                title: 'Part No',
+                width: 200
+            }, {
+                field: 'name',
+                title: 'Part Name',
+                width: 200
+            }]
+        ],
+        icons: [{
+            iconCls: 'icon-clear',
+            handler: function(e) {
+                $(e.data.target).combogrid('clear').combogrid('textbox').focus();
+            }
+        }]
+    });
 
     function BtnDetail(val, row) {
         var details = "details('" + row.request_no + "','" + row.trans_date + "','" + row.request_name + "','" + row.status + "','" + row.location_other_number + "' ,'" + row.document_in + "' )";

@@ -55,6 +55,7 @@ class Issued_others_out extends CI_Controller
     public function datatables()
     {
         if ($this->input->post()) {
+            $filter_part_no = $this->input->post('filter_part_no');
             $filters = json_decode($this->input->post('filterRules'));
             $page = $this->input->post('page');
             $rows = $this->input->post('rows');
@@ -69,8 +70,15 @@ class Issued_others_out extends CI_Controller
             $this->db->join("(select request_no, item_rm_id, sum(qty) as qty from issued_others where status <> '2' group by request_no, item_rm_id) b", 'a.request_no = b.request_no and a.item_rm_id=b.item_rm_id', 'left');
             if (@count($filters) > 0) {
                 foreach ($filters as $filter) {
-                    $this->db->like($filter->field, $filter->value);
+                    if ($filter->field == "total_qty") {
+                        $this->db->having("sum(a.qty) - sum(coalesce(b.qty,0)) = '$filter->value'");
+                    } else {
+                        $this->db->like("a." . $filter->field, $filter->value);
+                    }
                 }
+            }
+            if ($filter_part_no != "") {
+                $this->db->where('a.item_rm_id', $filter_part_no);
             }
             $this->db->group_by('a.request_no');
             $this->db->order_by('a.request_no', 'DESC');
@@ -224,6 +232,8 @@ class Issued_others_out extends CI_Controller
         $this->db->from('config');
         $config = $this->db->get()->row();
 
+        $filter_part_no = base64_decode($this->input->get('filter_part_no'));
+
         $this->db->select("a.status,a.request_no,a.request_name,a.trans_date, a.item_rm_id,a.remarks,a.reason,
         a.qty - coalesce(c.qty,0) as stock, 
         a.qty - coalesce(c.qty,0) as qty, 
@@ -232,6 +242,9 @@ class Issued_others_out extends CI_Controller
         $this->db->from('issued_others_request a');
         $this->db->join('item_rm b', 'a.item_rm_id = b.id');
         $this->db->join("(select request_no, item_rm_id, sum(qty) as qty from issued_others where status <> '2' group by request_no, item_rm_id) c", 'a.request_no = c.request_no and a.item_rm_id=c.item_rm_id', 'left');
+        if ($filter_part_no != "") {
+            $this->db->where('a.item_rm_id', $filter_part_no);
+        }
         $this->db->order_by('a.request_no', 'DESC');
         $this->db->order_by('a.item_rm_id', 'ASC');
         $records = $this->db->get()->result_array();

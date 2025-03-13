@@ -1323,7 +1323,6 @@
                                     endEditing2();
                                     if (totalrows > 0) {
                                         requestData(totalrows, rows);
-                                        
                                         $('#dlg_insert').dialog('close');
                                         Swal.fire({
                                             title: 'Please Wait for Saving Data',
@@ -1334,7 +1333,38 @@
                                                 Swal.showLoading();
                                             },
                                         });
-
+                                        $.ajax({
+                                            method: 'post',
+                                            url: '<?= base_url('finance/ap_payments/deleteJournal') ?>',
+                                            data: {
+                                                payment_no: payment_no
+                                            },
+                                            success: function(result) {
+                                                if (totalrows2 > 0) {
+                                                    for (let z = 0; z < totalrows2; z++) {
+                                                        $.ajax({
+                                                            type: "post",
+                                                            url: '<?= base_url('finance/ap_payments/createJournals') ?>',
+                                                            data: {
+                                                                payment_no: payment_no,
+                                                                account_number: rows2[z].account_number,
+                                                                account_name: rows2[z].account_name,
+                                                                description: rows2[z].description,
+                                                                debit: rows2[z].debit,
+                                                                credit: rows2[z].credit,
+                                                                local_debit: rows2[z].local_debit,
+                                                                local_credit: rows2[z].local_credit,
+                                                                flag: rows2[z].flag,
+                                                            },
+                                                            dataType: "json",
+                                                            success: function(result2) {
+                                                                //
+                                                            }
+                                                        });
+                                                    }
+                                                }
+                                            }
+                                        });
                                         function requestData(total, json, jml = 1, value = 0) {
                                             if (value < 100) {
                                                 value = Math.floor((jml / total) * 100);

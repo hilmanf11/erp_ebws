@@ -102,18 +102,10 @@ class Journal_posting_adjustments extends CI_Controller
         }elseif($category == "GL - ASSET"){
             $sql = $this->db->query("SELECT a.* 
                 FROM (
-                    (SELECT account_number, account_name, account_number as number, account_name as name FROM account_coa WHERE account_number IN ('26000004','26000006','26000008') ORDER BY account_number ASC)
+                    (SELECT account_number, account_name, account_number as number, account_name as name FROM account_coa WHERE account_number NOT IN (SELECT number FROM account_group_details) ORDER BY account_number ASC)
                 UNION 
                     (SELECT b.account_number, b.account_name, a.number, a.name FROM assets a JOIN item_familys b ON a.item_family_id = b.id JOIN account_coa c ON b.account_number = c.account_number WHERE a.request_no = 'Additional' and a.status = 0 ORDER BY a.number ASC)
                 ) a WHERE a.account_number like '%$post%' or a.account_name like '%$post%' or a.number like '%$post%' or a.name like '%$post%' ORDER BY a.account_number");
-            $records = $sql->result_array();
-        }elseif($category == "ASSET - ASSET"){
-            $sql = $this->db->query("SELECT a.* 
-                FROM (
-                    (SELECT c.account_number, c.account_name, a.number, a.name FROM asset_fixeds a JOIN item_familys b ON a.item_family_id = b.id JOIN account_coa c ON b.account_number = c.account_number GROUP BY a.number ORDER BY a.number ASC)
-                UNION 
-                    (SELECT b.account_number, b.account_name, a.number, a.name FROM assets a JOIN item_familys b ON a.item_family_id = b.id JOIN account_coa c ON b.account_number = c.account_number WHERE a.request_no = 'Additional' and a.status = 0 ORDER BY a.number ASC)
-                ) a WHERE a.number like '%$post%' or a.name like '%$post%' ORDER BY a.number");
             $records = $sql->result_array();
         }
 
@@ -530,7 +522,6 @@ class Journal_posting_adjustments extends CI_Controller
                                     "taxes_amount" => ($local_debit + $local_credit),
                                     "amount" => $post['amount'],
                                     "debitcredit" => $post['debitcredit'],
-                                    "qty" => $post['qty'],
                                     "account_number" => $tax->account_number_1,
                                     "account_name" => $tax->account_name_1,
                                     "description" => $tax->account_name_1,
@@ -561,7 +552,6 @@ class Journal_posting_adjustments extends CI_Controller
                                 "taxes_amount" => ($local_debit + $local_credit),
                                 "amount" => $post['amount'],
                                 "debitcredit" => $post['debitcredit'],
-                                "qty" => $post['qty'],
                                 "account_number" => $tax->account_number,
                                 "account_name" => $tax->account_name,
                                 "description" => $tax->account_name,
@@ -623,7 +613,6 @@ class Journal_posting_adjustments extends CI_Controller
                 "taxes_amount" => $post['taxes_amount'],
                 "amount" => $post['amount'],
                 "debitcredit" => $post['debitcredit'],
-                "qty" => $post['qty'],
                 "account_number" => $post['account_number'],
                 "account_name" => $post['account_name'],
                 "description" => $post['description'],
@@ -637,14 +626,7 @@ class Journal_posting_adjustments extends CI_Controller
 
             // if(empty($post['id'])){
                 $send = $this->crud->create('journal_postings', $dataFinal);
-                if($post['journal_type'] == "GL - ASSET"){
-                    $this->createAsset($post['company_id'], $post['company_name'], $post['document_date'], $post['currency'], ($local_debit - $local_credit), $post['document_no'], $post['number'], $post['qty']);
-                }
-
-                if($post['journal_type'] == "ASSET - ASSET"){
-                    $this->createAsset($post['company_id'], $post['company_name'], $post['document_date'], $post['currency'], ($local_debit - $local_credit), $post['document_no'], $post['number'], $post['qty']);
-                }
-
+                $this->createAsset($post['company_id'], $post['company_name'], $post['document_date'], $post['currency'], ($local_debit - $local_credit), $post['document_no'], $post['number']);
             // }else{
             //     $send = $this->crud->update('journal_postings', ["id" => $post['id']], $dataFinal);
             // }
@@ -655,14 +637,14 @@ class Journal_posting_adjustments extends CI_Controller
         }
     }
 
-    public function createAsset($number, $name, $trans_date, $currency, $price, $document_no, $gl_no, $qty = 0){
-        $asset = $this->crud->read("assets", [], ["number" => $number, "status" => 0]);
+    public function createAsset($number, $name, $trans_date, $currency, $price, $document_no, $gl_no){
+        $asset = $this->crud->read("assets", [], ["number" => $number]);
         if(!empty($asset)){
             $item_family = $this->crud->read("item_familys", [], ["id" => $asset->item_family_id]);
             $estimate_year = $item_family->usefull;
             $shift = $item_family->shift;
             $estimate_month = ($estimate_year * 12);
-            $depreciation = ($price / $estimate_month);
+            $depreciation = ($estimate_year / $estimate_month);
             $expired_date = date("Y-m-d", strtotime("+" . $estimate_year . " year", strtotime($trans_date)));
             $date_from  = date_create($trans_date);
             $date_to  = date_create($expired_date);
@@ -675,10 +657,10 @@ class Journal_posting_adjustments extends CI_Controller
             }
 
             $asset_fixeds = $this->crud->read("asset_fixeds", [], ["number" => $number]);
+
             $dataAsset = array(
                 "item_family_id" => @$asset->item_family_id,
-                "purchase_invoice_no" => $document_no,
-                "voucher_no" => $gl_no,
+                "purchase_invoice_no" => $gl_no,
                 "supplier_id" => "",
                 "supplier_name" => "",
                 "item_rm_id" => "",
@@ -694,7 +676,6 @@ class Journal_posting_adjustments extends CI_Controller
                 "residual" => (($price * 5) / 100),
                 "expired_date" => $expired_date,
                 "depreciation" => $depreciation,
-                "acq_closing" => $price,
                 "remarks" => $document_no,
                 "method" => "JOURNAL ADJUSTMENT",
                 "departement" => "",
@@ -708,49 +689,11 @@ class Journal_posting_adjustments extends CI_Controller
             if(empty($asset_fixeds)){
                 $assets = $this->crud->create('asset_fixeds', $dataAsset);
                 $this->db->update("assets", ["status" => 1], ["number" => $number]);
-                // die($assets);
-            }
-        }else{
-            $asset_fixeds = $this->crud->read("asset_fixeds", [], ["number" => $number]);
-            if(!empty($asset_fixeds)){
-                if($price > 0){
-                    $qty = (@$asset_fixeds->qty + $qty);
-                }else{
-                    $qty = (@$asset_fixeds->qty - $qty);
-                }
-
-                $item_family = $this->crud->read("item_familys", [], ["id" => $asset_fixeds->item_family_id]);
-                $estimate_year = @$item_family->usefull;
-                $estimate_month = ($estimate_year * 12);
-                $shift = @$item_family->shift;
-                $expired_date = date("Y-m-d", strtotime("+" . $estimate_year . " year", strtotime($trans_date)));
-                $date_from  = date_create($trans_date);
-                $date_to  = date_create($expired_date);
-                $diff  = date_diff($date_from, $date_to); 
-                $depreciation = ((@$asset_fixeds->cost + $price) / $estimate_month);
-                $estimate_day = $diff->d;
-                if($shift == "1"){
-                    $factor = 1;
-                }else{
-                    $factor = 2;
-                }
-
-                $dataAsset = array(
-                    "qty" => $qty,
-                    "cost" => (@$asset_fixeds->cost + $price),
-                    "residual" => (((@$asset_fixeds->cost + $price) * 5) / 100),
-                    "total" => (@$asset_fixeds->cost + $price),
-                    "depreciation" => $depreciation,
-                    "acq_closing" => (@$asset_fixeds->cost + $price),
-                    "addition" => ((@$asset_fixeds->cost + $price) - (((@$asset_fixeds->cost + $price) * 5) / 100) / $estimate_year / 365 * $estimate_day * $factor),
-                    "status" => 1
-                );
-
-                $this->db->update("asset_fixeds", $dataAsset, ["number" => $number]);
+                die($assets);
             }
         }
     }
-    
+
     public function createJson()
     {
         $jsonData = $this->input->post('jsonData');
@@ -760,62 +703,10 @@ class Journal_posting_adjustments extends CI_Controller
     public function delete()
     {
         $data = $this->input->post();
-        $journal = $this->crud->reads('journal_postings', [], $data);
+        $journal = $this->crud->read('journal_postings', [], $data);
         $send = $this->crud->delete('journal_postings', $data);
 
-        foreach ($journal as $jr) {
-            if($jr->journal_type == "ASSET - ASSET"){
-                $asset_fixeds = $this->crud->read("asset_fixeds", [], ["number" => $jr->company_id]);
-                if(!empty($asset_fixeds)){
-                    $price = ($jr->local_credit - $jr->local_debit);
-
-                    if($price > 0){
-                        $qty = (@$asset_fixeds->qty + $jr->qty);
-                    }else{
-                        $qty = (@$asset_fixeds->qty - $jr->qty);
-                    }
-
-                    $item_family = $this->crud->read("item_familys", [], ["id" => $asset_fixeds->item_family_id]);
-                    $estimate_year = @$item_family->usefull;
-                    $estimate_month = ($estimate_year * 12);
-                    $shift = @$item_family->shift;
-                    $expired_date = date("Y-m-d", strtotime("+" . $estimate_year . " year", strtotime($jr->trans_date)));
-                    $date_from  = date_create($jr->trans_date);
-                    $date_to  = date_create($expired_date);
-                    $diff  = date_diff($date_from, $date_to); 
-                    $depreciation = ((@$asset_fixeds->cost + $price) / $estimate_month);
-                    $estimate_day = $diff->d;
-                    if($shift == "1"){
-                        $factor = 1;
-                    }else{
-                        $factor = 2;
-                    }
-
-                    $dataAsset = array(
-                        "qty" => $qty,
-                        "cost" => (@$asset_fixeds->cost + $price),
-                        "residual" => (((@$asset_fixeds->cost + $price) * 5) / 100),
-                        "total" => (@$asset_fixeds->cost + $price),
-                        "depreciation" => $depreciation,
-                        "acq_closing" => (@$asset_fixeds->cost + $price),
-                        "addition" => ((@$asset_fixeds->cost + $price) - (((@$asset_fixeds->cost + $price) * 5) / 100) / $estimate_year / 365 * $estimate_day * $factor),
-                        "status" => 1
-                    );
-
-                    $this->db->update("asset_fixeds", $dataAsset, ["number" => @$jr->company_id]);
-                }
-
-                $asset = $this->crud->read("assets", [], ["number" => @$jr->company_id]);
-                if(!empty($asset)){
-                    $this->db->delete("asset_fixeds", ["number" => @$jr->company_id]);
-                    $this->db->update("assets", ["status" => 0], ["number" => @$jr->company_id]);
-                }
-            }else{
-                $this->db->delete("asset_fixeds", ["number" => @$jr->company_id]);
-                $this->db->update("assets", ["status" => 0], ["number" => @$jr->company_id]);
-            }
-        }
-        
+        $this->db->update("assets", ["status" => 0], ["number" => @$journal->company_id]);
         echo $send;
     }
 

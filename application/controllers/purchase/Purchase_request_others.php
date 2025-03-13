@@ -65,7 +65,8 @@ class Purchase_request_others extends CI_Controller
         $this->db->join('suppliers e', 'd.supplier_id = e.id');
         $this->db->join('makers f', 'd.maker_id = f.id', 'left');
         $this->db->where('a.status', 0);
-        $this->db->where("((a.item_category_id = 'ASSET' and asset_code != '') or (a.item_category_id != 'ASSET' and asset_code is null))");
+        // $this->db->where("((a.item_category_id = 'ASSET' and a.asset_code != '') or (a.item_category_id != 'ASSET' and a.asset_code is null))");
+        $this->db->where("((a.item_category_id = 'ASSET' and a.asset_code != '') or (a.item_category_id != 'ASSET' and (a.asset_code is null or a.asset_code = '')))");
         $this->db->where('d.supplier_id', $supplier_id);
         $this->db->where("a.approved_to", "");
         $this->db->order_by('b.number', 'ASC');

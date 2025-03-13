@@ -36,7 +36,6 @@ $config = $this->db->get()->row();
     <script type="text/javascript" src="<?= base_url('assets/datagrid-detailview.js') ?>"></script>
     <script type="text/javascript" src="<?= base_url('assets/datagrid-filter.js') ?>"></script>
     <script type="text/javascript" src="<?= base_url('assets/datagrid-export.js') ?>"></script>
-    <script type="text/javascript" src="https://www.jeasyui.com/easyui/datagrid-groupview.js"></script>
     <!-- Fontawesome -->
     <link rel="stylesheet" type="text/css" href="<?= base_url('assets/icons/fontawesome/css/font-awesome.min.css') ?>">
 

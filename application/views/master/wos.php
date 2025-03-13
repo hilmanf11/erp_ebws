@@ -111,7 +111,7 @@
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">CCT Range</span>
-                    <input style="width:60%;" name="cct_range" id="cct_range" class="easyui-textbox">
+                    <input style="width:60%;" name="cct_range" id="cct_range" required class="easyui-textbox">
                 </div>
             </div>
         </fieldset>
@@ -230,7 +230,7 @@
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Index</span>
-                <input style="width:60%;" name="order" id="order" class="easyui-numberbox">
+                <input style="width:60%;" name="order" id="order" required class="easyui-numberbox">
             </div>
         </fieldset>
     </form>

@@ -214,8 +214,10 @@ class Rgp_out extends CI_Controller
             LEFT JOIN (SELECT a.item_fg_id, (CASE WHEN a.type = 'IN' THEN COALESCE(SUM(a.qty), 0) ELSE 0 END) as sto_qty_in, (CASE WHEN a.type = 'OUT' THEN COALESCE(SUM(a.qty), 0) ELSE 0 END) as sto_qty_out FROM sto_fg a WHERE a.trans_date <= '$trans_date' and (a.approved_to = '' or a.approved_to is null) GROUP BY item_fg_id) d ON a.id = d.item_fg_id
             LEFT JOIN (SELECT item_fg_id, delivery_note_date, COALESCE(SUM(qty), 0) as qty FROM delivery_notes WHERE DATE_FORMAT(created_date, '%Y-%m-%d') <= '$trans_date' GROUP BY item_fg_id) g ON a.id = g.item_fg_id
             
-            WHERE (a.id like '%$post%' or a.number like '%$post%' or a.name like '%$post%')
+            WHERE (a.number like '%$post%' or a.number_customer like '%$post%' or a.name like '%$post%')
             GROUP BY a.id");
+            
+                // die($this->db->last_query());
         }
         echo json_encode($send);
     }

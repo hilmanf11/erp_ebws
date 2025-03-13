@@ -39,6 +39,7 @@ class Issued_others_store_out extends CI_Controller
     public function datatables()
     {
         if ($this->input->post()) {
+            $filter_part_no = $this->input->post('filter_part_no');
             $filters = json_decode($this->input->post('filterRules'));
             $page = $this->input->post('page');
             $rows = $this->input->post('rows');
@@ -62,8 +63,11 @@ class Issued_others_store_out extends CI_Controller
                     }
                 }
             }
-            $this->db->group_by('request_no');
-            $this->db->order_by('request_no', 'DESC');
+            if ($filter_part_no != "") {
+                $this->db->where('a.item_rm_id', $filter_part_no);
+            }
+            $this->db->group_by('a.request_no');
+            $this->db->order_by('a.request_no', 'DESC');
             //$this->db->order_by('a.warehouse', 'DESC');
             //Total Data
             $totalRows = $this->db->count_all_results('', false);
@@ -197,6 +201,13 @@ class Issued_others_store_out extends CI_Controller
         $this->db->from('config');
         $config = $this->db->get()->row();
 
+        $filter_part_no = base64_decode($this->input->get('filter_part_no'));
+        if ($filter_part_no != "") {
+            $whereItem = " and a.item_rm_id = '" . $filter_part_no . "'";
+        } else {
+            $whereItem = "";
+        }
+
         $records = $this->db->query("
         select a.request_no,a.trans_date,a.item_rm_id, d.number as item_rm_number, d.name as item_rm_name, d.uom, 
                 (coalesce(b.qty_in,0) - coalesce(c.qty_out,0)) as stock, 
@@ -207,6 +218,7 @@ class Issued_others_store_out extends CI_Controller
         left join (select request_no, item_rm_id, sum(qty) as qty_in from issued_others_store where type='IN' group by request_no, item_rm_id) b on a.request_no = b.request_no AND a.item_rm_id = b.item_rm_id
         left join (select request_no, item_rm_id, sum(qty) as qty_out from issued_others_store where type='OUT' group by request_no, item_rm_id) c on a.request_no = c.request_no AND a.item_rm_id = c.item_rm_id
         join item_rm d on a.item_rm_id = d.id
+        where  1=1 $whereItem
         order by a.request_no desc
         ")->result_array();
 

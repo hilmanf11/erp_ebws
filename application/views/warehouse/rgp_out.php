@@ -1592,6 +1592,11 @@
     }
 
     function print_doc(number) {
-        window.open("<?= base_url('warehouse/rgp_out/print_doc/') ?>" + window.btoa(number));
+        $.messager.prompt('Print RGP Out', 'Please input Password Print', function(r) {
+            if (r == "PRINTRGPOUT") {
+                window.open("<?= base_url('warehouse/rgp_out/print_doc/') ?>" + window.btoa(number));
+            }
+        });
+        $('.messager-input').attr('type', 'password');
     }
 </script>

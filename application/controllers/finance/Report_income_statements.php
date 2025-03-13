@@ -51,7 +51,7 @@ class Report_income_statements extends CI_Controller
             $trial_balances = $this->crud->query("SELECT * FROM trial_balances WHERE account_number = '$account_number' and `period` = '$period'");
             
             foreach ($trial_balances as $trial_balance) {
-                $ending += ($trial_balance->local_debit - abs($trial_balance->local_credit));
+                $ending += ($trial_balance->ending_debit - abs($trial_balance->ending_credit));
             }
         }
 
@@ -59,26 +59,12 @@ class Report_income_statements extends CI_Controller
     }
 
     function getDataAcc($filter_from, $filter_to, $name){
-        $month = date("m", strtotime($filter_from));
-        $year_min = date("Y", strtotime("-1 year", strtotime($filter_from)));
-        $year = date("Y", strtotime($filter_from));
+        $period = date("Ym", strtotime($filter_from));
+        $period_to = date("Ym", strtotime($filter_to));
 
-        if($month == "11"){
-            $period = $year."11";
-            $period_to = date("Ym", strtotime($filter_from));
-            $income = 0;
-        }elseif($month == "12"){
-            $period = $year."11";
-            $incomeS = $this->crud->query("SELECT name, accumulated as amount FROM income_statements WHERE name = '$name' and `period` = '$period' and `index` = 1");
-            $income = $incomeS[0]->amount;
-        }else{
-            $period = $year_min."12";
-            $period_to = date("Ym", strtotime("-1 month", strtotime($filter_from)));
-            $incomeS = $this->crud->query("SELECT name, accumulated as amount FROM income_statements WHERE name = '$name' and `period` = '$period_to' and `index` = 1");
-            $income = $incomeS[0]->amount;
-        }
+        $income = $this->crud->query("SELECT name, SUM(amount) as amount FROM income_statements WHERE name = '$name' and `period` < '$period_to'");
 
-        return @$income;
+        return @$income[0]->amount;
     }
 
     function getDataCustom($filter_from, $filter_to, $account, $category){
@@ -102,6 +88,7 @@ class Report_income_statements extends CI_Controller
         return $ending;
     }
 
+
     function formatting($amount){
         if($amount >= 0){
             return number_format($amount, 2);
@@ -116,7 +103,7 @@ class Report_income_statements extends CI_Controller
         $filter_to = date("Y-m-t", strtotime($filter_date));
         $period = date("Ym", strtotime($filter_date));
 
-        $filter_from_bf = date("Y-m-01", strtotime($filter_date));
+        $filter_from_bf = date("Y-01-01", strtotime($filter_date));
 
         //Manufacturing
         // $raw_material_begin = $this->getData($filter_from, $filter_to, "Manufacturing", "Income Statement", "Raw Material, Begining");
@@ -165,8 +152,8 @@ class Report_income_statements extends CI_Controller
         $sales_rerturn_acc = ($sales_rerturn + $this->getDataAcc($filter_from_bf, $filter_to, "Sales Return"));
         $sales_discount = $this->getData($filter_from, $filter_to, "Sales", "Income Statement", "Sales Discount");
         $sales_discount_acc = ($sales_discount + $this->getDataAcc($filter_from_bf, $filter_to, "Sales Discount"));
-        $total_sales = ($sales - $sales_rerturn - $sales_discount);
-        $total_sales_acc = ($sales_acc - $sales_rerturn_acc - $sales_discount_acc);
+        $total_sales = ($sales + $sales_rerturn + $sales_discount);
+        $total_sales_acc = ($sales_acc + $sales_rerturn_acc + $sales_discount_acc);
 
         //Gross Profit Loss
         $cogs = $this->getData($filter_from, $filter_to, "Cost of Good Sold", "Income Statement", "Cost of Good Sold");
@@ -180,8 +167,6 @@ class Report_income_statements extends CI_Controller
         $selling_acc = ($selling + $this->getDataAcc($filter_from_bf, $filter_to, "Selling"));
         $general_administrative = $this->getData($filter_from, $filter_to, "Operating Expenses", "Income Statement", "General and Administrative");
         $general_administrative_acc = ($general_administrative + $this->getDataAcc($filter_from_bf, $filter_to, "General and Administrative"));
-        $operating_profit = ($total_cogs - $general_administrative);
-        $operating_profit_acc = ($total_cogs_acc - $general_administrative_acc);
 
         //Non Operating Expenses
         $interest_income = $this->getData($filter_from, $filter_to, "Non Operating Expenses", "Income Statement", "Interest Income");
@@ -201,237 +186,53 @@ class Report_income_statements extends CI_Controller
         //Taxes
         $corporate_income_tax = $this->getData($filter_from, $filter_to, "Taxes", "Income Statement", "Corporate Income Tax");
         $corporate_income_tax_acc = ($corporate_income_tax + $this->getDataAcc($filter_from_bf, $filter_to, "Corporate Income Tax"));
-
-        $deffered_income_tax = ($this->getData($filter_from, $filter_to, "Taxes", "Income Statement", "Deffered Income Tax") * -1);
+        $deffered_income_tax = $this->getData($filter_from, $filter_to, "Taxes", "Income Statement", "Deffered Income Tax");
         $deffered_income_tax_acc = ($deffered_income_tax + $this->getDataAcc($filter_from_bf, $filter_to, "Deffered Income Tax"));
-        $total_bf_taxes = ($total_cogs - $total_operating_expenses);
-        $total_bf_taxes_acc = ($total_cogs_acc - $total_operating_expenses_acc);
-
-        $total_taxes = (($total_cogs - $total_operating_expenses) - $corporate_income_tax + $deffered_income_tax);
-        $total_taxes_acc = (($total_cogs_acc - $total_operating_expenses_acc) - $corporate_income_tax_acc + $deffered_income_tax_acc);
-
-        $profit_loss_for_the_year = ($total_bf_taxes - $corporate_income_tax);
-        $profit_loss_for_the_year_acc = ($total_bf_taxes_acc - $corporate_income_tax_acc);
+        $total_taxes = (($total_cogs - $total_operating_expenses) - $corporate_income_tax - $deffered_income_tax);
+        $total_taxes_acc = (($total_cogs_acc - $total_operating_expenses_acc) - $corporate_income_tax_acc - $deffered_income_tax_acc);
 
         $data = array(
-                ["index" => 1, "period" => $period,"name" => "Raw Material","amount" => $raw_material_begin, "accumulated" => $raw_material_begin_acc],
-                ["index" => 1, "period" => $period,"name" => "Purchase","amount" => $purchase, "accumulated" => $purchase_acc],
-                ["index" => 1, "period" => $period,"name" => "MISC Transaction","amount" => $misc_transaction, "accumulated" => $misc_transaction_acc],
-                ["index" => 1, "period" => $period,"name" => "Return Borrowed Material","amount" => $return_material, "accumulated" => $return_material_acc],
-                ["index" => 1, "period" => $period,"name" => "Adjustment Costing","amount" => $adj_costing, "accumulated" => $adj_costing_acc],
-                ["index" => 1, "period" => $period,"name" => "Available Inv To Proses","amount" => $available_invproses, "accumulated" => $available_invproses_acc],
-                ["index" => 1, "period" => $period,"name" => "Raw Material, Ending","amount" => $raw_material_end, "accumulated" => $raw_material_end_acc],
-                ["index" => 1, "period" => $period,"name" => "Raw Material Used","amount" => $raw_material_used, "accumulated" => $raw_material_used_acc],
-                ["index" => 1, "period" => $period,"name" => "DIRECT LABOUR","amount" => $direct_labour, "accumulated" => $direct_labour_acc],
-                ["index" => 1, "period" => $period,"name" => "FACTORY OVERHEAD","amount" => $factory_overhead, "accumulated" => $factory_overhead_acc],
-                ["index" => 1, "period" => $period,"name" => "Work In Process, Begining","amount" => $work_in_proses_begin, "accumulated" => $work_in_proses_begin_acc],
-                ["index" => 1, "period" => $period,"name" => "Work In Process, Ending","amount" => $work_in_proses_end, "accumulated" => $work_in_proses_end_acc],
-                ["index" => 1, "period" => $period,"name" => "FINISH GOODS, BEGINING","amount" => $finishgood_begin, "accumulated" => $finishgood_begin_acc],
-                ["index" => 1, "period" => $period,"name" => "FINISH GOODS, ENDING","amount" => $finishgood_ending, "accumulated" => $finishgood_ending_acc],
-                ["index" => 1, "period" => $period,"name" => "COGS","amount" => $cost_of_good_finishgood, "accumulated" => $cost_of_good_finishgood_acc],
-                ["index" => 1, "order" => 1, "period" => $period,"name" => "Sales","amount" => $sales, "accumulated" => $sales_acc],
-                ["index" => 1, "order" => 2, "period" => $period,"name" => "Sales Return","amount" => $sales_rerturn, "accumulated" => $sales_rerturn_acc],
-                ["index" => 1, "order" => 3, "period" => $period,"name" => "Sales Discount","amount" => $sales_discount, "accumulated" => $sales_discount_acc],
-                ["index" => 1, "order" => 4, "period" => $period,"name" => "Total Sales","amount" => $total_sales, "accumulated" => $total_sales_acc],
-                ["index" => 1, "order" => 5, "period" => $period,"name" => "Cost of Good Sold","amount" => $cogs, "accumulated" => $cogs_acc],
-                ["index" => 1, "order" => 6, "period" => $period,"name" => "Gross Profit Loss","amount" => $total_cogs, "accumulated" => $total_cogs_acc],
-                ["index" => 1, "order" => 7, "period" => $period,"name" => "Selling","amount" => $selling, "accumulated" => $selling_acc],
-                ["index" => 1, "order" => 8, "period" => $period,"name" => "General and Administrative","amount" => $general_administrative, "accumulated" => $general_administrative_acc],
-                ["index" => 1, "order" => 9, "period" => $period,"name" => "Operating Profit","amount" => $operating_profit, "accumulated" => $operating_profit_acc],
-                ["index" => 1, "order" => 10, "period" => $period,"name" => "Interest Income","amount" => $interest_income, "accumulated" => $interest_income_acc],
-                ["index" => 1, "order" => 11, "period" => $period,"name" => "Bank Charge","amount" => $bank_charge, "accumulated" => $bank_charge_acc],
-                ["index" => 1, "order" => 12, "period" => $period,"name" => "Foreign Exchange Loss/Profit","amount" => $foreign_exchange_loss, "accumulated" => $foreign_exchange_loss_acc],
-                ["index" => 1, "order" => 13, "period" => $period,"name" => "Other","amount" => $other, "accumulated" => $other_acc],
-                ["index" => 1, "order" => 14, "period" => $period,"name" => "Total Non Operating Expenses (Income)","amount" => $total_non_operating_expenses, "accumulated" => $total_non_operating_expenses_acc],
-                ["index" => 1, "order" => 15, "period" => $period,"name" => "Total Operating Expenses","amount" => $total_operating_expenses, "accumulated" => $total_operating_expenses_acc],
-                ["index" => 1, "order" => 16, "period" => $period,"name" => "NET PROFIT LOSS BEFORE TAXES","amount" => $total_bf_taxes, "accumulated" => $total_bf_taxes_acc],
-                ["index" => 1, "order" => 17, "period" => $period,"name" => "Corporate Income Tax","amount" => $corporate_income_tax, "accumulated" => $corporate_income_tax_acc],
-                ["index" => 1, "order" => 18, "period" => $period,"name" => "Profit Loss For The Year","amount" => $profit_loss_for_the_year, "accumulated" => $profit_loss_for_the_year_acc],
-                ["index" => 1, "order" => 19, "period" => $period,"name" => "Deffered Income Tax","amount" => $deffered_income_tax, "accumulated" => $deffered_income_tax_acc],
-                ["index" => 1, "order" => 20, "period" => $period,"name" => "NET PROFIT LOSS AFTER TAXES","amount" => $total_taxes, "accumulated" => $total_taxes_acc]
+                ["period" => $period,"name" => "Raw Material","amount" => $raw_material_begin, "accumulated" => $raw_material_begin_acc],
+                ["period" => $period,"name" => "Purchase","amount" => $purchase, "accumulated" => $purchase_acc],
+                ["period" => $period,"name" => "MISC Transaction","amount" => $misc_transaction, "accumulated" => $misc_transaction_acc],
+                ["period" => $period,"name" => "Return Borrowed Material","amount" => $return_material, "accumulated" => $return_material_acc],
+                ["period" => $period,"name" => "Adjustment Costing","amount" => $adj_costing, "accumulated" => $adj_costing_acc],
+                ["period" => $period,"name" => "Available Inv To Proses","amount" => $available_invproses, "accumulated" => $available_invproses_acc],
+                ["period" => $period,"name" => "Raw Material, Ending","amount" => $raw_material_end, "accumulated" => $raw_material_end_acc],
+                ["period" => $period,"name" => "Raw Material Used","amount" => $raw_material_used, "accumulated" => $raw_material_used_acc],
+                ["period" => $period,"name" => "DIRECT LABOUR","amount" => $direct_labour, "accumulated" => $direct_labour_acc],
+                ["period" => $period,"name" => "FACTORY OVERHEAD","amount" => $factory_overhead, "accumulated" => $factory_overhead_acc],
+                ["period" => $period,"name" => "Work In Process, Begining","amount" => $work_in_proses_begin, "accumulated" => $work_in_proses_begin_acc],
+                ["period" => $period,"name" => "Work In Process, Ending","amount" => $work_in_proses_end, "accumulated" => $work_in_proses_end_acc],
+                ["period" => $period,"name" => "FINISH GOODS, BEGINING","amount" => $finishgood_begin, "accumulated" => $finishgood_begin_acc],
+                ["period" => $period,"name" => "FINISH GOODS, ENDING","amount" => $finishgood_ending, "accumulated" => $finishgood_ending_acc],
+                ["period" => $period,"name" => "COGS","amount" => $cost_of_good_finishgood, "accumulated" => $cost_of_good_finishgood_acc],
+                ["period" => $period,"name" => "Sales","amount" => $sales, "accumulated" => $sales_acc],
+                ["period" => $period,"name" => "Sales Return","amount" => $sales_rerturn, "accumulated" => $sales_rerturn_acc],
+                ["period" => $period,"name" => "Sales Discount","amount" => $sales_discount, "accumulated" => $sales_discount_acc],
+                ["period" => $period,"name" => "Total Sales","amount" => $total_sales, "accumulated" => $total_sales_acc],
+                ["period" => $period,"name" => "Cost of Good Sold","amount" => $cogs, "accumulated" => $cogs_acc],
+                ["period" => $period,"name" => "Gross Profit Loss","amount" => $total_cogs, "accumulated" => $total_cogs_acc],
+                ["period" => $period,"name" => "Selling","amount" => $selling, "accumulated" => $selling_acc],
+                ["period" => $period,"name" => "General and Administrative","amount" => $general_administrative, "accumulated" => $general_administrative_acc],
+                ["period" => $period,"name" => "Interest Income","amount" => $interest_income, "accumulated" => $interest_income_acc],
+                ["period" => $period,"name" => "Bank Charge","amount" => $bank_charge, "accumulated" => $bank_charge_acc],
+                ["period" => $period,"name" => "Other","amount" => $other, "accumulated" => $other_acc],
+                ["period" => $period,"name" => "Foreign Exchange Loss/Profit","amount" => $foreign_exchange_loss, "accumulated" => $foreign_exchange_loss_acc],
+                ["period" => $period,"name" => "Total Non Operating Expenses (Income)","amount" => $total_non_operating_expenses, "accumulated" => $total_non_operating_expenses_acc],
+                ["period" => $period,"name" => "Total Operating Expenses","amount" => $total_operating_expenses, "accumulated" => $total_operating_expenses_acc],
+                ["period" => $period,"name" => "Corporate Income Tax","amount" => $corporate_income_tax, "accumulated" => $corporate_income_tax_acc],
+                ["period" => $period,"name" => "Deffered Income Tax","amount" => $deffered_income_tax, "accumulated" => $deffered_income_tax_acc],
+                ["period" => $period,"name" => "NET PROFIT LOSS AFTER TAXES","amount" => $total_taxes, "accumulated" => $total_taxes_acc]
             );
         $result['total'] = count($data);
         $result = array_merge($result, ['rows' => $data]);
         echo json_encode($result);
     }
 
-    public function generateData2(){
-        $filter_date = $this->input->post('filter_date');
-        $period2 = date("Ym", strtotime($filter_date));
-        $income_statements = $this->crud->reads("income_statements", [], ["index" => 1, "period" => $period2]);
-
-        $month = date("m", strtotime($filter_date));
-        $year_min = date("Y", strtotime("-1 year", strtotime($filter_date)));
-        $year = date("Y", strtotime($filter_date));
-
-        $datas = array();
-        foreach ($income_statements as $income_statement) {
-            $name = $income_statement->name;
-
-            $this->db->select('b.account_number, b.account_name, b.local_debit, b.local_kredit');
-            $this->db->from('account_statements a');
-            $this->db->join('account_coa b', 'a.account_number = b.account_number');
-            $this->db->where('a.modul', "Income Statement");
-            $this->db->where('a.name', $name);
-            // $this->db->where('a.name', "Sales");
-            $this->db->group_by('b.account_number');
-            $accounts = $this->db->get()->result_array();
-            
-            foreach ($accounts as $account) {
-                $account_number = $account['account_number'];
-                $account_name = $account['account_name'];
-                $trial_balance = $this->crud->read("trial_balances", [], ["account_number" => $account_number, "period" => $period2]);
-
-                if($month == "11"){
-                    $period = $year."11";
-                    $period_to = date("Ym", strtotime($filter_from));
-                    $income_amount = 0;
-                }elseif($month == "12"){
-                    $period = $year."11";
-                    $period_to = date("Ym", strtotime($filter_from));
-
-                    $income = $this->crud->query("SELECT name, account_number, SUM(amount) as amount 
-                    FROM income_statements WHERE name = '$name' and account_number = '$account_number' and `period` between '$period' and '$period_to'
-                    GROUP BY name, account_number");
-                    $income_amount = @$income[0]->amount;
-                }else{
-                    $period = $year_min."11";
-                    $period_to = date("Ym", strtotime("-1 month", strtotime($filter_from)));
-
-                    $income = $this->crud->query("SELECT name, account_number, SUM(amount) as amount 
-                    FROM income_statements WHERE name = '$name' and account_number = '$account_number' and `period` between '$period' and '$period_to'
-                    GROUP BY name, account_number");
-                    $income_amount = @$income[0]->amount;
-                }
-
-                if($name == "Sales" || $name == "Sales Return"){
-                    $amount = (abs(@$trial_balance->local_debit - abs(@$trial_balance->local_credit)));
-                    $accumulated = (abs(@$trial_balance->local_debit - abs(@$trial_balance->local_credit)) + @$income_amount);
-                }else{
-                    $amount = (@$trial_balance->local_debit - abs(@$trial_balance->local_credit));
-                    $accumulated = ((@$trial_balance->local_debit - abs(@$trial_balance->local_credit)) + @$income_amount);
-                }
-
-                if(in_array($account_number, ["9-9200", "9-9201"])){
-                    $amount = ($amount * -1);
-                    $accumulated = ($accumulated * -1);
-                }
-
-                $datas[] = [
-                    "index" => 2,
-                    "period" => $period2,
-                    "name" => $name,
-                    "account_number" => $account_number,
-                    "account_name" => $account_name,
-                    "amount" => $amount,
-                    "accumulated" => $accumulated,
-                ];
-            }
-        }
-
-        $result['total'] = count($datas);
-        $result = array_merge($result, ['rows' => $datas]);
-        echo json_encode($result);
-    }
-
     public function datatables($period, $name){
-        $account_statements = $this->crud->read('income_statements', [], ["period" => $period, "name" => $name, "index" => 1]);
+        $account_statements = $this->crud->read('income_statements', [], ["period" => $period, "name" => $name]);
         return $account_statements;
-    }
-
-    public function datatableDetails($periodNow, $name){
-        $filter_from = date("Y-m-01", strtotime(substr($periodNow, 0, 4) . "-" . substr($periodNow, 4) . "-01"));
-        $month = date("m", strtotime($filter_from));
-        $year_min = date("Y", strtotime("-1 year", strtotime($filter_from)));
-        $year = date("Y", strtotime($filter_from));
-
-        if($month == "11"){
-            $period = $year."11";
-            $period_to = date("Ym", strtotime($filter_from));
-        }elseif($month == "12"){
-            $period = $year."11";
-            $period_to = date("Ym", strtotime($filter_from));
-        }else{
-            $period = $year_min."11";
-            $period_to = date("Ym", strtotime($filter_from));
-        }
-
-        $account_statements = $this->crud->query("SELECT account_number, account_name, SUM(amount) as amount, SUM(amount) as accumulated
-            FROM income_statements WHERE `name` = '$name' and `period` between '$period' and '$period_to' and `index` = 2
-            GROUP BY account_number ORDER BY account_number asc");
-
-        $htmlSales = "";
-        foreach ($account_statements as $account_statement) {
-            $acc = $this->crud->read("income_statements", [], ["period" => $periodNow, "account_number" => $account_statement->account_number]);
-            $htmlSales .= '<tr>
-                                <td style="mso-number-format:\@;">'.$account_statement->account_number.'</td>
-                                <td>'.$account_statement->account_name.'</td>
-                                <td style="text-align:right;">'.$this->formatting($acc->amount).'</td>
-                                <td style="text-align:right;">'.$this->formatting($account_statement->accumulated).'</td>
-                            </tr>';
-        }
-
-        return array("rowspan" => count($account_statements) + 1, "html" => $htmlSales);
-    }
-
-    function datatablesAcc($filter_from, $filter_to, $name){
-        $month = date("m", strtotime($filter_from));
-        $year_min = date("Y", strtotime("-1 year", strtotime($filter_from)));
-        $year = date("Y", strtotime($filter_from));
-
-        if($month == "11"){
-            $period = $year."11";
-            $period_to = date("Ym", strtotime($filter_from));
-        }elseif($month == "12"){
-            $period = $year."11";
-            $period_to = date("Ym", strtotime($filter_from));
-        }else{
-            $period = $year_min."11";
-            $period_to = date("Ym", strtotime($filter_from));
-        }
-
-        // $income = $this->crud->query("SELECT name, SUM(amount) as amount FROM income_statements WHERE name = '$name' and `period` between '$period' and '$period_to' and `index` = 1");
-        $income = $this->crud->query("SELECT name, accumulated as amount FROM income_statements WHERE name = '$name' and `period` = '$period_to' and `index` = 1");
-
-        return @$income[0]->amount;
-    }
-
-    function datatableYear($account_number, $filter_date, $header = ""){
-        $filter_year = date('Y', strtotime($filter_date));
-        $filter_month = date('m', strtotime($filter_date));
-
-        $start_year = $filter_year - 1;
-        $months = [];
-
-        if($filter_month == "11" || $filter_month == "12"){
-        for ($i = 11; $i <= 12; $i++) {
-            $months[] = $filter_year . str_pad($i, 2, "0", STR_PAD_LEFT);
-        }
-        }else{
-        for ($i = 11; $i <= 12; $i++) {
-            $months[] = $start_year . str_pad($i, 2, "0", STR_PAD_LEFT);
-        }
-        }
-
-        for ($i = 1; $i <= 10; $i++) {
-            $months[] = $filter_year . str_pad($i, 2, "0", STR_PAD_LEFT);
-        }
-
-        $last_month = $filter_year . str_pad($filter_month, 2, "0", STR_PAD_LEFT);
-        $months = array_slice($months, 0, array_search($last_month, $months) + 1);
-
-        // Output bulan
-        foreach ($months as $month) {
-            if($header == ""){
-                $income_statement = $this->crud->read("income_statements", [], ["period" => $month, "account_number" => $account_number]);
-            }else{
-                $income_statement = $this->crud->read("income_statements", [], ["period" => $month, "name" => $account_number, "index" => 1]);
-            }
-
-            $arr[] = $income_statement->amount;
-        }
-
-        return $arr;
     }
 
     public function create()
@@ -441,45 +242,13 @@ class Report_income_statements extends CI_Controller
 
             $trial_balances = $this->crud->reads("income_statements", [], [
                 "period" => $post['period'], 
-                "name" => $post['name'],
-                "index" => 1,
+                "name" => $post['name']
             ]);
 
             if(count($trial_balances) > 0){
                 $send = $this->crud->update('income_statements', [
                     "period" => $post['period'], 
-                    "name" => $post['name'],
-                    "index" => 1,
-                ], $post);
-
-                echo $send;
-            }else{
-                $send = $this->crud->create('income_statements', $post);
-                echo $send;
-            }
-        } else {
-            show_error("Cannot Process your request");
-        }
-    }
-
-    public function createDetail()
-    {
-        if ($this->input->post()) {
-            $post = $this->input->post('data');
-            
-            $trial_balances = $this->crud->reads("income_statements", [], [
-                "period" => $post['period'], 
-                "name" => $post['name'],
-                "account_number" => $post['account_number'],
-                "index" => 2,
-            ]);
-
-            if(count($trial_balances) > 0){
-                $send = $this->crud->update('income_statements', [
-                    "period" => $post['period'], 
-                    "name" => $post['name'],
-                    "account_number" => $post['account_number'],
-                    "index" => 2,
+                    "name" => $post['name']
                 ], $post);
 
                 echo $send;
@@ -504,24 +273,13 @@ class Report_income_statements extends CI_Controller
         $filter_display = base64_decode($this->input->get("filter_display"));
 
         $period = date("Ym", strtotime($filter_date));
-        // $filter_start = date("Y-01-01", strtotime($filter_date));
-        $filter_start = date("Y-m-01", strtotime($filter_date));
+        $filter_from = date("Y-m-01", strtotime($filter_date));
         $filter_to = date("Y-m-t", strtotime($filter_date));
 
         //Config
         $this->db->select('*');
         $this->db->from('config');
         $config = $this->db->get()->row();
-
-        if($filter_display == "1"){
-            $title = "INCOME STATEMENT FORMAT 1";
-        }elseif($filter_display == "2"){
-            $title = "INCOME STATEMENT FORMAT 2";
-        }elseif($filter_display == "3"){
-            $title = "INCOME STATEMENT DETAILS";
-        }else{
-            $title = "INCOME STATEMENT YEARLY";
-        }
 
         $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#customers {border-collapse: collapse;width: 100%;font-size: 12px;}#customers td, #customers th {border: 1px solid #ddd;padding: 3px; padding-left: 10px;}#customers tr:hover {background-color: #ddd;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: center;color: black;}</style><body>
             <center>
@@ -533,7 +291,7 @@ class Report_income_statements extends CI_Controller
                             </td>
                             <td style="font-size: 14px; text-align: left; margin:2px;">
                                 <b style="font-size:14px;">' . $config->name . '</b><br>
-                                <span style="font-size:10px;">' . $config->address . '</span><br>
+                                <span style="font-size:10px;">' . $config->description . '</span><br>
                             </td>
                         </tr>
                     </table>
@@ -545,8 +303,8 @@ class Report_income_statements extends CI_Controller
             </center>
             <br><br><br><br>
             <center>
-                <h3 style="margin:0;">'.$title.'</h3>
-                <small>PERIOD : <b>' . $period . '</b></small>
+                <h3 style="margin:0;">INCOME STATEMENT</h3>
+                <small>PERIOD : <b>' . $filter_from . '</b> To <b>' . $filter_to . '</b></small>
             </center>
             <br>';
 
@@ -562,25 +320,25 @@ class Report_income_statements extends CI_Controller
                                     <th width="200">DESCRIPTION</th>
                                     <th width="10">Notes</th>
                                     <th width="50">Amount</th>
-                                    <th width="50">Accumulated Nov - Now</th>
+                                    <th width="50">Accumulated Jan - Now</th>
                                 </tr>
                                 <tr>
                                     <td>Sales</td>
                                     <td>1</td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Sales")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Sales")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Sales")->accumulated).'</td>
                                 </tr>
                                 <tr>
                                     <td>Sales Return</td>
                                     <td>2</td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Sales Return")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Sales Return")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Sales Return")->accumulated).'</td>
                                 </tr>
                                 <tr>
                                     <td>Sales Discount</td>
                                     <td>3</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Sales Discount")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Sales Discount")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Sales Discoun")->amount).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Sales Discoun")->accumulated).'</td>
                                 </tr>
                                 <tr>
                                     <td colspan="4" style="height:20px;"></td>
@@ -589,15 +347,15 @@ class Report_income_statements extends CI_Controller
                                     <td><b>Total Sales</b></td>
                                     <td><b>4</b></td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Total Sales")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Total Sales")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Total Sales")->accumulated).'</td>
                                 </tr>';
 
                     //Gross Profit Loss        
                     $html .= '  <tr>
                                     <td>Cost of Good Sold</td>
                                     <td>5</td>
-                                    <td style="text-align:right;">'.substr(number_format($this->datatables($period, "Cost Of Good Sold")->amount, 3), 0, -1).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Cost Of Good Sold")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Cost Of Good Sold")->amount).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Cost Of Good Sold")->accumulated).'</td>
                                 </tr>
                                 <tr>
                                     <td colspan="4" style="height:20px;"></td>
@@ -606,7 +364,7 @@ class Report_income_statements extends CI_Controller
                                     <td><b>Gross Profit Loss</b></td>
                                     <td><b>6</b></td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Gross Profit Loss")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Gross Profit Loss")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Gross Profit Loss")->accumulated).'</td>
                                 </tr>';
 
                     //Operating Expenses & Non Operating Expenses 
@@ -617,19 +375,13 @@ class Report_income_statements extends CI_Controller
                                     <td style="padding-left: 50px;">Selling</td>
                                     <td>7</td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Selling")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Selling")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Selling")->accumulated).'</td>
                                 </tr>
                                 <tr>
                                     <td style="padding-left: 50px;">General and Administrative</td>
                                     <td>8</td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "General and Administrative")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "General and Administrative")).'</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding-left: 50px;">Operating Profit</td>
-                                    <td></td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Operating Profit")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Operating Profit")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "General and Administrative")->accumulated).'</td>
                                 </tr>
                                 <tr>
                                     <td colspan="4" style="height:20px;"></td>
@@ -641,37 +393,37 @@ class Report_income_statements extends CI_Controller
                                     <td style="padding-left: 50px;">Interest Income</td>
                                     <td>9</td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Interest Income")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Interest Income")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Interest Income")->accumulated).'</td>
                                 </tr>
                                 <tr>
                                     <td style="padding-left: 50px;">Bank Charge</td>
                                     <td>10</td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Bank Charge")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Bank Charge")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Bank Charge")->accumulated).'</td>
                                 </tr>
                                 <tr>
                                     <td style="padding-left: 50px;">Foreign Exchange Loss/Profit</td>
                                     <td>11</td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Foreign Exchange Loss/Profit")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Foreign Exchange Loss/Profit")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Foreign Exchange Loss/Profit")->accumulated).'</td>
                                 </tr>
                                 <tr>
                                     <td style="padding-left: 50px;">Other</td>
                                     <td>12</td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Other")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Other")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Other")->accumulated).'</td>
                                 </tr>
                                 <tr style="background: #E8E8E8;">
                                     <td><b>Total Non Operating Expenses (Income)</b></td>
                                     <td><b>13</b></td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Total Non Operating Expenses (Income)")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Total Non Operating Expenses (Income)")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Total Non Operating Expenses (Income)")->accumulated).'</td>
                                 </tr>
                                 <tr style="background: #E8E8E8;">
                                     <td><b>Total Operating Expenses</b></td>
                                     <td><b>14</b></td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Total Operating Expenses")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Total Operating Expenses")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Total Operating Expenses")->accumulated).'</td>
                                 </tr>
                                 <tr>
                                     <td colspan="4" style="height:20px;"></td>
@@ -679,8 +431,8 @@ class Report_income_statements extends CI_Controller
                                 <tr style="background: #E8E8E8;">
                                     <td><b>NET PROFIT LOSS BEFORE TAXES</b></td>
                                     <td><b>15</b></td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "NET PROFIT LOSS BEFORE TAXES")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "NET PROFIT LOSS BEFORE TAXES")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Gross Profit Loss")->amount - $this->datatables($period, "Total Operating Expenses")->amount).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Gross Profit Loss")->accumulated - $this->datatables($period, "Total Operating Expenses")->accumulated).'</td>
                                 </tr>';
 
                     //Taxes      
@@ -691,29 +443,23 @@ class Report_income_statements extends CI_Controller
                                     <td>Corporate Income Tax</td>
                                     <td>16</td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Corporate Income Tax")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Corporate Income Tax")).'</td>
-                                </tr>
-                                <tr>
-                                    <td>Profit Loss For The Year</td>
-                                    <td>17</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Profit Loss For The Year")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Profit Loss For The Year")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Corporate Income Tax")->accumulated).'</td>
                                 </tr>
                                 <tr>
                                     <td>Deffered Income Tax</td>
-                                    <td>18</td>
+                                    <td>17</td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Deffered Income Tax")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Deffered Income Tax")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Deffered Income Tax")->accumulated).'</td>
                                 </tr>
                                 <tr style="background: #E8E8E8;">
                                     <td><b>NET PROFIT LOSS AFTER TAXES</b></td>
-                                    <td><b>19</b></td>
+                                    <td><b>18</b></td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "NET PROFIT LOSS AFTER TAXES")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "NET PROFIT LOSS AFTER TAXES")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "NET PROFIT LOSS AFTER TAXES")->accumulated).'</td>
                                 </tr>';
 
                 $html .= '</table>';
-            }elseif($filter_display == "2"){
+            }else{
                 $html .= '<table id="customers" border="1">';
                     $html .= '<div style="width: 100%; font-size:12px; text-align:right;"><i>(Expressed in Rupiah)</i></div>';
                     $html .= '<table id="customers" border="1">';
@@ -723,67 +469,67 @@ class Report_income_statements extends CI_Controller
                                     <th width="200">DESCRIPTION</th>
                                     <th width="10">Notes</th>
                                     <th width="50">Amount</th>
-                                    <th width="50">Accumulated Nov - Now</th>
+                                    <th width="50">Accumulated Jan - Now</th>
                                 </tr>
                                 <tr>
                                     <td>Raw Material</td>
                                     <td>1</td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Raw Material")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Raw Material")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Raw Material")->accumulated).'</td>
                                 </tr>
                                 <tr>
                                     <td style="padding-left: 50px;">Purchase</td>
                                     <td>2</td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Purchase")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Purchase")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Purchase")->accumulated).'</td>
                                 </tr>
                                 <tr>
                                     <td style="padding-left: 50px;">MISC Transaction</td>
                                     <td>3</td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "MISC Transaction")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "MISC Transaction")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "MISC Transaction")->accumulated).'</td>
                                 </tr>
                                 <tr>
                                     <td style="padding-left: 50px;">Return & Borrowed Material</td>
                                     <td>4</td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Return Borriwed Material")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Return Borriwed Material")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Return Borriwed Material")->accumulated).'</td>
                                 </tr>
                                 <tr>
                                     <td style="padding-left: 50px;">Adjustment Costing</td>
                                     <td>5</td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Adjustment Costing")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Adjustment Costing")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Adjustment Costing")->accumulated).'</td>
                                 </tr>
                                 <tr>
                                     <td>Available Inv To Proses</td>
                                     <td>6</td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Available Inv To Proses")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Available Inv To Proses")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Available Inv To Proses")->accumulated).'</td>
                                 </tr>
                                 <tr>
                                     <td>Raw Material, Ending</td>
                                     <td>7</td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Raw Material, Ending")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Raw Material, Ending")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Raw Material, Ending")->accumulated).'</td>
                                 </tr>
                                 <tr>
                                     <td>Raw Material Used</td>
                                     <td>8</td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Raw Material Used")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Raw Material Used")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Raw Material Used")->accumulated).'</td>
                                 </tr>
                                 <tr>
                                     <td>DIRECT LABOUR</td>
                                     <td>9</td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "DIRECT LABOUR")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "DIRECT LABOUR")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "DIRECT LABOUR")->accumulated).'</td>
                                 </tr>
                                 <tr>
                                     <td>FACTORY OVERHEAD</td>
                                     <td>10</td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "FACTORY OVERHEAD")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "FACTORY OVERHEAD")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "FACTORY OVERHEAD")->accumulated).'</td>
                                 </tr>
                                 <tr>
                                     <td colspan="4" style="height:20px;">WORK IN PROSES INVENTORY</td>
@@ -792,13 +538,13 @@ class Report_income_statements extends CI_Controller
                                     <td>Work In Process, Begining</td>
                                     <td>11</td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Work In Process, Begining")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Work In Process, Begining")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Work In Process, Begining")->accumulated).'</td>
                                 </tr>
                                 <tr>
                                     <td>Work In Process, Ending</td>
                                     <td>12</td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Work In Process, Ending")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Work In Process, Ending")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Work In Process, Ending")->accumulated).'</td>
                                 </tr>
                                 <tr>
                                     <td colspan="4" style="height:20px;"></td>
@@ -807,7 +553,7 @@ class Report_income_statements extends CI_Controller
                                     <td><b>Cost of Good Manufacturing</b></td>
                                     <td><b>13</b></td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Total Sales")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Total Sales")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Total Sales")->accumulated).'</td>
                                 </tr>';
 
                     //Finishgood
@@ -815,13 +561,13 @@ class Report_income_statements extends CI_Controller
                                     <td>FINISH GOODS, BEGINING</td>
                                     <td>14</td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "FINISH GOODS, BEGINING")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "FINISH GOODS, BEGINING")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "FINISH GOODS, BEGINING")->accumulated).'</td>
                                 </tr>
                                 <tr>
                                     <td>FINISH GOODS, ENDING</td>
                                     <td>15</td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "FINISH GOODS, ENDING")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "FINISH GOODS, ENDING")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "FINISH GOODS, ENDING")->accumulated).'</td>
                                 </tr>
                                 <tr>
                                     <td colspan="4" style="height:20px;"></td>
@@ -830,7 +576,7 @@ class Report_income_statements extends CI_Controller
                                     <td><b>Cost of Good Sold</b></td>
                                     <td><b>16</b></td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "COGS")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "COGS")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "COGS")->accumulated).'</td>
                                 </tr>';
                                 
                     //Sales
@@ -841,19 +587,19 @@ class Report_income_statements extends CI_Controller
                                     <td>Sales</td>
                                     <td>17</td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Sales")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Sales")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Sales")->accumulated).'</td>
                                 </tr>
                                 <tr>
                                     <td>Sales Return</td>
                                     <td>18</td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Sales Return")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Sales Return")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Sales Return")->accumulated).'</td>
                                 </tr>
                                 <tr>
                                     <td>Sales Discount</td>
                                     <td>19</td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Sales Discount")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Sales Discount")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Sales Discount")->accumulated).'</td>
                                 </tr>
                                 <tr>
                                     <td colspan="4" style="height:20px;"></td>
@@ -862,7 +608,7 @@ class Report_income_statements extends CI_Controller
                                     <td><b>Total Sales</b></td>
                                     <td><b>20</b></td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Total Sales")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Total Sales")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Total Sales")->accumulated).'</td>
                                 </tr>';
 
                     //Gross Profit Loss        
@@ -870,7 +616,7 @@ class Report_income_statements extends CI_Controller
                                     <td>Cost of Good Sold</td>
                                     <td>21</td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Cost Of Good Sold")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Cost Of Good Sold")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Cost Of Good Sold")->accumulated).'</td>
                                 </tr>
                                 <tr>
                                     <td colspan="4" style="height:20px;"></td>
@@ -879,7 +625,7 @@ class Report_income_statements extends CI_Controller
                                     <td><b>Gross Profit Loss</b></td>
                                     <td><b>22</b></td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Gross Profit Loss")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Gross Profit Loss")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Gross Profit Loss")->accumulated).'</td>
                                 </tr>';
 
                     //Operating Expenses & Non Operating Expenses 
@@ -890,19 +636,13 @@ class Report_income_statements extends CI_Controller
                                     <td style="padding-left: 50px;">Selling</td>
                                     <td>23</td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Selling")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Selling")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Selling")->accumulated).'</td>
                                 </tr>
                                 <tr>
                                     <td style="padding-left: 50px;">General and Administrative</td>
                                     <td>24</td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "General and Administrative")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "General and Administrative")).'</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding-left: 50px;">Operating Profit</td>
-                                    <td></td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Operating Profit")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Operating Profit")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "General and Administrative")->accumulated).'</td>
                                 </tr>
                                 <tr>
                                     <td colspan="4" style="height:20px;"></td>
@@ -914,37 +654,37 @@ class Report_income_statements extends CI_Controller
                                     <td style="padding-left: 50px;">Interest Income</td>
                                     <td>25</td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Interest Income")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Interest Income")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Interest Income")->accumulated).'</td>
                                 </tr>
                                 <tr>
                                     <td style="padding-left: 50px;">Bank Charge</td>
                                     <td>26</td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Bank Charge")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Bank Charge")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Bank Charge")->accumulated).'</td>
                                 </tr>
                                 <tr>
                                     <td style="padding-left: 50px;">Foreign Exchange Loss/Profit</td>
                                     <td>27</td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Foreign Exchange Loss/Profit")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Foreign Exchange Loss/Profit")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Foreign Exchange Loss/Profit")->accumulated).'</td>
                                 </tr>
                                 <tr>
                                     <td style="padding-left: 50px;">Other</td>
                                     <td>28</td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Other")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Other")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "other")->accumulated).'</td>
                                 </tr>
                                 <tr style="background: #E8E8E8;">
                                     <td><b>Total Non Operating Expenses (Income)</b></td>
                                     <td><b>29</b></td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Total Non Operating Expenses (Income)")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Total Non Operating Expenses (Income)")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Total Non Operating Expenses (Income)")->accumulated).'</td>
                                 </tr>
                                 <tr style="background: #E8E8E8;">
                                     <td><b>Total Operating Expenses</b></td>
                                     <td><b>30</b></td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Total Operating Expenses")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Total Operating Expenses")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Total Operating Expenses")->accumulated).'</td>
                                 </tr>
                                 <tr>
                                     <td colspan="4" style="height:20px;"></td>
@@ -953,7 +693,7 @@ class Report_income_statements extends CI_Controller
                                     <td><b>NET PROFIT LOSS BEFORE TAXES</b></td>
                                     <td><b>31</b></td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Gross Profit Loss")->amount - $this->datatables($period, "Total Operating Expenses")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Gross Profit Loss") - $this->datatablesAcc($filter_start, $filter_to, "Total Operating Expenses")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Gross Profit Loss")->accumulated - $this->datatables($period, "Total Operating Expenses")->accumulated).'</td>
                                 </tr>';
 
                     //Taxes      
@@ -964,375 +704,21 @@ class Report_income_statements extends CI_Controller
                                     <td>Corporate Income Tax</td>
                                     <td>32</td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Corporate Income Tax")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Corporate Income Tax")).'</td>
-                                </tr>
-                                <tr>
-                                    <td>Profit Loss For The Year</td>
-                                    <td>33</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Profit Loss For The Year")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Profit Loss For The Year")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Corporate Income Tax")->accumulated).'</td>
                                 </tr>
                                 <tr>
                                     <td>Deffered Income Tax</td>
-                                    <td>34</td>
+                                    <td>33</td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Deffered Income Tax")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Deffered Income Tax")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Deffered Income Tax")->accumulated).'</td>
                                 </tr>
                                 <tr style="background: #E8E8E8;">
                                     <td><b>NET PROFIT LOSS AFTER TAXES</b></td>
-                                    <td><b>35</b></td>
+                                    <td><b>34</b></td>
                                     <td style="text-align:right;">'.$this->formatting($this->datatables($period, "NET PROFIT LOSS AFTER TAXES")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "NET PROFIT LOSS AFTER TAXES")).'</td>
+                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "NET PROFIT LOSS AFTER TAXES")->accumulated).'</td>
                                 </tr>';
 
-                $html .= '</table>';
-            }elseif($filter_display == "3"){
-                $html .= '<table id="customers" border="1">';
-
-                    //Sales
-                    $html .= '<div style="width: 100%; font-size:12px; text-align:right;"><i>(Expressed in Rupiah)</i></div>';
-                    $html .= '<table id="customers" border="1">';
-
-                    //Sales
-                    $html .= '  <tr style="background: #E8E8E8;">
-                                    <th width="200">DESCRIPTION</th>
-                                    <th width="10">Notes</th>
-                                    <th width="50">Account No</th>
-                                    <th width="50">Account Name</th>
-                                    <th width="50">Amount</th>
-                                    <th width="50">Accumulated Nov - Now</th>
-                                </tr>
-                                <tr>
-                                    <td style="vertical-align:top;" rowspan="'.$this->datatableDetails($period, "Sales")['rowspan'].'">Sales</td>
-                                    <td style="vertical-align:top;" rowspan="'.$this->datatableDetails($period, "Sales")['rowspan'].'">1</td>
-                                </tr>
-                                '.$this->datatableDetails($period, "Sales")['html'].'
-                                <tr>
-                                    <td colspan="4"><b>Total Sales</b></td>
-                                    <td style="text-align:right;"><b>'.$this->formatting($this->datatables($period, "Sales")->amount).'</b></td>
-                                    <td style="text-align:right;"><b>'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Sales")).'</b></td>
-                                </tr>
-
-                                <tr>
-                                    <td style="vertical-align:top;" rowspan="'.$this->datatableDetails($period, "Sales Return")['rowspan'].'">Sales Return</td>
-                                    <td style="vertical-align:top;" rowspan="'.$this->datatableDetails($period, "Sales Return")['rowspan'].'">2</td>
-                                </tr>
-                                '.$this->datatableDetails($period, "Sales Return")['html'].'
-                                <tr>
-                                    <td colspan="4"><b>Total Sales Return</b></td>
-                                    <td style="text-align:right;"><b>'.$this->formatting($this->datatables($period, "Sales Return")->amount).'</b></td>
-                                    <td style="text-align:right;"><b>'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Sales Return")).'</b></td>
-                                </tr>
-
-                                <tr>
-                                    <td style="vertical-align:top;" rowspan="'.$this->datatableDetails($period, "Sales Discount")['rowspan'].'">Sales Discount</td>
-                                    <td style="vertical-align:top;" rowspan="'.$this->datatableDetails($period, "Sales Discount")['rowspan'].'">3</td>
-                                </tr>
-                                '.$this->datatableDetails($period, "Sales Discount")['html'].'
-                                <tr>
-                                    <td colspan="4"><b>Total Sales Discount</b></td>
-                                    <td style="text-align:right;"><b>'.$this->formatting($this->datatables($period, "Sales Discount")->amount).'</b></td>
-                                    <td style="text-align:right;"><b>'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Sales Discount")).'</b></td>
-                                </tr>
-
-                                <tr>
-                                    <td colspan="6" style="height:20px;"></td>
-                                </tr>
-                                <tr style="background: #E8E8E8;">
-                                    <td><b>Total Sales</b></td>
-                                    <td><b>4</b></td>
-                                    <td></td>
-                                    <td></td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Total Sales")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Total Sales")).'</td>
-                                </tr>';
-
-                    //Gross Profit Loss        
-                    $html .= '  <tr>
-                                    <td style="vertical-align:top;" rowspan="'.$this->datatableDetails($period, "Cost Of Good Sold")['rowspan'].'">Cost of Good Sold</td>
-                                    <td style="vertical-align:top;" rowspan="'.$this->datatableDetails($period, "Cost Of Good Sold")['rowspan'].'">5</td>
-                                </tr>
-                                '.$this->datatableDetails($period, "Cost Of Good Sold")['html'].'
-                                <tr>
-                                    <td colspan="4"><b>Total Cost Of Good Sold</b></td>
-                                    <td style="text-align:right;"><b>'.$this->formatting($this->datatables($period, "Cost Of Good Sold")->amount).'</b></td>
-                                    <td style="text-align:right;"><b>'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Cost Of Good Sold")).'</b></td>
-                                </tr>
-
-                                <tr>
-                                    <td colspan="6" style="height:20px;"></td>
-                                </tr>
-                                <tr style="background: #E8E8E8;">
-                                    <td><b>Gross Profit Loss</b></td>
-                                    <td><b>6</b></td>
-                                    <td></td>
-                                    <td></td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Gross Profit Loss")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Gross Profit Loss")).'</td>
-                                </tr>';
-
-                    //Operating Expenses & Non Operating Expenses 
-                    $html .= '  <tr>
-                                    <td colspan="6" style="height:20px;">Operating Expenses</td>
-                                </tr>
-                                <tr>
-                                    <td style="vertical-align:top;" rowspan="'.$this->datatableDetails($period, "Selling")['rowspan'].'">Selling</td>
-                                    <td style="vertical-align:top;" rowspan="'.$this->datatableDetails($period, "Selling")['rowspan'].'">7</td>
-                                    <td></td>
-                                    <td></td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Selling")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Selling")).'</td>
-                                </tr>
-                                '.$this->datatableDetails($period, "Selling")['html'].'
-                                <tr>
-                                    <td colspan="4"><b>Total Selling</b></td>
-                                    <td style="text-align:right;"><b>'.$this->formatting($this->datatables($period, "Selling")->amount).'</b></td>
-                                    <td style="text-align:right;"><b>'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Selling")).'</b></td>
-                                </tr>
-
-                                <tr>
-                                    <td style="vertical-align:top;" rowspan="'.$this->datatableDetails($period, "General and Administrative")['rowspan'].'">General and Administrative</td>
-                                    <td style="vertical-align:top;" rowspan="'.$this->datatableDetails($period, "General and Administrative")['rowspan'].'">8</td>
-                                </tr>
-                                '.$this->datatableDetails($period, "General and Administrative")['html'].'
-                                <tr>
-                                    <td colspan="4"><b>Total General and Administrative</b></td>
-                                    <td style="text-align:right;"><b>'.$this->formatting($this->datatables($period, "General and Administrative")->amount).'</b></td>
-                                    <td style="text-align:right;"><b>'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "General and Administrative")).'</b></td>
-                                </tr>
-                                <tr>
-                                    <td colspan="4"><b>Operating Profit</b></td>
-                                    <td style="text-align:right;"><b>'.$this->formatting($this->datatables($period, "Operating Profit")->amount).'</b></td>
-                                    <td style="text-align:right;"><b>'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Operating Profit")).'</b></td>
-                                </tr>
-                                <tr>
-                                    <td colspan="6" style="height:20px;"></td>
-                                </tr>
-                                <tr>
-                                    <td colspan="6" style="height:20px;">Non Operating Expenses</td>
-                                </tr>
-                                <tr>
-                                    <td style="vertical-align:top;" rowspan="'.$this->datatableDetails($period, "Interest Income")['rowspan'].'">Interest Income</td>
-                                    <td style="vertical-align:top;" rowspan="'.$this->datatableDetails($period, "Interest Income")['rowspan'].'">9</td>
-                                </tr>
-                                '.$this->datatableDetails($period, "Interest Income")['html'].'
-                                <tr>
-                                    <td colspan="4"><b>Total Interest Income</b></td>
-                                    <td style="text-align:right;"><b>'.$this->formatting($this->datatables($period, "Interest Income")->amount).'</b></td>
-                                    <td style="text-align:right;"><b>'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Interest Income")).'</b></td>
-                                </tr>
-
-                                <tr>
-                                    <td style="vertical-align:top;" rowspan="'.$this->datatableDetails($period, "Bank Charge")['rowspan'].'">Bank Charge</td>
-                                    <td style="vertical-align:top;" rowspan="'.$this->datatableDetails($period, "Bank Charge")['rowspan'].'">10</td>
-                                </tr>
-                                '.$this->datatableDetails($period, "Bank Charge")['html'].'
-                                <tr>
-                                    <td colspan="4"><b>Total Bank Charge</b></td>
-                                    <td style="text-align:right;"><b>'.$this->formatting($this->datatables($period, "Bank Charge")->amount).'</b></td>
-                                    <td style="text-align:right;"><b>'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Bank Charge")).'</b></td>
-                                </tr>
-
-                                <tr>
-                                    <td style="vertical-align:top;" rowspan="'.$this->datatableDetails($period, "Foreign Exchange Loss/Profit")['rowspan'].'">Foreign Exchange Loss/Profit</td>
-                                    <td style="vertical-align:top;" rowspan="'.$this->datatableDetails($period, "Foreign Exchange Loss/Profit")['rowspan'].'">11</td>
-                                </tr>
-                                '.$this->datatableDetails($period, "Foreign Exchange Loss/Profit")['html'].'
-                                <tr>
-                                    <td colspan="4"><b>Total Foreign Exchange Loss/Profit</b></td>
-                                    <td style="text-align:right;"><b>'.$this->formatting($this->datatables($period, "Foreign Exchange Loss/Profit")->amount).'</b></td>
-                                    <td style="text-align:right;"><b>'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Foreign Exchange Loss/Profit")).'</b></td>
-                                </tr>
-
-                                <tr>
-                                    <td style="vertical-align:top;" rowspan="'.$this->datatableDetails($period, "Other")['rowspan'].'">Other</td>
-                                    <td style="vertical-align:top;" rowspan="'.$this->datatableDetails($period, "Other")['rowspan'].'">12</td>
-                                </tr>
-                                '.$this->datatableDetails($period, "Other")['html'].'
-                                <tr>
-                                    <td colspan="4"><b>Total Other</b></td>
-                                    <td style="text-align:right;"><b>'.$this->formatting($this->datatables($period, "Other")->amount).'</b></td>
-                                    <td style="text-align:right;"><b>'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Other")).'</b></td>
-                                </tr>
-
-                                <tr style="background: #E8E8E8;">
-                                    <td><b>Total Non Operating Expenses (Income)</b></td>
-                                    <td><b>13</b></td>
-                                    <td></td>
-                                    <td></td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Total Non Operating Expenses (Income)")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Total Non Operating Expenses (Income)")).'</td>
-                                </tr>
-                                <tr style="background: #E8E8E8;">
-                                    <td><b>Total Operating Expenses</b></td>
-                                    <td><b>14</b></td>
-                                    <td></td>
-                                    <td></td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Total Operating Expenses")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Total Operating Expenses")).'</td>
-                                </tr>
-                                <tr>
-                                    <td colspan="6" style="height:20px;"></td>
-                                </tr>
-                                <tr style="background: #E8E8E8;">
-                                    <td><b>NET PROFIT LOSS BEFORE TAXES</b></td>
-                                    <td><b>15</b></td>
-                                    <td></td>
-                                    <td></td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Gross Profit Loss")->amount - $this->datatables($period, "Total Operating Expenses")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Gross Profit Loss") - $this->datatablesAcc($filter_start, $filter_to, "Total Operating Expenses")).'</td>
-                                </tr>';
-
-                    //Taxes      
-                    $html .= '  <tr>
-                                    <td colspan="6" style="height:20px;"></td>
-                                </tr>
-                                <tr>
-                                    <td style="vertical-align:top;" rowspan="'.$this->datatableDetails($period, "Corporate Income Tax")['rowspan'].'">Corporate Income Tax</td>
-                                    <td style="vertical-align:top;" rowspan="'.$this->datatableDetails($period, "Corporate Income Tax")['rowspan'].'">16</td>
-                                </tr>
-                                '.$this->datatableDetails($period, "Corporate Income Tax")['html'].'
-                                <tr>
-                                    <td colspan="4"><b>Total Corporate Income Tax</b></td>
-                                    <td style="text-align:right;"><b>'.$this->formatting($this->datatables($period, "Corporate Income Tax")->amount).'</b></td>
-                                    <td style="text-align:right;"><b>'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Corporate Income Tax")).'</b></td>
-                                </tr>
-                                <tr style="background: #E8E8E8;">
-                                    <td><b>Profit Loss For The Year</b></td>
-                                    <td><b>17</b></td>
-                                    <td></td>
-                                    <td></td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "Profit Loss For The Year")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Profit Loss For The Year")).'</td>
-                                </tr>
-                                <tr>
-                                    <td style="vertical-align:top;" rowspan="'.$this->datatableDetails($period, "Deffered Income Tax")['rowspan'].'">Deffered Income Tax</td>
-                                    <td style="vertical-align:top;" rowspan="'.$this->datatableDetails($period, "Deffered Income Tax")['rowspan'].'">18</td>
-                                </tr>
-                                '.$this->datatableDetails($period, "Deffered Income Tax")['html'].'
-                                <tr>
-                                    <td colspan="4"><b>Total Deffered Income Tax</b></td>
-                                    <td style="text-align:right;"><b>'.$this->formatting($this->datatables($period, "Deffered Income Tax")->amount).'</b></td>
-                                    <td style="text-align:right;"><b>'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "Deffered Income Tax")).'</b></td>
-                                </tr>
-
-                                <tr style="background: #E8E8E8;">
-                                    <td><b>NET PROFIT LOSS AFTER TAXES</b></td>
-                                    <td><b>19</b></td>
-                                    <td></td>
-                                    <td></td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatables($period, "NET PROFIT LOSS AFTER TAXES")->amount).'</td>
-                                    <td style="text-align:right;">'.$this->formatting($this->datatablesAcc($filter_start, $filter_to, "NET PROFIT LOSS AFTER TAXES")).'</td>
-                                </tr>';
-
-                $html .= '</table>';
-            }else{
-                $this->db->select('name, amount');
-                $this->db->from('income_statements');
-                $this->db->where('index', 1);
-                $this->db->where('order !=', 0);
-                $this->db->where('period', $period);
-                $this->db->group_by('name');
-                $this->db->order_by('order', 'asc');
-                $account_groups = $this->db->get()->result_array();
-
-                $html .= '<table id="customers" border="1">';
-
-                    //Sales
-                    $html .= '<div style="width: 100%; font-size:12px; text-align:right;"><i>(Expressed in Rupiah)</i></div>';
-                    $html .= '<table id="customers" border="1">';
-
-                    //Sales
-                    $html .= '  <tr style="background: #E8E8E8;">
-                                    <th width="100">Description</th>
-                                    <th width="100">Account Number</th>
-                                    <th width="200">Account Name</th>
-                                    <th width="50">11</th>
-                                    <th width="50">12</th>
-                                    <th width="50">01</th>
-                                    <th width="50">02</th>
-                                    <th width="50">03</th>
-                                    <th width="50">04</th>
-                                    <th width="50">05</th>
-                                    <th width="50">06</th>
-                                    <th width="50">07</th>
-                                    <th width="50">08</th>
-                                    <th width="50">09</th>
-                                    <th width="50">10</th>
-                                </tr>';
-                    foreach ($account_groups as $account_group) {
-                        $name = $account_group['name'];
-
-                        $this->db->select('*');
-                        $this->db->from('income_statements');
-                        $this->db->where('name', $name);
-                        $this->db->where('period', $period);
-                        $this->db->where('index', 2);
-                        $this->db->order_by('account_number', 'asc');
-                        $accounts = $this->db->get()->result_array();
-
-                        if(count($accounts) > 0){
-                            $html .= "  <tr style='background:#e7e7e7;'>
-                                            <td colspan='15'><b>".$account_group['name']."</b></td>
-                                        </tr>";
-                        }else{
-                            $html .= "  <tr style='background:#e7e7e7;'>
-                                        <td colspan='3'><b>".$account_group['name']."</b></td>
-                                        <td style='text-align:right; font-weight:bold;'>".$this->formatting(@$this->datatableYear($name, $filter_date, "header")[0])."</td>
-                                        <td style='text-align:right; font-weight:bold;'>".$this->formatting(@$this->datatableYear($name, $filter_date, "header")[1])."</td>
-                                        <td style='text-align:right; font-weight:bold;'>".$this->formatting(@$this->datatableYear($name, $filter_date, "header")[2])."</td>
-                                        <td style='text-align:right; font-weight:bold;'>".$this->formatting(@$this->datatableYear($name, $filter_date, "header")[3])."</td>
-                                        <td style='text-align:right; font-weight:bold;'>".$this->formatting(@$this->datatableYear($name, $filter_date, "header")[4])."</td>
-                                        <td style='text-align:right; font-weight:bold;'>".$this->formatting(@$this->datatableYear($name, $filter_date, "header")[5])."</td>
-                                        <td style='text-align:right; font-weight:bold;'>".$this->formatting(@$this->datatableYear($name, $filter_date, "header")[6])."</td>
-                                        <td style='text-align:right; font-weight:bold;'>".$this->formatting(@$this->datatableYear($name, $filter_date, "header")[7])."</td>
-                                        <td style='text-align:right; font-weight:bold;'>".$this->formatting(@$this->datatableYear($name, $filter_date, "header")[8])."</td>
-                                        <td style='text-align:right; font-weight:bold;'>".$this->formatting(@$this->datatableYear($name, $filter_date, "header")[9])."</td>
-                                        <td style='text-align:right; font-weight:bold;'>".$this->formatting(@$this->datatableYear($name, $filter_date, "header")[10])."</td>
-                                        <td style='text-align:right; font-weight:bold;'>".$this->formatting(@$this->datatableYear($name, $filter_date, "header")[11])."</td>
-                                    </tr>";
-                        }
-
-                        foreach ($accounts as $account) {
-                            $account_number = $account['account_number'];
-
-                            $html .= "  <tr>
-                                            <td></td>
-                                            <td style='mso-number-format:\@;'>".$account['account_number']."</td>
-                                            <td>".$account['account_name']."</td>
-                                            <td style='text-align:right;'>".$this->formatting(@$this->datatableYear($account_number, $filter_date)[0])."</td>
-                                            <td style='text-align:right;'>".$this->formatting(@$this->datatableYear($account_number, $filter_date)[1])."</td>
-                                            <td style='text-align:right;'>".$this->formatting(@$this->datatableYear($account_number, $filter_date)[2])."</td>
-                                            <td style='text-align:right;'>".$this->formatting(@$this->datatableYear($account_number, $filter_date)[3])."</td>
-                                            <td style='text-align:right;'>".$this->formatting(@$this->datatableYear($account_number, $filter_date)[4])."</td>
-                                            <td style='text-align:right;'>".$this->formatting(@$this->datatableYear($account_number, $filter_date)[5])."</td>
-                                            <td style='text-align:right;'>".$this->formatting(@$this->datatableYear($account_number, $filter_date)[6])."</td>
-                                            <td style='text-align:right;'>".$this->formatting(@$this->datatableYear($account_number, $filter_date)[7])."</td>
-                                            <td style='text-align:right;'>".$this->formatting(@$this->datatableYear($account_number, $filter_date)[8])."</td>
-                                            <td style='text-align:right;'>".$this->formatting(@$this->datatableYear($account_number, $filter_date)[9])."</td>
-                                            <td style='text-align:right;'>".$this->formatting(@$this->datatableYear($account_number, $filter_date)[10])."</td>
-                                            <td style='text-align:right;'>".$this->formatting(@$this->datatableYear($account_number, $filter_date)[11])."</td>
-                                        </tr>";
-                        }
-
-                        if(count($accounts) > 0){
-                            $html .= "  <tr style='background:#e7e7e7;'>
-                                            <td colspan='3'><b>Total ".$account_group['name']."</b></td>
-                                            <td style='text-align:right; font-weight:bold;'>".$this->formatting(@$this->datatableYear($name, $filter_date, "header")[0])."</td>
-                                            <td style='text-align:right; font-weight:bold;'>".$this->formatting(@$this->datatableYear($name, $filter_date, "header")[1])."</td>
-                                            <td style='text-align:right; font-weight:bold;'>".$this->formatting(@$this->datatableYear($name, $filter_date, "header")[2])."</td>
-                                            <td style='text-align:right; font-weight:bold;'>".$this->formatting(@$this->datatableYear($name, $filter_date, "header")[3])."</td>
-                                            <td style='text-align:right; font-weight:bold;'>".$this->formatting(@$this->datatableYear($name, $filter_date, "header")[4])."</td>
-                                            <td style='text-align:right; font-weight:bold;'>".$this->formatting(@$this->datatableYear($name, $filter_date, "header")[5])."</td>
-                                            <td style='text-align:right; font-weight:bold;'>".$this->formatting(@$this->datatableYear($name, $filter_date, "header")[6])."</td>
-                                            <td style='text-align:right; font-weight:bold;'>".$this->formatting(@$this->datatableYear($name, $filter_date, "header")[7])."</td>
-                                            <td style='text-align:right; font-weight:bold;'>".$this->formatting(@$this->datatableYear($name, $filter_date, "header")[8])."</td>
-                                            <td style='text-align:right; font-weight:bold;'>".$this->formatting(@$this->datatableYear($name, $filter_date, "header")[9])."</td>
-                                            <td style='text-align:right; font-weight:bold;'>".$this->formatting(@$this->datatableYear($name, $filter_date, "header")[10])."</td>
-                                            <td style='text-align:right; font-weight:bold;'>".$this->formatting(@$this->datatableYear($name, $filter_date, "header")[11])."</td>
-                                        </tr>";
-                        }
-                    }
                 $html .= '</table>';
             }
         

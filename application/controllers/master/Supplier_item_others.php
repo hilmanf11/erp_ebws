@@ -102,13 +102,20 @@ class Supplier_item_others extends CI_Controller
         $this->db->join('item_familys d', "c.item_family_id = d.id and d.item_category_id NOT IN ('C01','C08')");
         $this->db->where('a.deleted', 0);
         $this->db->where('b.status', 0);
-        $this->db->like("c.number", $item_number);
-        $this->db->like("c.id", $item_id);
-        $this->db->like("d.id", $item_family_id);
+        if($item_number != ""){
+            $this->db->where("c.number", $item_number);
+        }
+        if($item_id != ""){
+            $this->db->where("c.id", $item_id);
+        }
+        if($item_family_id != ""){
+            $this->db->where("d.id", $item_family_id);
+        }
         $this->db->like("b.name", $post);
-        $this->db->group_by('b.number');
+        $this->db->group_by('b.id');
         $this->db->order_by('b.name', 'ASC');
         $records = $this->db->get()->result_array();
+        
         echo json_encode($records);
     }
 

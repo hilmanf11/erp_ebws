@@ -51,13 +51,20 @@ class Issued_others extends CI_Controller
     public function readItem()
     {
         $post = isset($_POST['q']) ? $_POST['q'] : "";
-        $sql = $this->db->query("SELECT a.item_rm_id, b.number as item_rm_number, b.name as item_rm_name, c.issued, (SUM(a.qty_receipt) - COALESCE(c.issued, 0)) as stock
+        $sql = $this->db->query("SELECT a.item_rm_id, b.number as item_rm_number, b.name as item_rm_name, c.issued, 
+            CASE 
+                WHEN (COALESCE(SUM(a.qty_receipt),0) + COALESCE(g.sto_qty_in, 0) + COALESCE(e.qty_rgp_in,0) - COALESCE(h.sto_qty_out, 0) - COALESCE(f.qty_rgp_out,0) - COALESCE(c.issued,0)) < 0 THEN 0 
+                else (COALESCE(SUM(a.qty_receipt),0) + COALESCE(g.sto_qty_in, 0) + COALESCE(e.qty_rgp_in,0) - COALESCE(h.sto_qty_out, 0) - COALESCE(f.qty_rgp_out,0) - COALESCE(c.issued,0))
+            end as stock
             FROM purchase_order_receipt_others a 
             JOIN item_rm b ON a.item_rm_id = b.id 
-            LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as issued FROM issued_others_request WHERE `status` = '0' GROUP BY item_rm_id) c ON a.item_rm_id = c.item_rm_id
-            WHERE (b.id like '%$post%' or b.number like '%$post%') and a.store != 0
-            GROUP BY a.item_rm_id
-            HAVING (SUM(a.qty_receipt) - COALESCE(c.issued, 0)) > 0");
+            LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as issued FROM issued_others_request WHERE `status` = '1' GROUP BY item_rm_id) c ON a.item_rm_id = c.item_rm_id
+            LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_in FROM rgp_transactions WHERE type = 'IN' GROUP BY item_id) e ON a.id = e.item_id
+            LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_out FROM rgp_transactions WHERE type = 'OUT' GROUP BY item_id) f ON a.id = f.item_id
+            LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as sto_qty_in FROM sto_ot WHERE type = 'IN' and (approved_to = '' or approved_to is null) GROUP BY item_rm_id) g ON a.id = g.item_rm_id
+            LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as sto_qty_out FROM sto_ot WHERE type = 'OUT' and (approved_to = '' or approved_to is null) GROUP BY item_rm_id) h ON a.id = h.item_rm_id
+            WHERE (b.id like '%$post%' or b.number like '%$post%') and a.store != 0 and b.item_family_id NOT IN ('P61','P67','P51','P69')
+            GROUP BY a.item_rm_id");
         $results = $sql->result_array();
 
         echo json_encode($results);

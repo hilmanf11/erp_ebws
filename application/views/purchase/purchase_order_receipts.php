@@ -1098,18 +1098,18 @@
                     },
                 });
 
-                // $.ajax({
-                //     type: "post",
-                //     url: "<?= base_url("purchase/purchase_order_receipts/checkQas") ?>",
-                //     data: "bc_document=" + bc_document + "&item_rm_number=" + btoa(item_rm_number),
-                //     dataType: "json",
-                //     success: function (qas) {
-                //         swal.close();
+                $.ajax({
+                    type: "post",
+                    url: "<?= base_url("purchase/purchase_order_receipts/checkQas") ?>",
+                    data: "bc_document=" + bc_document + "&item_rm_number=" + btoa(item_rm_number),
+                    dataType: "json",
+                    success: function (qas) {
+                        swal.close();
 
-                //         if(qas == null){
-                //             toastr.error("Receipt No and Part No in QAS not Found");
-                //         }else{
-                //             if(qas.label == "OK"){
+                        if(qas == null){
+                            toastr.error("Receipt No and Part No in QAS not Found");
+                        }else{
+                            if(qas.label == "OK"){
                                 $.ajax({
                                     type: "POST",
                                     async: true,
@@ -1188,12 +1188,12 @@
                                         }
                                     }
                                 });
-                //             }else{
-                //                 toastr.error("Receipt No and Part No is NG");
-                //             }
-                //         }
-                //     }
-                // });
+                            }else{
+                                toastr.error("Receipt No and Part No is NG");
+                            }
+                        }
+                    }
+                });
             }
         });
     }

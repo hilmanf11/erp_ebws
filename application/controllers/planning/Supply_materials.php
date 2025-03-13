@@ -430,7 +430,7 @@ class Supply_materials extends CI_Controller
                         <div style="border: 1px solid black; width:100%;">
                             <div style="padding:10px;">
                                 <center>
-                                    <h3><u>REQUEST KANBAN MATERIAL</u></h3>
+                                    <h3><u>REQUEST SAMPLE MATERIAL</u></h3>
                                 </center>
                                 <div style="float:left; width:45%;"> 
                                     <table style="width:100%; font-size:12px; margin-bottom:10px;">

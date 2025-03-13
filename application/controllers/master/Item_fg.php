@@ -400,11 +400,12 @@ class item_fg extends CI_Controller
         $this->db->from('config');
         $config = $this->db->get()->row();
 
-        $this->db->select('a.*, b.number as hsn_number, b.name as hsn_name, c.name as customer_name, d.name as harnes_type_name');
+        $this->db->select('a.*, b.number as hsn_number, b.name as hsn_name, b.igst, b.sgst, b.cgst, c.number as customer_number, c.name as customer_name, d.name as harnes_type_name, e.total_cct');
         $this->db->from('item_fg a');
         $this->db->join('hsn b', 'a.hsn_code = b.number', 'left');
         $this->db->join('customers c', 'a.customer_id = c.id', 'left');
         $this->db->join('harnes_types d', 'd.number = a.harnes_type', 'left');
+        $this->db->join("(SELECT item_fg_id, COUNT(id) as total_cct FROM wos GROUP BY item_fg_id) e", 'e.item_fg_id = a.id', 'left');
         $this->db->where('a.deleted', 0);
         $this->db->order_by('a.id', 'ASC');
         $records = $this->db->get()->result_array();
@@ -435,67 +436,57 @@ class item_fg extends CI_Controller
         <table id="item_fg" border="1">
             <tr>
                 <th width="20">No</th>
-                <th>Product ID</th>
-                <th>Product No</th>
-                <th>Product Name</th>
-                <th>Part No Customer</th>
-                <th>Product Alias</th>
+                <th>Product No EBWS</th>
+                <th>Product No Customer</th>
+                <th>Description</th>
+                <th>Product No Invoice</th>
+                <th>CCT Qty</th>
                 <th>Customer</th>
                 <th>Harnes Type</th>
-                <th>Type</th>
-                <th>Control</th>
-                <th>Lot</th>
+                <th>Control No</th>
                 <th>Polybag Label</th>
                 <th>Box Label</th>
-                <th>NG Ratio (%)</th>
-                <th>IS No.</th>
+                <th>Lot<br>Production</th>
                 <th>Weight (Gram)</th>
-                <th>Leadtime (Day)</th>
-                <th>Safety Stock (%)</th>
+                <th>Prod. Leadtime (Day)</th>
                 <th>MPQ</th>
                 <th>MOQ</th>
-                <th>Qty/Box</th>
-                <th>Qty/Sub Box</th>
                 <th>Uom</th>
-                <th>Logo</th>
-                <th>HSN Code</th>
-                <th>GST Rate</th>
+                <th>Qty/Box</th>
+                <th>Safety Stock %</th>
+                <th>HSN No</th>
+                <th>Type</th>
                 <th>COA No</th>
                 <th>COA Name</th>
-                <th>Status</th>
+                <th>Revision</th>
             </tr>';
         $no = 1;
         foreach ($records as $data) {
             $html .= '<tr>
                         <td>' . $no . '</td>
-                        <td>' . $data['id'] . '</td>
                         <td style="mso-number-format:\@;">' . $data['number'] . '</td>
                         <td style="mso-number-format:\@;">' . $data['name'] . '</td>
                         <td style="mso-number-format:\@;">' . $data['number_customer'] . '</td>
                         <td>' . $data['alias'] . '</td>
+                        <td>' . $data['cct'] . '</td>
                         <td>' . $data['customer_name'] . '</td>
                         <td>' . $data['harnes_type_name'] . '</td>
-                        <td>' . $data['type'] . '</td>
                         <td>' . $data['control_id'] . '</td>
-                        <td>' . $data['lot'] . '</td>
                         <td>' . $data['polybag'] . '</td>
                         <td>' . $data['box_label'] . '</td>
-                        <td>' . $data['ng_ration'] . '</td>
-                        <td>' . $data['is_no'] . '</td>
+                        <td>' . $data['lot'] . '</td>
                         <td>' . $data['weight'] . '</td>
                         <td>' . $data['leadtime'] . '</td>
-                        <td>' . $data['safety_stock'] . '</td>
                         <td>' . $data['mpq'] . '</td>
                         <td>' . $data['moq'] . '</td>
-                        <td>' . $data['qty_box'] . '</td>
-                        <td>' . $data['box_sub'] . '</td>
                         <td>' . $data['uom'] . '</td>
-                        <td>' . $data['logo'] . '</td>
+                        <td>' . $data['qty_box'] . '</td>
+                        <td>' . $data['safety_stock'] . '</td>
                         <td>' . $data['hsn_code'] . '</td>
-                        <td>' . $data['gst_rate'] . '</td>
+                        <td>' . $data['type'] . '</td>
                         <td>' . $data['account_number'] . '</td>
                         <td>' . $data['account_name'] . '</td>
-                        <td>' . $data['status'] . '</td>
+                        <td>' . $data['revision'] . '</td>
                     </tr>';
             $no++;
         }

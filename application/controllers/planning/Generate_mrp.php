@@ -372,7 +372,6 @@ class Generate_mrp extends CI_Controller
             $this->db->like('revision', $filter_revision);
             $this->db->group_by('revision');
             $rev = $this->db->get()->row();
-
             if($filter_revision == ""){
                 $revision = empty($rev) ? 0 : ($rev->revision + 1);
             }else{

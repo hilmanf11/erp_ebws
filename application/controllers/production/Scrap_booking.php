@@ -43,7 +43,7 @@ class Scrap_booking extends CI_Controller
         $post = isset($_POST['q']) ? $_POST['q'] : "";
         $send = $this->crud->query("SELECT * 
             FROM item_rm 
-            WHERE status = 0 and item_category_id = 'C02'
+            WHERE status = 0 and item_category_id='C02'
             and (id like '%$post%' or number like '%$post%' or name like '%$post%' or name like '%$post%')");
         echo json_encode($send);
     }

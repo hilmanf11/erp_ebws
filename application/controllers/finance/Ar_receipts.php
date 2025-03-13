@@ -457,7 +457,7 @@ class Ar_receipts extends CI_Controller
             $this->db->select("a.*, c.number as gl_no, c.status_bank, (CASE WHEN d.account_name is null THEN b.name ELSE CONCAT(b.name, ' | ', d.account_name) END) as customer_name");
             $this->db->from('ar_receipts a');
             $this->db->join('customers b', 'a.customer_id = b.id');
-            $this->db->join('journal_postings c', 'a.receipt_no = c.document_no', 'left');
+            $this->db->join('journal_postings c', "a.receipt_no = c.document_no and c.modul != 'BANK STATEMENT'", 'left');
             $this->db->join('account_coa d', 'a.other_account = d.account_number', 'left');
             $this->db->like('a.receipt_type', $filter_receipt_type);
             if ($filter_receipt_date_from != "" && $filter_receipt_date_to != "") {
@@ -547,7 +547,7 @@ class Ar_receipts extends CI_Controller
             $purchase_invoice_journals = $this->crud->read('ar_receipt_journals', [], ["receipt_no" => $post['receipt_no'], "account_number" => $post['account_number'], "debit" => $post['debit'], "credit" => $post['credit'], "flag" => $post['flag'], "description" => @$post['description']]);
 
             if (@$purchase_invoice_journals->id != "") {
-                $send = $this->crud->update('ar_receipt_journals', ["receipt_no" => $post['receipt_no'], "account_number" => $post['account_number'], "debit" => $post['debit'], "credit" => $post['credit'], "flag" => $post['flag'], "description" => $post['description']], $post);
+                $send = $this->crud->update('ar_receipt_journals', ["receipt_no" => $post['receipt_no'], "account_number" => $post['account_number'], "debit" => $post['debit'], "credit" => $post['credit'], "flag" => $post['flag'], "description" => @$post['description']], $post);
                 echo $send;
             } else {
                 $send = $this->crud->create('ar_receipt_journals', $post);
@@ -573,10 +573,10 @@ class Ar_receipts extends CI_Controller
     public function deleteSingle()
     {
         $data = $this->input->post();
-        $send = $this->crud->delete('ar_receipts', array("id" => $data['id']));
+        // $send = $this->crud->delete('ar_receipts', array("id" => $data['id']));
 
-        $this->crud->update('ar_receipts', ["receipt_no" => $data['sales_invoice']], ["status_dp" => 0]);
-        echo $send;
+        // $send = $this->crud->update('ar_receipts', ["receipt_no" => $data['sales_invoice']], ["status_dp" => 0]);
+        // echo $send;
     }
 
     public function deleteJournal()

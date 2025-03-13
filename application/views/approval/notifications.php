@@ -19,7 +19,7 @@
 
 <!-- TOOLBAR DATAGRID -->
 <div id="toolbar" style="height: 35px;">
-	<a href="javascript:void(0)" id="approveacheck" class="easyui-linkbutton" data-options="plain:true" onclick="deleteData()"><i class="fa fa-times"></i> Delete</a>
+	<!-- <a href="javascript:void(0)" id="approveacheck" class="easyui-linkbutton" data-options="plain:true" onclick="deleteData()"><i class="fa fa-times"></i> Delete</a> -->
     <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="reload()"><i class="fa fa-refresh"></i> Reload</a>
 </div>
 

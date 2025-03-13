@@ -44,6 +44,7 @@ class Journal_posting_banks extends CI_Controller
         $this->db->select('a.trans_date, a.number, a.document_no, a.journal_type_id, a.company_name, abs(a.local_debit - a.local_credit) as amount');
         $this->db->from('journal_postings a');
         // $this->db->where('a.modul', $trans_type);
+        $this->db->where('a.modul !=', 'BANK STATEMENT');
         $this->db->where('a.status_bank', 0);
         $this->db->where('a.account_number', $account_number);
         $this->db->where("a.trans_date between '$trans_date' and '$journal_date'");
@@ -123,10 +124,8 @@ class Journal_posting_banks extends CI_Controller
         $journals = $this->db->get()->result_array();
 
         $data = array();
-        $grand_original_debit = 0;
-        $grand_original_credit = 0;
-        $grand_local_debit = 0;
-        $grand_local_credit = 0;
+        $grand_balance_original = 0;
+        $grand_balance_local = 0;
         foreach ($journals as $journal) {
             $data[] = array(
                 "trans_date" => $journal_date,
@@ -139,17 +138,31 @@ class Journal_posting_banks extends CI_Controller
                 "account_name" => $journal['account_name'],
                 "description" => $journal['company_name'] ." | " . $journal['document_no'] ." | " . $journal['invoice_no'] . " | " . $journal['number'] . " | " . $number,
                 "currency" => $journal['currency'],
-                "original_debit" => $journal['local_debit'],
-                "original_credit" => $journal['local_credit'],
+                "original_debit" => $journal['original_debit'],
+                "original_credit" => $journal['original_credit'],
                 "rates" => 1,
                 "local_debit" => $journal['local_debit'],
                 "local_credit" => $journal['local_credit'],
             );
 
-            $grand_original_debit += $journal['local_debit'];
-            $grand_original_credit += $journal['local_credit'];
-            $grand_local_debit += $journal['local_debit'];
-            $grand_local_credit += $journal['local_credit'];
+            $grand_balance_original += ($journal['original_debit'] - $journal['original_credit']);
+            $grand_balance_local += ($journal['local_debit'] - $journal['local_credit']);
+        }
+
+        if($grand_balance_original > 0){
+            $grand_original_debit = abs($grand_balance_original);
+            $grand_original_credit = 0;
+        }else{
+            $grand_original_debit = 0;
+            $grand_original_credit = abs($grand_balance_original);
+        }
+
+        if($grand_balance_local > 0){
+            $grand_local_debit = abs($grand_balance_local);
+            $grand_local_credit = 0;
+        }else{
+            $grand_local_debit = 0;
+            $grand_local_credit = abs($grand_balance_local);
         }
 
         $data[] = array(
@@ -409,8 +422,8 @@ class Journal_posting_banks extends CI_Controller
         $postings = $this->crud->reads("journal_postings", ["number" => $data['number']]);
 
         foreach ($postings as $posting) {
-            $data = explode(" | ", $posting->description);
-            $this->db->update('journal_postings', ["status_bank" => 0], ["number" => @$data[3]]);
+            $result = explode(" | ", $posting->description);
+            $this->db->update('journal_postings', ["status_bank" => 0], ["number" => @$result[3]]);
         }
 
         $send = $this->crud->delete('journal_postings', $data);

@@ -1697,11 +1697,15 @@ class Purchase_orders extends CI_Controller
             }
 
             $total2 = ($data['total'] + $digst + $dcgst + $dsgst);
-
+            
             if($data['status'] == "0"){
                 $status = "OPEN";
             }else{
                 $status = "CLOSE";
+            }
+            
+            if($data['complete'] == 1){
+                $status = "COMPLETE";
             }
 
             if($data['approved_to'] == ""){

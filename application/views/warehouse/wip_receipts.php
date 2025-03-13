@@ -79,11 +79,11 @@
 </div>
 
 <!-- Insert & Update -->
-<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 90%; height: 550px; padding:10px; top: 20px; left: 10px;">
+<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 1000px; height: 550px; padding:10px; top: 20px; left: 10px;">
     <form id="frm_insert" method="post" novalidate>
         <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
             <legend><b>Form Data</b></legend>
-            <div style="width: 40%; float: left;">
+            <div style="width: 50%; float: left;">
                 <div class="fitem" hidden>
                     <span style="width:35%; display:inline-block;">Trans Date</span>
                     <input style="width:30%;" name="trans_date_from" id="trans_date_from" required="" data-options="formatter:myformatter,parser:myparser,editable:false" class="easyui-datebox">
@@ -103,7 +103,7 @@
                     <a href="javascript:;" class="easyui-linkbutton" id="btnPreview" onclick="preview()"><i class="fa fa-search"></i> Preview</a>
                 </div>
             </div>
-            <div style="width: 40%; float: left;">
+            <div style="width: 50%; float: left;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Customer Name</span>
                     <input style="width:60%;" name="customer_id" id="customer_id" required="" class="easyui-combobox">
@@ -114,7 +114,6 @@
                 </div>
             </div>
         </fieldset>
-
         <table id="dg_request" class="easyui-datagrid" style="width:100%;" title="Receiving Finish Good List" idField="item_number">
             <thead>
                 <tr>
@@ -131,28 +130,6 @@
                 </tr>
             </thead>
         </table>
-
-        <div style="width: 50%; float: left; margin-top:20px;">
-            <div style="float: left; width: 30%; ">
-                <a style="width: 90%; height: 30px; padding:10px;" class="easyui-linkbutton c2" onclick="addBom()">Calculate BOM</a>
-            </div>
-        </div>
-        
-        <div style="width: 80%; float: left; margin-top:10px;">
-            <table id="dg_request2" class="easyui-datagrid" style="width:100%;" title="Calculate BOM" idField="item_rm_id">
-                <thead>
-                    <tr>
-                        <th data-options="field:'item_rm_id',width:150">Part No EBWS</th>
-                        <th data-options="field:'item_rm_number',width:200">Part No Supplier</th>
-                        <th data-options="field:'item_rm_name',width:150">Description</th>
-                        <th data-options="field:'qpa',width:100,halign:'center',align:'right'">QPA</th>
-                        <th data-options="field:'rfg',width:100,halign:'center',align:'right'">RFG</th>
-                        <th data-options="field:'qty',width:100,halign:'center',align:'right'">Qty</th>
-                        <th data-options="field:'wip',width:100,halign:'center',align:'right', styler:cellStylerWip">Wip Balance</th>
-                    </tr>
-                </thead>
-            </table>
-        </div>
     </form>
 </div>
 
@@ -177,7 +154,6 @@
         url_save = '<?= base_url('warehouse/wip_receipts/create') ?>';
         $('#frm_insert').form('clear');
         $("#dg_request").datagrid('loadData', []);
-        $("#dg_request2").datagrid('loadData', []);
 
         $("#trans_date_from").datebox('setValue', "<?= date("Y-m-d") ?>");
         $("#trans_date_to").datebox({
@@ -235,42 +211,6 @@
                 });
             }
         });
-    }
-
-    function addBom() {
-        $('#dg_request').datagrid('acceptChanges');
-
-        var item_fg_id = $("#item_fg_id").combogrid('getValue');
-        var rows = $('#dg_request').datagrid('getRows');
-        var totalrows = rows.length;
-
-        if (totalrows > 0) {
-            var data_array = [];
-            var data_array2 = [];
-
-            var qty_rfg = 0;
-            for (let i = 0; i < totalrows; i++) {
-                if(rows[i].qty > 0){
-                    qty_rfg += rows[i].qty;
-                }
-            }
-
-            $('#dg_request2').datagrid('loading');
-            $.ajax({
-                url: '<?= base_url('warehouse/wip_receipts/datatablesTemp2') ?>',
-                type: 'POST',
-                data: {
-                    item_fg_id: item_fg_id,
-                    qty_rfg: qty_rfg
-                },
-                dataType: 'json',
-                success: function(result) {
-                    $('#dg_request2').datagrid('loadData', result).datagrid('loaded');
-                }
-            });
-        } else {
-            toastr.warning("please selections your data in table first");
-        }
     }
 
     function number(id_menu){
@@ -376,31 +316,35 @@
                             var row = json[number-1];
                             value = Math.floor((number / total) * 100);
 
-                            $.ajax({
-                                method: 'post',
-                                url: '<?= base_url('warehouse/wip_receipts/delete') ?>',
-                                data: {
-                                    id: row.id,
-                                    workorder: row.workorder,
-                                },
-                                success: function(result) {
-                                    var result = eval('(' + result + ')');
-                                    requestDelete(total, json, number + 1, value);
+                            if(row.scan <= 0){
+                                $.ajax({
+                                    method: 'post',
+                                    url: '<?= base_url('warehouse/wip_receipts/delete') ?>',
+                                    data: {
+                                        id: row.id,
+                                        workorder: row.workorder,
+                                    },
+                                    success: function(result) {
+                                        var result = eval('(' + result + ')');
+                                        requestDelete(total, json, number + 1, value);
 
-                                    if (number == total) {
-                                        $('#dg').datagrid('reload');
-                                        Swal.close();
-                                        Swal.fire(
-                                            'Delete Completed',
-                                            'Delete Data has been completed, You cannot restore data that has been deleted',
-                                            'success'
-                                        );
-                                    }
-                                },
-                                error: function(jqXHR, textStatus, errorThrown) {
-                                    toastr.error(jqXHR.statusText);
-                                },
-                            });
+                                        if (number == total) {
+                                            $('#dg').datagrid('reload');
+                                            Swal.close();
+                                            Swal.fire(
+                                                'Delete Completed',
+                                                'Delete Data has been completed, You cannot restore data that has been deleted',
+                                                'success'
+                                            );
+                                        }
+                                    },
+                                    error: function(jqXHR, textStatus, errorThrown) {
+                                        toastr.error(jqXHR.statusText);
+                                    },
+                                });
+                            }else{
+                                toastr.error("Cannot Delete Because The label Already Scan In FG")
+                            }
                         }
                     }
                 }
@@ -486,68 +430,22 @@
                                 var rows = $('#dg_request').datagrid('getSelections');
                                 var totalrows = rows.length;
 
-                                var rows2 = $('#dg_request2').datagrid('getRows');
-                                var totalrows2 = rows2.length;
-
                                 if(totalrows > 0){
                                     if (customer_id != "" && trans_date_from != "" && trans_date_to != "" && item_fg_id != "") {
-
-                                        if(totalrows2 == 0){
-                                            toastr.error("Please Calculte BOM first");
-                                            return false;
-                                        }
-                                        
-                                        combineBom = [];
-                                        for (let z = 0; z < totalrows2; z++) {
-                                            var json = rows2[z];
-
-                                            combineBom.push({
-                                                checksheet_number: checksheet_number,
-                                                customer_id: customer_id,
-                                                item_fg_id: item_fg_id,
-                                                item_rm_id: json.item_rm_id,
-                                                workorder: rows[0].workorder,
-                                                period: period,
-                                                wp: rows[0].wp,
-                                                qpa: json.qpa,
-                                                rfg: json.rfg,
-                                                qty: json.qty,
-                                                balance: json.wip,
-                                            });
-
-                                            if((parseFloat(json.wip) - parseFloat(json.qty)) < 0){
-                                                toastr.error("Wip Balance in Part No "+json.item_rm_number+" Not Available, You Cannot Save this data");
-                                                return false;
-                                            }
-                                        }
-
                                         $('#dlg_insert').dialog('close');
 
-                                        Swal.fire({
-                                            title: 'Please Wait for Save Data. . .',
-                                            showConfirmButton: false,
-                                            allowOutsideClick: false,
-                                            allowEscapeKey: false,
-                                            didOpen: () => {
-                                                Swal.showLoading();
-                                            },
-                                        });
-
-                                        $.ajax({
-                                            type: "post",
-                                            url: '<?= base_url('warehouse/wip_receipts/createDetails') ?>',
-                                            data: JSON.stringify({ data: combineBom}),
-                                            dataType: "json",
-                                            success: function (result2) {
-                                                requestData(totalrows, rows);
-                                            },
-                                            error: function(){
-                                                toastr.error("Error: Failed to Save Data Historical Bom");
-                                                Swal.close();
-                                            }
-                                        });
-
+                                        requestData(totalrows, rows);
                                         function requestData(total, json, number = 1, value = 0, success = 1, failed = 1) {
+                                            Swal.fire({
+                                                title: 'Please Wait. . .',
+                                                showConfirmButton: false,
+                                                allowOutsideClick: false,
+                                                allowEscapeKey: false,
+                                                didOpen: () => {
+                                                    Swal.showLoading();
+                                                },
+                                            });
+
                                             var i = (number - 1);
                                             if (value < 100) {
                                                 value = Math.floor((number / total) * 100);
@@ -921,12 +819,6 @@
             return 'Scanned';
         }
     };
-
-    function cellStylerWip(value, row, index) {
-        if ((parseFloat(row.wip) - parseFloat(row.qty)) < 0) {
-            return 'background: #FF5F5F; color:white;';
-        }
-    }
 
     //Format Datepicker
     function myformatter(date) {

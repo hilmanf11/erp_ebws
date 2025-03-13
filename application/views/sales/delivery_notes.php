@@ -809,6 +809,7 @@
             return 'CANCEL';
         }
     };
+    
     //FORMATTER DELIVERY STATUS 
     function cellFormatterDeliveryStatus(value) {
         if (value == 0) {

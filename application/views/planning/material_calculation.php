@@ -54,9 +54,9 @@
             ?>
             <th rowspan="2" data-options="field:'free_stock',width:80,halign:'center',align:'right',styler:cellStyler, formatter:numberformat">Free<br>Stock</th>
             <th colspan="8" data-options="field:'next_month',width:80,halign:'center'"><?= $next_month ?></th>
-            <th rowspan="2" data-options="field:'balance_wip',width:80,halign:'center',align:'right',styler:cellStyler, formatter:numberformat">Balance<br>WIP</th>
+            <!-- <th rowspan="2" data-options="field:'balance_wip',width:80,halign:'center',align:'right',styler:cellStyler, formatter:numberformat">Balance<br>WIP</th> -->
             <!-- <th rowspan="2" data-options="field:'os_po',width:100,halign:'center',align:'right',styler:cellStyler, formatter:BtnSoPo">OS PO</th> -->
-            <th rowspan="2" data-options="field:'os_po',width:100,halign:'center',align:'right',styler:cellStyler, formatter:numberformat">OS PO</th>
+            <!-- <th rowspan="2" data-options="field:'os_po',width:100,halign:'center',align:'right',styler:cellStyler, formatter:numberformat">OS PO</th> -->
         </tr>
         <tr>
             <?php 

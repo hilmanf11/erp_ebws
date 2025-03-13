@@ -595,6 +595,9 @@ class Report_ar extends CI_Controller
                                     <td style="text-align:right;">' . number_format($local_credit, 2) . '</td>
                                     <td style="text-align:right;">' . $this->formatNo($balance_local) . '</td>
                                     <td style="text-align:right;">' . $this->formatNo($accumulated) . '</td>
+                                </tr>
+                                <tr>
+                                    <td colspan="20" style="height:20px;"></td>
                                 </tr>';
 
                 $invoice .= '  <tr style="background: #E5E5E5; font-weight:bold;">
@@ -618,6 +621,9 @@ class Report_ar extends CI_Controller
                                     <td style="text-align:right;">' . number_format($local_credit, 2) . '</td>
                                     <td style="text-align:right;">' . $this->formatNo($balance_local) . '</td>
                                     <td style="text-align:right;">' . $this->formatNo($accumulated) . '</td>
+                                </tr>
+                                <tr>
+                                    <td colspan="20" style="height:20px;"></td>
                                 </tr>';
             }
 

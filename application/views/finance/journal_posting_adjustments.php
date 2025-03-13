@@ -69,7 +69,6 @@
                         <option value="GL - CUSTOMER">GL - CUSTOMER</option>
                         <option value="GL - BANK">GL - BANK</option>
                         <option value="GL - ASSET">GL - ASSET</option>
-                        <option value="ASSET - ASSET">ASSET - ASSET</option>
                     </select>
                 </div>
             </div>
@@ -110,7 +109,6 @@
                         <option value="GL - CUSTOMER">GL - CUSTOMER</option>
                         <option value="GL - BANK">GL - BANK</option>
                         <option value="GL - ASSET">GL - ASSET</option>
-                        <option value="ASSET - ASSET">ASSET - ASSET</option>
                     </select>
                 </div>
                 <div class="fitem">
@@ -172,9 +170,8 @@
                     <th data-options="field:'description',width:200,editor: {type: 'textbox', options: {required: true}}">Description</th>
                     <th data-options="field:'account_number',width:100, halign:'center', editor: {type: 'combogrid', options: {required: true}}">Account No</th>
                     <th data-options="field:'account_name',width:180, editor: {type: 'textbox', options: {readonly: true}}">Account Name</th>
-                    <th data-options="field:'company_id',width:100,editor: {type: 'textbox', options: {readonly: true}}">Code</th>
-                    <th data-options="field:'company_name',width:200,editor: {type: 'textbox', options: {readonly: true}}">Name</th>
-                    <th data-options="field:'qty',width:80,editor: {type: 'numberbox', options: {required: true}}">Qty</th>
+                    <th hidden data-options="field:'company_id',width:100,editor: {type: 'textbox', options: {readonly: true}}">Code</th>
+                    <th hidden data-options="field:'company_name',width:200,editor: {type: 'textbox', options: {readonly: true}}">Name</th>
                     <th data-options="field:'currency',width:80,editor: {type: 'textbox', options: {required: true, readonly: true}}">Currency</th>
                     <th data-options="field:'amount',width:100,halign:'center',align:'right',formatter:numberformatDefaultIdr,editor: {type: 'numberbox', options: {required: true, precision:2}}">Taxable<br>Amount</th>
                     <th data-options="field:'taxes',width:100, halign:'center', editor: {type: 'combogrid', options: {
@@ -320,8 +317,7 @@
                 <th data-options="field:'trans_date',width:120,halign:'center'">Invoice Date</th>
                 <th data-options="field:'document_no',width:220,halign:'center'">Invoice No</th>
                 <!-- <th data-options="field:'invoice_no',width:150,halign:'center'">Supplier Invoice</th> -->
-                <th data-options="field:'company_id',width:150,halign:'center'">Code</th>
-                <th data-options="field:'company_name',width:250,halign:'center'">Name</th>
+                <th data-options="field:'company_name',width:200,halign:'center'">Company Name</th>
                 <th data-options="field:'account_number',width:100,halign:'center'">Account No</th>
                 <th data-options="field:'account_name',width:250,halign:'center'">Account Name</th>
                 <th data-options="field:'description',width:150,halign:'center'">Description</th>
@@ -516,7 +512,6 @@
                     "debitcredit": debitcredit1,
                     "amount": (local_debit + local_credit),
                     "taxes_amount": 0,
-                    "qty": 0,
                     "local_debit": local_debit,
                     "local_credit": local_credit,
                 });
@@ -529,15 +524,6 @@
                     index: editIndex,
                     field: 'account_number'
                 });
-
-                var ed2 = $('#dg2').datagrid('getEditor', {
-                    index: editIndex,
-                    field: 'qty'
-                });
-
-                if(journal_type == "ASSET - ASSET"){
-                    $(ed2.target).numberbox('readonly', false);
-                }
 
                 var urls = '<?= base_url('finance/journal_posting_adjustments/readCoa?category=') ?>' + btoa(journal_type);
 
@@ -890,7 +876,7 @@
             $("#modul").textbox('disable');
             $("#journal_type_id").combogrid('disable');
             $("#company_name").combobox('disable');
-            // $("#document_no").combobox('disable');
+            $("#document_no").combobox('disable');
             $("#number").textbox('disable');
             $("#append").linkbutton('enable');
 
@@ -1220,7 +1206,6 @@
                                                                     description: json[i].description,
                                                                     company_id: json[i].company_id,
                                                                     company_name: json[i].company_name,
-                                                                    qty: json[i].qty,
                                                                     currency: json[i].currency,
                                                                     local_debit: json[i].local_debit,
                                                                     local_credit: json[i].local_credit

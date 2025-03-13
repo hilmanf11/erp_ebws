@@ -124,7 +124,7 @@ class Report_history_transactions extends CI_Controller
             b.name as prodfam, 
             a.uom, 
             COALESCE(h.begin_stock,0) AS begin_stock,
-            (COALESCE(SUM(c.qty_sto),0) + COALESCE(dd.sto_qty_in,0) + COALESCE(g.return_qty, 0) + COALESCE(e.qty_receipt, 0) + COALESCE(j.qty_rgp_in, 0)) AS qty_in,
+            (COALESCE(SUM(c.qty_sto),0) + COALESCE(dd.sto_qty_in,0) + COALESCE(e.qty_receipt, 0) + COALESCE(g.return_qty, 0) + COALESCE(j.qty_rgp_in, 0)) AS qty_in,
             (COALESCE(f.qty, 0) + COALESCE(i.qty_reject, 0) + COALESCE(k.qty_rgp_out, 0) + COALESCE(d.sto_qty_out, 0)) AS qty_out,
             ((COALESCE(h.begin_stock,0) + COALESCE(SUM(c.qty_sto),0) + COALESCE(j.qty_rgp_in, 0) + COALESCE(SUM(dd.sto_qty_in),0) + COALESCE(e.qty_receipt, 0) + COALESCE(g.return_qty, 0)) - COALESCE(f.qty, 0) - COALESCE(d.sto_qty_out, 0) - COALESCE(i.qty_reject, 0) - COALESCE(k.qty_rgp_out, 0)) AS end_stock
         FROM item_rm a 

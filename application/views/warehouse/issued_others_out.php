@@ -24,8 +24,13 @@
 </table>
 
 <!-- TOOLBAR DATAGRID -->
-<div id="toolbar" style="height: 35px;">
-    <?= $button ?>
+<div id="toolbar" style="height: auto; padding:5px;">
+    <div class="fitem">
+        <?= $button ?>
+        <span style="width:60px; display:inline-block; margin-left:10px;">Part No</span>
+        <input style="width:20%;" id="filter_part_no" class="easyui-combogrid">
+        <a href="javascript:;" class="easyui-linkbutton" onclick="filter()"><i class="fa fa-search"></i> Filter Data</a>
+    </div>
 </div>
 
 <div id="toolbar2" style="height: auto; padding:10px;">
@@ -131,18 +136,32 @@
         window.location.reload();
     }
 
+    function filter() {
+        var filter_part_no = $("#filter_part_no").combogrid('getValue');
+        url = "?filter_part_no=" + window.btoa(filter_part_no);
+
+        $('#dg').datagrid('load', {
+            filter_part_no: filter_part_no
+        });
+
+        $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
+        $("#printout").attr('src', '<?= base_url('warehouse/issued_others_out/print') ?>' + url);
+    }
+
+    $('#dg').datagrid({
+        url: '<?= base_url('warehouse/issued_others_out/datatables') ?>',
+        pagination: true,
+        clientPaging: false,
+        remoteFilter: true,
+        rownumbers: true,
+        fit: true,
+        pageList: [20, 50, 100, 500, 1000],
+        pageSize: 20,
+    });
+
     $(function() {
-        //SETTING DATAGRID EASYUI
-        $('#dg').datagrid({
-            url: '<?= base_url('warehouse/issued_others_out/datatables') ?>',
-            pagination: true,
-            clientPaging: false,
-            remoteFilter: true,
-            rownumbers: true,
-            fit: true,
-            pageList: [20, 50, 100, 500, 1000],
-            pageSize: 20,
-        }).datagrid('enableFilter');
+
+        $('#dg').datagrid().datagrid('enableFilter');
 
         //SAVE DATA
         $('#dlg_detail').dialog({
@@ -417,7 +436,7 @@
                             required: true
                         }
                     }
-                },{
+                }, {
                     field: 'total_issued',
                     width: 100,
                     halign: 'center',
@@ -469,6 +488,37 @@
             }
         }
     }
+
+    $('#filter_part_no').combogrid({
+        url: '<?= base_url('master/item_rm/readNotRm/'); ?>',
+        panelWidth: 550,
+        idField: 'id',
+        textField: 'number',
+        mode: 'remote',
+        fitColumns: true,
+        prompt: "Choose Part No",
+        columns: [
+            [{
+                field: 'id',
+                title: 'Part ID',
+                width: 100
+            }, {
+                field: 'number',
+                title: 'Part No',
+                width: 200
+            }, {
+                field: 'name',
+                title: 'Part Name',
+                width: 200
+            }]
+        ],
+        icons: [{
+            iconCls: 'icon-clear',
+            handler: function(e) {
+                $(e.data.target).combogrid('clear').combogrid('textbox').focus();
+            }
+        }]
+    });
 
     function BtnDetail(val, row) {
         var details = "details('" + row.request_no + "','" + row.trans_date + "','" + row.request_name + "','" + row.status + "','" + row.location_other_number + "' )";

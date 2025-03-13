@@ -48,6 +48,7 @@ class Delivery_notes extends CI_Controller
         $this->db->join("(SELECT item_fg_id, delivery_order_no, SUM(qty) AS shipping FROM shipping_orders GROUP BY item_fg_id, delivery_order_no) c", 'a.item_fg_id = c.item_fg_id and a.delivery_order_no = c.delivery_order_no');
         $this->db->join('item_fg b', 'a.item_fg_id = b.id');
         $this->db->where('a.deleted', 0);
+        $this->db->where('a.status', 0);
         $this->db->where_in('a.delivery_order_no', $delivery_order_no);
         $this->db->order_by('a.delivery_order_no');
         $records = $this->db->get()->result_array();

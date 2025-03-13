@@ -96,7 +96,7 @@ class Report_material_consumtions extends CI_Controller
             $param_dates[] = array(
                 "yearDate" => date("Y-m", strtotime($p_date_start)),
                 "year" => date("Y", strtotime($p_date_start)),
-                "month" => date("m", strtotime($p_date_start))
+                "month" => date("m", strtotime($p_date_start)),
             );
 
             $p_date_start = date("Y-m", strtotime("+1 month", strtotime($p_date_start)));
@@ -141,11 +141,12 @@ class Report_material_consumtions extends CI_Controller
             ';
         // loop month
         for ($i = 0; $i < count($dates); $i++) {
-            $html .= '<th colspan="3" style="text-align: center;">' . $dates[$i]['name'] . '</th>';
+            $html .= '<th colspan="4" style="text-align: center;">' . $dates[$i]['name'] . '</th>';
         }
         $html .= '</tr>';
         $html .= '<tr>';
         for ($i = 0; $i < count($dates); $i++) {
+            $html .= '<th style="text-align: center;">Opening<br>Stock</th>';
             $html .= '<th style="text-align: center;">MPP</th>';
             $html .= '<th style="text-align: center;">Issued</th>';
             $html .= '<th style="text-align: center;">Balance</th>';
@@ -169,6 +170,39 @@ class Report_material_consumtions extends CI_Controller
                 } else {
                     $whereCustomer = "";
                 }
+
+
+                $endDateLastMonth =  date("Y-m-t", strtotime($param_dates[$i]['yearDate']) - 1);
+
+                $stock = $this->crud->query("select
+                        a.id,
+                        a.number,
+                        a.name,
+                        a.uom,
+                        b.name as product_family,
+                        ((COALESCE(SUM(c.qty_sto),0) + COALESCE(dd.sto_qty_in, 0) + COALESCE(j.qty_rgp_in, 0) + COALESCE(e.qty_receipt, 0) + COALESCE(g.return_qty, 0)) - COALESCE(f.qty, 0) - COALESCE(d.sto_qty_out, 0) - COALESCE(k.qty_rgp_out, 0) - COALESCE(h.qty_reject, 0)) AS end_stock
+                        FROM item_rm a 
+                        JOIN item_familys b ON a.item_family_id = b.id
+                        LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) AS qty_sto FROM os_rm a JOIN scan_item_receipts b ON a.id  = b.receipt_id WHERE a.trans_date <= '$endDateLastMonth' GROUP BY item_rm_id) c ON a.id = c.item_rm_id
+                        LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(a.qty), 0) as sto_qty_out FROM sto_rm a WHERE a.type = 'OUT' and a.trans_date <= '$endDateLastMonth' and a.approved_to = '' GROUP BY item_rm_id) d ON a.id = d.item_rm_id
+                        LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(a.qty), 0) as sto_qty_in FROM sto_rm a WHERE a.type = 'IN' and a.trans_date <= '$endDateLastMonth' and a.approved_to = '' GROUP BY item_rm_id) dd ON a.id = dd.item_rm_id
+                        LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) AS qty_receipt FROM purchase_order_receipts a JOIN scan_item_receipts b ON a.receipt_id = b.receipt_id WHERE a.receipt_date <= '$endDateLastMonth' GROUP BY item_rm_id) e ON a.id = e.item_rm_id
+                        LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) AS qty FROM issued_material_details WHERE DATE_FORMAT(created_date, '%Y-%m-%d') <= '$endDateLastMonth' GROUP BY item_rm_id) f ON a.id = f.item_rm_id
+                        LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) AS qty_reject FROM purchase_order_receipts a JOIN scan_item_rejections b ON a.receipt_id  = b.receipt_id WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') <= '$endDateLastMonth' GROUP BY item_rm_id) h ON a.id = h.item_rm_id
+                        LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) as qty_rgp_in FROM rgp_transactions a JOIN scan_item_rgp b ON a.number = b.rgp_number and a.item_id = b.item_id WHERE a.type = 'IN' and a.transaction_date <= '$endDateLastMonth' GROUP BY a.item_id) j ON a.id = j.item_id
+                        LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) as qty_rgp_out FROM rgp_transactions a JOIN scan_item_rgp b ON a.number = b.rgp_number and a.item_id = b.item_id WHERE a.type = 'OUT' and a.transaction_date <= '$endDateLastMonth' GROUP BY a.item_id) k ON a.id = k.item_id
+                        LEFT JOIN (SELECT a.item_rm_id, SUM(c.qty) AS return_qty
+                                    FROM return_materials a 
+                                    JOIN return_material_labels b ON a.return_id = b.return_id
+                                    JOIN scan_item_receipts c ON a.return_id = c.receipt_id AND b.label_no = c.label_no
+                                    WHERE a.return_date <= '$endDateLastMonth'
+                                    GROUP BY a.item_rm_id) g ON a.id = g.item_rm_id
+                        WHERE a.item_category_id = 'C01' and a.id='" . $record['item_rm_id'] . "'
+                        GROUP BY a.id
+                        ORDER BY b.number, a.number
+                ");
+
+
                 $mpp = $this->crud->query("
                 select 
                 sum(
@@ -186,17 +220,27 @@ class Report_material_consumtions extends CI_Controller
                 select sum(qty) as qty from issued_material_details where substring(created_date, 1,7) ='" . $param_dates[$i]['yearDate'] . "' and item_rm_id='" . $record['item_rm_id'] . "'
                 ");
 
+                $end_stock = @$stock[0]->end_stock;
+                if ($end_stock < 0) {
+                    $end_stock = "(" . number_format(abs($end_stock), 2) . ")";
+                    $style_end_stock = "color:red;";
+                } else {
+                    $end_stock = number_format($end_stock, 2);
+                    $style_end_stock = "";
+                }
+
                 $balance = @$mpp[0]->mpp_bom - @$issued[0]->qty;
                 if ($balance < 0) {
                     $balance = "(" . number_format(abs($balance), 2) . ")";
-                    $color = "color:red;";
+                    $style_balance = "color:red;";
                 } else {
                     $balance = number_format($balance, 2);
-                    $color = "";
+                    $style_balance = "";
                 }
+                $html .= '<td style="text-align: right; ' . $style_end_stock . '">' . $end_stock . '</td>';
                 $html .= '<td style="text-align: right;">' . number_format(@$mpp[0]->mpp_bom, 2) . '</td>';
                 $html .= '<td style="text-align: right;">' . number_format(@$issued[0]->qty, 2) . '</td>';
-                $html .= '<td style="text-align: right; ' . $color . '">' . $balance . '</td>';
+                $html .= '<td style="text-align: right; ' . $style_balance . '">' . $balance . '</td>';
             }
 
             $html .= '</tr>';

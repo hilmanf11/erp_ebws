@@ -545,7 +545,7 @@ class Ap_payments extends CI_Controller
                 FROM ap_payments a
                 WHERE a.purchase_invoice = '$number'
                 GROUP BY a.payment_no");
-                
+
             $obj[] = array(
                 "trans_date" => $record['trans_date'],
                 "purchase_invoice" => $record['number'],
@@ -596,7 +596,7 @@ class Ap_payments extends CI_Controller
             $this->db->from('ap_payments a');
             $this->db->join('suppliers b', 'a.supplier_id = b.id');
             $this->db->join('purchase_invoices c', 'a.purchase_invoice = c.number', 'left');
-            $this->db->join('journal_postings d', 'a.payment_no = d.document_no', 'left');
+            $this->db->join('journal_postings d', "a.payment_no = d.document_no and d.modul != 'BANK STATEMENT'", 'left');
             $this->db->like('a.payment_type', $filter_payment_type);
             if ($filter_payment_date_from != "" && $filter_payment_date_to != "") {
                 $this->db->where("a.payment_date between '$filter_payment_date_from' and '$filter_payment_date_to'");

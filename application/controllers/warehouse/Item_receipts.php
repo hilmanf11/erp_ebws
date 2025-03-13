@@ -116,7 +116,7 @@ class Item_receipts extends CI_Controller
                 $sql = $this->db->query("SELECT a.receipt_id, a.qty_label, COUNT(b.id) as jumlah 
                     FROM purchase_order_receipts a 
                     JOIN purchase_order_labels b ON a.receipt_id = b.receipt_id 
-                    WHERE a.receipt_id = '@$purchase_order_label->receipt_id' 
+                    WHERE a.receipt_id = '$purchase_order_label->receipt_id' 
                     GROUP BY a.receipt_id 
                     HAVING a.qty_label != COUNT(b.id)");
                 $row = $sql->row();
@@ -125,8 +125,8 @@ class Item_receipts extends CI_Controller
                     if (!$item_receipts) {
                         $send   = $this->crud->create('scan_item_receipts', $post);
                         if ($send) {
-                            $update   = $this->crud->update('purchase_order_labels', ["label_no" => $post['label_no']], ["status" => 1]);
-                            $update   = $this->crud->update('return_material_labels', ["label_no" => $post['label_no']], ["status" => 1]);
+                            $this->crud->update('purchase_order_labels', ["label_no" => $post['label_no']], ["status" => 1]);
+                            $this->crud->update('return_material_labels', ["label_no" => $post['label_no']], ["status" => 1]);
                             echo $send;
                         }
                     } else {

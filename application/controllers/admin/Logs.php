@@ -28,7 +28,7 @@ class Logs extends CI_Controller
     //GET DATATABLES
     public function datatables()
     {
-        if ($this->input->post()) {
+        // if ($this->input->post()) {
             $filters = json_decode($this->input->post('filterRules'));
             $page   = $this->input->post('page');
             $rows   = $this->input->post('rows');
@@ -46,17 +46,17 @@ class Logs extends CI_Controller
                 }
             }
             $this->db->order_by('created_date', 'DESC');
+            //Limit 1 - 10
+            $this->db->limit(500);
             //Total Data
             $totalRows = $this->db->count_all_results('', false);
-            //Limit 1 - 10
-            $this->db->limit($rows, $offset);
             //Get Data Array
             $records = $this->db->get()->result_array();
             //Mapping Data
             $result['total'] = $totalRows;
             $result = array_merge($result, ['rows' => $records]);
             echo json_encode($result);
-        }
+        // }
     }
 
     //DELETE DATA
@@ -65,6 +65,19 @@ class Logs extends CI_Controller
         $data = $this->input->post();
         $logs = $this->db->delete('logs', $data);
         echo $logs;
+    }
+
+    public function recovery(){
+        $id = $this->input->post('id');
+        $menu = $this->input->post('menu');
+        $log = $this->crud->read('logs', [], ['id' => $id, "menu" => $menu]);
+        
+        $desc = json_decode($log->description, false);
+        if($this->db->insert($menu, $desc)){
+            die(json_encode(array("title" => "Recovery Success", "message" => "Recovery Data Successfull, Please check in Module", "theme" => "success")));
+        }else{
+            die(json_encode(array("title" => "Failed", "message" => "Data Already Created", "theme" => "error")));
+        }
     }
 
     //DETAIL DATA
