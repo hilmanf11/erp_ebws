@@ -58,7 +58,7 @@
             <div style="width: 50%; float: left;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Request Date</span>
-                    <input style="width:60%;" name="request_date" id="request_date" value="<?= date("Y-m-d") ?>" required="" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
+                    <input style="width:60%;" name="request_date" id="request_date" required="" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Request No</span>
@@ -122,7 +122,7 @@
     function add() {
         $('#dlg_insert').dialog('open');
         $('#dg2').datagrid('loadData', []);
-        request_no("<?= $id_menu ?>");
+        $("#request_date").datebox("setValue", "<?= date("Y-m-d") ?>");
 
         $('#workorder').combogrid({
             url: '<?= base_url('planning/scraps/readDocument') ?>',
@@ -167,10 +167,10 @@
         });
     }
 
-    function request_no(id_menu) {
+    function request_no(id_menu, trans_date) {
         $.ajax({
             type: "post",
-            url: "<?= base_url('planning/supply_requestions/request_no') ?>/" + id_menu,
+            url: "<?= base_url('planning/supply_requestions/request_no') ?>/" + id_menu + "/" + btoa(trans_date),
             dataType: "html",
             success: function(result) {
                 if(result == ""){
@@ -510,7 +510,7 @@
 
         $("#request_date").datebox({
             onChange: function(val) {
-                request_no(val);
+                request_no("<?= $id_menu ?>", val);
             }
         });
     });

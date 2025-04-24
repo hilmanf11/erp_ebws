@@ -12,6 +12,7 @@ class Logs extends CI_Controller
         $this->load->library('session');
         $this->load->model('crud');
     }
+
     //HALAMAN UTAMA
     public function index()
     {
@@ -25,6 +26,7 @@ class Logs extends CI_Controller
             redirect('error_access');
         }
     }
+
     //GET DATATABLES
     public function datatables()
     {
@@ -67,6 +69,7 @@ class Logs extends CI_Controller
         echo $logs;
     }
 
+    //RECOVERY DATA
     public function recovery(){
         $id = $this->input->post('id');
         $menu = $this->input->post('menu');

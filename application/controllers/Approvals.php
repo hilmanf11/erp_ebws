@@ -50,7 +50,7 @@ class Approvals extends CI_Controller
             "approved" => $approved,
         );
 
-        $send = $this->db->update($tablename, $values, ["supplier_id" => $supplier_id]);
+        $send = $this->db->update($tablename, $values, ["supplier_id" => $supplier_id, "revision" => $revision, "p_year" => $p_year, "p_month" => $p_month]);
 
         if ($send) {
             echo json_encode(array("title" => "Approved", "message" => "Data Approved Successfully", "theme" => "success"));
@@ -120,7 +120,14 @@ class Approvals extends CI_Controller
         }
 
         if($tablename == "bom"){
-            $send = $this->db->update($tablename, $values, ["item_fg_id" => $id]);
+            $boms = $this->crud->reads("bom", [], ["item_fg_id" => $id]);
+            foreach ($boms as $bom) {
+                if($users_id == "" && $bom->remove == "1"){
+                    $send = $this->db->delete($tablename, ["item_fg_id" => $id, "remove" => 1]);
+                }else{
+                    $send = $this->db->update($tablename, $values, ["item_fg_id" => $id]);
+                }
+            }
         }else{
             $send = $this->db->update($tablename, $values, ["id" => $id]);
         }
@@ -258,6 +265,9 @@ class Approvals extends CI_Controller
         $sto_fg = $this->crud->reads('sto_fg', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
         $sales_orders = $this->crud->reads('sales_orders', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
         $sample_requests = $this->crud->reads('sample_requests', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
+        $rgp_transaction_in = $this->crud->reads('rgp_transactions', [], ["approved_to" => $this->session->username, "type" => "IN"], "", "", "", ["approved_to", "approved_by"]);
+        $rgp_transaction_out = $this->crud->reads('rgp_transactions', [], ["approved_to" => $this->session->username, "type" => "OUT"], "", "", "", ["approved_to", "approved_by"]);
+        $scrap_booking = $this->crud->reads('scrap_booking', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
 
         $totalRows = (count($users) + 
             count($purchase_orders) + 
@@ -282,6 +292,9 @@ class Approvals extends CI_Controller
             count($scraps) +
             count($item_mpq) +
             count($generate_mrp_finals) +
+            count($rgp_transaction_in) +
+            count($rgp_transaction_out) +
+            count($scrap_booking) +
             count($forecasts)
         );
 
@@ -325,6 +338,9 @@ class Approvals extends CI_Controller
         $sto_fgs = $this->crud->reads('sto_fg', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
         $sales_orders = $this->crud->reads('sales_orders', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
         $sample_requests = $this->crud->reads('sample_requests', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
+        $rgp_transaction_in = $this->crud->reads('rgp_transactions', [], ["approved_to" => $this->session->username, "type" => "IN"], "", "", "", ["approved_to", "approved_by"]);
+        $rgp_transaction_out = $this->crud->reads('rgp_transactions', [], ["approved_to" => $this->session->username, "type" => "OUT"], "", "", "", ["approved_to", "approved_by"]);
+        $scrap_booking = $this->crud->reads('scrap_booking', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
 
         foreach ($users as $user) {
             $this->approvalMessage($user->approved_by, $user->approved_to, $user->created_by, "users");
@@ -416,6 +432,18 @@ class Approvals extends CI_Controller
 
         foreach ($sample_requests as $sample_request) {
             $this->approvalMessage($sample_request->approved_by, $sample_request->approved_to, $sample_request->created_by, "sample_requests");
+        }
+
+        foreach ($rgp_transaction_in as $rgp_in) {
+            $this->approvalMessage($rgp_in->approved_by, $rgp_in->approved_to, $rgp_in->created_by, "rgp_transaction_in");
+        }
+
+        foreach ($rgp_transaction_out as $rgp_out) {
+            $this->approvalMessage($rgp_out->approved_by, $rgp_out->approved_to, $rgp_out->created_by, "rgp_transaction_out");
+        }
+
+        foreach ($scrap_booking as $scrap_b) {
+            $this->approvalMessage($scrap_b->approved_by, $scrap_b->approved_to, $scrap_b->created_by, "scrap_booking");
         }
     }
 
@@ -552,9 +580,14 @@ class Approvals extends CI_Controller
         if (empty($this->session->username)) {
             redirect('error_session');
         } else {
+            $m = date("m");
+            $y = date("Y");
+            $mrp = $this->crud->query("SELECT max(revision) as revision FROM generate_mrp_finals WHERE p_month = '$m' and p_year='$y'");
+
             $data['approved_to'] = base64_decode($approved_to);
             $data['approved_by'] = base64_decode($approved_by);
             $data['table'] = "generate_mrp_finals";
+            $data['revision'] = empty($mrp) ? 0 : @$mrp[0]->revision;
             $this->load->view('template/header', $data);
             $this->load->view('approval/generate_mrp_finals');
         }
@@ -773,6 +806,42 @@ class Approvals extends CI_Controller
             $data['table'] = "sample_requests";
             $this->load->view('template/header', $data);
             $this->load->view('approval/sample_requests');
+        }
+    }
+
+    public function rgp_transaction_in($approved_to, $approved_by){
+        if (empty($this->session->username)) {
+            redirect('error_session');
+        } else {
+            $data['approved_to'] = base64_decode($approved_to);
+            $data['approved_by'] = base64_decode($approved_by);
+            $data['table'] = "rgp_transactions";
+            $this->load->view('template/header', $data);
+            $this->load->view('approval/rgp_transaction_in');
+        }
+    }
+
+    public function rgp_transaction_out($approved_to, $approved_by){
+        if (empty($this->session->username)) {
+            redirect('error_session');
+        } else {
+            $data['approved_to'] = base64_decode($approved_to);
+            $data['approved_by'] = base64_decode($approved_by);
+            $data['table'] = "rgp_transactions";
+            $this->load->view('template/header', $data);
+            $this->load->view('approval/rgp_transaction_out');
+        }
+    }
+
+    public function scrap_booking($approved_to, $approved_by){
+        if (empty($this->session->username)) {
+            redirect('error_session');
+        } else {
+            $data['approved_to'] = base64_decode($approved_to);
+            $data['approved_by'] = base64_decode($approved_by);
+            $data['table'] = "scrap_booking";
+            $this->load->view('template/header', $data);
+            $this->load->view('approval/scrap_booking');
         }
     }
 
@@ -1224,7 +1293,7 @@ class Approvals extends CI_Controller
         $this->db->where('a.approved_to', $approved_to);
         $this->db->where('a.approved_by', $approved_by);
         $this->db->where('a.item_fg_id', $item_fg_id);
-        $this->db->where('(a.composition != e.composition or e.composition is null)');
+        $this->db->where('(a.composition != e.composition or e.composition is null or a.remove = 1)');
         $this->db->group_by('a.id');
         $this->db->order_by('a.id', 'ASC');
         $records = $this->db->get()->result_array();
@@ -1504,6 +1573,154 @@ class Approvals extends CI_Controller
         $this->db->where('a.approved_to', $approved_to);
         $this->db->where('a.approved_by', $approved_by);
         $this->db->order_by('a.item_rm_id', 'DESC');
+        $records = $this->db->get()->result_array();
+
+        die(json_encode($records));
+    }
+
+    public function approvalScrapBooking($approved_to, $approved_by){
+        $approved_to = base64_decode($approved_to);
+        $approved_by = base64_decode($approved_by);
+        
+        $this->db->select('a.*, b.number as item_rm_number, b.name as item_rm_name, b.uom');
+        $this->db->from('scrap_booking a');
+        $this->db->join('item_rm b', 'a.item_id = b.id');
+        $this->db->where('a.approved_to', $approved_to);
+        $this->db->where('a.approved_by', $approved_by);
+        $this->db->group_by('a.id');
+        $this->db->order_by('a.id', 'ASC');
+        $records = $this->db->get()->result_array();
+
+        die(json_encode($records));
+    }
+
+    public function approvalRgpTransactionsIn($approved_to, $approved_by){
+        $approved_to = base64_decode($approved_to);
+        $approved_by = base64_decode($approved_by);
+
+        $this->db->select("
+            (CASE 
+                WHEN b.id is not null THEN b.id
+                ELSE c.number
+            END) as item_id,
+            (CASE 
+                WHEN b.id is not null THEN b.number
+                ELSE c.number_customer
+            END) as item_number,
+            (CASE 
+                WHEN b.id is not null THEN b.name
+                ELSE c.name
+            END) as item_name,
+            (CASE 
+                WHEN b.id is not null THEN j.name
+                ELSE null
+            END) as item_family_name,
+
+            a.*,
+            
+            (CASE 
+                WHEN d.id is not null THEN d.name
+                ELSE e.name
+            END) as company_name,
+            (CASE 
+                WHEN f.plant is not null THEN f.plant
+                ELSE NULL
+            END) as plant_number,
+            g.name as item_category_name,
+            h.name as departement_name,
+            i.name as rgp_type_name,
+            a.item_category_id,
+            (CASE 
+                WHEN b.id  is not null THEN k.mpq
+                ELSE c.qty_box
+            END) as mpq,
+            (CASE 
+                WHEN b.id is not null THEN ceil(a.qty/k.mpq)
+                ELSE ceil(a.qty/c.qty_box)
+            END) as qty_label
+        ");
+        $this->db->from('rgp_transactions a');
+        $this->db->join('item_rm b', 'a.item_id = b.id', 'left');
+        $this->db->join('item_fg c', 'a.item_id = c.id', 'left');
+        $this->db->join('suppliers d', 'a.company_id = d.id', 'left');
+        $this->db->join('customers e', 'a.company_id = e.id', 'left');
+        $this->db->join('customer_address f', 'a.plant = f.plant', 'left');
+        $this->db->join('item_categories g', 'a.item_category_id = g.id', 'left');
+        $this->db->join('departements h', 'a.departement_id = h.id', 'left');
+        $this->db->join('rgp_types i', 'a.rgp_type_id = i.id', 'left');
+        $this->db->join('item_familys j', 'b.item_family_id = j.id', 'left');
+        $this->db->join('item_mpq k', 'a.item_id = k.item_rm_id and a.company_id=k.supplier_id', 'left');
+        $this->db->where('a.type', "IN");
+        $this->db->where('a.approved_to', $approved_to);
+        $this->db->where('a.approved_by', $approved_by);
+        $this->db->group_by('a.id');
+        $this->db->order_by('a.created_date', 'DESC');
+        $records = $this->db->get()->result_array();
+
+        die(json_encode($records));
+    }
+
+    public function approvalRgpTransactionsOut($approved_to, $approved_by){
+        $approved_to = base64_decode($approved_to);
+        $approved_by = base64_decode($approved_by);
+
+        $this->db->select("
+            (CASE 
+                WHEN b.id is not null THEN b.id
+                ELSE c.number
+            END) as item_id,
+            (CASE 
+                WHEN b.id is not null THEN b.number
+                ELSE c.number_customer
+            END) as item_number,
+            (CASE 
+                WHEN b.id is not null THEN b.name
+                ELSE c.name
+            END) as item_name,
+            (CASE 
+                WHEN b.id is not null THEN j.name
+                ELSE null
+            END) as item_family_name,
+
+            a.*,
+            
+            (CASE 
+                WHEN d.id is not null THEN d.name
+                ELSE e.name
+            END) as company_name,
+            (CASE 
+                WHEN f.plant is not null THEN f.plant
+                ELSE NULL
+            END) as plant_number,
+            g.name as item_category_name,
+            h.name as departement_name,
+            i.name as rgp_type_name,
+            a.item_category_id,
+            (CASE 
+                WHEN b.id  is not null THEN k.mpq
+                ELSE c.qty_box
+            END) as mpq,
+            (CASE 
+                WHEN b.id is not null THEN ceil(a.qty/k.mpq)
+                ELSE ceil(a.qty/c.qty_box)
+            END) as qty_label
+        ");
+        $this->db->from('rgp_transactions a');
+        $this->db->join('item_rm b', 'a.item_id = b.id', 'left');
+        $this->db->join('item_fg c', 'a.item_id = c.id', 'left');
+        $this->db->join('suppliers d', 'a.company_id = d.id', 'left');
+        $this->db->join('customers e', 'a.company_id = e.id', 'left');
+        $this->db->join('customer_address f', 'a.plant = f.plant', 'left');
+        $this->db->join('item_categories g', 'a.item_category_id = g.id', 'left');
+        $this->db->join('departements h', 'a.departement_id = h.id', 'left');
+        $this->db->join('rgp_types i', 'a.rgp_type_id = i.id', 'left');
+        $this->db->join('item_familys j', 'b.item_family_id = j.id', 'left');
+        $this->db->join('item_mpq k', 'a.item_id = k.item_rm_id and a.company_id=k.supplier_id', 'left');
+        $this->db->where('a.type', "OUT");
+        $this->db->where('a.approved_to', $approved_to);
+        $this->db->where('a.approved_by', $approved_by);
+        $this->db->group_by('a.id');
+        $this->db->order_by('a.created_date', 'DESC');
         $records = $this->db->get()->result_array();
 
         die(json_encode($records));

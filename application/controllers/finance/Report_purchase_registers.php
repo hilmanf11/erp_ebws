@@ -78,7 +78,9 @@ class Report_purchase_registers extends CI_Controller
         $this->db->join('hsn g', 'f.hsn_code = g.number', 'left');
         $this->db->join('item_familys h', 'f.item_family_id = h.id', 'left');
         $this->db->join('tds i', 'd.account_number = i.account_number', 'left');
-        $this->db->where("a.trans_date between '$filter_from' and '$filter_to'");
+        if ($filter_from != "" && $filter_to != "") {
+            $this->db->where("a.trans_date between '$filter_from' and '$filter_to'");
+        }
         if($filter_item_familys != ""){
             $this->db->like('h.id', $filter_item_familys);
         }
@@ -112,10 +114,10 @@ class Report_purchase_registers extends CI_Controller
             '1' AS qty,
             a.currency,
             a.rates AS rate,
-            (SUM(e.local_debit) - SUM(e.local_credit)) AS price,
-            COALESCE((b.local_debit - b.local_credit)) AS igst,
-            COALESCE((c.local_debit - c.local_credit)) AS cgst,
-            COALESCE((d.local_debit - d.local_credit)) AS sgst,
+            COALESCE((e.original_debit - e.original_credit), 0) AS price,
+            COALESCE((b.local_debit - b.local_credit), 0) AS igst,
+            COALESCE((c.local_debit - c.local_credit), 0) AS cgst,
+            COALESCE((d.local_debit - d.local_credit), 0) AS sgst,
             abs(g.local_debit - g.local_credit) AS total_tcs,
             abs(f.local_debit - f.local_credit) AS total_tds,
             h.section AS tds,
@@ -127,12 +129,12 @@ class Report_purchase_registers extends CI_Controller
             a.tds_sup, 
             a.pen");
         $this->db->from("(SELECT a.*, b.name as supplier_name, b.state, b.gst, b.tds as tds_sup, b.pen FROM journal_postings a JOIN suppliers b ON a.company_id = b.id WHERE a.journal_type = 'GL - SUPPLIER') a");
-        $this->db->join("(SELECT number, account_number, SUM(local_debit) as local_debit, SUM(local_credit) as local_credit FROM journal_postings GROUP BY number, account_number) b", "a.number = b.number AND b.account_number IN ('20100003')", 'left');
-        $this->db->join("(SELECT number, account_number, SUM(local_debit) as local_debit, SUM(local_credit) as local_credit FROM journal_postings GROUP BY number, account_number) c", "a.number = c.number AND c.account_number IN ('20100004')", 'left');
-        $this->db->join("(SELECT number, account_number, SUM(local_debit) as local_debit, SUM(local_credit) as local_credit FROM journal_postings GROUP BY number, account_number) d", "a.number = d.number AND d.account_number IN ('20100005')", 'left');
-        $this->db->join('journal_postings e', "a.number = e.number AND e.account_number NOT IN ('20100003','20100004','20100005','16000001','16000002','16000003','16000004','16000005','16000006','16000007','16000008','17000001','17000002','17000003','17000004','17000005','17000006','17000028','17000029','17000034')", 'left');
-        $this->db->join("(SELECT number, account_number, SUM(local_debit) as local_debit, SUM(local_credit) as local_credit FROM journal_postings GROUP BY number, account_number) f", "a.number = f.number AND f.account_number IN ('17000001','17000002','17000003','17000004','17000005','17000006','17000028','17000029','17000034')", 'left');
-        $this->db->join("(SELECT number, account_number, SUM(local_debit) as local_debit, SUM(local_credit) as local_credit FROM journal_postings GROUP BY number, account_number) g", "a.number = g.number AND g.account_number IN ('17000007')", 'left');
+        $this->db->join("(SELECT number, account_number, SUM(local_debit) as local_debit, SUM(local_credit) as local_credit FROM journal_postings GROUP BY number) b", "a.number = b.number AND b.account_number IN ('20100003','17000010','17000013')", 'left');
+        $this->db->join("(SELECT number, account_number, SUM(local_debit) as local_debit, SUM(local_credit) as local_credit FROM journal_postings GROUP BY number) c", "a.number = c.number AND c.account_number IN ('20100004','17000009','17000012')", 'left');
+        $this->db->join("(SELECT number, account_number, SUM(local_debit) as local_debit, SUM(local_credit) as local_credit FROM journal_postings GROUP BY number) d", "a.number = d.number AND d.account_number IN ('20100005','17000008','17000011')", 'left');
+        $this->db->join("(SELECT number, account_number, SUM(original_debit) as original_debit, SUM(original_credit) as original_credit FROM journal_postings GROUP BY number, account_number) e", "a.number = e.number AND e.account_number NOT IN ('20100003','20100004','20100005','16000001','16000002','16000003','16000004','16000005','16000006','16000007','16000008','17000001','17000002','17000003','17000004','17000005','17000006','17000008','17000009','17000010','17000011','17000012','17000013','17000028','17000029','17000034')", 'left');
+        $this->db->join("(SELECT number, account_number, SUM(local_debit) as local_debit, SUM(local_credit) as local_credit FROM journal_postings GROUP BY number) f", "a.number = f.number AND f.account_number IN ('17000001','17000002','17000003','17000004','17000005','17000006','17000028','17000029','17000034')", 'left');
+        $this->db->join("(SELECT number, account_number, SUM(local_debit) as local_debit, SUM(local_credit) as local_credit FROM journal_postings GROUP BY number) g", "a.number = g.number AND g.account_number IN ('17000007')", 'left');
         $this->db->join('tds h', 'f.account_number = h.account_number', 'left');
         $this->db->where("a.journal_date between '$filter_from' and '$filter_to'");
         $this->db->where('a.modul', "ADJUSTMENT");

@@ -365,7 +365,7 @@ class Supply_sheets_pp extends CI_Controller
             (CASE WHEN f.uom_po is null THEN c.uom ELSE f.uom_po END) as uom,
             (CASE WHEN f.uom_po is null THEN b.composition ELSE (b.composition * f.convertion) END) as qpa,
             a.qty,
-            h.calculate,
+            (CASE WHEN h.calculate is null THEN 'YES' ELSE h.calculate END) as calculate,
             COALESCE(d.qty_issued, 0) as qty_issued,
             ROUND(a.qty * b.composition) AS qty_req2,
             (CEIL(ROUND(a.qty * b.composition) / i.mpq) * i.mpq) AS qty_req3,
@@ -379,8 +379,8 @@ class Supply_sheets_pp extends CI_Controller
         $this->db->join('process_main e', 'b.main_process = e.name');
         $this->db->join('convertions f', 'b.item_rm_id = f.item_rm_id', 'left');
         $this->db->join('item_familys g', 'c.item_family_id = g.id');
-        $this->db->join('supplier_items h', 'c.id = h.item_rm_id');
-        $this->db->join('item_mpq i', 'c.id = i.item_rm_id');
+        $this->db->join('supplier_items h', 'c.id = h.item_rm_id', 'left');
+        $this->db->join("(SELECT * FROM item_mpq ORDER BY mpq DESC) i", 'c.id = i.item_rm_id');
         $this->db->join("(SELECT
                 a.id,
                 ((COALESCE(SUM(c.qty_sto),0) + COALESCE(dd.sto_qty_in, 0) + COALESCE(j.qty_rgp_in, 0) + COALESCE(e.qty_receipt, 0) + COALESCE(g.return_qty, 0)) - COALESCE(f.qty, 0) - COALESCE(d.sto_qty_out, 0) - COALESCE(k.qty_rgp_out, 0) - COALESCE(h.qty_reject, 0)) AS end_stock

@@ -84,7 +84,7 @@ class Ar_receipts extends CI_Controller
     {
         $number = base64_decode($number);
         // $reads = $this->crud->reads("ar_receipt_journals", [], ["receipt_no" => $number], "", "flag", "asc");
-        $sql = $this->db->query("SELECT * FROM ar_receipt_journals WHERE receipt_no = '$number' ORDER BY flag ASC");
+        $sql = $this->db->query("SELECT * FROM ar_receipt_journals WHERE receipt_no = '$number' and modul ='AR RECEIPT' ORDER BY flag ASC");
         $reads = $sql->result_array();
 
         $arr = [];
@@ -350,9 +350,10 @@ class Ar_receipts extends CI_Controller
     //     echo $datenow . "-" . $autoID;
     // }
 
-    public function number($id_menu)
+    public function number($id_menu, $trans_date)
     {
-        $datenow = date("Y-m-d");
+        // $datenow = date("Y-m-d");
+        $datenow = base64_decode($trans_date);
         $sql_menu = $this->db->query("SELECT * FROM menus_no WHERE menus_id = '$id_menu' and `status` = '0' and `start_date` <= '$datenow' and end_date >= '$datenow'");
         $row_menu = $sql_menu->row();
 

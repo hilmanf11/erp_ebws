@@ -33,6 +33,12 @@ class Journal_posting_adjustments extends CI_Controller
         }
     }
 
+    public function checkInvoice(){
+        $invoice_no = trim($this->input->post("document_no"));
+        $journals = $this->crud->reads("journal_postings", [], ["document_no" => $invoice_no]);
+        die(json_encode(array("total" => count($journals))));
+    }
+
     public function journalTypeManual(){
         // $sqls = $this->crud->query("SELECT a.number 
         //     FROM journal_postings a
@@ -102,10 +108,26 @@ class Journal_posting_adjustments extends CI_Controller
         }elseif($category == "GL - ASSET"){
             $sql = $this->db->query("SELECT a.* 
                 FROM (
-                    (SELECT account_number, account_name, account_number as number, account_name as name FROM account_coa WHERE account_number NOT IN (SELECT number FROM account_group_details) ORDER BY account_number ASC)
+                    (SELECT account_number, account_name, account_number as number, account_name as name FROM account_coa WHERE account_number IN ('26000004','26000006','26000008') ORDER BY account_number ASC)
                 UNION 
                     (SELECT b.account_number, b.account_name, a.number, a.name FROM assets a JOIN item_familys b ON a.item_family_id = b.id JOIN account_coa c ON b.account_number = c.account_number WHERE a.request_no = 'Additional' and a.status = 0 ORDER BY a.number ASC)
                 ) a WHERE a.account_number like '%$post%' or a.account_name like '%$post%' or a.number like '%$post%' or a.name like '%$post%' ORDER BY a.account_number");
+            $records = $sql->result_array();
+        }elseif($category == "ASSET - ASSET"){
+            $sql = $this->db->query("SELECT a.* 
+                FROM (
+                    (SELECT c.account_number, c.account_name, a.number, a.name FROM asset_fixeds a JOIN item_familys b ON a.item_family_id = b.id JOIN account_coa c ON b.account_number = c.account_number WHERE a.status = 0 GROUP BY a.number ORDER BY a.number ASC)
+                UNION 
+                    (SELECT b.account_number, b.account_name, a.number, a.name FROM assets a JOIN item_familys b ON a.item_family_id = b.id JOIN account_coa c ON b.account_number = c.account_number WHERE a.request_no = 'Additional' and a.status = 0 ORDER BY a.number ASC)
+                ) a WHERE a.number like '%$post%' or a.name like '%$post%' ORDER BY a.number");
+            $records = $sql->result_array();
+        }elseif($category == "FAR - SUPPLIER"){
+            $sql = $this->db->query("SELECT a.* 
+                FROM (
+                    (SELECT c.account_number, c.account_name, a.number, a.name FROM asset_fixeds a JOIN item_familys b ON a.item_family_id = b.id JOIN account_coa c ON b.account_number = c.account_number WHERE a.status = 0 GROUP BY a.number ORDER BY a.number ASC)
+                UNION 
+                    (SELECT b.account_number, b.account_name, c.id as number, c.name FROM account_balance_suppliers a JOIN account_coa b ON a.account_number = b.account_number JOIN suppliers c ON a.supplier_id = c.id ORDER BY c.name ASC)
+                ) a WHERE a.number like '%$post%' or a.name like '%$post%' ORDER BY a.number");
             $records = $sql->result_array();
         }
 
@@ -125,9 +147,10 @@ class Journal_posting_adjustments extends CI_Controller
         echo json_encode($records);
     }
 
-    public function number($id_menu)
+    public function number($id_menu, $journal_date)
     {
-        $datenow = date("Y-m-d");
+        // $datenow = date("Y-m-d");
+        $datenow = base64_decode($journal_date);
         $sql_menu = $this->db->query("SELECT * FROM menus_no WHERE menus_id = '$id_menu' and `status` = '0' and `start_date` <= '$datenow' and end_date >= '$datenow'");
         $row_menu = $sql_menu->row();
 
@@ -270,8 +293,8 @@ class Journal_posting_adjustments extends CI_Controller
 
         $footer[] = array(
             "currency" => "TOTAL",
-            // "original_debit" => $grand_original_debit,
-            // "original_credit" => $grand_original_credit,
+            "original_debit" => $grand_original_debit,
+            "original_credit" => $grand_original_credit,
             "local_debit" => $grand_local_debit,
             "local_credit" => $grand_local_credit,
         );
@@ -286,22 +309,18 @@ class Journal_posting_adjustments extends CI_Controller
     {
         $number = base64_decode($this->input->get('number'));
 
-        $page = $this->input->post('page');
-        $rows = $this->input->post('rows');
-        //Pagination 1-10
-        $page   = isset($page) ? intval($page) : 1;
-        $rows   = isset($rows) ? intval($rows) : 10;
-        $offset = ($page - 1) * $rows;
-        $result = array();
         //Select Query
-        $this->db->select('*');
+        $this->db->select("*,
+            (CASE WHEN debitcredit = 'DEBIT' THEN (original_debit + taxes_amount) ELSE 0 END) as original_debit,
+            (CASE WHEN debitcredit = 'CREDIT' THEN (original_credit + taxes_amount) ELSE 0 END) as original_credit,
+            (CASE WHEN debitcredit = 'DEBIT' THEN (local_debit + (taxes_amount * rates)) ELSE 0 END) as local_debit, 
+            (CASE WHEN debitcredit = 'CREDIT' THEN (local_credit + (taxes_amount * rates)) ELSE 0 END) as local_credit");
         $this->db->from('journal_postings');
         $this->db->where('number', $number);
+        $this->db->where_not_in('account_number', ["20100003","20100004","20100005","17000008","17000009","17000010","17000011","17000012","17000013"]);
+        
         //Total Data
         $totalRows = $this->db->count_all_results('', false);
-        //Limit 1 - 10
-        // $this->db->limit($rows, $offset);
-        //Get Data Array
         $records = $this->db->get()->result_array();
 
         $data = array();
@@ -320,8 +339,8 @@ class Journal_posting_adjustments extends CI_Controller
 
         $footer[] = array(
             "currency" => "TOTAL",
-            // "original_debit" => $grand_original_debit,
-            // "original_credit" => $grand_original_credit,
+            "original_debit" => $grand_original_debit,
+            "original_credit" => $grand_original_credit,
             "local_debit" => $grand_local_debit,
             "local_credit" => $grand_local_credit,
         );
@@ -339,11 +358,17 @@ class Journal_posting_adjustments extends CI_Controller
         $data = [];
         $total_debit = 0;
         $total_credit = 0;
+        $total_ori_debit = 0;
+        $total_ori_credit = 0;
         foreach ($journals as $journal) {
             if($journal->local_debit > 0){
+                $original_debit = 0;
+                $original_credit = $journal->original_debit;
                 $local_debit = 0;
                 $local_credit = $journal->local_debit;
             }else{
+                $original_debit = $journal->original_credit;
+                $original_credit = 0;
                 $local_debit = $journal->local_credit;
                 $local_credit = 0;
             }
@@ -358,12 +383,18 @@ class Journal_posting_adjustments extends CI_Controller
                 "currency" => $journal->currency,
                 "amount" => $journal->amount,
                 "taxes" => $journal->taxes,
+                "qty" => $journal->qty,
+                "rates" => $journal->rates,
                 "taxes_amount" => $journal->taxes_amount,
                 "debitcredit" => $journal->debitcredit,
+                "original_debit" => $original_debit,
+                "original_credit" => $original_credit,
                 "local_debit" => $local_debit,
                 "local_credit" => $local_credit,
             );
 
+            $total_ori_debit += $original_debit;
+            $total_ori_credit += $original_credit;
             $total_debit += $local_debit;
             $total_credit += $local_credit;
         }
@@ -371,8 +402,8 @@ class Journal_posting_adjustments extends CI_Controller
         $result['rows'] = $data;
         $result['footer'] = [[
             "currency" => "TOTAL",
-            "original_debit" => $total_debit,
-            "original_credit" => $total_credit,
+            "original_debit" => $total_ori_debit,
+            "original_credit" => $total_ori_credit,
             "local_debit" => $total_debit,
             "local_credit" => $total_credit,
         ]];
@@ -383,6 +414,8 @@ class Journal_posting_adjustments extends CI_Controller
     {
         $jsonDatas = json_decode(file_get_contents("json/journal_posting_adjustments.json"), true);
 
+        $grand_original_debit = 0;
+        $grand_original_credit = 0;
         $grand_local_debit = 0;
         $grand_local_credit = 0;
         $arrTax = array();
@@ -390,6 +423,8 @@ class Journal_posting_adjustments extends CI_Controller
         foreach ($jsonDatas as $post) {
             $taxes = $this->crud->reads('taxes', [], ["number" => $post['taxes']]);
 
+            $total_tax_ori_debit = 0;
+            $total_tax_ori_credit = 0;
             $total_tax_debit = 0;
             $total_tax_credit = 0;
             foreach ($taxes as $tax) {
@@ -397,19 +432,27 @@ class Journal_posting_adjustments extends CI_Controller
                 if($tax->number != "D1"){
                     if($tax->number == "C1" || $tax->number == "C2"){
                         if($post['local_debit'] > 0){
+                            $original_debit = ((($post['original_debit'] * $taxx) / 100));
+                            $original_credit = 0;
                             $local_debit = (($post['local_debit'] * $taxx) / 100);
                             $local_credit = 0;
                         }else{
                             $local_debit = 0;
                             $local_credit = (($post['local_credit'] * $taxx) / 100);
+                            $original_debit = 0;
+                            $original_credit = ((($post['original_credit'] * $taxx) / 100));
                         }
                     }else{
                         if($post['local_debit'] > 0){
-                            $local_debit = (((($post['local_debit'] - $post['taxes_amount']) * $taxx) / 100));
+                            $local_debit = (round(((($post['original_debit'] - $post['taxes_amount']) * $taxx) / 100), 2) * $post['rates']);
                             $local_credit = 0;
+                            $original_debit = round(((($post['original_debit'] - $post['taxes_amount']) * $taxx) / 100), 2);
+                            $original_credit = 0;
                         }else{
                             $local_debit = 0;
-                            $local_credit = (((($post['local_credit'] - $post['taxes_amount']) * $taxx) / 100));
+                            $local_credit = (round(((($post['original_credit'] - $post['taxes_amount']) * $taxx) / 100), 2) * $post['rates']);
+                            $original_debit = 0;
+                            $original_credit = round(((($post['original_credit'] - $post['taxes_amount']) * $taxx) / 100), 2);
                         }
                     }
 
@@ -417,10 +460,14 @@ class Journal_posting_adjustments extends CI_Controller
                         $arrTax[] = array(
                             "account_number" => $tax->account_number_1,
                             "account_name" => $tax->account_name_1,
+                            "original_debit" => $original_credit,
+                            "original_credit" => $original_debit,
                             "local_debit" => $local_credit,
                             "local_credit" => $local_debit,
                         );
 
+                        $total_tax_ori_debit += $original_credit;
+                        $total_tax_ori_credit += $original_debit;
                         $total_tax_debit += $local_credit;
                         $total_tax_credit += $local_debit;
                     }
@@ -428,10 +475,14 @@ class Journal_posting_adjustments extends CI_Controller
                     $arrTax[] = array(
                         "account_number" => $tax->account_number,
                         "account_name" => $tax->account_name,
+                        "original_debit" => $original_debit,
+                        "original_credit" => $original_credit,
                         "local_debit" => $local_debit,
                         "local_credit" => $local_credit,
                     );
 
+                    $total_tax_ori_debit += $original_debit;
+                    $total_tax_ori_credit += $original_credit;
                     $total_tax_debit += $local_debit;
                     $total_tax_credit += $local_credit;
                 }
@@ -439,35 +490,49 @@ class Journal_posting_adjustments extends CI_Controller
 
             if($post['taxes'] == "C1" || $post['taxes'] == "C2"){
                 if($post['local_debit'] > 0){
+                    $original_debit = ($post['original_debit']);
+                    $original_credit = 0;
                     $local_debit = ($post['local_debit']);
                     $local_credit = 0;
                 }else{
+                    $original_debit = 0;
+                    $original_credit = ($post['original_credit']);
                     $local_debit = 0;
                     $local_credit = ($post['local_credit']);
                 }
             }else{
                 if($post['local_debit'] > 0){
-                    $local_debit = ($post['local_debit'] - $post['taxes_amount']);
+                    $original_debit = round($post['original_debit'] - $post['taxes_amount'], 2);
+                    $original_credit = 0;
+                    $local_debit = round($post['local_debit'] - round($post['taxes_amount'] * $post['rates'], 2), 2);
                     $local_credit = 0;
                 }else{
+                    $original_debit = 0;
+                    $original_credit = round($post['original_credit'] - $post['taxes_amount'], 2);
                     $local_debit = 0;
-                    $local_credit = ($post['local_credit'] - $post['taxes_amount']);
+                    $local_credit = round($post['local_credit'] - round($post['taxes_amount'] * $post['rates'], 2), 2);
                 }
             }
             
             $arr[] = array(
                 "account_number" => $post['account_number'],
                 "account_name" => $post['account_name'],
+                "original_debit" => $original_debit,
+                "original_credit" => $original_credit,
                 "local_debit" => $local_debit,
                 "local_credit" => $local_credit,
             );
 
+            $grand_original_debit += $original_debit + $total_tax_ori_debit;
+            $grand_original_credit += $original_credit + $total_tax_ori_credit;
             $grand_local_debit += $local_debit + $total_tax_debit;
             $grand_local_credit += $local_credit + $total_tax_credit;
         }
 
         $footer[] = array(
             "account_number" => "TOTAL",
+            "original_debit" => $grand_original_debit,
+            "original_credit" => $grand_original_credit,
             "local_debit" => $grand_local_debit,
             "local_credit" => $grand_local_credit,
         );
@@ -489,19 +554,27 @@ class Journal_posting_adjustments extends CI_Controller
                         if($tax->number != "D1"){
                             if($tax->number == "C1" || $tax->number == "C2"){
                                 if($post['local_debit'] > 0){
+                                    $original_debit = ((($post['original_debit'] * $taxx) / 100));
+                                    $original_credit = 0;
                                     $local_debit = (($post['local_debit'] * $taxx) / 100);
                                     $local_credit = 0;
                                 }else{
+                                    $original_debit = 0;
+                                    $original_credit = ((($post['original_credit'] * $taxx) / 100));
                                     $local_debit = 0;
                                     $local_credit = (($post['local_credit'] * $taxx) / 100);
                                 }
                             }else{
                                 if($post['local_debit'] > 0){
-                                    $local_debit = (((($post['local_debit'] - $post['taxes_amount']) * $taxx) / 100));
+                                    $local_debit = (round(((($post['original_debit'] - $post['taxes_amount']) * $taxx) / 100), 2) * $post['rates']);
                                     $local_credit = 0;
+                                    $original_debit = (((($post['original_debit'] - $post['taxes_amount']) * $taxx) / 100));
+                                    $original_credit = 0;
                                 }else{
                                     $local_debit = 0;
-                                    $local_credit = (((($post['local_credit'] - $post['taxes_amount']) * $taxx) / 100));
+                                    $local_credit = (round(((($post['original_credit'] - $post['taxes_amount']) * $taxx) / 100), 2) * $post['rates']);
+                                    $original_debit = 0;
+                                    $original_credit = (((($post['original_credit'] - $post['taxes_amount']) * $taxx) / 100));
                                 }
                             }
 
@@ -519,18 +592,19 @@ class Journal_posting_adjustments extends CI_Controller
                                     "company_id" => $post['company_id'],
                                     "company_name" => $post['company_name'],
                                     "taxes" => $post['taxes'],
-                                    "taxes_amount" => ($local_debit + $local_credit),
+                                    "taxes_amount" => ($original_debit + $original_credit),
                                     "amount" => $post['amount'],
                                     "debitcredit" => $post['debitcredit'],
+                                    "qty" => $post['qty'],
                                     "account_number" => $tax->account_number_1,
                                     "account_name" => $tax->account_name_1,
                                     "description" => $tax->account_name_1,
                                     "currency" => $post['currency'],
                                     "local_debit" => $local_credit,
                                     "local_credit" => $local_debit,
-                                    "original_debit" => $local_credit,
-                                    "original_credit" => $local_debit,
-                                    "rates" => 1,
+                                    "original_debit" => $original_credit,
+                                    "original_credit" => $original_debit,
+                                    "rates" => $post['rates'],
                                 );
 
                                 $this->crud->create('journal_postings', $dataFinals1);
@@ -549,18 +623,19 @@ class Journal_posting_adjustments extends CI_Controller
                                 "company_id" => $post['company_id'],
                                 "company_name" => $post['company_name'],
                                 "taxes" => $post['taxes'],
-                                "taxes_amount" => ($local_debit + $local_credit),
+                                "taxes_amount" => ($original_debit + $original_credit),
                                 "amount" => $post['amount'],
                                 "debitcredit" => $post['debitcredit'],
+                                "qty" => $post['qty'],
                                 "account_number" => $tax->account_number,
                                 "account_name" => $tax->account_name,
                                 "description" => $tax->account_name,
                                 "currency" => $post['currency'],
                                 "local_debit" => $local_debit,
                                 "local_credit" => $local_credit,
-                                "original_debit" => $local_debit,
-                                "original_credit" => $local_credit,
-                                "rates" => 1,
+                                "original_debit" => $original_debit,
+                                "original_credit" => $original_credit,
+                                "rates" => $post['rates'],
                             );
 
                             $this->crud->create('journal_postings', $dataFinals2);
@@ -574,26 +649,38 @@ class Journal_posting_adjustments extends CI_Controller
                     if($post['local_debit'] > 0){
                         $local_debit = ($post['local_debit']);
                         $local_credit = 0;
+                        $original_debit = ($post['original_debit']);
+                        $original_credit = 0;
                     }else{
                         $local_debit = 0;
                         $local_credit = ($post['local_credit']);
+                        $original_debit = 0;
+                        $original_credit = ($post['original_credit']);
                     }
                 }else{
                     if($post['local_debit'] > 0){
-                        $local_debit = ($post['local_debit'] - $post['taxes_amount']);
+                        $local_debit = ($post['local_debit'] - round($post['taxes_amount'] * $post['rates'], 2));
                         $local_credit = 0;
+                        $original_debit = ($post['original_debit'] - $post['taxes_amount']);
+                        $original_credit = 0;
                     }else{
                         $local_debit = 0;
-                        $local_credit = ($post['local_credit'] - $post['taxes_amount']);
+                        $local_credit = ($post['local_credit'] - round($post['taxes_amount'] * $post['rates'], 2));
+                        $original_debit = 0;
+                        $original_credit = ($post['original_credit'] - $post['taxes_amount']);
                     }
                 }
             }else{
                 if($post['local_debit'] > 0){
                     $local_debit = ($post['local_debit']);
                     $local_credit = 0;
+                    $original_debit = ($post['original_debit']);
+                    $original_credit = 0;
                 }else{
                     $local_debit = 0;
                     $local_credit = ($post['local_credit']);
+                    $original_debit = 0;
+                    $original_credit = ($post['original_credit']);
                 }
             }
 
@@ -613,20 +700,33 @@ class Journal_posting_adjustments extends CI_Controller
                 "taxes_amount" => $post['taxes_amount'],
                 "amount" => $post['amount'],
                 "debitcredit" => $post['debitcredit'],
+                "qty" => $post['qty'],
                 "account_number" => $post['account_number'],
                 "account_name" => $post['account_name'],
                 "description" => $post['description'],
                 "currency" => $post['currency'],
                 "local_debit" => $local_debit,
                 "local_credit" => $local_credit,
-                "original_debit" => $local_debit,
-                "original_credit" => $local_credit,
-                "rates" => 1,
+                "original_debit" => $original_debit,
+                "original_credit" => $original_credit,
+                "rates" => $post['rates'],
             );
 
             // if(empty($post['id'])){
                 $send = $this->crud->create('journal_postings', $dataFinal);
-                $this->createAsset($post['company_id'], $post['company_name'], $post['document_date'], $post['currency'], ($local_debit - $local_credit), $post['document_no'], $post['number']);
+                if($post['journal_type'] == "GL - ASSET"){
+                    $this->createAsset($post['company_id'], $post['company_name'], $post['document_date'], $post['currency'], ($local_debit - $local_credit), $post['document_no'], $post['number'], $post['qty']);
+                }
+
+                if($post['journal_type'] == "ASSET - ASSET"){
+                    $this->createAsset($post['company_id'], $post['company_name'], $post['document_date'], $post['currency'], ($local_debit - $local_credit), $post['document_no'], $post['number'], $post['qty']);
+                }
+
+                if($post['journal_type'] == "FAR - SUPPLIER"){
+                    $this->createAsset($post['company_id'], $post['company_name'], $post['document_date'], $post['currency'], ($local_debit - $local_credit), $post['document_no'], $post['number'], $post['qty']);
+                    // $this->db->update("asset_fixeds", ["status" => 1, "journal_no" => $post['number']], ["number" => $post['company_id']]);
+                }
+
             // }else{
             //     $send = $this->crud->update('journal_postings', ["id" => $post['id']], $dataFinal);
             // }
@@ -637,14 +737,14 @@ class Journal_posting_adjustments extends CI_Controller
         }
     }
 
-    public function createAsset($number, $name, $trans_date, $currency, $price, $document_no, $gl_no){
-        $asset = $this->crud->read("assets", [], ["number" => $number]);
+    public function createAsset($number, $name, $trans_date, $currency, $price, $document_no, $gl_no, $qty = 0){
+        $asset = $this->crud->read("assets", [], ["number" => $number, "status" => 0]);
         if(!empty($asset)){
             $item_family = $this->crud->read("item_familys", [], ["id" => $asset->item_family_id]);
             $estimate_year = $item_family->usefull;
             $shift = $item_family->shift;
             $estimate_month = ($estimate_year * 12);
-            $depreciation = ($estimate_year / $estimate_month);
+            $depreciation = ($price / $estimate_month);
             $expired_date = date("Y-m-d", strtotime("+" . $estimate_year . " year", strtotime($trans_date)));
             $date_from  = date_create($trans_date);
             $date_to  = date_create($expired_date);
@@ -657,10 +757,10 @@ class Journal_posting_adjustments extends CI_Controller
             }
 
             $asset_fixeds = $this->crud->read("asset_fixeds", [], ["number" => $number]);
-
             $dataAsset = array(
                 "item_family_id" => @$asset->item_family_id,
-                "purchase_invoice_no" => $gl_no,
+                "purchase_invoice_no" => $document_no,
+                "voucher_no" => $gl_no,
                 "supplier_id" => "",
                 "supplier_name" => "",
                 "item_rm_id" => "",
@@ -676,6 +776,7 @@ class Journal_posting_adjustments extends CI_Controller
                 "residual" => (($price * 5) / 100),
                 "expired_date" => $expired_date,
                 "depreciation" => $depreciation,
+                "acq_closing" => $price,
                 "remarks" => $document_no,
                 "method" => "JOURNAL ADJUSTMENT",
                 "departement" => "",
@@ -688,12 +789,63 @@ class Journal_posting_adjustments extends CI_Controller
             
             if(empty($asset_fixeds)){
                 $assets = $this->crud->create('asset_fixeds', $dataAsset);
-                $this->db->update("assets", ["status" => 1], ["number" => $number]);
-                die($assets);
+
+                if(@$asset->qty > 0){
+                    $status = 0;
+                }else{
+                    $status = 1;
+                }
+
+                $this->db->update("assets", ["status" => $status], ["number" => $number]);
+                // die($assets);
+            }
+        }else{
+            $asset_fixeds = $this->crud->read("asset_fixeds", [], ["number" => $number]);
+            if(!empty($asset_fixeds)){
+                if($price > 0){
+                    $qty = (@$asset_fixeds->qty + $qty);
+                }else{
+                    $qty = (@$asset_fixeds->qty - $qty);
+                }
+
+                $item_family = $this->crud->read("item_familys", [], ["id" => $asset_fixeds->item_family_id]);
+                $estimate_year = @$item_family->usefull;
+                $estimate_month = ($estimate_year * 12);
+                $shift = @$item_family->shift;
+                $expired_date = date("Y-m-d", strtotime("+" . $estimate_year . " year", strtotime($trans_date)));
+                $date_from  = date_create($trans_date);
+                $date_to  = date_create($expired_date);
+                $diff  = date_diff($date_from, $date_to); 
+                $depreciation = ((@$asset_fixeds->cost + $price) / $estimate_month);
+                $estimate_day = $diff->d;
+                if($shift == "1"){
+                    $factor = 1;
+                }else{
+                    $factor = 2;
+                }
+
+                if($qty > 0){
+                    $status = 0;
+                }else{
+                    $status = 1;
+                }
+
+                $dataAsset = array(
+                    "qty" => $qty,
+                    "cost" => (@$asset_fixeds->cost + $price),
+                    "residual" => (((@$asset_fixeds->cost + $price) * 5) / 100),
+                    "total" => (@$asset_fixeds->cost + $price),
+                    "depreciation" => $depreciation,
+                    "acq_closing" => (@$asset_fixeds->cost + $price),
+                    "addition" => ((@$asset_fixeds->cost + $price) - (((@$asset_fixeds->cost + $price) * 5) / 100) / $estimate_year / 365 * $estimate_day * $factor),
+                    "status" => $status
+                );
+
+                $this->db->update("asset_fixeds", $dataAsset, ["number" => $number]);
             }
         }
     }
-
+    
     public function createJson()
     {
         $jsonData = $this->input->post('jsonData');
@@ -703,10 +855,62 @@ class Journal_posting_adjustments extends CI_Controller
     public function delete()
     {
         $data = $this->input->post();
-        $journal = $this->crud->read('journal_postings', [], $data);
+        $journal = $this->crud->reads('journal_postings', [], $data);
         $send = $this->crud->delete('journal_postings', $data);
 
-        $this->db->update("assets", ["status" => 0], ["number" => @$journal->company_id]);
+        foreach ($journal as $jr) {
+            if($jr->journal_type == "ASSET - ASSET" || $jr->journal_type == "FAR - SUPPLIER"){
+                $asset_fixeds = $this->crud->read("asset_fixeds", [], ["number" => $jr->company_id]);
+                if(!empty($asset_fixeds)){
+                    $price = ($jr->local_credit - $jr->local_debit);
+
+                    if($price > 0){
+                        $qty = (@$asset_fixeds->qty + $jr->qty);
+                    }else{
+                        $qty = (@$asset_fixeds->qty - $jr->qty);
+                    }
+
+                    $item_family = $this->crud->read("item_familys", [], ["id" => $asset_fixeds->item_family_id]);
+                    $estimate_year = @$item_family->usefull;
+                    $estimate_month = ($estimate_year * 12);
+                    $shift = @$item_family->shift;
+                    $expired_date = date("Y-m-d", strtotime("+" . $estimate_year . " year", strtotime($jr->trans_date)));
+                    $date_from  = date_create($jr->trans_date);
+                    $date_to  = date_create($expired_date);
+                    $diff  = date_diff($date_from, $date_to); 
+                    $depreciation = ((@$asset_fixeds->cost + $price) / $estimate_month);
+                    $estimate_day = $diff->d;
+                    if($shift == "1"){
+                        $factor = 1;
+                    }else{
+                        $factor = 2;
+                    }
+
+                    $dataAsset = array(
+                        "qty" => $qty,
+                        "cost" => (@$asset_fixeds->cost + $price),
+                        "residual" => (((@$asset_fixeds->cost + $price) * 5) / 100),
+                        "total" => (@$asset_fixeds->cost + $price),
+                        "depreciation" => $depreciation,
+                        "acq_closing" => (@$asset_fixeds->cost + $price),
+                        "addition" => ((@$asset_fixeds->cost + $price) - (((@$asset_fixeds->cost + $price) * 5) / 100) / $estimate_year / 365 * $estimate_day * $factor),
+                        "status" => 0
+                    );
+
+                    $this->db->update("asset_fixeds", $dataAsset, ["number" => @$jr->company_id]);
+                }
+
+                $asset = $this->crud->read("assets", [], ["number" => @$jr->company_id]);
+                if(!empty($asset)){
+                    $this->db->delete("asset_fixeds", ["number" => @$jr->company_id]);
+                    $this->db->update("assets", ["status" => 0], ["number" => @$jr->company_id]);
+                }
+            }else{
+                $this->db->delete("asset_fixeds", ["number" => @$jr->company_id]);
+                $this->db->update("assets", ["status" => 0], ["number" => @$jr->company_id]);
+            }
+        }
+        
         echo $send;
     }
 

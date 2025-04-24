@@ -339,7 +339,7 @@
 </div>
 
 <!-- PDF -->
-<iframe id="printout" src="<?= base_url('finance/journal_postings/print') ?>" style="width: 100%;" hidden></iframe>
+<iframe id="printout" style="width: 100%;" hidden></iframe>
 <script>
     //Add Data
     function add() {
@@ -349,6 +349,7 @@
 
         // $("#transaction_from").datebox('setValue', "<?= date("Y-m-01") ?>");
         // $("#transaction_to").datebox('setValue', "<?= date("Y-m-t") ?>");
+        
         $("#journal_date").datebox('setValue', "<?= date("Y-m-d") ?>");
         $("#journal_date").datebox('enable');
         // $("#transaction_from").datebox('enable');
@@ -377,10 +378,10 @@
     }
 
     //NOMOR AUTOMATIC
-    function number(id_menu) {
+    function number(id_menu, journal_date) {
         $.ajax({
             type: "post",
-            url: "<?= base_url('finance/journal_postings/number/') ?>" + id_menu,
+            url: "<?= base_url('finance/journal_postings/number/') ?>" + id_menu + "/" + btoa(journal_date),
             dataType: "html",
             success: function(result) {
                 if(result == ""){
@@ -799,16 +800,17 @@
                     setTimeout(function() { 
                         btn.linkbutton('enable'); 
                     }, 3000);
+
+                    var journal_date = $("#journal_date").datebox('getValue');
                     
                     $.ajax({
                         type: "post",
-                        url: "<?= base_url('finance/journal_postings/number/' . $menus_id) ?>",
+                        url: "<?= base_url('finance/journal_postings/number/' . $menus_id) ?>/" + btoa(journal_date),
                         dataType: "html",
                         success: function(number) {
                             if(number == ""){
                                 toastr.info("Please Check Configuration in Serial No First");
                             }else{
-                                var journal_date = $("#journal_date").datebox('getValue');
                                 var modul = $("#modul").combobox('getValue');
                                 var journal_type = $("#journal_type").combogrid('getValue');
                                 var remarks = $("#remarks").textbox('getValue');
@@ -1114,7 +1116,7 @@
 
         $("#journal_date").datebox({
             onChange: function(val) {
-                number("<?= $menus_id ?>");
+                number("<?= $menus_id ?>", val);
             }
         });
     });

@@ -49,9 +49,9 @@ class Supply_requestions extends CI_Controller
         echo json_encode($records);
     }
 
-    public function request_no($id_menu)
+    public function request_no($id_menu, $trans_date)
     {
-        $datenow = date("Y-m-d");
+        $datenow = base64_decode($trans_date);
         $sql_menu = $this->db->query("SELECT * FROM menus_no WHERE menus_id = '$id_menu' and `status` = '0' and `start_date` <= '$datenow' and end_date >= '$datenow'");
         $row_menu = $sql_menu->row();
 

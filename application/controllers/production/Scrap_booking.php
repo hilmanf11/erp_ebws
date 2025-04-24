@@ -66,42 +66,42 @@ class Scrap_booking extends CI_Controller
 
     public function datatables()
     {
-        if ($this->input->post()) {
-            $filter_from = $this->input->get('filter_from');
-            $filter_to = $this->input->get('filter_to');
-            $filter_items = $this->input->get('filter_items');
+        //Select Query
+        $this->db->select('a.*, COALESCE(b.qty_scrap, 0) as qty_scrap, COALESCE(c.qty_invoice, 0) as qty_invoice, (COALESCE(b.qty_scrap, 0) - COALESCE(c.qty_invoice, 0)) as qty_balance');
+        $this->db->from('item_rm a');
+        $this->db->join("(SELECT item_id, SUM(qty) as qty_scrap FROM scrap_booking WHERE approved_to = '' or approved_to is null GROUP BY item_id) b", 'a.id = b.item_id', 'left');
+        $this->db->join("(SELECT item_fg_id, SUM(qty) as qty_invoice FROM sales_invoices GROUP BY item_fg_id) c", 'a.id = c.item_fg_id', 'left');
+        $this->db->where('a.status', 0);
+        $this->db->where('a.item_category_id', 'C02');
+        $this->db->group_by('a.id');
+        $this->db->order_by('a.number');
+        $totalRows = $this->db->count_all_results('', false);
+        $records = $this->db->get()->result_array();
+        
+        //Mapping Data
+        $result['total'] = $totalRows;
+        $result = array_merge($result, ['rows' => $records]);
+        echo json_encode($result);
+    }
 
-            $page = $this->input->post('page');
-            $rows = $this->input->post('rows');
+    public function datatableDetails()
+    {
+        $id = $this->input->post('id');
 
-            //Pagination 1-10
-            $page   = isset($page) ? intval($page) : 1;
-            $rows   = isset($rows) ? intval($rows) : 10;
-            $offset = ($page - 1) * $rows;
-            $result = array();
-            //Select Query
-            $this->db->select('a.*, b.number as item_number, b.name as item_name, b.uom');
-            $this->db->from('scrap_booking a');
-            $this->db->join('item_rm b', 'a.item_id = b.id');
-            $this->db->join('uom c', 'b.uom = c.name');
-            $this->db->where('a.deleted', 0);
-            if ($filter_from != "" or $filter_to != "") {
-                $this->db->where('a.trans_date >=', $filter_from);
-                $this->db->where('a.trans_date <=', $filter_to);
-            }
-            $this->db->like('a.item_id', $filter_items);
-            $this->db->order_by('a.item_id');
-            //Total Data
-            $totalRows = $this->db->count_all_results('', false);
-            //Limit 1 - 10
-            $this->db->limit($rows, $offset);
-            //Get Data Array
-            $records = $this->db->get()->result_array();
-            //Mapping Data
-            $result['total'] = $totalRows;
-            $result = array_merge($result, ['rows' => $records]);
-            echo json_encode($result);
-        }
+        //Select Query
+        $this->db->select('b.*, a.number as item_number, a.name as item_name, a.uom');
+        $this->db->from('item_rm a');
+        $this->db->join('scrap_booking b', 'a.id = b.item_id', 'left');
+        $this->db->where('a.id', $id);
+        $this->db->group_by('b.id');
+        $this->db->order_by('b.number');
+        $totalRows = $this->db->count_all_results('', false);
+        $records = $this->db->get()->result_array();
+        
+        //Mapping Data
+        $result['total'] = $totalRows;
+        $result = array_merge($result, ['rows' => $records]);
+        echo json_encode($result);
     }
 
     //CREATE DATA
@@ -158,7 +158,6 @@ class Scrap_booking extends CI_Controller
         $this->db->select('a.*, b.number as item_number, b.name as item_name, b.uom');
         $this->db->from('scrap_booking a');
         $this->db->join('item_rm b', 'a.item_id = b.id');
-        $this->db->join('uom c', 'b.uom = c.name');
         $this->db->where('a.deleted', 0);
         if ($filter_from != "" or $filter_to != "") {
             $this->db->where('a.trans_date >=', $filter_from);
@@ -194,6 +193,7 @@ class Scrap_booking extends CI_Controller
                 <tr>
                     <th width="20">No</th>
                     <th>Trans Date</th>
+                    <th>Document No</th>
                     <th>Part No EBWS</th>
                     <th>Part No Supplier</th>
                     <th>Description</th>
@@ -205,6 +205,7 @@ class Scrap_booking extends CI_Controller
             $html .= '<tr>
                             <td style="text-align:center">' . $no . '</td>
                             <td>' . $data['trans_date'] . '</td>
+                            <td>' . $data['number'] . '</td>
                             <td>' . $data['item_id'] . '</td>
                             <td>' . $data['item_number'] . '</td>
                             <td>' . $data['item_name'] . '</td>

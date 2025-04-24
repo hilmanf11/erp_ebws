@@ -63,6 +63,7 @@
 </div>
 
 <div id="toolbar2">
+    <a href="javascript:void(0)" class="easyui-linkbutton" id="append" data-options="plain:true" onclick="append()"><i class="fa fa-plus"></i> Add</a>
     <!-- <a href="javascript:void(0)" class="easyui-linkbutton" id="preview" data-options="plain:true" onclick="preview()"><i class="fa fa-eye"></i> Preview Journal</a> -->
 </div>
 
@@ -132,17 +133,17 @@
             <thead>
                 <tr>
                     <!-- <th field="ck" checkbox="true">Posting</th> -->
-                    <th data-options="field:'remove',width:80, formatter:removebtn">Action</th>
+                    <th data-options="field:'remove',width:110, formatter:removebtn">Action</th>
                     <th hidden data-options="field:'id',width:150,editor: {type: 'textbox'}">ID</th>
                     <th hidden data-options="field:'journal_type_id',width:150,editor: {type: 'textbox'}">ID</th>
-                    <th data-options="field:'source',width:80,editor: {type: 'textbox'}">Source</th>
-                    <th data-options="field:'document_no',width:150,editor: {type: 'textbox', options: {readonly: true}}">Document No</th>
-                    <th data-options="field:'document_date',width:120,editor: {type: 'textbox', options: {readonly: true}}">Document Date</th>
-                    <th data-options="field:'invoice_no',width:200,editor: {type: 'textbox', options: {readonly: true}}">Invoice No</th>
-                    <th data-options="field:'invoice_date',width:120,editor: {type: 'textbox', options: {readonly: true}}">Invoice Date</th>
+                    <th data-options="field:'source',width:80,editor: {type: 'textbox', options: {readonly: true}}">Source</th>
+                    <th data-options="field:'document_no',width:150,editor: {type: 'textbox'}">Document No</th>
+                    <th data-options="field:'document_date',width:120,editor: {type: 'datebox', options: {formatter:myformatter,parser:myparser,editable:false}}">Document Date</th>
+                    <th data-options="field:'invoice_no',width:200,editor: {type: 'textbox'}">Invoice No</th>
+                    <th data-options="field:'invoice_date',width:120,editor: {type: 'datebox', options: {formatter:myformatter,parser:myparser,editable:false}}">Invoice Date</th>
                     <th hidden data-options="field:'voucher_no',width:120,editor: {type: 'textbox', options: {readonly: true}}">Voucher No</th>
                     <th hidden data-options="field:'description',width:200,editor: {type: 'textbox', options: {readonly: true}}">Description</th>
-                    <th data-options="field:'account_number',width:100, halign:'center', editor: {type: 'textbox', options: {readonly: true}}">Account No</th>
+                    <th data-options="field:'account_number',width:100, halign:'center', editor: {type: 'combogrid'}">Account No</th>
                     <th hidden data-options="field:'account_name',width:180, editor: {type: 'textbox', options: {readonly: true}}">Account Name</th>
                     <th hidden data-options="field:'company_id',width:100,editor: {type: 'textbox', options: {readonly: true}}">Company ID</th>
                     <th hidden data-options="field:'company_name',width:200,editor: {type: 'textbox', options: {readonly: true}}">Company Name</th>
@@ -276,14 +277,15 @@
     }
 
     //NOMOR AUTOMATIC
-    function number(id_menu) {
+    function number(id_menu, journal_date) {
         $.ajax({
             type: "post",
-            url: "<?= base_url('finance/journal_posting_clearing/number/') ?>" + id_menu,
+            url: "<?= base_url('finance/journal_posting_clearing/number/') ?>" + id_menu + "/" + btoa(journal_date),
             dataType: "html",
             success: function(result) {
                 if(result == ""){
                     toastr.info("Please Check Configuration in Serial No First");
+                    $("#number").textbox('clear');
                 }else{
                     $("#number").textbox('setValue', result);
                 }
@@ -307,33 +309,116 @@
     }
 
     function onClickCell(index, field) {
-        var modul = $("#modul").textbox('getValue');
+        if (editIndex != index) {
+            if (endEditing()) {
+                $('#dg2').datagrid('selectRow', index).datagrid('beginEdit', index);
+                editIndex = index;
+            } else {
+                setTimeout(function() {
+                    $('#dg2').datagrid('selectRow', editIndex);
+                }, 0);
+            }
+        }
+    }
 
-        if(modul == "ADJUSTMENT"){
-            if (editIndex != index) {
-                if (endEditing()) {
-                    $('#dg2').datagrid('selectRow', index).datagrid('beginEdit', index);
-                    editIndex = index;
-                } else {
-                    setTimeout(function() {
-                        $('#dg2').datagrid('selectRow', editIndex);
-                    }, 0);
+    function append() {
+        var document_no = $("#document_no").combogrid('getValue');
+
+        if(document_no != ""){
+            if (endEditing()) {
+                var rows = $('#dg2').datagrid('getRows');
+                var totalrows = rows.length;
+
+                if(totalrows == 0){
+                    toastr.error("No Data for the Clearing Adjustment");
+                    return false;
                 }
+
+                var amount = 0;
+                for (let i = 0; i < totalrows; i++) {
+                    var data = rows[i];
+                    company_id = data.company_id;
+                    company_name = data.company_name;
+                    account_number = data.account_number;
+                    account_name = data.account_name;
+                    amount += (parseFloat(data.amount) + parseFloat(data.adjustment));
+                }
+
+                $('#dg2').datagrid('appendRow', {
+                    "source": 'MN',
+                    "document_date": "<?= date("Y-m-d") ?>",
+                    "invoice_date": "<?= date("Y-m-d") ?>",
+                    "currency": 'INR',
+                    "company_id": company_id,
+                    "company_name": company_name,
+                    "account_name": account_name,
+                    "amount": (amount * -1),
+                    "adjustment": 0,
+                    "balance": 0,
+                });
+
+                editIndex = $('#dg2').datagrid('getRows').length - 1;
+                $('#dg2').datagrid('selectRow', editIndex).datagrid('beginEdit', editIndex);
+
+                var urls = '<?= base_url('finance/account_coa/reads') ?>';
+
+                var ed = $('#dg2').datagrid('getEditor', {
+                    index: editIndex,
+                    field: 'account_number'
+                });
+
+                $(ed.target).combogrid({
+                    url: urls,
+                    panelWidth: 450,
+                    panelHeight: 200,
+                    idField: 'account_number',
+                    textField: 'name',
+                    mode: 'remote', 
+                    fitColumns: true,
+                    prompt: 'Choose Account No',
+                    columns: [
+                        [{
+                            field: 'account_number',
+                            title: 'Code',
+                            width: 100
+                        },{
+                            field: 'account_name',
+                            title: 'Name',
+                            width: 250
+                        }]
+                    ],
+                    onLoadSuccess: function(){
+                        $(ed.target).combogrid('setValue', account_number);
+                    },
+                    onSelect: function(value, rows) {
+                        var dg = $('#dg2');
+                        var row = dg.datagrid('getSelected');
+                        var rowIndex = dg.datagrid('getRowIndex', row);
+                        var ed = dg.datagrid('getEditor', {
+                            index: rowIndex,
+                            field: 'account_name'
+                        });
+
+                        $(ed.target).textbox('setValue', rows.account_name);
+                    }
+                });
             }
         }else{
-            toastr.warning("Not Available for Modul " + modul);
+            toastr.warning("Please Select Document No");
         }
     }
 
     function removebtn(value, row, index) {
         if (row.editing) {
-            var s = '<a href="javascript:void(0)" class="btn btn-success btn-sm w-100" style="pointer-events:auto; opacity:1;" onclick="saverow(this)">Save</a> ';
-            return s;
+            var s = '<a href="javascript:void(0)" class="btn btn-success btn-sm" style="pointer-events:auto; opacity:1;" onclick="saverow(this)">Save</a> ';
+            var c = '<a href="javascript:void(0)" class="btn btn-danger btn-sm" style="pointer-events:auto; opacity:1;" onclick="cancelrow(this)">Cancel</a>';
+            return s + c;
         } else {
             if(row.currency != "TOTAL"){
-                var e = '<a href="javascript:void(0)" class="btn btn-primary btn-sm w-100" style="pointer-events:auto; opacity:1;" onclick="editrow(this)">Edit</a> ';
+                var e = '<a href="javascript:void(0)" class="btn btn-primary btn-sm" style="pointer-events:auto; opacity:1;" onclick="editrow(this)">Edit</a> ';
+                var d = '<a href="javascript:void(0)" class="btn btn-danger btn-sm" style="pointer-events:auto; opacity:1;" onclick="deleterow(this, '+row.id+')">Delete</a>';
 
-                return e;
+                return e + d;
             }
         }
     }
@@ -351,6 +436,81 @@
         var rowIndex = getRowIndex(target);
         $('#dg2').datagrid('selectRow', rowIndex).datagrid('beginEdit', rowIndex);
         editIndex = rowIndex;
+
+        var row = $('#dg2').datagrid('getSelected');
+
+        if(row.source != "MN"){
+            var ed = $('#dg2').datagrid('getEditor', {
+                index: rowIndex,
+                field: 'document_no'
+            });
+
+            var ed2 = $('#dg2').datagrid('getEditor', {
+                index: rowIndex,
+                field: 'document_date'
+            });
+
+            var ed3 = $('#dg2').datagrid('getEditor', {
+                index: rowIndex,
+                field: 'invoice_no'
+            });
+
+            var ed4 = $('#dg2').datagrid('getEditor', {
+                index: rowIndex,
+                field: 'invoice_date'
+            });
+
+            var ed5 = $('#dg2').datagrid('getEditor', {
+                index: rowIndex,
+                field: 'account_number'
+            });
+
+            $(ed.target).textbox({"readonly":true});
+            $(ed2.target).textbox({"readonly":true});
+            $(ed3.target).textbox({"readonly":true});
+            $(ed4.target).textbox({"readonly":true});
+            $(ed5.target).combogrid({"readonly":true});
+            $(ed5.target).combogrid('setValue', row.account_number);
+        }else{
+            var ed = $('#dg2').datagrid('getEditor', {
+                index: editIndex,
+                field: 'account_number'
+            });
+            
+            var urls = '<?= base_url('finance/account_coa/reads') ?>';
+            $(ed.target).combogrid({
+                url: urls,
+                panelWidth: 450,
+                panelHeight: 200,
+                idField: 'account_number',
+                textField: 'name',
+                mode: 'remote', 
+                fitColumns: true,
+                prompt: 'Choose Account No',
+                columns: [
+                    [{
+                        field: 'account_number',
+                        title: 'Code',
+                        width: 100
+                    },{
+                        field: 'account_name',
+                        title: 'Name',
+                        width: 250
+                    }]
+                ],
+                onLoadSuccess: function(){
+                    $(ed.target).combogrid('setValue', row.account_number);
+                },
+                onSelect: function(value, rows) {
+                    var ed2 = $('#dg2').datagrid('getEditor', {
+                        index: editIndex,
+                        field: 'account_name'
+                    });
+
+                    $(ed2.target).textbox('setValue', rows.account_name);
+                }
+            });
+        }
     }
 
     function saverow(target) {
@@ -378,54 +538,28 @@
         });
     }
 
+    function cancelrow(target) {
+        $('#dg2').datagrid('cancelEdit', getRowIndex(target));
+    }
+
+    function deleterow(targetnya, id) {
+        var row = $('#dg2').datagrid('getSelected');
+
+        if(row.source == "MN"){
+            $.messager.confirm('Confirm', 'Are you sure you want to delete this data?', function(r) {
+                if (r) {
+                    $('#dg2').datagrid('deleteRow', getRowIndex(targetnya));
+                }
+            });
+        }else{
+            toastr.error("Only Source = 'MN' for delete");
+        }
+        
+    }
+
     //EDIT DATA
     function update() {
         toastr.info("Not Yet Available");
-        // var row = $('#dg').datagrid('getSelected');
-        // if (row) {
-        //     // toastr.warning("Not Available");
-        //     $('#dlg_insert').dialog('open');
-        //     $('#frm_insert').form('load', row);
-            
-        //     proses = "UPDATE";
-
-        //     $("#journal_date").datebox('disable');
-        //     $("#modul").textbox('disable');
-        //     $("#journal_type").combobox('disable');
-        //     $("#company_id").combogrid('disable');
-        //     $("#document_no").combogrid('disable');
-        //     $("#number").textbox('disable');
-
-        //     setTimeout(function() {
-        //         $("#number").textbox('setValue', row.number);
-        //         $("#modul").textbox('setValue', row.modul);
-        //     }, 2000);
-
-
-        //     var lastIndex;
-        //     $('#dg2').datagrid({
-        //         url: '<?= base_url('finance/journal_posting_clearing/datatableUpdates') ?>?number=' + window.btoa(row.number),
-        //         // onLoadSuccess: function(data){
-        //         //     $("#local_debit").numberbox('setValue', data['footer'][0].local_debit);
-        //         //     $("#local_credit").numberbox('setValue', data['footer'][0].local_credit);
-        //         // },
-        //         onBeforeEdit: function(index, row) {
-        //             row.editing = true;
-        //             $(this).datagrid('refreshRow', index);
-        //         },
-        //         onAfterEdit: function(index, row) {
-        //             row.editing = false;
-        //             $(this).datagrid('refreshRow', index);
-        //         },
-        //         onCancelEdit: function(index, row) {
-        //             row.editing = false;
-        //             $(this).datagrid('refreshRow', index);
-        //         },
-        //     });
-
-        // } else {
-        //     toastr.warning("Please select one of the data in the table first!", "Information");
-        // }
     }
 
     //DELETE DATA
@@ -665,7 +799,7 @@
 
                                         $.ajax({
                                             type: "post",
-                                            url: "<?= base_url('finance/journal_posting_clearing/number/' . $menus_id) ?>",
+                                            url: "<?= base_url('finance/journal_posting_clearing/number/' . $menus_id) ?>/" + btoa(journal_date),
                                             dataType: "html",
                                             success: function(numberValue) {
                                                 if(numberValue == ""){
@@ -941,7 +1075,7 @@
 
         $("#journal_date").datebox({
             onChange: function(val) {
-                number("<?= $menus_id ?>");
+                number("<?= $menus_id ?>", val);
             }
         });
     });

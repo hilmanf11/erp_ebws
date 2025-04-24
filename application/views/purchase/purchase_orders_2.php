@@ -93,7 +93,7 @@
             <div style="width: 50%; float: left;">
                 <div class="fitem">
                     <span style="width:25%; display:inline-block;">Del. Sch Date</span>
-                    <input style="width:60%;" name="po_date" id="po_date" value="<?= date("Y-m-d") ?>" required="" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
+                    <input style="width:60%;" name="po_date" id="po_date" required="" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
                 </div>
                 <div class="fitem">
                     <span style="width:25%; display:inline-block;">Del. Sch No</span>
@@ -234,14 +234,25 @@
         $('#request_no').combobox('clear');
         $('#po_no').textbox('clear');
 
-        $.ajax({
-            type: "post",
-            url: "<?= base_url("purchase/purchase_orders_2/request_no/" . $id_menu . "/add") ?>",
-            dataType: "json",
-            success: function (response) {
-                $("#po_no").textbox('setValue', response.code);
+        $("#po_date").datebox({
+            onChange: function(val){
+                $.ajax({
+                    type: "post",
+                    url: "<?= base_url("purchase/purchase_orders_2/request_no/" . $id_menu . "/add") ?>/" + btoa(val),
+                    dataType: "json",
+                    success: function (response) {
+                        if(response == ""){
+                            toastr.info("Please Check Configuration in Serial No First");
+                            $("#po_no").textbox('clear');
+                        }else{
+                            $("#po_no").textbox('setValue', response.code);
+                        }
+                    }
+                });
             }
         });
+
+        $("#po_date").datebox('setValue', "<?= date("Y-m-d") ?>");
 
         $('#supplier_id').combobox({
             url: '<?php echo base_url('master/supplier_item_others/readSuppliers'); ?>',

@@ -143,10 +143,10 @@ class Sales_orders extends CI_Controller
             $offset = ($page - 1) * $rows;
             $result = array();
             //Select Query
-            $this->db->select("a.*, b.name as customer_name, COALESCE(c.qty_delivery, 0) as qty_delivery, SUM(a.qty) as qty_so, (SUM(a.qty) - COALESCE(c.qty_delivery, 0)) as qty_outstanding, SUM(total) as total_sub2");
+            $this->db->select("a.*, b.name as customer_name, COALESCE(SUM(c.qty_delivery), 0) as qty_delivery, SUM(a.qty) as qty_so, (SUM(a.qty) - COALESCE(SUM(c.qty_delivery), 0)) as qty_outstanding, SUM(total) as total_sub2");
             $this->db->from('sales_orders a');
             $this->db->join('customers b', 'a.customer_id = b.id');
-            $this->db->join("(select sales_order_no, SUM(qty) as qty_delivery from delivery_notes WHERE delivery_note_date BETWEEN '$filter_from' AND '$filter_to' GROUP by sales_order_no) c", 'a.sales_order_no = c.sales_order_no', 'left');
+            $this->db->join("(select item_fg_id, sales_order_no, SUM(qty) as qty_delivery from delivery_notes GROUP by sales_order_no, item_fg_id) c", 'a.sales_order_no = c.sales_order_no and a.item_fg_id = c.item_fg_id', 'left');
             if ($filter_from != "" && $filter_to != "") {
                 $this->db->where('a.sales_order_date >=', $filter_from);
                 $this->db->where('a.sales_order_date <=', $filter_to);
@@ -155,10 +155,10 @@ class Sales_orders extends CI_Controller
             $this->db->like('a.customer_id', $filter_customer_id);
             $this->db->like('a.sales_order_no', $filter_sales_order_no);
             $this->db->like('a.status', $filter_status);
-            if($filter_status == "0"){
-                $this->db->where('(a.qty_so - COALESCE(c.qty_delivery, 0)) > 0');
-            }
             $this->db->group_by('a.sales_order_no');
+            if($filter_status == "0"){
+                $this->db->having('(SUM(a.qty) - COALESCE(SUM(c.qty_delivery), 0)) > 0');
+            }
             $this->db->order_by('a.status', 'ASC');
             //Total Data
             $totalRows = $this->db->count_all_results('', false);

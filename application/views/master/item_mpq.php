@@ -9,6 +9,9 @@
             <th rowspan="2" data-options="field:'item_rm_number',width:200,halign:'center'">Part No Supplier</th>
             <th rowspan="2" data-options="field:'item_rm_name',width:200,halign:'center'">Description</th>
             <th rowspan="2" data-options="field:'mpq',width:80,halign:'center',align:'right'">MPQ</th>
+            <th rowspan="2" data-options="field:'calculate',width:80,align:'center'">Calculate<br>MPQ</th>
+            <th rowspan="2" data-options="field:'customer_id',width:120,halign:'center'">Customer ID</th>
+            <th rowspan="2" data-options="field:'customer_name',width:200,halign:'center'">Customer Name</th>
             <th colspan="3" data-options="field:'',width:100,align:'center'">Approved</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
@@ -43,7 +46,18 @@
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">MPQ</span>
-                <input style="width:60%;" name="mpq" required=""  class="easyui-numberbox">
+                <input style="width:60%;" name="mpq" required="" class="easyui-numberbox">
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Calculate MPQ</span>
+                <select style="width:60%;" name="calculate" required="" class="easyui-combobox" data-options="editable:false" panelHeight="auto">
+                    <option value="YES">YES</option>
+                    <option value="NO">NO</option>
+                </select>
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Customer</span>
+                <input style="width:60%;" name="customer_id" id="customer_id" class="easyui-combogrid">
             </div>
         </fieldset>
     </form>
@@ -78,6 +92,7 @@
         url_save = '<?= base_url('master/item_mpq/create') ?>';
         $('#frm_insert').form('clear');
     }
+
     //EDIT DATA
     function update() {
         var row = $('#dg').datagrid('getSelected');
@@ -114,9 +129,10 @@
                     });
 
                     requestDelete(rows.length, rows);
+
                     function requestDelete(total, json, number = 1, value = 0) {
                         if (value < 100) {
-                            var row = json[number-1];
+                            var row = json[number - 1];
                             value = Math.floor((number / total) * 100);
 
                             $.ajax({
@@ -177,7 +193,7 @@
 
     //CELLSTYLE APPROVE
     function styleApproved(value, row, index) {
-        if (value == "" || value === null ) {
+        if (value == "" || value === null) {
             return 'background: #53D636; color:white;';
         } else {
             return 'background: #FF5F5F; color:white;';
@@ -185,13 +201,13 @@
     }
     //FORMATTER APPROVE
     function formatApproved(value) {
-        if (value == "" || value === null ) {
+        if (value == "" || value === null) {
             return 'Approved';
         } else {
             return 'Checking';
         }
     };
-    
+
     $(function() {
         //SETTING DATAGRID EASYUI
         $('#dg').datagrid({
@@ -214,9 +230,9 @@
                     $('#frm_insert').form('submit', {
                         url: url_save,
                         onSubmit: function() {
-                            if($(this).form('validate') === true){
+                            if ($(this).form('validate') === true) {
                                 $('#dlg_insert').dialog('close');
-                                
+
                                 Swal.fire({
                                     title: 'Please Wait...',
                                     showConfirmButton: false,
@@ -226,7 +242,7 @@
                                         Swal.showLoading();
                                     },
                                 });
-                            }else{
+                            } else {
                                 return $(this).form('validate');
                             }
                         },
@@ -369,7 +385,31 @@
                     width: 200
                 }]
             ],
-            onSelect:function(valMaker, rowMaker){
+            onSelect: function(valMaker, rowMaker) {
+                $("#maker_id").combogrid('setValue', rowMaker.maker_id);
+            }
+        });
+
+        $('#customer_id').combogrid({
+            url: '<?= base_url('master/customers/reads') ?>',
+            panelWidth: 550,
+            idField: 'id',
+            textField: 'number',
+            mode: 'remote',
+            fitColumns: true,
+            prompt: "Select Customer No",
+            columns: [
+                [{
+                    field: 'id',
+                    title: 'ID',
+                    width: 100
+                }, {
+                    field: 'name',
+                    title: 'Name',
+                    width: 200
+                }]
+            ],
+            onSelect: function(valMaker, rowMaker) {
                 $("#maker_id").combogrid('setValue', rowMaker.maker_id);
             }
         });

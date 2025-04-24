@@ -315,7 +315,12 @@ class Forecasts extends CI_Controller
         // $autoid =$format. sprintf("%03s", $kode + 1);
         // echo $autoid;
 
-        $datenow = date("Y-m-d");
+        if($this->input->post('issued_date') == ""){
+            $datenow = date("Y-m-d");
+        }else{
+            $datenow = $this->input->post('issued_date');
+        }
+        
         $sql_menu = $this->db->query("SELECT * FROM menus_no WHERE menus_id = '$id_menu' and `status` = '0' and `start_date` <= '$datenow' and end_date >= '$datenow'");
         $row_menu = $sql_menu->row();
 

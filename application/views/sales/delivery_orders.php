@@ -163,7 +163,7 @@
                     toastr.info("Please Choose Customer");
                 }else{
                     // number(val, customer_id);
-                    number("<?= $id_menu ?>");
+                    number("<?= $id_menu ?>", val);
                 }
             }
         });
@@ -179,7 +179,7 @@
                 var delivery_order_date = $("#delivery_order_date").datebox('getValue');
 
                 // number(delivery_order_date, customer.id);
-                number("<?= $id_menu ?>");
+                number("<?= $id_menu ?>", delivery_order_date);
 
                 $('#delivery_date').combobox({
                     url: '<?= base_url('sales/sales_order_deliveries/readTransdate/'); ?>' + btoa(customer.id),
@@ -199,16 +199,15 @@
         });
     }
 
-    // function number(delivery_order_date, customer_no){
-    function number(id_menu){
+    function number(id_menu, trans_date){
         $.ajax({
             type: "post",
-            // url: "<?= base_url('sales/delivery_orders/number/') ?>" + window.btoa(delivery_order_date) + "/" + window.btoa(customer_no),
-            url: "<?= base_url('sales/delivery_orders/number/') ?>" + id_menu,
+            url: "<?= base_url('sales/delivery_orders/number/') ?>" + id_menu + "/" + btoa(trans_date),
             dataType: "html",
             success: function(result) {
                 if(result == ""){
                     toastr.info("Please Check Configuration in Serial No First");
+                    $("#delivery_order_no").textbox('clear');
                 }else{
                     $("#delivery_order_no").textbox('setValue', result);
                 }

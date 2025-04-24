@@ -4,7 +4,7 @@
         <tr>
             <th rowspan="2" field="ck" checkbox="true"></th>
             <!-- <th rowspan="2" data-options="field:'item_fg_id',width:150,align:'center'">Product ID</th> -->
-            <th rowspan="2" data-options="field:'print_status',width:80,align:'center',formatter:BtnPrint">Print</th>
+            <th rowspan="2" data-options="field:'status_label',width:80,align:'center',formatter:BtnPrint">Print</th>
             <th rowspan="2" data-options="field:'status',width:80,align:'center',formatter:statusFormat,styler:statusStyle">Status</th>
             <th rowspan="2" data-options="field:'process_type',width:100,halign:'center',align:'center'">Process<br>Type</th>
             <th rowspan="2" data-options="field:'number',width:200,halign:'center'">EBWS Document No</th>
@@ -17,10 +17,14 @@
             <th rowspan="2" data-options="field:'departement_name',width:150,halign:'center'">Departement</th>
             <th rowspan="2" data-options="field:'reference_number',width:150,halign:'center'">Reference</th>
             <th rowspan="2" data-options="field:'rgp_number',width:150,halign:'center'">RGP IN No.</th>
+            <th colspan="3" data-options="field:'',width:100,halign:'center'">Approved</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
         </tr>
         <tr>
+            <th data-options="field:'approved_to',width:80,align:'center', styler:cellStylerApproval, formatter:cellFormatterApproval">Status</th>
+            <th data-options="field:'approved_by',width:100,align:'center'">By</th>
+            <th data-options="field:'approved_date',width:120,align:'center'">Date</th>
             <th data-options="field:'created_by',width:100,align:'center'"> By</th>
             <th data-options="field:'created_date',width:150,align:'center'"> Date</th>
             <th data-options="field:'updated_by',width:100,align:'center'"> By</th>
@@ -45,8 +49,9 @@
                     <span style="width:35%; display:inline-block;">Process Type</span>
                     <select style="width:60%;" id="filter_process_type" required="" panelHeight="auto" class="easyui-combobox">
                         <option value="">ALL</option>
-                        <option value="RGP">RGP</option>
-                        <option value="NRGP">NRGP</option>
+                        <option value="RGP">RGP OUT</option>
+                        <option value="NRGP">RGP IN TO NRGP OUT</option>
+                        <option value="FOC">FOC OUT</option>
                     </select>
                 </div>
                 <div class="fitem">
@@ -112,7 +117,7 @@
                 </select>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Transaction Date</span>
-                    <input style="width:60%;" number="transaction_date" id="transaction_date" value="<?= date("Y-m-d") ?>" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false" required>
+                    <input style="width:60%;" number="transaction_date" id="transaction_date" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false" required>
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">EBWS Document No</span>
@@ -191,18 +196,20 @@
 
 <script>
     //ADD DATA
+
+    var action = 'add';
+
     function add() {
         $('#dlg_insert').dialog('open');
         $('#dg2').datagrid('loadData', []);
         url_save = '<?= base_url('warehouse/rgp_out/create') ?>';
         $('#frm_insert').form('clear');
-        let today = myformatter(new Date());
-        $('#transaction_date').datebox('setValue', today);
+
         $('#reference_number').textbox('setValue', '-');
         $('#declaration').textbox('setValue', "It is hereby declared that above mentioned material is return after emulation and not for sale and no commercial value.\nHowever, the value for transit purpose is rs.2210000/- (Incl. GST@18%) only.");
 
         $('#process_type').combobox({
-            url: '<?= base_url('warehouse/rgp_in/readProcessType'); ?>',
+            url: '<?= base_url('warehouse/rgp_out/readProcessType'); ?>',
             valueField: 'id',
             textField: 'name',
             prompt: 'Choose Type',
@@ -216,11 +223,19 @@
                 if (val.id == 'FOC') {
                     autonumberFoc();
                 } else {
-                    autonumber("<?= $id_menu ?>");
+                    $("#transaction_date").datebox({
+                        onChange: function(val) {
+                            autonumber("<?= $id_menu ?>", val);
+                        }
+                    })
                 }
+
+                $('#transaction_date').datebox('setValue', "<?= date("Y-m-d") ?>");
+
+                var item_category_id = $('#item_category_id').combobox('getValue');
                 var company_id = $('#company_id').combogrid('getValue');
                 $('#rgp_number').combobox({
-                    url: '<?= base_url('warehouse/rgp_out/readDocumentIn?process_type='); ?>' + val.id + '&company_id=' + company_id,
+                    url: '<?= base_url('warehouse/rgp_out/readDocumentIn?process_type='); ?>' + val.id + '&company_id=' + company_id + '&item_category_id=' + item_category_id,
                     valueField: 'number',
                     textField: 'number',
                     prompt: 'Choose RGP IN',
@@ -235,7 +250,7 @@
                         var process_type = $('#process_type').combobox('getValue');
                         var item_category_id = $('#item_category_id').combobox('getValue');
                         var company_id = $('#company_id').combogrid('getValue');
-                        addTable(process_type, item_category_id, company_id, '<?= base_url('warehouse/rgp_out/datatableUpdates?number=') ?>' + window.btoa(number) + '&rgp_number=' + window.btoa(rgp.number));
+                        addTable(process_type, item_category_id, company_id, '<?= base_url('warehouse/rgp_out/datatableUpdates?number=') ?>' + window.btoa(number) + '&rgp_number=' + window.btoa(rgp.number) + '&action=' + action);
                     }
                 });
                 var number = $("#number").textbox('getValue');
@@ -244,16 +259,57 @@
                 var company_id = $('#company_id').combogrid('getValue');
 
                 $('#dg2').datagrid('loadData', []);
-                addTable(val.id, item_category_id, company_id, '<?= base_url('warehouse/rgp_out/datatableUpdates?number=') ?>' + window.btoa(number) + '&rgp_number=' + window.btoa(rgp_number));
+                addTable(val.id, item_category_id, company_id, '<?= base_url('warehouse/rgp_out/datatableUpdates?number=') ?>' + window.btoa(number) + '&rgp_number=' + window.btoa(rgp_number) + '&action=' + action);
+            }
+        });
+
+        $('#item_category_id').combobox({
+            url: '<?= base_url('warehouse/rgp_out/readItemCategories'); ?>',
+            valueField: 'id',
+            textField: 'number',
+            prompt: 'Choose RGP Out',
+            icons: [{
+                iconCls: 'icon-clear',
+                handler: function(e) {
+                    $(e.data.target).combobox('clear').combobox('textbox').focus();
+                }
+            }],
+            onSelect: function(category) {
+                var number = $("#number").textbox('getValue');
+                var process_type = $('#process_type').combobox('getValue');
+                var rgp_number = $("#rgp_number").combobox('getValue');
+                var company_id = $('#company_id').combogrid('getValue');
+
+                $('#dg2').datagrid('loadData', []);
+                addTable(process_type, category.id, company_id, '<?= base_url('warehouse/rgp_out/datatableUpdates?number=') ?>' + window.btoa(number) + '&rgp_number=' + window.btoa(rgp_number) + '&action=' + action);
+
+                $('#rgp_number').combobox({
+                    url: '<?= base_url('warehouse/rgp_out/readDocumentIn?process_type='); ?>' + process_type + '&company_id=' + company_id + '&item_category_id=' + category.id,
+                    valueField: 'number',
+                    textField: 'number',
+                    prompt: 'Choose RGP Out',
+                    icons: [{
+                        iconCls: 'icon-clear',
+                        handler: function(e) {
+                            $(e.data.target).combobox('clear').combobox('textbox').focus();
+                        }
+                    }],
+                    onSelect: function(rgp) {
+                        var number = $("#number").textbox('getValue');
+                        var process_type = $('#process_type').combobox('getValue');
+                        var company_id = $('#company_id').combogrid('getValue');
+                        addTable(process_type, category.number, company_id, '<?= base_url('warehouse/rgp_out/datatableUpdates?number=') ?>' + window.btoa(number) + '&rgp_number=' + window.btoa(rgp.number) + '&action=' + action);
+                    }
+                });
             }
         });
 
     }
 
-    function autonumber(id_menu) {
+    function autonumber(id_menu, trans_date) {
         $.ajax({
             type: "post",
-            url: "<?= base_url('warehouse/rgp_out/autonumber') ?>/" + id_menu,
+            url: "<?= base_url('warehouse/rgp_out/autonumber') ?>/" + id_menu + "/" + btoa(trans_date),
             dataType: "html",
             success: function(result) {
                 if (result == "") {
@@ -285,6 +341,7 @@
             var readonly = false;
         } else {
             var readonly = true;
+            // var readonly = false;
         }
         $('#dg2').datagrid({
             url: link,
@@ -441,7 +498,7 @@
                                 summaryFormula();
                             }
                         }
-                    }
+                    },
                 }, {
                     field: 'currency',
                     width: 100,
@@ -550,7 +607,7 @@
                     }
                 }, ]
             ],
-            onClickCell: onClickCell
+            onClickCell: onClickCell,
         });
     }
 
@@ -579,21 +636,21 @@
     }
 
     function onClickCell(index, field) {
-        var process_type = $("#process_type").combobox('getValue');
-        if (process_type != 'FOC' || process_type == 'NRGP') {
-            // alert('tidak bisa edit');
-        } else {
-            if (editIndex != index) {
-                if (endEditing()) {
-                    $('#dg2').datagrid('selectRow', index).datagrid('beginEdit', index);
-                    editIndex = index;
-                } else {
-                    setTimeout(function() {
-                        $('#dg2').datagrid('selectRow', editIndex);
-                    }, 0);
-                }
+        // var process_type = $("#process_type").combobox('getValue');
+        // if (process_type != 'FOC' || process_type == 'NRGP') {
+        //     // alert('tidak bisa edit');
+        // } else {
+        if (editIndex != index) {
+            if (endEditing()) {
+                $('#dg2').datagrid('selectRow', index).datagrid('beginEdit', index);
+                editIndex = index;
+            } else {
+                setTimeout(function() {
+                    $('#dg2').datagrid('selectRow', editIndex);
+                }, 0);
             }
         }
+        // }
     }
 
     function append() {
@@ -612,7 +669,8 @@
                     $('#dg2').datagrid('appendRow', {
                         currency: 'INR',
                         // qty: '0',
-                        stock: '0'
+                        stock: '0',
+                        price: '0'
                     });
                     editIndex = $('#dg2').datagrid('getRows').length - 1;
                     $('#dg2').datagrid('selectRow', editIndex).datagrid('beginEdit', editIndex);
@@ -720,44 +778,94 @@
         var stock = $(ed1.target).numberbox('getValue');
         var qty = $(ed2.target).numberbox('getValue');
         var price = $(ed3.target).numberbox('getValue');
-        if (parseInt(qty) > parseInt(stock)) {
-            toastr.warning("Qty must be less than or equal to inventory stock");
-        } else {
-            var value = qty * price;
-            $(ed4.target).numberbox('setValue', value);
 
-            var item_id = $(ed.target).combobox('getValue');
-            var company_id = $('#company_id').combobox('getValue');
-            var plant = $('#plant').combobox('getValue');
+        var item_id = $(ed.target).combobox('getValue');
+        var company_id = $('#company_id').combobox('getValue');
+        var plant = $('#plant').combobox('getValue');
+        var rgp_number = $('#rgp_number').combobox('getValue');
+
+        if (rgp_number != "") {
             $.ajax({
                 type: "post",
-                url: '<?= base_url('warehouse/rgp_out/readIgst') ?>',
+                url: '<?= base_url('warehouse/rgp_out/readStockRgp') ?>',
                 data: {
-                    item_id: item_id,
-                    company_id: company_id,
-                    plant: plant,
+                    rgp_number: rgp_number,
+                    item_id: item_id
                 },
                 dataType: "json",
                 success: function(result) {
-                    var igst_value = (value * result.igst) / 100;
-                    var sgst_value = (value * result.sgst) / 100;
-                    var cgst_value = (value * result.cgst) / 100;
-                    var total_value = value + igst_value + sgst_value + cgst_value;
-                    $(ed5.target).numberbox('setValue', igst_value);
-                    $(ed6.target).numberbox('setValue', sgst_value);
-                    $(ed7.target).numberbox('setValue', cgst_value);
-                    $(ed8.target).numberbox('setValue', total_value);
+                    if (parseInt(qty) > parseInt(result.balance)) {
+                        toastr.warning("Qty must be less than or equal to balance (" + result.balance + ")");
+                    } else {
+                        var value = qty * price;
+                        $(ed4.target).numberbox('setValue', value);
+                        $.ajax({
+                            type: "post",
+                            url: '<?= base_url('warehouse/rgp_out/readIgst') ?>',
+                            data: {
+                                item_id: item_id,
+                                company_id: company_id,
+                                plant: plant,
+                            },
+                            dataType: "json",
+                            success: function(result) {
+                                var igst_value = (value * result.igst) / 100;
+                                var sgst_value = (value * result.sgst) / 100;
+                                var cgst_value = (value * result.cgst) / 100;
+                                var total_value = value + igst_value + sgst_value + cgst_value;
+                                $(ed5.target).numberbox('setValue', igst_value);
+                                $(ed6.target).numberbox('setValue', sgst_value);
+                                $(ed7.target).numberbox('setValue', cgst_value);
+                                $(ed8.target).numberbox('setValue', total_value);
 
-                    if (result.state == null) {
-                        toastr.warning("Please update state in customer or suppliers data", "Information");
+                                if (result.state == null) {
+                                    toastr.warning("Please update state in customer or suppliers data", "Information");
+                                }
+                            }
+                        });
                     }
                 }
             });
+        } else {
+
+            if (parseInt(qty) > parseInt(stock)) {
+                // $(ed2.target).numberbox('clear');
+                toastr.warning("Qty must be less than or equal to inventory stock");
+            } else {
+                var value = qty * price;
+                $(ed4.target).numberbox('setValue', value);
+                $.ajax({
+                    type: "post",
+                    url: '<?= base_url('warehouse/rgp_out/readIgst') ?>',
+                    data: {
+                        item_id: item_id,
+                        company_id: company_id,
+                        plant: plant,
+                    },
+                    dataType: "json",
+                    success: function(result) {
+                        var igst_value = (value * result.igst) / 100;
+                        var sgst_value = (value * result.sgst) / 100;
+                        var cgst_value = (value * result.cgst) / 100;
+                        var total_value = value + igst_value + sgst_value + cgst_value;
+                        $(ed5.target).numberbox('setValue', igst_value);
+                        $(ed6.target).numberbox('setValue', sgst_value);
+                        $(ed7.target).numberbox('setValue', cgst_value);
+                        $(ed8.target).numberbox('setValue', total_value);
+
+                        if (result.state == null) {
+                            toastr.warning("Please update state in customer or suppliers data", "Information");
+                        }
+                    }
+                });
+            }
         }
+
     }
 
     //EDIT DATA
     function update() {
+        action = 'update';
         var row = $('#dg').treegrid('getSelected');
         if (row) {
             if (row.status == 1) {
@@ -768,7 +876,7 @@
                 $("#number").textbox('disable');
                 $('#dg2').datagrid('loadData', []);
                 $('#process_type').combobox({
-                    url: '<?= base_url('warehouse/rgp_in/readProcessType'); ?>',
+                    url: '<?= base_url('warehouse/rgp_out/readProcessType'); ?>',
                     valueField: 'id',
                     textField: 'name',
                     prompt: 'Choose Type',
@@ -780,8 +888,9 @@
                     }],
                     onSelect: function(val) {
                         var company_id = $('#company_id').combogrid('getValue');
+                        var item_category_id = $('#item_category_id').combobox('getValue');
                         $('#rgp_number').combobox({
-                            url: '<?= base_url('warehouse/rgp_out/readDocumentIn?process_type='); ?>' + val.id + '&company_id=' + company_id,
+                            url: '<?= base_url('warehouse/rgp_out/readDocumentIn?process_type='); ?>' + val.id + '&company_id=' + company_id + '&item_category_id=' + item_category_id,
                             valueField: 'number',
                             textField: 'number',
                             prompt: 'Choose RGP IN',
@@ -791,12 +900,15 @@
                                     $(e.data.target).combobox('clear').combobox('textbox').focus();
                                 }
                             }],
+                            onLoadSuccess: function() {
+                                $("#rgp_number").combobox('setValue', row.rgp_number);
+                            },
                             onSelect: function(rgp) {
                                 var number = $("#number").textbox('getValue');
                                 var process_type = $('#process_type').combobox('getValue');
                                 var item_category_id = $('#item_category_id').combobox('getValue');
                                 var company_id = $('#company_id').combogrid('getValue');
-                                addTable(process_type, item_category_id, company_id, '<?= base_url('warehouse/rgp_out/datatableUpdates?number=') ?>' + window.btoa(number) + '&rgp_number=' + window.btoa(rgp.number));
+                                addTable(process_type, item_category_id, company_id, '<?= base_url('warehouse/rgp_out/datatableUpdates?number=') ?>' + window.btoa(number) + '&rgp_number=' + window.btoa(rgp.number) + '&action=' + action);
                             }
                         });
                         var number = $("#number").textbox('getValue');
@@ -805,17 +917,60 @@
                         var company_id = $('#company_id').combogrid('getValue');
 
                         $('#dg2').datagrid('loadData', []);
-                        addTable(val.id, item_category_id, company_id, '<?= base_url('warehouse/rgp_out/datatableUpdates?number=') ?>' + window.btoa(number) + '&rgp_number=' + window.btoa(rgp_number));
+                        addTable(val.id, item_category_id, company_id, '<?= base_url('warehouse/rgp_out/datatableUpdates?number=') ?>' + window.btoa(number) + '&rgp_number=' + window.btoa(rgp_number) + '&action=' + action);
                     }
                 });
                 setTimeout(function() {
                     $("#process_type").combobox('setValue', row.process_type);
                 }, 100);
+
+                $('#item_category_id').combobox({
+                    url: '<?= base_url('warehouse/rgp_out/readItemCategories'); ?>',
+                    valueField: 'id',
+                    textField: 'number',
+                    prompt: 'Choose RGP Out',
+                    icons: [{
+                        iconCls: 'icon-clear',
+                        handler: function(e) {
+                            $(e.data.target).combobox('clear').combobox('textbox').focus();
+                        }
+                    }],
+                    onSelect: function(category) {
+                        var number = $("#number").textbox('getValue');
+                        var process_type = $('#process_type').combobox('getValue');
+                        var rgp_number = $("#rgp_number").combobox('getValue');
+                        var company_id = $('#company_id').combogrid('getValue');
+
+                        $('#dg2').datagrid('loadData', []);
+                        addTable(process_type, category.id, company_id, '<?= base_url('warehouse/rgp_out/datatableUpdates?number=') ?>' + window.btoa(number) + '&rgp_number=' + window.btoa(rgp_number) + '&action=' + action);
+
+                        $('#rgp_number').combobox({
+                            url: '<?= base_url('warehouse/rgp_out/readDocumentIn?process_type='); ?>' + process_type + '&company_id=' + company_id + '&item_category_id=' + category.id,
+                            valueField: 'number',
+                            textField: 'number',
+                            prompt: 'Choose RGP Out',
+                            icons: [{
+                                iconCls: 'icon-clear',
+                                handler: function(e) {
+                                    $(e.data.target).combobox('clear').combobox('textbox').focus();
+                                }
+                            }],
+                            onSelect: function(rgp) {
+                                var number = $("#number").textbox('getValue');
+                                var process_type = $('#process_type').combobox('getValue');
+                                var company_id = $('#company_id').combogrid('getValue');
+                                addTable(process_type, category.number, company_id, '<?= base_url('warehouse/rgp_out/datatableUpdates?number=') ?>' + window.btoa(number) + '&rgp_number=' + window.btoa(rgp.number) + '&action=' + action);
+                            }
+                        });
+                    }
+                });
+
                 $("#process_type").combobox('disable');
                 $("#company_id").combogrid('disable');
                 $("#plant").combobox('disable');
                 $("#item_category_id").combobox('disable');
                 $("#rgp_number").combobox('disable');
+                $("#transaction_date").datebox('setValue', row.transaction_date);
             }
         } else {
             toastr.warning("Please select one of the data in the table first!", "Information");
@@ -920,83 +1075,9 @@
             "&filter_rgp_type=" + window.btoa(filter_rgp_type) +
             "&filter_status=" + window.btoa(filter_status);
 
-        $('#dg').datagrid({
-            url: '<?= base_url('warehouse/rgp_out/datatables') ?>' + url
-        });
-
-        $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
-        $("#printout").attr('src', '<?= base_url('warehouse/rgp_out/print') ?>' + url);
-    }
-
-    //PRINT PDF
-    function pdf() {
-        $("#printout").get(0).contentWindow.print();
-    }
-
-    //PRINT EXCEL
-    function excel() {
-        var filter_from = $("#filter_from").datebox('getValue');
-        var filter_to = $("#filter_to").datebox('getValue');
-        var filter_process_type = $("#filter_process_type").combobox('getValue');
-        var filter_number = $("#filter_number").combobox('getValue');
-        var filter_company = $("#filter_company").combogrid('getValue');
-        var filter_plant = $("#filter_plant").combobox('getValue');
-        var filter_category = $("#filter_category").combobox('getValue');
-        var filter_departement = $("#filter_departement").combobox('getValue');
-        var filter_rgp_type = $("#filter_rgp_type").combobox('getValue');
-        var filter_status = $("#filter_status").combobox('getValue');
-
-        var url = "?filter_from=" + window.btoa(filter_from) +
-            "&filter_to=" + window.btoa(filter_to) +
-            "&filter_process_type=" + window.btoa(filter_process_type) +
-            "&filter_number=" + window.btoa(filter_number) +
-            "&filter_company=" + window.btoa(filter_company) +
-            "&filter_plant=" + window.btoa(filter_plant) +
-            "&filter_category=" + window.btoa(filter_category) +
-            "&filter_departement=" + window.btoa(filter_departement) +
-            "&filter_rgp_type=" + window.btoa(filter_rgp_type) +
-            "&filter_status=" + window.btoa(filter_status);
-
-        window.location.assign('<?= base_url('warehouse/rgp_out/print/excel') ?>' + url);
-    }
-
-    //RELOAD
-    function reload() {
-        window.location.reload();
-    }
-
-    function btnDrawing(val) {
-        if (val == null || val == "") {
-            return "-";
-        } else {
-            return "<a class='btn btn-primary btn-sm' style='pointer-events: auto; opacity:1; width:100%;' target='_blank' href='<?= base_url('assets/documents/bom/') ?>" + val + "'><i class='fa fa-eye'></i> View</a>";
-        }
-    }
-
-    //CELLSTYLE APPROVE
-    function styleApproved(value, row, index) {
-        if (value == "" || value === null) {
-            return 'background: #53D636; color:white;';
-        } else {
-            return 'background: #FF5F5F; color:white;';
-        }
-    }
-    //FORMATTER APPROVE
-    function formatApproved(value) {
-        if (value == "" || value === null) {
-            return 'Approved';
-        } else {
-            return 'Checking';
-        }
-    };
-
-    $(function() {
-        //ADD DATA
-        addTable();
-
         //SETTING DATAGRID EASYUI
         $('#dg').datagrid({
-            url: '<?= base_url('warehouse/rgp_out/datatables') ?>',
+            url: '<?= base_url('warehouse/rgp_out/datatables') ?>' + url,
             pagination: true,
             rownumbers: true,
             fit: true,
@@ -1008,7 +1089,11 @@
             },
             onExpandRow: function(index, row) {
                 var ddv = $(this).datagrid('getRowDetail', index).find('table.ddv');
-
+                if (row.item_category_name == 'OTHER') {
+                    var hidden = true;
+                } else {
+                    var hidden = false;
+                }
                 ddv.datagrid({
                     url: '<?= base_url('warehouse/rgp_out/datatableDetails?number=') ?>' + window.btoa(row.number),
                     singleSelect: true,
@@ -1109,7 +1194,8 @@
                             halign: 'center',
                             align: 'center',
                             formatter: statusFormat,
-                            styler: statusStyle
+                            styler: statusStyle,
+                            hidden: hidden
                         }, ]
                     ],
                     onResize: function() {
@@ -1125,13 +1211,83 @@
             }
         });
 
+
+        $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
+        $("#printout").attr('src', '<?= base_url('warehouse/rgp_out/print') ?>' + url);
+    }
+
+    //PRINT PDF
+    function pdf() {
+        $("#printout").get(0).contentWindow.print();
+    }
+
+    //PRINT EXCEL
+    function excel() {
+        var filter_from = $("#filter_from").datebox('getValue');
+        var filter_to = $("#filter_to").datebox('getValue');
+        var filter_process_type = $("#filter_process_type").combobox('getValue');
+        var filter_number = $("#filter_number").combobox('getValue');
+        var filter_company = $("#filter_company").combogrid('getValue');
+        var filter_plant = $("#filter_plant").combobox('getValue');
+        var filter_category = $("#filter_category").combobox('getValue');
+        var filter_departement = $("#filter_departement").combobox('getValue');
+        var filter_rgp_type = $("#filter_rgp_type").combobox('getValue');
+        var filter_status = $("#filter_status").combobox('getValue');
+
+        var url = "?filter_from=" + window.btoa(filter_from) +
+            "&filter_to=" + window.btoa(filter_to) +
+            "&filter_process_type=" + window.btoa(filter_process_type) +
+            "&filter_number=" + window.btoa(filter_number) +
+            "&filter_company=" + window.btoa(filter_company) +
+            "&filter_plant=" + window.btoa(filter_plant) +
+            "&filter_category=" + window.btoa(filter_category) +
+            "&filter_departement=" + window.btoa(filter_departement) +
+            "&filter_rgp_type=" + window.btoa(filter_rgp_type) +
+            "&filter_status=" + window.btoa(filter_status);
+
+        window.location.assign('<?= base_url('warehouse/rgp_out/print/excel') ?>' + url);
+    }
+
+    //RELOAD
+    function reload() {
+        window.location.reload();
+    }
+
+    function btnDrawing(val) {
+        if (val == null || val == "") {
+            return "-";
+        } else {
+            return "<a class='btn btn-primary btn-sm' style='pointer-events: auto; opacity:1; width:100%;' target='_blank' href='<?= base_url('assets/documents/bom/') ?>" + val + "'><i class='fa fa-eye'></i> View</a>";
+        }
+    }
+
+    //CELLSTYLE APPROVE
+    function styleApproved(value, row, index) {
+        if (value == "" || value === null) {
+            return 'background: #53D636; color:white;';
+        } else {
+            return 'background: #FF5F5F; color:white;';
+        }
+    }
+    //FORMATTER APPROVE
+    function formatApproved(value) {
+        if (value == "" || value === null) {
+            return 'Approved';
+        } else {
+            return 'Checking';
+        }
+    };
+
+    $(function() {
+        //ADD DATA
+        addTable();
+        filter();
         //SAVE DATA
         $('#dlg_insert').dialog({
             buttons: [{
                 text: 'Save All',
                 iconCls: 'icon-ok',
                 handler: function() {
-                    $('#dlg_insert').dialog('close');
 
                     var process_type = $("#process_type").combobox('getValue');
                     var transaction_date = $("#transaction_date").datebox('getValue');
@@ -1147,22 +1303,73 @@
                     var rgp_number = $("#rgp_number").combobox('getValue');
                     var declaration = $("#declaration").textbox('getValue');
 
-                    Swal.fire({
-                        title: 'Please Wait...',
-                        showConfirmButton: false,
-                        allowOutsideClick: false,
-                        allowEscapeKey: false,
-                        didOpen: () => {
-                            Swal.showLoading();
-                        },
-                    });
-
-                    $('#dg2').datagrid('acceptChanges');
+                    // $('#dg2').datagrid('acceptChanges');
                     var rows = $('#dg2').datagrid('getRows');
                     var totalrows = rows.length;
                     endEditing();
 
-                    requestData(totalrows, rows);
+                    if (rgp_number == '') {
+                        var qty_over = 0;
+                        for (let i = 0; i < totalrows; i++) {
+                            if (parseInt(rows[i].qty) > parseInt(rows[i].stock)) {
+                                qty_over = qty_over + 1;
+                            }
+                        }
+
+                        if (qty_over > 0) {
+                            toastr.warning("Qty must be less than or equal to inventory stock", "Information");
+                        } else {
+                            $('#dlg_insert').dialog('close');
+                            Swal.fire({
+                                title: 'Please Wait...',
+                                showConfirmButton: false,
+                                allowOutsideClick: false,
+                                allowEscapeKey: false,
+                                didOpen: () => {
+                                    Swal.showLoading();
+                                },
+                            });
+
+                            requestData(totalrows, rows);
+                        }
+                    } else {
+                        var qty_over = 0;
+                        for (let i = 0; i < rows.length; i++) {
+                            $.ajax({
+                                type: "post",
+                                url: '<?= base_url('warehouse/rgp_out/readStockRgp') ?>',
+                                data: {
+                                    rgp_number: rgp_number,
+                                    item_id: rows[i].item_id
+                                },
+                                dataType: "json",
+                                async: false, // Makes the request synchronous
+                                success: function(result) {
+                                    if (parseInt(rows[i].qty) > parseInt(result.balance)) {
+                                        qty_over++;
+                                    }
+                                }
+                            });
+                        }
+
+                        if (qty_over > 0) {
+                            toastr.warning("Qty must be less than or equal to balance", "Information");
+                        } else {
+                            $('#dlg_insert').dialog('close');
+                            Swal.fire({
+                                title: 'Please Wait...',
+                                showConfirmButton: false,
+                                allowOutsideClick: false,
+                                allowEscapeKey: false,
+                                didOpen: () => {
+                                    Swal.showLoading();
+                                },
+                            });
+
+                            requestData(totalrows, rows);
+                        }
+                    }
+
 
                     function requestData(total, json, numberData = 1, value = 0, success = 1, failed = 1) {
                         var i = (numberData - 1);
@@ -1321,7 +1528,7 @@
                 var process_type = $('#process_type').combobox('getValue');
                 var company_id = $('#company_id').combogrid('getValue');
                 $('#dg2').datagrid('loadData', []);
-                addTable(process_type, category.id, company_id, '<?= base_url('warehouse/rgp_out/datatableUpdates?number=') ?>' + window.btoa(number) + '&rgp_number=' + window.btoa(rgp_number));
+                addTable(process_type, category.id, company_id, '<?= base_url('warehouse/rgp_out/datatableUpdates?number=') ?>' + window.btoa(number) + '&rgp_number=' + window.btoa(rgp_number) + '&action=' + action);
             }
         });
 
@@ -1389,7 +1596,7 @@
                         var number = $("#number").textbox('getValue');
                         var process_type = $('#process_type').combobox('getValue');
                         var item_category_id = $('#item_category_id').combobox('getValue');
-                        addTable(process_type, item_category_id, rowItem.id, '<?= base_url('warehouse/rgp_out/datatableUpdates?number=') ?>' + window.btoa(number) + '&rgp_number=' + window.btoa(rgp.number));
+                        addTable(process_type, item_category_id, rowItem.id, '<?= base_url('warehouse/rgp_out/datatableUpdates?number=') ?>' + window.btoa(number) + '&rgp_number=' + window.btoa(rgp.number) + '&action=' + action);
                     }
                 });
                 // $("#uom").textbox('setValue', rowItem.uom);
@@ -1563,40 +1770,87 @@
     }
 
     function statusFormat(value, row) {
-        if (value == 0) {
-            return "<b style='color:green;'>OPEN</b>";
-        } else if (value == 1) {
-            return "<b style='color:red;'>CLOSE</b>";
-        } else if (value == 2) {
-            return "<b style='color:red;'>CANCEL</b>";
+        if (row.process_type != 'NRGP') {
+            if (value == 0) {
+                return "<b style='color:green;'>OPEN</b>";
+            } else if (value == 1) {
+                return "<b style='color:red;'>CLOSE</b>";
+            } else if (value == 2) {
+                return "<b style='color:red;'>CANCEL</b>";
+            }
+        } else {
+            return "-";
         }
+
     }
 
     function statusStyle(value, row, index) {
-        if (value == 0) {
-            return 'background-color:#C8FFCC;';
-        } else if (value == 1) {
-            return 'background-color:#FFC8C8;';
-        } else if (value == 2) {
-            return 'background-color:#7285e9;';
+        if (row.process_type != 'NRGP') {
+            if (value == 0) {
+                return 'background-color:#C8FFCC;';
+            } else if (value == 1) {
+                return 'background-color:#FFC8C8;';
+            } else if (value == 2) {
+                return 'background-color:#7285e9;';
+            }
+        } else {
+            // 
         }
     }
 
     function BtnPrint(val, row) {
-        if (val == "0") {
-            var send = "print_doc('" + row.number + "')";
+        if (row.process_type == 'NRGP') {
+            var send = "print_doc('" + row.number + "','" + row.process_type + "')";
             return '<a class="btn btn-success w-100" style="pointer-events: visible; opacity:1;" onClick="' + send + '"><i class="fa fa-print"></i> Print</a>';
         } else {
-            return '-';
+            if (row.process_type == 'FOC') {
+                return '-';
+            } else {
+                if (val == "0") {
+                    var send = "print_doc('" + row.number + "','" + row.process_type + "')";
+                    return '<a class="btn btn-success w-100" style="pointer-events: visible; opacity:1;" onClick="' + send + '"><i class="fa fa-print"></i> Print</a>';
+                } else {
+                    return '-';
+                }
+            }
         }
     }
 
-    function print_doc(number) {
-        $.messager.prompt('Print RGP Out', 'Please input Password Print', function(r) {
-            if (r == "PRINTRGPOUT") {
-                window.open("<?= base_url('warehouse/rgp_out/print_doc/') ?>" + window.btoa(number));
-            }
-        });
+    function print_doc(number, process_type) {
+        if (process_type != 'FOC') {
+            $.messager.prompt('Print RGP Out', 'Please input Password Print', function(r) {
+                if (r == "PRINTRGPOUT") {
+                    window.open("<?= base_url('warehouse/rgp_out/print_doc/') ?>" + window.btoa(number));
+                }
+            });
+        } else {
+            $.messager.prompt('Print FOC', 'Please input Password Print', function(r) {
+                if (r == "PRINTRGPOUT") {
+                    window.open("<?= base_url('warehouse/rgp_out/print_doc/') ?>" + window.btoa(number));
+                }
+            });
+        }
+
         $('.messager-input').attr('type', 'password');
     }
+
+    function cellStylerApproval(value, row, index) {
+        if (row.approved_to == null) {
+            return 'background: #FF5F5F; color:white;';
+        } else if (row.approved_to == "") {
+            return 'background: #53D636; color:white;';
+        } else {
+            return 'background: #FF5F5F; color:white;';
+        }
+    }
+
+    function cellFormatterApproval(val, row) {
+        if (row.approved_to == null) {
+            return 'Not Setting';
+        } else if (row.approved_to == "") {
+            return 'Approved';
+        } else {
+            return 'Checking';
+        }
+    };
 </script>

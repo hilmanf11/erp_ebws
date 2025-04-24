@@ -818,10 +818,15 @@
             onChange: function(val) {
                 $.ajax({
                     type: "post",
-                    url: "<?= base_url('planning/scraps/scraps_no/'. $id_menu) ?>",
+                    url: "<?= base_url('planning/scraps/scraps_no/'. $id_menu) ?>/" + btoa(val),
                     dataType: "html",
                     success: function(scraps_no) {
-                        $("#document").textbox('setValue', scraps_no);
+                        if(scraps_no == ""){
+                            toastr.info("Please Check Configuration in Serial No First");
+                            $('#document').textbox('clear');
+                        }else{
+                            $("#document").textbox('setValue', scraps_no);
+                        }
                     }
                 });
             }

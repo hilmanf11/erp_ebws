@@ -108,14 +108,16 @@ class Onyx extends CI_Controller
         $total_sgst = 0;
         $no = 1;
         $itemLists = array();
+        $total_tcs = 0;
         foreach ($sales_invoices as $sales_invoice) {
             $item_fg = $this->crud->read("item_fg", [], ["id" => @$sales_invoice->item_fg_id]);
-            $alias = $item_fg->alias;
-            // if(!$item_fg){
-            //     $item_fg = $this->crud->read("item_rm", [], ["id" => @$sales_invoice->item_fg_id]);
-            //     $alias = $item_fg->number;
-            // }
+            $alias = @$item_fg->alias;
+            if(!$item_fg){
+                $item_fg = $this->crud->read("item_rm", [], ["id" => @$sales_invoice->item_fg_id]);
+                $alias = $item_fg->number;
+            }
 
+            $total_tcs = $sales_invoice->tcs;
             $hsn = $this->crud->read("hsn", [], ["number" => @$sales_invoice->hsn_code]);
 
             if($customer_address->ship_state == $config->state){
@@ -214,7 +216,7 @@ class Onyx extends CI_Controller
             $no++;
         }
 
-        $total_tax = round($post['total_grand'] - ($total_igst + $total_cgst + $total_sgst), 2);
+        $total_tax = round($post['total_grand'] - $total_tcs - ($total_igst + $total_cgst + $total_sgst), 2);
 
         $data = array(
             "userGstin" => $config->gst_no,
@@ -295,7 +297,7 @@ class Onyx extends CI_Controller
             "forCur" => $customer->currency,
             "invForCur" => null,
             "taxSch" => "GST",
-            "totinvval" => (int) $post['total_grand'],
+            "totinvval" => (int) ($post['total_grand'] - $total_tcs),
             "totdisc" => 0,
             "totfrt" => 0,
             "totins" => 0,

@@ -27,7 +27,7 @@
             <tr>
                 <th data-options="field:'item_rm_id',width:100,halign:'center'">Part No EBWS</th>
                 <th data-options="field:'item_rm_number',width:250,halign:'center'">Part No Supplier</th>
-                <th data-options="field:'item_rm_name',width:100,halign:'center'">Part Name</th>
+                <th data-options="field:'item_rm_name',width:200,halign:'center'">Part Name</th>
                 <!-- <th data-options="field:'maker',width:100,halign:'center'">Maker</th>
                 <th data-options="field:'type',width:100,halign:'center'">Type</th> -->
                 <th data-options="field:'main_process',width:100,halign:'center'">Process Main</th>
@@ -206,13 +206,13 @@
 	}
 
     function numberformat(value, row) {
-		const formatter = new Intl.NumberFormat('id-ID');
+		const formatter = new Intl.NumberFormat('ja-JP');
 
 		return "<b>" + formatter.format(value) + "</b>";
 	}
 
 	function numberformatPrice(value, row){
-        const formatter = new Intl.NumberFormat('id-ID', {
+        const formatter = new Intl.NumberFormat('ja-JP', {
             minimumFractionDigits: 2
         });
 
@@ -246,6 +246,10 @@
             rowStyler: function(index,row){
                 if (row.composition_old != row.composition){
                     return 'background-color:#caffc7;font-weight:bold;';
+                }
+
+                if(row.remove == 1){
+                    return 'background-color:#e5b5b5;font-weight:bold;';
                 }
             }
         });

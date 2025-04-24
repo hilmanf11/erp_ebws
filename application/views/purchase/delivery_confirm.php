@@ -42,14 +42,15 @@
     <fieldset style="width:100%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px; display: grid; grid-template-columns: auto auto auto; grid-gap: 5px; display: flex;">
         
     <legend><b>Filter Data</b></legend>
-        <div style="width:30%;">
+        <div style="width:35%;">
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Create Date</span>
+                <input style="width:28%;" id="filter_from" class="easyui-datebox" value="<?= date("Y-m-01") ?>" data-options="formatter:myformatter,parser:myparser, editable:false"> To
+                <input style="width:28%;" id="filter_to" class="easyui-datebox" value="<?= date("Y-m-t") ?>" data-options="formatter:myformatter,parser:myparser, editable:false">
+            </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Supplier</span>
                 <input style="width:60%;" id="filter_supplier" class="easyui-combobox">
-            </div>
-            <div class="fitem">
-                <span style="width:35%; display:inline-block;">Invoice No</span>
-                <input style="width:60%;" id="filter_invoice_no" class="easyui-combobox">
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;"></span>
@@ -58,10 +59,14 @@
         </div>
         <div style="width: 30%;">
             <div class="fitem">
+                <span style="width:35%; display:inline-block;">Invoice No</span>
+                <input style="width:60%;" id="filter_invoice_no" class="easyui-combobox">
+            </div>
+            <div class="fitem">
                 <span style="width:35%; display:inline-block;">PO No</span>
                 <input style="width:60%;" id="filter_po_no" class="easyui-combobox">
             </div>
-            <div class="fitem">
+            <div class="fitem" hidden>
                 <span style="width:35%; display:inline-block;">PO Date</span>
                 <input style="width:60%;" id="filter_po_date" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser">
             </div>
@@ -675,6 +680,8 @@
     }
     
     function filter() {
+        var filter_from = $("#filter_from").datebox('getValue');
+        var filter_to = $("#filter_to").datebox('getValue');
         var filter_supplier = $("#filter_supplier").combobox('getValue');
         var filter_status = $("#filter_status").combobox('getValue');
         var filter_po_no = $("#filter_po_no").combobox('getValue');
@@ -683,7 +690,8 @@
         var filter_invoice_no = $("#filter_invoice_no").combobox('getValue');
         var filter_item_rm_id = $("#filter_item_rm_id").combogrid('getValue');
 
-        var url = "?filter_supplier=" + window.btoa(filter_supplier) +
+        var url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + 
+            "&filter_supplier=" + window.btoa(filter_supplier) +
             "&filter_status=" + window.btoa(filter_status) +
             "&filter_po_no=" + window.btoa(filter_po_no) +
             "&filter_po_date=" + window.btoa(filter_po_date) +
@@ -703,6 +711,8 @@
     }
 
     function excel() {
+        var filter_from = $("#filter_from").datebox('getValue');
+        var filter_to = $("#filter_to").datebox('getValue');
         var filter_supplier = $("#filter_supplier").combobox('getValue');
         var filter_status = $("#filter_status").combobox('getValue');
         var filter_po_no = $("#filter_po_no").combobox('getValue');
@@ -711,7 +721,8 @@
         var filter_invoice_no = $("#filter_invoice_no").combobox('getValue');
         var filter_item_rm_id = $("#filter_item_rm_id").combogrid('getValue');
 
-        var url = "?filter_supplier=" + window.btoa(filter_supplier) +
+        var url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + 
+            "&filter_supplier=" + window.btoa(filter_supplier) +
             "&filter_status=" + window.btoa(filter_status) +
             "&filter_po_no=" + window.btoa(filter_po_no) +
             "&filter_po_date=" + window.btoa(filter_po_date) +
@@ -728,11 +739,13 @@
 
     $(function() {
         $('#dg').datagrid({
-            url: '<?= base_url('purchase/delivery_confirm/datatables') ?>',
+            // url: '<?= base_url('purchase/delivery_confirm/datatables') ?>',
             pagination: true,
             rownumbers: true,
             fit: true
         });
+
+        filter();
 
         $("#u_attachment").filebox({
             onChange: function () {
@@ -779,7 +792,7 @@
                             dataType: "html",
                             success: function (data) {
                                 if(data == "NG"){
-                                    toastr.error("Invoice No already in Gate Entry, You cannot create the Invoice No or please Cancel First in Gate Entry");
+                                    toastr.error("Invoice No already created, Please check again");
                                     return false;
                                 }
 

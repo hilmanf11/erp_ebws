@@ -66,7 +66,7 @@ class Report_history_transactions_rfg extends CI_Controller
             (COALESCE(i.begin, 0) + COALESCE(c.issued, 0) + COALESCE(g.adjustment, 0) - COALESCE(ABS(j.adjustment), 0) - COALESCE(d.return, 0) - COALESCE(e.ng, 0) - COALESCE(f.scrap, 0) - COALESCE(h.rfg, 0)) AS balance");
         $this->db->from('item_rm a');
         $this->db->join('item_familys b', 'a.item_family_id = b.id');
-        $this->db->join("(SELECT item_rm_id, SUM(qty) AS issued FROM issued_material_details WHERE DATE_FORMAT(created_date, '%Y-%m-%d') BETWEEN '$filter_from' and '$filter_to' GROUP BY item_rm_id) c", 'a.id = c.item_rm_id', 'left');
+        $this->db->join("(SELECT item_rm_id, SUM(qty) AS issued FROM issued_material_details WHERE DATE_FORMAT(created_date, '%Y-%m-%d') BETWEEN '$filter_from' and '$filter_to' and request_no NOT LIKE '%PR-%' GROUP BY item_rm_id) c", 'a.id = c.item_rm_id', 'left');
         $this->db->join("(SELECT item_rm_id, SUM(qty) AS `return` FROM return_materials WHERE return_date BETWEEN '$filter_from' and '$filter_to' GROUP BY item_rm_id) d", 'a.id = d.item_rm_id', 'left');
         $this->db->join("(SELECT item_rm_id, SUM(qty) AS ng FROM scraps WHERE trans_date BETWEEN '$filter_from' and '$filter_to' and source = 'Vendor' GROUP BY item_rm_id) e", 'a.id = e.item_rm_id', 'left');
         $this->db->join("(SELECT item_rm_id, SUM(qty) AS scrap FROM scraps WHERE trans_date BETWEEN '$filter_from' and '$filter_to' and source = 'User' GROUP BY item_rm_id) f", 'a.id = f.item_rm_id', 'left');
@@ -76,7 +76,7 @@ class Report_history_transactions_rfg extends CI_Controller
         $this->db->join("(SELECT a.id, (COALESCE(c.issued, 0) + COALESCE(g.adjustment_in, 0) - COALESCE(abs(i.adjustment_out), 0) - COALESCE(d.return, 0) - COALESCE(e.ng, 0) - COALESCE(f.scrap, 0) - COALESCE(h.rfg, 0)) AS begin
             FROM item_rm a
             JOIN item_familys b ON a.item_family_id = b.id
-            LEFT JOIN (SELECT item_rm_id, SUM(qty) AS issued FROM issued_material_details WHERE DATE_FORMAT(created_date, '%Y-%m-%d') < '$filter_from' GROUP BY item_rm_id) c ON a.id = c.item_rm_id
+            LEFT JOIN (SELECT item_rm_id, SUM(qty) AS issued FROM issued_material_details WHERE DATE_FORMAT(created_date, '%Y-%m-%d') < '$filter_from' and request_no NOT LIKE '%PR-%' GROUP BY item_rm_id) c ON a.id = c.item_rm_id
             LEFT JOIN (SELECT item_rm_id, SUM(qty) AS `return` FROM return_materials WHERE return_date < '$filter_from' GROUP BY item_rm_id) d ON a.id = d.item_rm_id
             LEFT JOIN (SELECT item_rm_id, SUM(qty) AS ng FROM scraps WHERE trans_date < '$filter_from' and source = 'Vendor' GROUP BY item_rm_id) e ON a.id = e.item_rm_id
             LEFT JOIN (SELECT item_rm_id, SUM(qty) AS scrap FROM scraps WHERE trans_date < '$filter_from' and source = 'User' GROUP BY item_rm_id) f ON a.id = f.item_rm_id
@@ -178,7 +178,7 @@ class Report_history_transactions_rfg extends CI_Controller
 
                 $details = $this->crud->query("SELECT item_rm_id, 'ISSUED' AS trans_type, created_by, request_no AS document_no, label_no AS serial_no, DATE_FORMAT(created_date, '%Y-%m-%d') AS trans_date, qty AS qty_in, '0' AS qty_out
                     FROM issued_material_details 
-                    WHERE DATE_FORMAT(created_date, '%Y-%m-%d') BETWEEN '$filter_from' AND '$filter_to' 
+                    WHERE DATE_FORMAT(created_date, '%Y-%m-%d') BETWEEN '$filter_from' AND '$filter_to' and request_no NOT LIKE '%PR-%'
                     AND item_rm_id = '$item_rm_id' 
                     GROUP BY id
                     UNION

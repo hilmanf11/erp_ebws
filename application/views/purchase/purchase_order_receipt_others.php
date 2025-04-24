@@ -213,6 +213,13 @@
         $('#dlg_insert').dialog('open');
         $('#dg_request').datagrid('loadData', []);
         $('#frm_insert').form('clear');
+        
+        $('#receipt_date').datebox({
+            onChange: function(receipt_date){
+                receipt_no("<?= $id_menu ?>", receipt_date);
+            }
+        });
+        
         $('#receipt_date').datebox('setValue', '<?= date("Y-m-d") ?>');
         $('#awb_date').datebox('setValue', '<?= date("Y-m-d") ?>');
         $("#bc_document").textbox('enable');
@@ -281,10 +288,10 @@
         });
     }
 
-    function receipt_no(id_menu) {
+    function receipt_no(id_menu, receipt_date) {
         $.ajax({
             type: "post",
-            url: "<?= base_url('purchase/purchase_order_receipt_others/receipt_no/') ?>" + id_menu,
+            url: "<?= base_url('purchase/purchase_order_receipt_others/receipt_no/') ?>" + id_menu + "/" + btoa(receipt_date),
             dataType: "html",
             success: function(result) {
                 if(result == ""){
@@ -398,40 +405,54 @@
                             var row = json[number-1];
                             value = Math.floor((number / total) * 100);
 
-                            if(row.receipt_id){
-                                $.ajax({
-                                    method: 'post',
-                                    url: '<?= base_url('purchase/purchase_order_receipt_others/delete') ?>',
-                                    data: {
-                                        id: row.id,
-                                        receipt_id: row.receipt_id,
-                                        po_no: row.po_no,
-                                        bc_document: row.bc_document,
-                                        item_rm_id: row.item_rm_id,
-                                    },
-                                    success: function(result) {
-                                        var result = eval('(' + result + ')');
-                                        requestDelete(total, json, number + 1, value);
+                            $.ajax({
+                                type: "post",
+                                url: "<?= base_url('closing/locks/checkLock') ?>",
+                                data: "period=" + row.receipt_date + "&menus_id=<?= $id_menu ?>",
+                                dataType: "json",
+                                success: function (lock) {
+                                    if(lock.total > 0){
+                                        toastr.error("This period is not active by Accounting");
+                                        Swal.close();
+                                        return false;
+                                    }
 
-                                        if (number == total) {
-                                            $('#dg').treegrid('reload');
-                                            Swal.close();
-                                            Swal.fire(
-                                                'Delete Completed',
-                                                'Delete Data has been completed, You cannot restore data that has been deleted',
-                                                'success'
-                                            );
-                                        }
-                                    },
-                                    error: function(jqXHR, textStatus, errorThrown) {
-                                        toastr.error("Delete Failed, Please Check Data Relations");
-                                        swal.close();
-                                    },
-                                });
-                            }else{
-                                toastr.error("Please Delete Detail of the data");
-                                Swal.close();
-                            }
+                                    if(row.receipt_id){
+                                        $.ajax({
+                                            method: 'post',
+                                            url: '<?= base_url('purchase/purchase_order_receipt_others/delete') ?>',
+                                            data: {
+                                                id: row.id,
+                                                receipt_id: row.receipt_id,
+                                                po_no: row.po_no,
+                                                bc_document: row.bc_document,
+                                                item_rm_id: row.item_rm_id,
+                                            },
+                                            success: function(result) {
+                                                var result = eval('(' + result + ')');
+                                                requestDelete(total, json, number + 1, value);
+
+                                                if (number == total) {
+                                                    $('#dg').treegrid('reload');
+                                                    Swal.close();
+                                                    Swal.fire(
+                                                        'Delete Completed',
+                                                        'Delete Data has been completed, You cannot restore data that has been deleted',
+                                                        'success'
+                                                    );
+                                                }
+                                            },
+                                            error: function(jqXHR, textStatus, errorThrown) {
+                                                toastr.error("Delete Failed, Please Check Data Relations");
+                                                swal.close();
+                                            },
+                                        });
+                                    }else{
+                                        toastr.error("Please Delete Detail of the data");
+                                        Swal.close();
+                                    }
+                                }
+                            });
                         }
                     }
                 }
@@ -586,81 +607,95 @@
                             },
                         });
 
-                        $.post("<?= base_url('purchase/purchase_order_receipt_others/checkInvoice') ?>", {bc_document: bc_document}, function(checkInv) {
-                            if(checkInv.theme == "error"){
-                                Swal.close();
-                                toastr.error("Invoice No already Created, Please Check!!");
-                                return false;
-                            }else{
-                                $('#dg_request').datagrid('acceptChanges');
-                                var rows = $('#dg_request').datagrid('getRows');
-                                var totalrows = rows.length;
-                                // endEditing();
+                        $.ajax({
+                            type: "post",
+                            url: "<?= base_url('closing/locks/checkLock') ?>",
+                            data: "period=" + receipt_date + "&menus_id=<?= $id_menu ?>",
+                            dataType: "json",
+                            success: function (lock) {
+                                if(lock.total > 0){
+                                    toastr.error("This period is not active by Accounting");
+                                    Swal.close();
+                                    return false;
+                                }
 
-                                requestData(totalrows, rows);
-                                function requestData(total, json, number = 1, value = 0, success = 1, failed = 1) {
-                                    var i = (number - 1);
-                                    if (value < 100) {
-                                        value = Math.floor((number / total) * 100);
+                                $.post("<?= base_url('purchase/purchase_order_receipt_others/checkInvoice') ?>", {bc_document: bc_document}, function(checkInv) {
+                                    if(checkInv.theme == "error"){
+                                        Swal.close();
+                                        toastr.error("Invoice No already Created, Please Check!!");
+                                        return false;
+                                    }else{
+                                        $('#dg_request').datagrid('acceptChanges');
+                                        var rows = $('#dg_request').datagrid('getRows');
+                                        var totalrows = rows.length;
+                                        // endEditing();
 
-                                        if(json[i].qty_receipt > 0){
-                                            $.ajax({
-                                                type: "post",
-                                                url: '<?= base_url('purchase/purchase_order_receipt_others/create') ?>',
-                                                data: 'item_rm_id=' + json[i].item_rm_id +
-                                                    '&supplier_id=' + json[i].supplier_id +
-                                                    '&asset_code=' + json[i].asset_code +
-                                                    '&asset_code_sub=' + json[i].asset_code_sub +
-                                                    '&receipt_date=' + receipt_date +
-                                                    '&receipt_no=' + receipt_no +
-                                                    '&po_no=' + json[i].po_no +
-                                                    '&id=' + json[i].id +
-                                                    // '&bc_kind=' + bc_kind +
-                                                    // '&bc_aju=' + bc_aju +
-                                                    '&attachment=' + attachment +
-                                                    '&bc_document=' + bc_document +
-                                                    '&bc_date=' + bc_date +
-                                                    '&awb_no=' + awb_no +
-                                                    '&awb_date=' + awb_date +
-                                                    // '&location=' + json[i].location +
-                                                    '&qty_po=' + json[i].qty_po +
-                                                    '&qty_delivery=' + json[i].qty_delivery +
-                                                    '&qty_receipt=' + json[i].qty_receipt +
-                                                    '&qty_mpq=' + json[i].mpq +
-                                                    '&qty_label=' + json[i].qty_label,
-                                                dataType: "json",
-                                                success: function(result) {
-                                                    if (i == (total - 1)) {
-                                                        Swal.close();
-                                                        Swal.fire({
-                                                            title: result.message,
-                                                            icon: result.theme,
-                                                            confirmButtonText: 'Ok',
-                                                            allowOutsideClick: false,
-                                                        }).then((result) => {
-                                                            if (result.isConfirmed) {
-                                                                // window.location.reload();
-                                                                $('#dg').treegrid('reload');
-                                                                readReceiptNo();
+                                        requestData(totalrows, rows);
+                                        function requestData(total, json, number = 1, value = 0, success = 1, failed = 1) {
+                                            var i = (number - 1);
+                                            if (value < 100) {
+                                                value = Math.floor((number / total) * 100);
+
+                                                if(json[i].qty_receipt > 0){
+                                                    $.ajax({
+                                                        type: "post",
+                                                        url: '<?= base_url('purchase/purchase_order_receipt_others/create') ?>',
+                                                        data: 'item_rm_id=' + json[i].item_rm_id +
+                                                            '&supplier_id=' + json[i].supplier_id +
+                                                            '&asset_code=' + json[i].asset_code +
+                                                            '&asset_code_sub=' + json[i].asset_code_sub +
+                                                            '&receipt_date=' + receipt_date +
+                                                            '&receipt_no=' + receipt_no +
+                                                            '&po_no=' + json[i].po_no +
+                                                            '&id=' + json[i].id +
+                                                            // '&bc_kind=' + bc_kind +
+                                                            // '&bc_aju=' + bc_aju +
+                                                            '&attachment=' + attachment +
+                                                            '&bc_document=' + bc_document +
+                                                            '&bc_date=' + bc_date +
+                                                            '&awb_no=' + awb_no +
+                                                            '&awb_date=' + awb_date +
+                                                            // '&location=' + json[i].location +
+                                                            '&qty_po=' + json[i].qty_po +
+                                                            '&qty_delivery=' + json[i].qty_delivery +
+                                                            '&qty_receipt=' + json[i].qty_receipt +
+                                                            '&qty_mpq=' + json[i].mpq +
+                                                            '&qty_label=' + json[i].qty_label,
+                                                        dataType: "json",
+                                                        success: function(result) {
+                                                            if (i == (total - 1)) {
+                                                                Swal.close();
+                                                                Swal.fire({
+                                                                    title: result.message,
+                                                                    icon: result.theme,
+                                                                    confirmButtonText: 'Ok',
+                                                                    allowOutsideClick: false,
+                                                                }).then((result) => {
+                                                                    if (result.isConfirmed) {
+                                                                        // window.location.reload();
+                                                                        $('#dg').treegrid('reload');
+                                                                        readReceiptNo();
+                                                                    }
+                                                                });
                                                             }
-                                                        });
-                                                    }
 
-                                                    requestData(total, json, number + 1, value, success + 1, failed + 0);
-                                                },
-                                                error: function(){
-                                                    toastr.error("Cannot Process your Request");
-                                                    requestData(total, json, number + 1, value, success + 1, failed + 0);
+                                                            requestData(total, json, number + 1, value, success + 1, failed + 0);
+                                                        },
+                                                        error: function(){
+                                                            toastr.error("Cannot Process your Request");
+                                                            requestData(total, json, number + 1, value, success + 1, failed + 0);
+                                                        }
+                                                    });
+                                                }else{
+                                                    toastr.error("Qty Receipt for Part No "+json[i].item_rm_number+" <= 0");
+                                                    swal.close();
                                                 }
-                                            });
-                                        }else{
-                                            toastr.error("Qty Receipt for Part No "+json[i].item_rm_number+" <= 0");
-                                            swal.close();
+                                            }
                                         }
                                     }
-                                }
+                                }, 'json');
                             }
-                        }, 'json');
+                        });
                     }else{
                         toastr.error("Please Complete Your input");    
                     }
@@ -670,7 +705,7 @@
 
         readReceiptNo();
         $("#filter_supplier").combogrid({
-            url: '<?= base_url('purchase/purchase_order_receipt_others/readSupplier') ?>',
+            url: '<?= base_url('master/suppliers/reads') ?>',
             panelWidth: 500,
             idField: 'id',
             textField: 'name',

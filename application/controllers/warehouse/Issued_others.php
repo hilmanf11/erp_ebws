@@ -58,11 +58,11 @@ class Issued_others extends CI_Controller
             end as stock
             FROM purchase_order_receipt_others a 
             JOIN item_rm b ON a.item_rm_id = b.id 
-            LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as issued FROM issued_others_request WHERE `status` = '1' GROUP BY item_rm_id) c ON a.item_rm_id = c.item_rm_id
-            LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_in FROM rgp_transactions WHERE type = 'IN' GROUP BY item_id) e ON a.id = e.item_id
-            LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_out FROM rgp_transactions WHERE type = 'OUT' GROUP BY item_id) f ON a.id = f.item_id
-            LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as sto_qty_in FROM sto_ot WHERE type = 'IN' and (approved_to = '' or approved_to is null) GROUP BY item_rm_id) g ON a.id = g.item_rm_id
-            LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as sto_qty_out FROM sto_ot WHERE type = 'OUT' and (approved_to = '' or approved_to is null) GROUP BY item_rm_id) h ON a.id = h.item_rm_id
+            LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as issued FROM issued_others_request WHERE status != 2 GROUP BY item_rm_id) c ON a.item_rm_id = c.item_rm_id
+            LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_in FROM rgp_transactions WHERE type = 'IN' GROUP BY item_id) e ON b.id = e.item_id
+            LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_out FROM rgp_transactions WHERE type = 'OUT' GROUP BY item_id) f ON b.id = f.item_id
+            LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as sto_qty_in FROM sto_ot WHERE type = 'IN' and (approved_to = '' or approved_to is null) GROUP BY item_rm_id) g ON b.id = g.item_rm_id
+            LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as sto_qty_out FROM sto_ot WHERE type = 'OUT' and (approved_to = '' or approved_to is null) GROUP BY item_rm_id) h ON b.id = h.item_rm_id
             WHERE (b.id like '%$post%' or b.number like '%$post%') and a.store != 0 and b.item_family_id NOT IN ('P61','P67','P51','P69')
             GROUP BY a.item_rm_id");
         $results = $sql->result_array();

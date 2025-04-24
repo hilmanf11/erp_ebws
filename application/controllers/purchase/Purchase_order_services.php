@@ -344,7 +344,7 @@ class purchase_order_services extends CI_Controller
                 $this->db->update("purchase_request_services", ["status" => 1]);
                 echo $send;
             }else{
-                show_error();
+                show_error("Duplicate Data");
             }
         } else {
             show_error("Cannot Process your request");
@@ -552,6 +552,7 @@ class purchase_order_services extends CI_Controller
                                                 Del. Sch No : ' . $purchase_order_services->po_no . '<br>
                                                 Date : ' . $purchase_order_services->po_date . '<br>
                                                 Revision : ' . $purchase_order_services->revision . '<br><br>
+                                                <b>ELCON BANSHU WIRING SYSTEM PVT. LTD.</b><br>
                                                 Factory / Shipping Address : <br>
                                                 '.@$config->address2.'<br>
                                                 GST No : '.@$config->gst_no.'

@@ -75,8 +75,9 @@ class Barcode_divides_fg extends CI_Controller
                     if (!$records) {
                         $this->db->select("a.*, DATE_FORMAT(a.created_date, '%Y-%m-%d') as receipt_date, c.id as item_fg_id, c.number_customer as number, c.name");
                         $this->db->from('barcode_divides_fg a');
-                        $this->db->join('scan_item_receipts_fg b', 'a.reff = b.checksheet_number');
-                        $this->db->join('item_fg c', 'a.item_fg_id = c.id');
+                        $this->db->join('scan_item_receipts_fg b', 'a.reff = b.checksheet_number', 'left');
+                        $this->db->join('item_fg c', 'a.item_fg_id = c.id', 'left');
+                        $this->db->join('os_fg d', 'a.reff = d.id', 'left');
                         $this->db->where('a.status', 0);
                         $this->db->where('a.label_divided', $label_no);
                         $this->db->group_by('a.label_divided');

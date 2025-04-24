@@ -66,7 +66,7 @@ class Issued_others_out extends CI_Controller
             $result = array();
             //Select Query
             $this->db->select("a.*, sum(a.qty) - sum(coalesce(b.qty,0)) as total_qty");
-            $this->db->from('issued_others_request a');
+            $this->db->from('(SELECT * FROM issued_others_request WHERE status != 2 ORDER BY status ASC) a');
             $this->db->join("(select request_no, item_rm_id, sum(qty) as qty from issued_others where status <> '2' group by request_no, item_rm_id) b", 'a.request_no = b.request_no and a.item_rm_id=b.item_rm_id', 'left');
             if (@count($filters) > 0) {
                 foreach ($filters as $filter) {
@@ -111,6 +111,7 @@ class Issued_others_out extends CI_Controller
         $this->db->join('item_rm b', 'a.item_rm_id = b.id');
         $this->db->join("(select request_no, item_rm_id, sum(qty) as qty from issued_others where status <> '2' group by request_no, item_rm_id) c", 'a.request_no = c.request_no and a.item_rm_id=c.item_rm_id', 'left');
         $this->db->where('a.request_no', $request_no);
+        $this->db->where('a.status !=', 2);
         $this->db->order_by('b.number', 'DESC');
 
         //Total Data

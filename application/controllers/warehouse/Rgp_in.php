@@ -59,6 +59,7 @@ class Rgp_in extends CI_Controller
         $post = isset($_POST['q']) ? $_POST['q'] : "";
         $process_type = isset($_GET['process_type']) ? $_GET['process_type'] : "";
         $company_id = isset($_GET['company_id']) ? $_GET['company_id'] : "";
+        $item_category_id = isset($_GET['item_category_id']) ? $_GET['item_category_id'] : "";
 
         if (!empty($company_id)) {
             $company = " and a.company_id = '$company_id'";
@@ -66,18 +67,56 @@ class Rgp_in extends CI_Controller
             $company = "";
         }
 
+        if (!empty($item_category_id)) {
+            $item_category = " and a.item_category_id = '$item_category_id'";
+        } else {
+            $item_category = "";
+        }
+
         if ($process_type == 'NRGP') {
             $send = $this->crud->query("
-            select a.number 
-            from rgp_transactions a
-            left join (select rgp_number from rgp_transactions group by rgp_number) b on a.number=b.rgp_number
-            where a.type='OUT' and a.number LIKE '%$post%' and b.rgp_number is null and a.process_type = 'RGP' $company group by number
+            SELECT
+                a.number, (COALESCE ( sum(a.qty), 0 ) - COALESCE ( sum(b.total), 0 )) as balance
+            FROM
+                rgp_transactions a
+                LEFT JOIN ( SELECT rgp_number, item_id, sum( qty ) AS total FROM rgp_transactions WHERE type='IN' GROUP BY rgp_number,item_id ) b ON a.number = b.rgp_number and a.item_id=b.item_id
+            WHERE
+                a.type = 'OUT' 
+                AND a.number LIKE '%$post%' 
+                AND a.process_type = 'RGP' 
+                $company  
+                $item_category
+                group by a.number
+                having (COALESCE ( sum(a.qty), 0 ) - COALESCE ( sum(b.total), 0 ))  > 0
             ");
         } else {
             $send = [];
         }
 
         echo json_encode($send);
+    }
+
+    public function readStockRgp()
+    {
+        $post = $this->input->post();
+        $item_fg = $this->db->query("select a.id from item_fg a where a.number='" . $post['item_id'] . "'")->row();
+        $item_rm = $this->db->query("select a.id from item_rm a where a.id='" . $post['item_id'] . "'")->row();
+
+        if (!empty($item_fg->id)) {
+            $item_id = @$item_fg->id;
+        } else {
+            $item_id = @$item_rm->id;
+        }
+
+        $rgp = $this->db->query("
+            select coalesce(a.qty,0) as qty,COALESCE(b.total,0) as total, (coalesce(a.qty,0) - COALESCE(b.total,0)) as balance from rgp_transactions a 
+            left join (select rgp_number, item_id, sum(qty) as total from rgp_transactions group by rgp_number, item_id) b on a.number=b.rgp_number and a.item_id=b.item_id
+            where a.number = '" . $post['rgp_number'] . "' and a.item_id='" . $item_id . "'
+        ")->row();
+        $arr = array(
+            "balance" => @$rgp->balance
+        );
+        echo json_encode(@$arr);
     }
 
     public function readCompany()
@@ -96,16 +135,17 @@ class Rgp_in extends CI_Controller
     public function readProcessType()
     {
         $send = array(
-            array("id" => "RGP", "name" => "RGP"),
-            array("id" => "NRGP", "name" => "NRGP"),
-            array("id" => "FOC", "name" => "FOC"),
+            array("id" => "RGP", "name" => "RGP IN"),
+            array("id" => "NRGP", "name" => "RGP OUT TO NRGP IN"),
+            array("id" => "FOC", "name" => "FOC IN"),
         );
         echo json_encode($send);
     }
 
-    public function autonumber($id_menu)
+    public function autonumber($id_menu, $trans_date)
     {
-        $datenow = date("Y-m-d");
+        // $datenow = date("Y-m-d");
+        $datenow = base64_decode($trans_date);
         $sql_menu = $this->db->query("SELECT * FROM menus_no WHERE menus_id = '$id_menu' and `status` = '0' and `start_date` <= '$datenow' and end_date >= '$datenow'");
         $row_menu = $sql_menu->row();
 
@@ -140,7 +180,7 @@ class Rgp_in extends CI_Controller
     {
 
         $datenow = date("ym");
-        $sql = $this->db->query("SELECT max(`number`) as kode From rgp_transactions where `number` like '%$datenow%'");
+        $sql = $this->db->query("SELECT max(`number`) as kode From rgp_transactions where `number` like '%FOC-$datenow%'");
         $row = $sql->row();
         if (empty($row->kode)) {
             $kode = substr($row->kode, 1);
@@ -148,6 +188,22 @@ class Rgp_in extends CI_Controller
         } else {
             $kode = substr($row->kode, -8);
             $autoid = "FOC-" . $datenow . sprintf("%08s", $kode + 1);
+        }
+        echo $autoid;
+    }
+
+    public function autonumberNrgp()
+    {
+
+        $datenow = date("ym");
+        $sql = $this->db->query("SELECT max(`number`) as kode From rgp_transactions where `number` like '%$datenow%'");
+        $row = $sql->row();
+        if (empty($row->kode)) {
+            $kode = substr($row->kode, 1);
+            $autoid = "NRGP-" . $datenow . sprintf("%08s", $kode + 1);
+        } else {
+            $kode = substr($row->kode, -8);
+            $autoid = "NRGP-" . $datenow . sprintf("%08s", $kode + 1);
         }
         echo $autoid;
     }
@@ -234,6 +290,7 @@ class Rgp_in extends CI_Controller
             $filter_category = @base64_decode($get['filter_category']);
             $filter_departement = @base64_decode($get['filter_departement']);
             $filter_rgp_type = @base64_decode($get['filter_rgp_type']);
+            $filter_status = @base64_decode($get['filter_status']);
 
             $page = $this->input->post('page');
             $rows = $this->input->post('rows');
@@ -258,7 +315,8 @@ class Rgp_in extends CI_Controller
             END) as plant_number,
             g.name as item_category_name,
             h.name as departement_name,
-            i.name as rgp_type_name
+            i.name as rgp_type_name,
+            (CASE WHEN a.item_category_id IN ('C01','C08') THEN (CASE WHEN j.balance > 0 THEN 1 ELSE 0 END) ELSE 0 END) as status_label
             ");
             $this->db->from('rgp_transactions a');
             $this->db->join('item_rm b', 'a.item_id = b.id', 'left');
@@ -269,8 +327,15 @@ class Rgp_in extends CI_Controller
             $this->db->join('item_categories g', 'a.item_category_id = g.id', 'left');
             $this->db->join('departements h', 'a.departement_id = h.id', 'left');
             $this->db->join('rgp_types i', 'a.rgp_type_id = i.id', 'left');
+            $this->db->join("(SELECT z.number, (SUM(z.qty) - SUM(z.label)) as balance FROM (
+                SELECT a.number, a.item_id, a.qty, COALESCE(SUM(b.qty), 0) AS label
+                FROM rgp_transactions a
+                LEFT JOIN scan_item_rgp b ON a.item_id = b.item_id AND a.number = b.rgp_number
+                WHERE a.type = 'IN'
+                GROUP BY a.number, a.item_id) z 
+                GROUP BY z.number) j", 'a.number = j.number', 'left');
             $this->db->where('a.type', 'IN');
-            if ($filter_from != "" or $filter_to != "") {
+            if ($filter_from != "" || $filter_to != "") {
                 $this->db->where('a.transaction_date >=', $filter_from);
                 $this->db->where('a.transaction_date <=', $filter_to);
             }
@@ -295,6 +360,9 @@ class Rgp_in extends CI_Controller
             if (!empty($filter_rgp_type)) {
                 $this->db->where('a.rgp_type_id', $filter_rgp_type);
             }
+            if (!empty($filter_status)) {
+                $this->db->where('a.status', $filter_status);
+            }
 
             $this->db->group_by('a.number');
             $this->db->order_by('a.number', 'ASC');
@@ -316,7 +384,6 @@ class Rgp_in extends CI_Controller
     {
         if ($this->input->get()) {
             $number = base64_decode($this->input->get('number'));
-            $number = base64_decode($this->input->get('number'));
 
             $this->db->select("
             (CASE 
@@ -336,7 +403,7 @@ class Rgp_in extends CI_Controller
                 ELSE null
             END) as item_family_name,
 
-            a.uom, a.qty, a.currency, a.price, a.value, a.igst_value, a.sgst_value, a.cgst_value, a.total,a.number,a.rgp_id,
+            a.company_id,a.uom, a.qty, a.currency, a.price, a.value, a.igst_value, a.sgst_value, a.cgst_value, a.total,a.number,a.rgp_id,
             
             (CASE 
                 WHEN d.id is not null THEN d.name
@@ -350,14 +417,9 @@ class Rgp_in extends CI_Controller
             h.name as departement_name,
             i.name as rgp_type_name,
             a.item_category_id,
-            (CASE 
-                WHEN b.id  is not null THEN k.mpq
-                ELSE c.qty_box
-            END) as mpq,
-            (CASE 
-                WHEN b.id is not null THEN ceil(a.qty/k.mpq)
-                ELSE ceil(a.qty/c.qty_box)
-            END) as qty_label
+            b.id as item_rm_id,
+            c.id as item_fg_id,
+            c.qty_box
             ");
             $this->db->from('rgp_transactions a');
             $this->db->join('item_rm b', 'a.item_id = b.id', 'left');
@@ -369,12 +431,59 @@ class Rgp_in extends CI_Controller
             $this->db->join('departements h', 'a.departement_id = h.id', 'left');
             $this->db->join('rgp_types i', 'a.rgp_type_id = i.id', 'left');
             $this->db->join('item_familys j', 'b.item_family_id = j.id', 'left');
-            $this->db->join('item_mpq k', 'a.item_id = k.item_rm_id and a.company_id=k.supplier_id', 'left');
+            // $this->db->join('item_mpq k', 'a.item_id = k.item_rm_id and a.company_id=k.supplier_id', 'left');
             $this->db->where('a.number', $number);
             $this->db->order_by('a.item_id', 'ASC');
             $records = $this->db->get()->result_array();
+            $result = [];
+            foreach ($records as $record) {
+                $item_mpq_supplier = $this->db->query("select mpq from item_mpq where item_rm_id='" . $record['item_rm_id'] . "' and supplier_id='" . $record['company_id'] . "'")->row();
+                if (!empty($item_mpq_supplier)) {
+                    $mpq = $item_mpq_supplier->mpq;
+                    $qty_label = ceil($record['qty'] / $item_mpq_supplier->mpq);
+                } else {
+                    $item_mpq_customer = $this->db->query("select mpq from item_mpq where item_rm_id='" . $record['item_rm_id'] . "' and customer_id='" . $record['company_id'] . "'")->row();
+                    if (!empty($item_mpq_customer)) {
+                        $mpq = $item_mpq_customer->mpq;
+                        $qty_label = ceil($record['qty'] / $item_mpq_customer->mpq);
+                    } else if ($record['qty_box']) {
+                        $mpq = $record['qty_box'];
+                        $qty_label = ceil($record['qty'] / $record['qty_box']);
+                    } else {
+                        $mpq = "";
+                        $qty_label = "";
+                    }
+                }
 
-            echo json_encode($records);
+                $arr[] = array(
+                    "item_id" => $record['item_id'],
+                    "item_number" => $record['item_number'],
+                    "item_name" => $record['item_name'],
+                    "item_family_name" => $record['item_family_name'],
+                    "uom" => $record['uom'],
+                    "qty" => $record['qty'],
+                    "currency" => $record['currency'],
+                    "price" => $record['price'],
+                    "value" => $record['value'],
+                    "igst_value" => $record['igst_value'],
+                    "sgst_value" => $record['sgst_value'],
+                    "cgst_value" => $record['cgst_value'],
+                    "total" => $record['total'],
+                    "number" => $record['number'],
+                    "rgp_id" => $record['rgp_id'],
+                    "company_name" => $record['company_name'],
+                    "plant_number" => $record['plant_number'],
+                    "item_category_name" => $record['item_category_name'],
+                    "departement_name" => $record['departement_name'],
+                    "rgp_type_name" => $record['rgp_type_name'],
+                    "item_category_id" => $record['item_category_id'],
+
+                    "mpq" => $mpq,
+                    "qty_label" => $qty_label,
+                );
+            }
+            $result = array_merge($result, @$arr);
+            echo json_encode($result);
         }
     }
 
@@ -382,45 +491,149 @@ class Rgp_in extends CI_Controller
     public function datatableUpdates()
     {
         if ($this->input->get()) {
+            $action = $this->input->get('action');
             $number = base64_decode($this->input->get('number'));
             $rgp_number = base64_decode($this->input->get('rgp_number'));
 
-            $this->db->select("
-            (CASE 
-                WHEN b.id is not null THEN b.id
-                ELSE c.number
-            END) as item_id,
-            (CASE 
-                WHEN b.id is not null THEN b.number
-                ELSE c.number_customer
-            END) as item_number,
-            (CASE 
-                WHEN b.id is not null THEN b.name
-                ELSE c.name
-            END) as item_name,
-            (CASE 
-                WHEN b.id is not null THEN j.name
-                ELSE null
-            END) as item_family_name,
+            if (!empty($rgp_number) && $rgp_number != "null" && $action == "update") {
+                $this->db->select("
+                    (CASE 
+                        WHEN b.id is not null THEN b.id
+                        ELSE c.number
+                    END) as item_id,
+                    (CASE 
+                        WHEN b.id is not null THEN b.number
+                        ELSE c.number_customer
+                    END) as item_number,
+                    (CASE 
+                        WHEN b.id is not null THEN b.name
+                        ELSE c.name
+                    END) as item_name,
+                    (CASE 
+                        WHEN b.id is not null THEN j.name
+                        ELSE null
+                    END) as item_family_name,
 
-            a.uom, a.qty, a.currency, a.price, a.value, a.igst_value, a.sgst_value, a.cgst_value, a.total,a.hsn_code,
-            ");
-            $this->db->from('rgp_transactions a');
-            $this->db->join('item_rm b', 'a.item_id = b.id', 'left');
-            $this->db->join('item_fg c', 'a.item_id = c.id', 'left');
-            $this->db->join('suppliers d', 'a.company_id = d.id', 'left');
-            $this->db->join('customers e', 'a.company_id = e.id', 'left');
-            $this->db->join('customer_address f', 'a.plant = f.plant', 'left');
-            $this->db->join('item_categories g', 'a.item_category_id = g.id', 'left');
-            $this->db->join('departements h', 'a.departement_id = h.id', 'left');
-            $this->db->join('rgp_types i', 'a.rgp_type_id = i.id', 'left');
-            $this->db->join('item_familys j', 'b.item_family_id = j.id', 'left');
-            if (!empty($rgp_number)) {
-                $this->db->where('a.number', $rgp_number);
-            } else {
+                    a.uom, a.stock, ((coalesce(k.qty_in,0) - coalesce(l.qty_out,0))) as qty, a.currency, a.price, a.value, a.igst_value, a.sgst_value, a.cgst_value, a.total, a.hsn_code,
+                    
+                    (CASE 
+                        WHEN d.id is not null THEN d.name
+                        ELSE e.name
+                    END) as company_name,
+                    (CASE 
+                        WHEN f.plant is not null THEN f.plant
+                        ELSE NULL
+                    END) as plant_number,
+                    g.name as item_category_name,
+                    h.name as departement_name,
+                    i.name as rgp_type_name
+                ");
+                $this->db->from('rgp_transactions a');
+                $this->db->join('item_rm b', 'a.item_id = b.id', 'left');
+                $this->db->join('item_fg c', 'a.item_id = c.id', 'left');
+                $this->db->join('suppliers d', 'a.company_id = d.id', 'left');
+                $this->db->join('customers e', 'a.company_id = e.id', 'left');
+                $this->db->join('customer_address f', 'a.plant = f.plant', 'left');
+                $this->db->join('item_categories g', 'a.item_category_id = g.id', 'left');
+                $this->db->join('departements h', 'a.departement_id = h.id', 'left');
+                $this->db->join('rgp_types i', 'a.rgp_type_id = i.id', 'left');
+                $this->db->join('item_familys j', 'b.item_family_id = j.id', 'left');
+                $this->db->join("(select number, item_id, sum(qty) as qty_in from rgp_transactions where type='OUT' group by number, item_id) k", 'a.rgp_number=k.number and a.item_id=k.item_id', 'left');
+                $this->db->join("(select rgp_number, item_id, sum(qty) as qty_out from rgp_transactions where type='IN' group by rgp_number, item_id) l", 'a.rgp_number=l.rgp_number and a.item_id=l.item_id', 'left');
                 $this->db->where('a.number', $number);
+                $this->db->order_by('a.item_id', 'ASC');
+            } else if (!empty($rgp_number) && $rgp_number != "null" && $action == "add") {
+                $this->db->select("
+                (CASE 
+                    WHEN b.id is not null THEN b.id
+                    ELSE c.number
+                END) as item_id,
+                (CASE 
+                    WHEN b.id is not null THEN b.number
+                    ELSE c.number_customer
+                END) as item_number,
+                (CASE 
+                    WHEN b.id is not null THEN b.name
+                    ELSE c.name
+                END) as item_name,
+                (CASE 
+                    WHEN b.id is not null THEN j.name
+                    ELSE null
+                END) as item_family_name,
+
+                a.uom, a.stock, ((coalesce(a.qty,0) - coalesce(k.qty_out,0))) as qty, a.currency, a.price, a.value, a.igst_value, a.sgst_value, a.cgst_value, a.total, a.hsn_code,
+                
+                (CASE 
+                    WHEN d.id is not null THEN d.name
+                    ELSE e.name
+                END) as company_name,
+                (CASE 
+                    WHEN f.plant is not null THEN f.plant
+                    ELSE NULL
+                END) as plant_number,
+                g.name as item_category_name,
+                h.name as departement_name,
+                i.name as rgp_type_name
+            ");
+                $this->db->from('rgp_transactions a');
+                $this->db->join('item_rm b', 'a.item_id = b.id', 'left');
+                $this->db->join('item_fg c', 'a.item_id = c.id', 'left');
+                $this->db->join('suppliers d', 'a.company_id = d.id', 'left');
+                $this->db->join('customers e', 'a.company_id = e.id', 'left');
+                $this->db->join('customer_address f', 'a.plant = f.plant', 'left');
+                $this->db->join('item_categories g', 'a.item_category_id = g.id', 'left');
+                $this->db->join('departements h', 'a.departement_id = h.id', 'left');
+                $this->db->join('rgp_types i', 'a.rgp_type_id = i.id', 'left');
+                $this->db->join('item_familys j', 'b.item_family_id = j.id', 'left');
+                $this->db->join("(select rgp_number, item_id, qty as qty_out from rgp_transactions where type = 'IN') k", 'k.rgp_number=a.number and a.item_id=k.item_id', 'left');
+                $this->db->where('a.number', $rgp_number);
+                $this->db->order_by('a.item_id', 'ASC');
+            } else {
+                $this->db->select("
+                (CASE 
+                    WHEN b.id is not null THEN b.id
+                    ELSE c.number
+                END) as item_id,
+                (CASE 
+                    WHEN b.id is not null THEN b.number
+                    ELSE c.number_customer
+                END) as item_number,
+                (CASE 
+                    WHEN b.id is not null THEN b.name
+                    ELSE c.name
+                END) as item_name,
+                (CASE 
+                    WHEN b.id is not null THEN j.name
+                    ELSE null
+                END) as item_family_name,
+    
+                a.uom, a.stock, a.qty, a.currency, a.price, a.value, a.igst_value, a.sgst_value, a.cgst_value, a.total, a.hsn_code,
+                
+                (CASE 
+                    WHEN d.id is not null THEN d.name
+                    ELSE e.name
+                END) as company_name,
+                (CASE 
+                    WHEN f.plant is not null THEN f.plant
+                    ELSE NULL
+                END) as plant_number,
+                g.name as item_category_name,
+                h.name as departement_name,
+                i.name as rgp_type_name
+                ");
+                $this->db->from('rgp_transactions a');
+                $this->db->join('item_rm b', 'a.item_id = b.id', 'left');
+                $this->db->join('item_fg c', 'a.item_id = c.id', 'left');
+                $this->db->join('suppliers d', 'a.company_id = d.id', 'left');
+                $this->db->join('customers e', 'a.company_id = e.id', 'left');
+                $this->db->join('customer_address f', 'a.plant = f.plant', 'left');
+                $this->db->join('item_categories g', 'a.item_category_id = g.id', 'left');
+                $this->db->join('departements h', 'a.departement_id = h.id', 'left');
+                $this->db->join('rgp_types i', 'a.rgp_type_id = i.id', 'left');
+                $this->db->join('item_familys j', 'b.item_family_id = j.id', 'left');
+                $this->db->where('a.number', $number);
+                $this->db->order_by('a.item_id', 'ASC');
             }
-            $this->db->order_by('a.item_id', 'ASC');
             $records = $this->db->get()->result_array();
 
             // die($this->db->last_query());
@@ -441,10 +654,36 @@ class Rgp_in extends CI_Controller
                 $item_id = $post['item_id'];
             }
 
-            if (!empty($post['rgp_number'])) {
-                $status = 1;
+            if ($post['rgp_number'] !== "") {
+                $rgp = $this->db->query("
+                    select * from rgp_transactions a where a.number = '" . $post['number'] . "' and a.item_id='" . $item_id . "' and a.type='IN'
+                    ")->row();
+
+                $rgpQty = $this->db->query("
+                    select coalesce(a.qty,0) as qty,COALESCE(b.total,0) as total, (coalesce(a.qty,0) - COALESCE(b.total,0)) as balance from rgp_transactions a 
+                    left join (select rgp_number, item_id, sum(qty) as total from rgp_transactions group by rgp_number, item_id) b on a.number=b.rgp_number and a.item_id=b.item_id
+                    where a.number = '" . $post['rgp_number'] . "' and a.item_id='" . $item_id . "'
+                    ")->row();
+
+                if ($post['qty'] < @$rgpQty->balance) {
+                    $status = 0;
+                } else {
+                    $status = 1;
+                }
+                $qty = $post['qty'] + @$rgp->qty;
+                $value = $post['value'] + @$rgp->value;
+                $igst_value = $post['igst_value'] + @$rgp->igst_value;
+                $sgst_value = $post['sgst_value'] + @$rgp->sgst_value;
+                $cgst_value = $post['cgst_value'] + @$rgp->cgst_value;
+                $total = $post['total'] + @$rgp->total;
             } else {
                 $status = 0;
+                $qty = $post['qty'];
+                $value = $post['value'];
+                $igst_value = $post['igst_value'];
+                $sgst_value = $post['sgst_value'];
+                $cgst_value = $post['cgst_value'];
+                $total = $post['total'];
             }
 
             $postFinal = array(
@@ -457,27 +696,28 @@ class Rgp_in extends CI_Controller
                 "departement_id" => $post['departement_id'],
                 "rgp_type_id" => $post['rgp_type_id'],
                 "reference_number" => $post['reference_number'],
+                // "return_date_estimation" => $post['return_date_estimation'],
                 "rgp_number" => $post['rgp_number'],
                 "notes" => $post['notes'],
                 "item_id" => $item_id,
                 "uom" => $post['uom'],
-                "qty" => $post['qty'],
-                "currency" => $post['currency'],
+                // "stock" => $post['stock'],
+                "qty" => $qty,
                 "hsn_code" => $post['hsn_code'],
+                "currency" => $post['currency'],
                 "price" => $post['price'],
-                "value" => $post['value'],
-                "igst_value" => $post['igst_value'],
-                "sgst_value" => $post['sgst_value'],
-                "cgst_value" => $post['cgst_value'],
-                "total" => $post['total'],
+                "value" => $value,
+                "igst_value" => $igst_value,
+                "sgst_value" => $sgst_value,
+                "cgst_value" => $cgst_value,
+                "total" => $total,
                 "type" => "IN",
+                // "declaration" => $post['declaration'],
                 "status" => $status,
             );
-
             $rgp_transactions = $this->crud->read("rgp_transactions", [], ["number" => $post['number'], "item_id" => $item_id, "type" => "IN"]);
-            if (@$rgp_transactions->number != "") {
+            if (!empty(@$rgp_transactions->number)) {
                 $send = $this->crud->update('rgp_transactions', ["number" => $post['number'], "item_id" => $item_id, "type" => "IN"], $postFinal);
-                $this->db->update('rgp_transactions', ["status" => 1], ["number" => $post['rgp_number'], "item_id" => $item_id]);
             } else {
                 $sqlGetID = $this->db->query("SELECT max(rgp_id) as kode FROM rgp_transactions WHERE `number` = '" . $post['number'] . "'");
                 $rowID = $sqlGetID->row();
@@ -489,8 +729,22 @@ class Rgp_in extends CI_Controller
                     $rgp_id = $post['number'] . "-" . sprintf("%03s", $urutan + 1);
                 }
                 $send = $this->crud->create('rgp_transactions', array_merge($postFinal, ["rgp_id" => $rgp_id]));
+            }
+
+            $rgp_out = $this->db->query("
+            select sum(qty) as qty from rgp_transactions a where a.number = '" . $post['rgp_number'] . "' and a.item_id='" . $item_id . "' and a.type='OUT'
+            ")->row();
+
+            $rgp_in = $this->db->query("
+            select sum(qty) as qty from rgp_transactions a where a.rgp_number = '" . $post['rgp_number'] . "' and a.item_id='" . $item_id . "' and a.type='IN'
+            ")->row();
+
+            // upddate semua status yg terkait dengan rgp in
+            if (@$rgp_out->qty == @$rgp_in->qty) {
+                $this->db->update('rgp_transactions', ["status" => 1], ["rgp_number" => $post['rgp_number'], "item_id" => $item_id]);
                 $this->db->update('rgp_transactions', ["status" => 1], ["number" => $post['rgp_number'], "item_id" => $item_id]);
             }
+
             echo $send;
         } else {
             show_error("Cannot Process your request");
@@ -501,6 +755,8 @@ class Rgp_in extends CI_Controller
     public function delete()
     {
         $data = $this->input->post();
+        $dataLabels = array("rgp_number" => $data['number']);
+        $this->crud->delete('rgp_transaction_labels', $dataLabels);
         $send = $this->crud->delete('rgp_transactions', $data);
         echo $send;
     }
@@ -879,8 +1135,8 @@ class Rgp_in extends CI_Controller
         ");
         $this->db->from('rgp_transaction_labels a');
         $this->db->join('rgp_transactions b', 'a.rgp_number = b.number');
-        $this->db->join('item_rm c', 'b.item_id = c.id', 'left');
-        $this->db->join('item_fg d', 'b.item_id = d.id', 'left');
+        $this->db->join('item_rm c', 'a.item_id = c.id', 'left');
+        $this->db->join('item_fg d', 'a.item_id = d.id', 'left');
         $this->db->join('suppliers e', 'b.company_id = e.id', 'left');
         $this->db->join('customers f', 'b.company_id = f.id', 'left');
         $this->db->where('a.deleted', 0);

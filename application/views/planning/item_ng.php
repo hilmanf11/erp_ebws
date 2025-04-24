@@ -144,20 +144,26 @@
     function add() {
         $('#dlg_insert').dialog('open');
         $('#frm_insert').form('clear');
-        $("#trans_date").datebox('setValue', "<?= date("Y-m-d") ?>");
         $("#departement").textbox('setValue', "PRODUCTION");
         $('#dg2').datagrid('loadData', []);
-        autoid();
+        
+        $("#trans_date").datebox({
+            onChange: function(val){
+                autoid(val);
+            }
+        });
+        $("#trans_date").datebox('setValue', "<?= date("Y-m-d") ?>");
     }
 
-    function autoid(){
+    function autoid(trans_date){
         $.ajax({
             type: "post",
-            url: "<?= base_url('planning/item_ng/item_ng_no/' . $id_menu) ?>",
+            url: "<?= base_url('planning/item_ng/item_ng_no/' . $id_menu) ?>/" + btoa(trans_date),
             dataType: "html",
             success: function(scraps_no) {
                 if(scraps_no == ""){
                     toastr.info("Please Check Configuration in Serial No First");
+                    $("#document").textbox('clear');
                 }else{
                     $("#document").textbox('setValue', scraps_no);
                 }

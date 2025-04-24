@@ -257,8 +257,8 @@ class Supplier_items extends CI_Controller
                 "remarks" => $post['remarks'],
             );
 
-            if((@$rowSupItm->share_order + $post['share_order']) <= 100 || (@$rowSupItm->share_order + $post['share_order']) != 0){
-                if($post['mpq'] > 0 && $post['moq'] > 0){
+            if((@$rowSupItm->share_order + $post['share_order']) <= 100 && (@$rowSupItm->share_order + $post['share_order']) != 0){
+                if($post['mpq'] > 0 && $post['moq'] > 0 && $post['leadtime'] > 0 && $post['transit'] > 0){
                     if (!$supplier_items) {
                         $attachment = $this->crud->upload('attachment', ["jpg", "png", "jpeg", "pdf", "xls", "xlsx", "docx"], 'assets/documents/supplier_items/', [], "supplier_items", "attachment");
                         $attachment2 = $this->crud->upload('attachment2', ["jpg", "png", "jpeg", "pdf", "xls", "xlsx", "docx"], 'assets/documents/supplier_items2/', [], "supplier_items", "attachment2");
@@ -280,7 +280,7 @@ class Supplier_items extends CI_Controller
                         }
                     }   
                 }else{
-                    echo json_encode(array("title" => "MPQ 0", "message" => "MPQ or MOQ for Part No " . $post['item_rm_id'] . " Cannot <= 0", "theme" => "error"));
+                    echo json_encode(array("title" => "MPQ 0", "message" => "MPQ, MOQ, Leadtime, Transit for Part No " . $post['item_rm_id'] . " Cannot <= 0", "theme" => "error"));
                 }
             }else{
                 echo json_encode(array("title" => "Share Order", "message" => "Share Order for Part No " . $post['item_rm_id'] . " Cannot >= 100", "theme" => "error"));
@@ -320,20 +320,24 @@ class Supplier_items extends CI_Controller
             $sqlSupItm = $this->db->query("SELECT SUM(share_order) as share_order FROM supplier_items WHERE item_rm_id = '$read->item_rm_id' and id != '$id' GROUP BY item_rm_id");
             $rowSupItm = $sqlSupItm->row();
 
-            $attachment = $this->crud->upload('attachment', ["jpg", "png", "jpeg", "pdf", "xls", "xlsx", "docx"], 'assets/documents/supplier_items/', [], "supplier_items", "attachment");
-            $attachment2 = $this->crud->upload('attachment2', ["jpg", "png", "jpeg", "pdf", "xls", "xlsx", "docx"], 'assets/documents/supplier_items2/', [], "supplier_items", "attachment2");
-            $attachment3 = $this->crud->upload('attachment3', ["jpg", "png", "jpeg", "pdf", "xls", "xlsx", "docx"], 'assets/documents/supplier_items3/', [], "supplier_items", "attachment3");
+            $attachment = $this->crud->upload('attachment', ["jpg", "png", "jpeg", "pdf", "xls", "xlsx", "docx"], 'assets/documents/supplier_items/', ["id" => $id], "supplier_items", "attachment");
+            $attachment2 = $this->crud->upload('attachment2', ["jpg", "png", "jpeg", "pdf", "xls", "xlsx", "docx"], 'assets/documents/supplier_items2/', ["id" => $id], "supplier_items", "attachment2");
+            $attachment3 = $this->crud->upload('attachment3', ["jpg", "png", "jpeg", "pdf", "xls", "xlsx", "docx"], 'assets/documents/supplier_items3/', ["id" => $id], "supplier_items", "attachment3");
             $postFinal = array_merge($post, ["attachment" => $attachment, "attachment2" => $attachment2, "attachment3" => $attachment3]);
 
             if((@$rowSupItm->share_order + $post['share_order']) <= 100){
-                if(@$read->price == $post['price']){
-                    $this->db->update('supplier_items', $postFinal, ["id" => $id]);
-                    echo json_encode(array("title" => "Good Job", "message" => "Change Data Success, By Pass Approval", "theme" => "success"));
-                }else{
-                    $send = $this->crud->update('supplier_items', ["id" => $id], $postFinal);
-                    echo $send;
+                if($post['mpq'] > 0 && $post['moq'] > 0 && $post['leadtime'] > 0 && $post['transit'] > 0){
+                    if(@$read->price == $post['price']){
+                        $this->db->update('supplier_items', $postFinal, ["id" => $id]);
+                        echo json_encode(array("title" => "Good Job", "message" => "Change Data Success, By Pass Approval", "theme" => "success"));
+                    }else{
+                        $send = $this->crud->update('supplier_items', ["id" => $id], $postFinal);
+                        echo $send;
 
-                    $this->crud->create("supplier_item_histories", $history);
+                        $this->crud->create("supplier_item_histories", $history);
+                    }
+                }else{
+                    echo json_encode(array("title" => "MPQ 0", "message" => "MPQ, MOQ, Leadtime, Transit for Part No " . $post['item_rm_id'] . " Cannot <= 0", "theme" => "error"));
                 }
             }else{
                 echo json_encode(array("title" => "Share Order", "message" => "Share Order for Part No " . $read->item_rm_id . " Cannot >= 100", "theme" => "error"));

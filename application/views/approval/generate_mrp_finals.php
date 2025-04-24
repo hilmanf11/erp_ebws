@@ -98,8 +98,6 @@
     $(function() {
         $('#dg').datagrid('enableFilter');
 
-        filter();
-
         $('#filter_month').combobox({
             url: '<?php echo base_url('planning/mst_data/readMonths'); ?>',
             valueField: 'id',
@@ -117,7 +115,7 @@
                         return "Revision " + val.revision; 
                     },
                     onLoadSuccess: function(row){
-                        $('#filter_revision').combobox('setValue', row.revision);
+                        $('#filter_revision').combobox('setValue', row[0].revision);
                     }
                 });
             }
@@ -140,7 +138,8 @@
                         return "Revision " + val.revision; 
                     },
                     onLoadSuccess: function(row){
-                        $('#filter_revision').combobox('setValue', row.revision);
+                        $('#filter_revision').combobox('setValue', "<?= $revision ?>");
+                        filter();
                     }
                 });
             }

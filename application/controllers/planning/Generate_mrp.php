@@ -260,6 +260,34 @@ class Generate_mrp extends CI_Controller
         echo $html;
     }
 
+    public function datatableException(){
+        $post = $this->input->post();
+        $filter_month = $post['filter_month'];
+        $filter_year = $post['filter_year'];
+        $filter_revision = $post['filter_revision'];
+        
+        $this->db->select("b.*, 
+            COALESCE(c.mpq, 0) AS mpq, 
+            COALESCE(c.moq, 0) AS moq, 
+            COALESCE(c.leadtime, 0) AS leadtime, 
+            COALESCE(c.share_order, 0) AS share_order, 
+            d.number AS item_rm_number, 
+            d.name AS item_rm_name,
+            d.hsn_code");
+        $this->db->from("(SELECT item_fg_id, prod_plan FROM generate_mps_details WHERE prod_plan > 0 AND p_month = '$filter_month' AND p_year = '$filter_year' GROUP BY item_fg_id) a");
+        $this->db->join('bom b', 'a.item_fg_id = b.item_fg_id');
+        $this->db->join('supplier_items c', "b.item_rm_id = c.item_rm_id", 'left');
+        $this->db->join('item_rm d', 'b.item_rm_id = d.id');
+        $this->db->where("b.item_rm_id NOT IN (SELECT item_rm_id FROM generate_mrp_finals WHERE p_month = '$filter_month' AND p_year = '$filter_year' AND revision = '$filter_revision' GROUP BY item_rm_id)");
+        $this->db->group_by('d.id');
+        $this->db->order_by('d.id', 'asc');
+        $records = $this->db->get()->result_array();
+        
+        $result['total'] = count($records);
+        $result = array_merge($result, ['rows' => $records]);
+        echo json_encode($result);
+    }
+
     public function getDataMpp($filter_month, $filter_year, $filter_cutoff, $item_rm_id, $type){
 
         $query = $this->db->query("SELECT z.item_rm_id,
@@ -475,8 +503,10 @@ class Generate_mrp extends CI_Controller
                 (CASE WHEN e.actual >= 0 THEN coalesce(e.actual, 0) ELSE 0 END) as qty_vendor,
                 coalesce(f.actual, 0) as qty_issued');
             $this->db->from('generate_mrp a');
-            $this->db->join('item_rm i', 'a.item_rm_id = i.id');
-            $this->db->join('supplier_items b', 'a.item_rm_id = b.item_rm_id', 'left');
+            $this->db->join('item_rm i', "a.item_rm_id = i.id and i.hsn_code != '-'");
+            // $this->db->join('supplier_items b', 'a.item_rm_id = b.item_rm_id', 'left');
+            //Permintaan Hariom 250324 untuk di validasi ini 
+            $this->db->join('supplier_items b', "a.item_rm_id = b.item_rm_id and (b.mpq > 0 and b.moq > 0 and b.leadtime > 0 and b.share_order > 0)");
             $this->db->join("(SELECT
                 a.id,
                 ((COALESCE(SUM(c.qty_sto),0) + COALESCE(dd.sto_qty_in, 0) + COALESCE(j.qty_rgp_in, 0) + COALESCE(e.qty_receipt, 0) + COALESCE(g.return_qty, 0)) - COALESCE(f.qty, 0) - COALESCE(d.sto_qty_out, 0) - COALESCE(k.qty_rgp_out, 0) - COALESCE(h.qty_reject, 0)) AS end_stock
@@ -515,7 +545,7 @@ class Generate_mrp extends CI_Controller
                     JOIN bom b ON a.item_fg_id = b.item_fg_id
                     WHERE a.trans_date BETWEEN '$month1' AND '$filter_cutoff' 
                     GROUP BY a.item_fg_id, b.item_rm_id) a
-                LEFT JOIN (SELECT item_rm_id, SUM(qty) AS issued FROM issued_material_details WHERE DATE_FORMAT(created_date, '%Y-%m-%d') BETWEEN '$month1' AND '$filter_cutoff' GROUP BY item_rm_id) b ON a.item_rm_id = b.item_rm_id
+                LEFT JOIN (SELECT item_rm_id, SUM(qty) AS issued FROM issued_material_details WHERE DATE_FORMAT(created_date, '%Y-%m-%d') BETWEEN '$month1' AND '$filter_cutoff' and request_no NOT LIKE '%PR-%' GROUP BY item_rm_id) b ON a.item_rm_id = b.item_rm_id
                 JOIN item_rm c ON a.item_rm_id = c.id
                 JOIN item_familys d ON c.item_family_id = d.id
                 GROUP BY a.item_rm_id
@@ -526,7 +556,7 @@ class Generate_mrp extends CI_Controller
             $this->db->where('a.p_month', $filter_month);
             $this->db->where('a.p_year', $filter_year);
             $this->db->where('a.revision', $filter_revision);
-            $this->db->where('b.share_order >=', 0);
+            $this->db->where('b.share_order >', 0);
             if($filter_product_family != ""){
                 $this->db->where('i.item_family_id', $filter_product_family);
             }

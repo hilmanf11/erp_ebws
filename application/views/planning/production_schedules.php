@@ -2,8 +2,8 @@
     <thead>
         <tr>
             <th rowspan="2" field="ck" checkbox="true"></th>
-            <th rowspan="2" data-options="field:'status_wo',width:80,align:'center',formatter:statusformat,styler:statusStyle">Status WO</th>
-            <th rowspan="2" data-options="field:'status_wip2',width:80,align:'center',formatter:statusformat2,styler:statusStyle2">Status RFG</th>
+            <th rowspan="2" data-options="field:'status_visual',width:80,align:'center',formatter:statusformat,styler:statusStyle">Status<br>Visual</th>
+            <th rowspan="2" data-options="field:'status_rfg',width:80,align:'center',formatter:statusformat2,styler:statusStyle2">Status<br>RFG</th>
             <th rowspan="2" data-options="field:'precut_status',width:80,align:'center',formatter:statusprecut,styler:styleprecut">Production<br>Order</th>
             <th rowspan="2" data-options="field:'period',width:80,align:'center'">Period</th>
             <th rowspan="2" data-options="field:'wp',width:80,align:'center'">WP</th>
@@ -16,6 +16,7 @@
             <th rowspan="2" data-options="field:'uom',width:80,align:'center'">Uom</th>
             <th rowspan="2" data-options="field:'qty',width:80,halign:'center',align:'right',formatter:numberformat">Qty</th>
             <!-- <th rowspan="2" data-options="field:'rework',width:80,halign:'center',align:'right',formatter:numberformat">Rework</th> -->
+            <th rowspan="2" data-options="field:'total_visual',width:80,halign:'center',align:'right',formatter:numberformat">Visual Qty</th>
             <th rowspan="2" data-options="field:'total_rfg',width:80,halign:'center',align:'right',formatter:numberformat">RFG Qty</th>
             <!-- <th rowspan="2" data-options="field:'so_number',width:150,align:'center'">SO No</th> -->
             <!-- <th rowspan="2" data-options="field:'so_date',width:80,align:'center'">SO Date</th> -->
@@ -36,24 +37,20 @@
         </tr>
     </thead>
 </table>
-<div id="toolbar" style="height: 230px; padding:10px;">
+<div id="toolbar" style="height: 200px; padding:10px;">
     <!-- <div style="width: 100%; display: grid; grid-template-columns: auto auto auto; grid-gap: 5px; display: flex;"> -->
     <fieldset style="width: 100%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
         <legend><b>Form Filter Data</b></legend>
         <div style="width: 30%; float: left;">
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Period</span>
-                <input style="width:30%;" id="filter_month" class="easyui-combobox" data-options="prompt:'Select Month'">
+                <input style="width:30%;" id="filter_month" class="easyui-combobox" value="<?= date("m") ?>" data-options="prompt:'Select Month'">
                 <input style="width:30%;" id="filter_year" value="<?= date("Y") ?>" class="easyui-combobox" data-options="prompt:'Select Year'" panelHeight="auto">
             </div>
             <div class="fitem">
-                <span style="width:35%; display:inline-block;">RFG date</span>
+                <span style="width:35%; display:inline-block;">Visual date</span>
                 <input style="width:30%;" name="filter_date_from" id="filter_date_from" value="<?= date("Y-m-01") ?>" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
                 <input style="width:30%;" name="filter_date_to" id="filter_date_to" value="<?= date("Y-m-t") ?>" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
-            </div>
-            <div class="fitem">
-                <span style="width:35%; display:inline-block;">WP</span>
-                <input style="width:60%;" id="filter_wp" class="easyui-combobox">
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;"></span>
@@ -72,16 +69,16 @@
         </div>
         <div style="width: 30%; float: left;">
             <div class="fitem">
-                <span style="width:35%; display:inline-block;">Workorder</span>
-                <input style="width:60%;" id="filter_workorder" class="easyui-combobox">
+                <span style="width:35%; display:inline-block;">Workorder/WP</span>
+                <input style="width:40%;" id="filter_workorder" class="easyui-combobox">
+                <input style="width:20%;" id="filter_wp" class="easyui-combobox">
             </div>
             <div class="fitem">
-                <span style="width:35%; display:inline-block;">Status WO</span>
+                <span style="width:35%; display:inline-block;">Status RFG</span>
                 <select style="width:60%;" id="filter_status" class="easyui-combobox" panelHeight="auto">
                     <option value="">Select All</option>
                     <option value="0">OPEN</option>
-                    <option value="1">SUPPLY</option>
-                    <option value="2">CLOSED</option>
+                    <option value="1">CLOSED</option>
                 </select>
             </div>
         </div>
@@ -372,15 +369,6 @@
 
         $.messager.alert('Export to Excel','Please Wait...');
         window.location.assign('<?= base_url('planning/production_schedules/print/excel') ?>' + url);
-    }
-
-    function print_job_order() {
-        var row = $('#dg').datagrid('getSelected');
-        if (row) {
-            window.open('<?= base_url('planning/production_schedules/print_job_order/') ?>' + row.id, "_blank");
-        } else {
-            toastr.warning("Please select one of the data in the table first!", "Information");
-        }
     }
 
     function reload() {

@@ -260,14 +260,15 @@
     }
 
     //NOMOR AUTOMATIC
-    function number(id_menu) {
+    function number(id_menu, journal_date) {
         $.ajax({
             type: "post",
-            url: "<?= base_url('finance/journal_posting_banks/number/') ?>" + id_menu,
+            url: "<?= base_url('finance/journal_posting_banks/number/') ?>" + id_menu + "/" + btoa(journal_date),
             dataType: "html",
             success: function(result) {
                 if(result == ""){
                     toastr.info("Please Check Configuration in Serial No First");
+                    $("#number").textbox('clear');
                 }else{
                     $("#number").textbox('setValue', result);
                 }
@@ -747,7 +748,7 @@
 
         $("#journal_date").datebox({
             onChange: function(val) {
-                number("<?= $menus_id ?>");
+                number("<?= $menus_id ?>", val);
             }
         });
 

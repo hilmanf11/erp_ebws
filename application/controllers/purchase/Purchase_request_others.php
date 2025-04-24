@@ -66,7 +66,7 @@ class Purchase_request_others extends CI_Controller
         $this->db->join('makers f', 'd.maker_id = f.id', 'left');
         $this->db->where('a.status', 0);
         // $this->db->where("((a.item_category_id = 'ASSET' and a.asset_code != '') or (a.item_category_id != 'ASSET' and a.asset_code is null))");
-        $this->db->where("((a.item_category_id = 'ASSET' and a.asset_code != '') or (a.item_category_id != 'ASSET' and (a.asset_code is null or a.asset_code = '')))");
+        $this->db->where("((a.item_category_id = 'ASSET' and a.asset_code != '') or (a.item_category_id != 'ASSET' and (a.asset_code is null or a.asset_code = '')) or (a.item_category_id is null and (a.asset_code is null or a.asset_code = '')))");
         $this->db->where('d.supplier_id', $supplier_id);
         $this->db->where("a.approved_to", "");
         $this->db->order_by('b.number', 'ASC');
@@ -196,7 +196,7 @@ class Purchase_request_others extends CI_Controller
             $this->db->join('item_familys c', "b.item_family_id = c.id");
             $this->db->join('assets d', 'a.asset_code = d.number', 'left');
             $this->db->where('a.deleted', 0);
-            if(!in_array($this->session->username, ["PURCHASE-03", "Purchase-01", "PURCHASE-02", "admin", "hariom_bhardwaj", "ITADMIN", "Accounts01"])){
+            if(!in_array($this->session->username, ["PURCHASE-03", "Purchase-01", "Sunil_1128", "PURCHASE-02", "admin", "hariom_bhardwaj", "ITADMIN", "Accounts01"])){
                 $this->db->where('a.created_by', $this->session->username);
             }
             if($this->session->username == "Accounts01"){
@@ -624,7 +624,7 @@ class Purchase_request_others extends CI_Controller
         $this->db->join('item_familys c', "b.item_family_id = c.id");
         $this->db->join('purchase_order_others e', 'a.request_no = e.request_no and a.item_rm_id = e.item_rm_id', 'left');
         $this->db->where('a.deleted', 0);
-        if(!in_array($this->session->username, ["PURCHASE-03", "Purchase-01", "PURCHASE-02", "admin", "hariom_bhardwaj", "ITADMIN", "Accounts01"])){
+        if(!in_array($this->session->username, ["PURCHASE-03", "Purchase-01", "PURCHASE-02", "Sunil_1128", "admin", "hariom_bhardwaj", "ITADMIN", "Accounts01"])){
             $this->db->where('a.created_by', $this->session->username);
         }
         if ($filter_from != "" or $filter_to != "") {

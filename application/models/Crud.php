@@ -1,4 +1,5 @@
 <?php
+date_default_timezone_set("Asia/Kolkata");
 defined('BASEPATH') or exit('No direct script access allowed');
 
 class Crud extends CI_Model

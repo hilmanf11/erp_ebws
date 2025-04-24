@@ -101,9 +101,13 @@ class Delivery_confirm extends CI_Controller
     }
 
     public function checkInvoice(){
-        $invoice_no = $this->input->post("invoice_no");
-        $read = $this->crud->reads("purchase_order_receipts", [], ["bc_document" => $invoice_no, "status" => 0]);
+        $invoice_no = trim($this->input->post("invoice_no"));
+        $read = $this->crud->reads("purchase_order_receipts", [], ["bc_document" => $invoice_no]);
+        $read2 = $this->crud->reads("purchase_confirm", [], ["invoice_no" => $invoice_no]);
+        
         if(count($read) > 0){
+            die("NG");
+        }elseif(count($read2) > 0){
             die("NG");
         }else{
             die("OK");
@@ -113,6 +117,8 @@ class Delivery_confirm extends CI_Controller
     public function datatables()
     {
         if ($this->input->post()) {
+            $filter_from = $this->input->get('filter_from');
+            $filter_to   = $this->input->get('filter_to');
             $filter_supplier = base64_decode($this->input->get('filter_supplier'));
             $filter_status = base64_decode($this->input->get('filter_status'));
             $filter_po_no = base64_decode($this->input->get('filter_po_no'));
@@ -138,6 +144,10 @@ class Delivery_confirm extends CI_Controller
             $this->db->join('purchase_orders e', 'a.supplier_id = e.supplier_id and a.item_rm_id = e.item_rm_id and a.po_no = e.po_no');
             $this->db->join("(SELECT supplier_id, item_rm_id, po_no, SUM(delivery) as qty_confirm FROM purchase_confirm GROUP BY supplier_id, item_rm_id, po_no) f", 'a.supplier_id = f.supplier_id and a.item_rm_id = f.item_rm_id and a.po_no = f.po_no');
             // $this->db->join("(SELECT po_no, bc_document, item_rm_id, supplier_id, SUM(qty_receipt) as receipt FROM purchase_order_receipts GROUP BY po_no, bc_document, item_rm_id, supplier_id) e", 'a.po_no = e.po_no and a.invoice_no = e.bc_document and a.item_rm_id = e.item_id and a.supplier_id = e.supplier_id', 'left');            
+            if ($filter_from != "" and $filter_to != "") {
+                $this->db->where('a.created_date >=', $filter_from);
+                $this->db->where('a.created_date <=', $filter_to);
+            }
             if($filter_po_date != ""){
                 $this->db->where('a.po_date', $filter_po_date);
             }
@@ -399,6 +409,8 @@ class Delivery_confirm extends CI_Controller
         $this->db->from('config');
         $config = $this->db->get()->row();
 
+        $filter_from = $this->input->get('filter_from');
+        $filter_to   = $this->input->get('filter_to');
         $filter_supplier = base64_decode($this->input->get('filter_supplier'));
         $filter_status = base64_decode($this->input->get('filter_status'));
         $filter_po_no = base64_decode($this->input->get('filter_po_no'));
@@ -412,6 +424,10 @@ class Delivery_confirm extends CI_Controller
         $this->db->join('suppliers b', 'a.supplier_id = b.id');
         $this->db->join('item_rm c', 'a.item_rm_id = c.id');
         $this->db->join('item_familys d', 'c.item_family_id = d.id');
+        if ($filter_from != "" and $filter_to != "") {
+            $this->db->where('a.created_date >=', $filter_from);
+            $this->db->where('a.created_date <=', $filter_to);
+        }
         if($filter_po_date != ""){
             $this->db->where('a.po_date', $filter_po_date);
         }
@@ -452,6 +468,7 @@ class Delivery_confirm extends CI_Controller
         <table id="customers" border="1">
             <tr>
                 <th width="20">No</th>
+                <th>Status</th>
                 <th>Supplier Name</th>
                 <th>Delivery No</th>
                 <th>Invoice No</th>
@@ -469,8 +486,15 @@ class Delivery_confirm extends CI_Controller
             </tr>';
         $no = 1;
         foreach ($records as $data) {
+            if($data['status'] == "0"){
+                $status = "OPEN";
+            }else{
+                $status = "CLOSE";
+            }
+            
             $html .= '  <tr>
                             <td>' . $no . '</td>
+                            <td>' . $status . '</td>
                             <td>' . $data['supplier_name'] . '</td>
                             <td>' . $data['delivery_no'] . '</td>
                             <td>' . $data['invoice_no'] . '</td>

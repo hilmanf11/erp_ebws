@@ -102,7 +102,7 @@ class Material_calculation extends CI_Controller
             //Total Data
             $totalRows = $this->db->count_all_results('', false);
             //Limit 1 - 10
-            $this->db->limit($rows, $offset);
+            // $this->db->limit($rows, $offset);
             //Get Data Array
             $records = $this->db->get()->result_array();
 
@@ -125,7 +125,7 @@ class Material_calculation extends CI_Controller
                     $etaqty = empty(@$totalRow->total) ? 0 : @$totalRow->total;
                     
                     //Supply
-                    $ithSupply = $this->db->query("SELECT a.item_rm_id, COALESCE(SUM(a.qty), 0) as supply FROM issued_material_details a WHERE a.item_rm_id = '$item_id' and DATE_FORMAT(a.created_date, '%Y-%m-%d') = '$working_date' GROUP BY a.item_rm_id");
+                    $ithSupply = $this->db->query("SELECT a.item_rm_id, COALESCE(SUM(a.qty), 0) as supply FROM issued_material_details a WHERE a.item_rm_id = '$item_id' and DATE_FORMAT(a.created_date, '%Y-%m-%d') = '$working_date' and a.request_no NOT LIKE '%PR-%' GROUP BY a.item_rm_id");
                     $ithSupplyRow = $ithSupply->row();
     
                     $date_qty = $record["date_".$day];
@@ -146,85 +146,41 @@ class Material_calculation extends CI_Controller
                     $free_stock = 0;
                 }
 
+                $data = array_merge($arr, [
+                    "item_rm_id" => $item_id,
+                    "item_rm_number" => $record['item_rm_number'],
+                    "item_rm_name" => $record['item_rm_name'],
+                    "product_family_name" => $record['item_family_name'],
+                    "stock_whs" => $record['stock_whs'],
+                    "os_supply" => $record['os_supply'],
+                    "os_wo" => $record['os_wo'],
+                    "stock_hand" => $record['stock_hand'],
+                    "eta" => $record['eta'],
+                    "total" => round($record['total']),
+                    "total_bal" => round($balances),
+                    "free_stock" => round($free_stock),
+                    "next_month_need1" => round($record['need_2'] / 4),
+                    "next_month_need2" => round($record['need_2'] / 4),
+                    "next_month_need3" => round($record['need_2'] / 4),
+                    "next_month_need4" => round($record['need_2'] / 4),
+                    "next_month_bal1" => ($balance - round($record['need_2'] / 4)),
+                    "next_month_bal2" => ($balance - round($record['need_2'] / 4) - round($record['need_2'] / 4)),
+                    "next_month_bal3" => ($balance - round($record['need_2'] / 4) - round($record['need_2'] / 4) - round($record['need_2'] / 4)),
+                    "next_month_bal4" => ($balance - round($record['need_2'] / 4) - round($record['need_2'] / 4) - round($record['need_2'] / 4) - round($record['need_2'] / 4)),
+                    "balance_wip" => $record['balance_wip'],
+                    "os_po" => @$record['os_po'],
+                ]);
+
                 if($filter_status == "OK"){
-                    if($free_stock > 0){
-                        $dataFinal[] = array_merge($arr, [
-                            "item_rm_id" => $item_id,
-                            "item_rm_number" => $record['item_rm_number'],
-                            "item_rm_name" => $record['item_rm_name'],
-                            "product_family_name" => $record['item_family_name'],
-                            "stock_whs" => $record['stock_whs'],
-                            "os_supply" => $record['os_supply'],
-                            "os_wo" => $record['os_wo'],
-                            "stock_hand" => $record['stock_hand'],
-                            "eta" => $record['eta'],
-                            "total" => round($record['total']),
-                            "total_bal" => round($balances),
-                            "free_stock" => round($free_stock),
-                            "next_month_need1" => round($record['need_2'] / 4),
-                            "next_month_need2" => round($record['need_2'] / 4),
-                            "next_month_need3" => round($record['need_2'] / 4),
-                            "next_month_need4" => round($record['need_2'] / 4),
-                            "next_month_bal1" => ($balance - round($record['need_2'] / 4)),
-                            "next_month_bal2" => ($balance - round($record['need_2'] / 4) - round($record['need_2'] / 4)),
-                            "next_month_bal3" => ($balance - round($record['need_2'] / 4) - round($record['need_2'] / 4) - round($record['need_2'] / 4)),
-                            "next_month_bal4" => ($balance - round($record['need_2'] / 4) - round($record['need_2'] / 4) - round($record['need_2'] / 4) - round($record['need_2'] / 4)),
-                            "balance_wip" => $record['balance_wip'],
-                            "os_po" => @$record['os_po'],
-                        ]);
+                    if(round($free_stock) > 0){
+                        $dataFinal[] = $data;
                     }
                 }elseif($filter_status == "SHORTAGE"){
-                    if($free_stock == 0){
-                        $dataFinal[] = array_merge($arr, [
-                            "item_rm_id" => $item_id,
-                            "item_rm_number" => $record['item_rm_number'],
-                            "item_rm_name" => $record['item_rm_name'],
-                            "product_family_name" => $record['item_family_name'],
-                            "stock_whs" => $record['stock_whs'],
-                            "os_supply" => $record['os_supply'],
-                            "os_wo" => $record['os_wo'],
-                            "stock_hand" => $record['stock_hand'],
-                            "eta" => $record['eta'],
-                            "total" => round($record['total']),
-                            "total_bal" => round($balances),
-                            "free_stock" => round($free_stock),
-                            "next_month_need1" => round($record['need_2'] / 4),
-                            "next_month_need2" => round($record['need_2'] / 4),
-                            "next_month_need3" => round($record['need_2'] / 4),
-                            "next_month_need4" => round($record['need_2'] / 4),
-                            "next_month_bal1" => ($balance - round($record['need_2'] / 4)),
-                            "next_month_bal2" => ($balance - round($record['need_2'] / 4) - round($record['need_2'] / 4)),
-                            "next_month_bal3" => ($balance - round($record['need_2'] / 4) - round($record['need_2'] / 4) - round($record['need_2'] / 4)),
-                            "next_month_bal4" => ($balance - round($record['need_2'] / 4) - round($record['need_2'] / 4) - round($record['need_2'] / 4) - round($record['need_2'] / 4)),
-                            "balance_wip" => $record['balance_wip'],
-                            "os_po" => @$record['os_po'],
-                        ]);
+                    if(round($free_stock) == 0){
+                        $dataFinal[] = $data;
                     }
                 }else{
-                    $dataFinal[] = array_merge($arr, [
-                        "item_rm_id" => $item_id,
-                        "item_rm_number" => $record['item_rm_number'],
-                        "item_rm_name" => $record['item_rm_name'],
-                        "product_family_name" => $record['item_family_name'],
-                        "stock_whs" => $record['stock_whs'],
-                        "os_supply" => $record['os_supply'],
-                        "os_wo" => $record['os_wo'],
-                        "stock_hand" => $record['stock_hand'],
-                        "eta" => $record['eta'],
-                        "total" => round($record['total']),
-                        "total_bal" => round($balances),
-                        "free_stock" => round($free_stock),
-                        "next_month_need1" => round($record['need_2'] / 4),
-                        "next_month_need2" => round($record['need_2'] / 4),
-                        "next_month_need3" => round($record['need_2'] / 4),
-                        "next_month_need4" => round($record['need_2'] / 4),
-                        "next_month_bal1" => ($balance - round($record['need_2'] / 4)),
-                        "next_month_bal2" => ($balance - round($record['need_2'] / 4) - round($record['need_2'] / 4)),
-                        "next_month_bal3" => ($balance - round($record['need_2'] / 4) - round($record['need_2'] / 4) - round($record['need_2'] / 4)),
-                        "next_month_bal4" => ($balance - round($record['need_2'] / 4) - round($record['need_2'] / 4) - round($record['need_2'] / 4) - round($record['need_2'] / 4)),
-                        "balance_wip" => $record['balance_wip'],
-                        "os_po" => @$record['os_po'],
-                    ]);
+                    $dataFinal[] = $data;
                 }
             }
 
@@ -323,11 +279,42 @@ class Material_calculation extends CI_Controller
             $post = $this->input->post('data');
             
             $cutoff = $this->input->post('cutoff');
+            $month1 = date("Y-m-01", strtotime("-1 month", strtotime($cutoff)));
             $end = date("Y-m-t", strtotime($post['p_year'] . "-" . $post['p_month'] . "-01"));
             $start = date("Y-m-01", strtotime($post['p_year'] . "-" . $post['p_month'] . "-01"));
+            $next = date("Y-m-01", strtotime("+1 month", strtotime($start)));
             $item_rm_id = $post['item_rm_id'];
+            
+            $qmps = $this->db->query("SELECT a.id, a.number AS item_rm_number, a.name AS item_rm_name, b.total
+                FROM item_rm a 
+                JOIN (SELECT b.item_rm_id, SUM(b.composition * a.need) AS total FROM generate_mps_details a JOIN bom b ON a.item_fg_id = b.item_fg_id WHERE a.ltpp_month2 = '$next' AND a.p_month = '$post[p_month]' AND a.p_year = '$post[p_year]' AND a.revision = '$post[revision]' GROUP BY b.item_rm_id) b ON a.id = b.item_rm_id 
+                WHERE a.id = '$item_rm_id'
+                GROUP BY a.id");
+            $dmps = $qmps->row();
 
-            $generate_mrp = $this->crud->read("generate_mrp_finals", [], ["item_rm_id" => $item_rm_id, "p_month" => $post['p_month'], "p_year" => $post['p_year'], "revision" => $post['revision']]);
+            $wip = $this->db->query("SELECT a.item_rm_id, (SUM(a.total) - COALESCE(b.issued, 0)) AS balance FROM (
+                    SELECT b.item_rm_id, a.item_fg_id, SUM(a.qty), b.composition, (SUM(a.qty) * b.composition) AS total
+                    FROM production_schedules a
+                    JOIN bom b ON a.item_fg_id = b.item_fg_id
+                    WHERE a.trans_date BETWEEN '$month1' AND '$cutoff' 
+                    GROUP BY a.item_fg_id, b.item_rm_id) a
+                LEFT JOIN (SELECT item_rm_id, SUM(qty) AS issued FROM issued_material_details WHERE DATE_FORMAT(created_date, '%Y-%m-%d') BETWEEN '$month1' AND '$cutoff' and request_no NOT LIKE '%PR-%' GROUP BY item_rm_id) b ON a.item_rm_id = b.item_rm_id
+                JOIN item_rm c ON a.item_rm_id = c.id
+                JOIN item_familys d ON c.item_family_id = d.id
+                WHERE a.item_rm_id = '$item_rm_id'
+                GROUP BY a.item_rm_id
+                ORDER BY c.item_family_id, c.id asc");
+            $dwip = $wip->row();
+
+            if(@$dwip->balance > 0){
+                $qty_wip = 0;
+                $os_supply = abs(@$dwip->balance);
+                $os_wo = 0;
+            }else{
+                $qty_wip = @$dwip->balance;
+                $os_supply = 0;
+                $os_wo = 0;
+            }
 
             $ospo = $this->db->query("SELECT a.id, (COALESCE(SUM(b.qty), 0) - COALESCE(c.qty_receipt, 0)) AS balance
                 FROM item_rm a
@@ -336,9 +323,6 @@ class Material_calculation extends CI_Controller
                 WHERE b.po_date <= '$cutoff' and a.id = '$item_rm_id' and b.status = 0
                 GROUP BY a.id");
             $ospoRow = $ospo->row();
-
-            $os_supply = empty(@$generate_mrp->qty_supply) ? 0 : @$generate_mrp->qty_supply;
-            $os_wo = empty(@$generate_mrp->qty_wo) ? 0 : @$generate_mrp->qty_wo;
 
             $eta = $this->db->query("SELECT item_rm_id, SUM(qty_receipt) as total FROM purchase_order_receipts WHERE item_rm_id = '$item_rm_id' and receipt_date between '$start' and '$end' GROUP BY item_rm_id");
             $etaRow = $eta->row();
@@ -378,12 +362,12 @@ class Material_calculation extends CI_Controller
                 "created_by" => $this->session->username,
                 "os_supply" => $os_supply,
                 "os_wo" => $os_wo,
-                "balance_wip" => empty(@$generate_mrp->qty_wip) ? 0 : @$generate_mrp->qty_wip,
+                "balance_wip" => empty($qty_wip) ? 0 : $qty_wip,
                 "eta" => empty(@$etaRow->total) ? 0 : @$etaRow->total,
                 "stock_whs" => empty(@$ithRow->end_stock) ? 0 : @$ithRow->end_stock,
                 "stock_hand" => $stock_hand,
                 "os_po" => empty(@$ospoRow->balance) ? 0 : @$ospoRow->balance,
-                "need_2" => empty(@$generate_mrp->need_2) ? 0 : @$generate_mrp->need_2,
+                "need_2" => empty(@$dmps->total) ? 0 : @$dmps->total,
                 "total" => ($post['date_1'] + $post['date_2'] + $post['date_3'] + $post['date_4'] + $post['date_5'] + $post['date_6'] + 
                     $post['date_7'] + $post['date_8'] + $post['date_9'] + $post['date_10'] + $post['date_11'] + $post['date_12'] + 
                     $post['date_13'] + $post['date_14'] + $post['date_15'] + $post['date_16'] + $post['date_17'] + $post['date_18'] + 
@@ -530,7 +514,6 @@ class Material_calculation extends CI_Controller
                         <td>" . $record['item_family_name'] . "</td>
                         <td style='text-align:right;'>" . round($record['stock_whs']) . "</td>
                         <td style='text-align:right;'>" . round($record['os_supply']) . "</td>
-                        <td style='text-align:right;'>" . round($record['os_wo']) . "</td>
                         <td style='text-align:right;'>" . round($record['stock_hand']) . "</td>
                         <td style='text-align:right;'>" . round($record['eta']) . "</td>
                         <td style='text-align:right;'>" . round($record['total']) . "</td>
@@ -550,7 +533,7 @@ class Material_calculation extends CI_Controller
                 $etaqty = empty(@$totalRow->total) ? 0 : @$totalRow->total;
                 
                 //Supply
-                $ithSupply = $this->db->query("SELECT a.item_rm_id, COALESCE(SUM(a.qty), 0) as supply FROM issued_material_details a WHERE a.item_rm_id = '$item_rm_id' and DATE_FORMAT(a.created_date, '%Y-%m-%d') = '$working_date2' GROUP BY a.item_rm_id");
+                $ithSupply = $this->db->query("SELECT a.item_rm_id, COALESCE(SUM(a.qty), 0) as supply FROM issued_material_details a WHERE a.item_rm_id = '$item_rm_id' and DATE_FORMAT(a.created_date, '%Y-%m-%d') = '$working_date2' and a.request_no NOT LIKE '%PR-%' GROUP BY a.item_rm_id");
                 $ithSupplyRow = $ithSupply->row();
 
                 $date_qty = $record["date_".$day];
@@ -642,7 +625,6 @@ class Material_calculation extends CI_Controller
                 <th style="text-align:center;" width="80" rowspan="3">PRODUCT FAMILY</th>
                 <th style="text-align:center;" width="50" rowspan="3">STOCK WHS</th>
                 <th style="text-align:center;" width="50" rowspan="3">OS SUPPLY</th>
-                <th style="text-align:center;" width="50" rowspan="3">OS WO</th>
                 <th style="text-align:center;" width="50" rowspan="3">ON HAND<br>STOCK</th>
                 <th style="text-align:center;" width="50" rowspan="3">ETA</th>
                 <th style="text-align:center;" width="50" rowspan="3">TOTAL NEED</th>

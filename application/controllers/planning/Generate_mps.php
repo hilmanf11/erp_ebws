@@ -194,14 +194,15 @@ class Generate_mps extends CI_Controller
 
                 $stockFg = $this->crud->query("SELECT
                     a.id,
-                    (COALESCE(b.qty_sto, 0) + COALESCE(d.sto_qty_in, 0) + COALESCE(c.qty_wip, 0) + COALESCE(e.qty_rgp_in, 0) - COALESCE(g.qty, 0) - COALESCE(d.sto_qty_out, 0) - COALESCE(f.qty_rgp_out, 0)) as end_stock
+                    (COALESCE(b.qty_sto, 0) + COALESCE(d.sto_qty_in, 0) + COALESCE(c.qty_wip, 0) + COALESCE(e.qty_rgp_in, 0) - COALESCE(g.qty, 0) - COALESCE(h.sto_qty_out, 0) - COALESCE(f.qty_rgp_out, 0)) AS end_stock
                 FROM item_fg a 
-                LEFT JOIN (select a.item_fg_id, COALESCE(SUM(b.qty), 0) as qty_sto FROM os_fg a JOIN scan_item_receipts_fg b ON a.id = b.workorder WHERE a.trans_date < '$filter_cutoff' GROUP BY a.item_fg_id) b ON a.id = b.item_fg_id
-                LEFT JOIN (select a.item_fg_id, COALESCE(SUM(b.qty), 0) as qty_wip FROM wip_receipts a JOIN scan_item_receipts_fg b ON a.workorder = b.workorder and a.checksheet_number = b.checksheet_number WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') < '$filter_cutoff' GROUP BY a.item_fg_id) c ON a.id = c.item_fg_id
-                LEFT JOIN (SELECT a.item_fg_id, (CASE WHEN a.type = 'IN' THEN COALESCE(SUM(a.qty), 0) ELSE 0 END) as sto_qty_in, (CASE WHEN a.type = 'OUT' THEN COALESCE(SUM(a.qty), 0) ELSE 0 END) as sto_qty_out FROM sto_fg a WHERE a.trans_date < '$filter_cutoff' and (a.approved_to = '' or a.approved_to is null) GROUP BY item_fg_id) d ON a.id = d.item_fg_id
-                LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) as qty_rgp_in FROM rgp_transactions a JOIN scan_item_receipts_fg b ON a.rgp_id = b.checksheet_number and a.id = b.workorder WHERE a.type = 'IN' and a.transaction_date < '$filter_cutoff' GROUP BY a.item_id) e ON a.id = e.item_id
-                LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) as qty_rgp_out FROM rgp_transactions a JOIN scan_item_rgp b ON a.number = b.rgp_number and a.item_id = b.item_id WHERE a.type = 'OUT' and a.transaction_date < '$filter_cutoff' GROUP BY a.item_id) f ON a.id = f.item_id
-                LEFT JOIN (SELECT item_fg_id, delivery_note_date, COALESCE(SUM(qty), 0) as qty FROM delivery_notes WHERE DATE_FORMAT(created_date, '%Y-%m-%d') < '$filter_cutoff' and `status` != '2' GROUP BY item_fg_id) g ON a.id = g.item_fg_id
+                LEFT JOIN (SELECT a.item_fg_id, COALESCE(SUM(b.qty), 0) AS qty_sto FROM os_fg a JOIN scan_item_receipts_fg b ON a.id = b.workorder WHERE a.trans_date < '$filter_cutoff' GROUP BY a.item_fg_id) b ON a.id = b.item_fg_id
+                LEFT JOIN (SELECT a.item_fg_id, COALESCE(SUM(b.qty), 0) AS qty_wip FROM wip_receipts a JOIN scan_item_receipts_fg b ON a.workorder = b.workorder AND a.checksheet_number = b.checksheet_number WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') < '$filter_cutoff' GROUP BY a.item_fg_id) c ON a.id = c.item_fg_id
+                LEFT JOIN (SELECT a.item_fg_id, COALESCE(SUM(a.qty), 0) AS sto_qty_in FROM sto_fg a WHERE a.trans_date < '$filter_cutoff' AND a.type = 'IN' AND (a.approved_to = '' OR a.approved_to IS NULL) GROUP BY item_fg_id) d ON a.id = d.item_fg_id
+                LEFT JOIN (SELECT a.item_fg_id, COALESCE(SUM(a.qty), 0) AS sto_qty_out FROM sto_fg a WHERE a.trans_date < '$filter_cutoff' AND a.type = 'OUT' AND (a.approved_to = '' OR a.approved_to IS NULL) GROUP BY item_fg_id) h ON a.id = h.item_fg_id
+                LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) AS qty_rgp_in FROM rgp_transactions a JOIN scan_item_receipts_fg b ON  a.rgp_id = b.checksheet_number AND a.id = b.workorder WHERE a.type = 'IN' AND a.transaction_date < '$filter_cutoff' GROUP BY a.item_id) e ON a.id = e.item_id
+                LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) AS qty_rgp_out FROM rgp_transactions a JOIN scan_item_rgp b ON a.number = b.rgp_number AND a.item_id = b.item_id WHERE a.type = 'OUT' AND a.transaction_date < '$filter_cutoff' GROUP BY a.item_id) f ON a.id = f.item_id
+                LEFT JOIN (SELECT item_fg_id, delivery_note_date, COALESCE(SUM(qty), 0) AS qty FROM delivery_notes WHERE DATE_FORMAT(created_date, '%Y-%m-%d') < '$filter_cutoff' AND `status` != '2' GROUP BY item_fg_id) g ON a.id = g.item_fg_id
                 WHERE a.id = '$item_fg_id'
                 GROUP BY a.id
                 ORDER BY a.number");
@@ -246,7 +247,7 @@ class Generate_mps extends CI_Controller
                     $finish2 = strtotime(date('Y-m-t', strtotime('+1 month', $monthStart)));
 
                     //Sales Order
-                    $sales_order = $this->crud->query("SELECT SUM(qty) as qty FROM sales_orders WHERE item_fg_id = '$data[id]' and customer_id = '$data[customer_id]' and sales_order_date like '%$monthName3%'");
+                    $sales_order = $this->crud->query("SELECT SUM(qty) as qty FROM sales_orders WHERE item_fg_id = '$data[id]' and `status` = 0 and customer_id = '$data[customer_id]' and sales_order_date like '%$monthName3%'");
 
                     //HKW 1
                     $hkw = 0;
@@ -665,9 +666,9 @@ class Generate_mps extends CI_Controller
                         "customer_id" => $postDetail['customer_id'],
                         "item_fg_id" => $postDetail['item_fg_id'],
                         "ltpp_month" => $postDetail['ltpp_month']
-                    ], $postFinalDetail);
+                    ], $postFinalDetail, "pass");
                 } else {
-                    $this->crud->create('generate_mps_details', $postFinalDetail);
+                    $this->crud->create('generate_mps_details', $postFinalDetail, "pass");
                 }
             }
 
@@ -704,10 +705,10 @@ class Generate_mps extends CI_Controller
                     "customer_id" => $post['customer_id'],
                     "item_fg_id" => $post['item_fg_id'],
                     "wip_month" => $post['wip_month']
-                ], $postFinal);
+                ], $postFinal, "pass");
                 echo $send;
             } else {
-                $send = $this->crud->create('generate_mps', $postFinal);
+                $send = $this->crud->create('generate_mps', $postFinal, "pass");
                 echo $send;
             }
         }
@@ -1371,8 +1372,8 @@ class Generate_mps extends CI_Controller
         <p style="font-size:12px; margin:0;">PERIOD ' . $this->monthName($filter_month) . ' ' . $filter_year . '</p>
         <p style="font-size:12px; margin:0;">REVISION ' . $filter_revision . '</p>
         <p style="font-size:12px; margin:0;">CUTOFF ' . @$customers[0]['cutoff'] . '</p>
-        <p style="font-size:12px; margin:0;">PRINT DATE ' . date("d M Y H:m:s") . '</p>
-        <p style="font-size:12px; margin:0;">PRINT BY ' . $this->session->username . '</p>
+        <p style="font-size:12px; margin:0;">CREATED DATE ' . @$customers[0]['created_date'] . '</p>
+        <p style="font-size:12px; margin:0;">UPDATED DATE ' . @$customers[0]['updated_date'] . '</p>
         <br>
         <table id="customers" border="1">';
         $html .= '<tr>

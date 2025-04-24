@@ -50,13 +50,13 @@ class Report_history_transactions_wip extends CI_Controller
         $this->db->from('config');
         $config = $this->db->get()->row();
         
-        $records = $this->crud->query("SELECT a.item_rm_id, c.number AS item_rm_number, c.name AS item_rm_name, d.name AS item_family_name, c.uom, SUM(a.total) AS need, b.issued, (SUM(a.total) - COALESCE(b.issued, 0)) AS balance FROM (
+        $records = $this->crud->query("SELECT a.item_rm_id, c.number AS item_rm_number, c.name AS item_rm_name, d.name AS item_family_name, c.uom, SUM(a.total) AS need, b.issued, (COALESCE(b.issued, 0) - SUM(a.total)) AS balance FROM (
                 SELECT b.item_rm_id, a.item_fg_id, SUM(a.qty), b.composition, (SUM(a.qty) * b.composition) AS total
                 FROM production_schedules a
                 JOIN bom b ON a.item_fg_id = b.item_fg_id
                 WHERE a.trans_date BETWEEN '$filter_from' AND '$filter_to' 
                 GROUP BY a.item_fg_id, b.item_rm_id) a
-            LEFT JOIN (SELECT item_rm_id, SUM(qty) AS issued FROM issued_material_details WHERE DATE_FORMAT(created_date, '%Y-%m-%d') BETWEEN '$filter_from' AND '$filter_to'  GROUP BY item_rm_id) b ON a.item_rm_id = b.item_rm_id
+            LEFT JOIN (SELECT item_rm_id, SUM(qty) AS issued FROM issued_material_details WHERE DATE_FORMAT(created_date, '%Y-%m-%d') BETWEEN '$filter_from' AND '$filter_to' and request_no NOT LIKE '%PR-%' GROUP BY item_rm_id) b ON a.item_rm_id = b.item_rm_id
             JOIN item_rm c ON a.item_rm_id = c.id
             JOIN item_familys d ON c.item_family_id = d.id
             WHERE c.item_family_id like '%$filter_item_family%' and c.id like '%$filter_items%'
@@ -121,6 +121,7 @@ class Report_history_transactions_wip extends CI_Controller
                             <td style="text-align:right;">' . number_format($record->issued, 0) . '</td>
                             <td style="text-align:right; '.$style.'">' . number_format($record->balance, 0) . '</td>
                         </tr>';
+                        
             if ($filter_display == "DETAIL") {
                 $html .= '  <tr>
                                 <td colspan="9" style="background:#D1FFC6;"><b>DETAIL OF ' . $record->item_rm_number . ' - ' . $record->item_rm_name . '</b></td>
@@ -150,7 +151,7 @@ class Report_history_transactions_wip extends CI_Controller
                         FROM issued_material_details a 
                         LEFT JOIN supply_sheets b ON a.request_no = b.request_no AND a.item_rm_id = b.item_rm_id
                         LEFT JOIN item_fg c ON b.item_fg_id = c.id
-                        WHERE DATE_FORMAT(a.created_date, '%Y-%m-%d') BETWEEN '$filter_from' AND '$filter_to' AND a.item_rm_id = '$item_rm_id'
+                        WHERE DATE_FORMAT(a.created_date, '%Y-%m-%d') BETWEEN '$filter_from' AND '$filter_to' AND a.item_rm_id = '$item_rm_id' and a.request_no NOT LIKE '%PR-%'
                         GROUP BY a.request_no)) z 
                         ORDER BY trans_date ASC");
 

@@ -69,6 +69,8 @@
                         <option value="GL - CUSTOMER">GL - CUSTOMER</option>
                         <option value="GL - BANK">GL - BANK</option>
                         <option value="GL - ASSET">GL - ASSET</option>
+                        <option value="ASSET - ASSET">ASSET - ASSET</option>
+                        <option value="FAR - SUPPLIER">FAR - SUPPLIER</option>
                     </select>
                 </div>
             </div>
@@ -109,6 +111,8 @@
                         <option value="GL - CUSTOMER">GL - CUSTOMER</option>
                         <option value="GL - BANK">GL - BANK</option>
                         <option value="GL - ASSET">GL - ASSET</option>
+                        <option value="ASSET - ASSET">ASSET - ASSET</option>
+                        <option value="FAR - SUPPLIER">FAR - SUPPLIER</option>
                     </select>
                 </div>
                 <div class="fitem">
@@ -147,9 +151,9 @@
             <thead>
                 <tr>
                     <!-- <th field="ck" checkbox="true">Posting</th> -->
-                    <th data-options="field:'remove',width:120, formatter:removebtn">Action</th>
-                    <th hidden data-options="field:'flag',width:100,editor: {type: 'textbox'}">Flag</th>
-                    <th hidden data-options="field:'id',width:150,editor: {type: 'textbox'}">ID</th>
+                    <th rowspan="2" data-options="field:'remove',width:120, formatter:removebtn">Action</th>
+                    <th rowspan="2" hidden data-options="field:'flag',width:100,editor: {type: 'textbox'}">Flag</th>
+                    <th rowspan="2" hidden data-options="field:'id',width:150,editor: {type: 'textbox'}">ID</th>
                     <!-- <th data-options="field:'document_no',width:120, editor: {
                         type: 'combobox',
                         options: {
@@ -167,14 +171,43 @@
                                 
                             }
                         }}">Reference</th> -->
-                    <th data-options="field:'description',width:200,editor: {type: 'textbox', options: {required: true}}">Description</th>
-                    <th data-options="field:'account_number',width:100, halign:'center', editor: {type: 'combogrid', options: {required: true}}">Account No</th>
-                    <th data-options="field:'account_name',width:180, editor: {type: 'textbox', options: {readonly: true}}">Account Name</th>
-                    <th hidden data-options="field:'company_id',width:100,editor: {type: 'textbox', options: {readonly: true}}">Code</th>
-                    <th hidden data-options="field:'company_name',width:200,editor: {type: 'textbox', options: {readonly: true}}">Name</th>
-                    <th data-options="field:'currency',width:80,editor: {type: 'textbox', options: {required: true, readonly: true}}">Currency</th>
-                    <th data-options="field:'amount',width:100,halign:'center',align:'right',formatter:numberformatDefaultIdr,editor: {type: 'numberbox', options: {required: true, precision:2}}">Taxable<br>Amount</th>
-                    <th data-options="field:'taxes',width:100, halign:'center', editor: {type: 'combogrid', options: {
+                    <th rowspan="2" data-options="field:'description',width:200,editor: {type: 'textbox', options: {required: true}}">Description</th>
+                    <th rowspan="2" data-options="field:'account_number',width:100, halign:'center', editor: {type: 'combogrid', options: {required: true}}">Account No</th>
+                    <th rowspan="2" data-options="field:'account_name',width:180, editor: {type: 'textbox', options: {readonly: true}}">Account Name</th>
+                    <th rowspan="2" data-options="field:'company_id',width:100,editor: {type: 'textbox', options: {readonly: true}}">Code</th>
+                    <th rowspan="2" data-options="field:'company_name',width:200,editor: {type: 'textbox', options: {readonly: true}}">Name</th>
+                    <th rowspan="2" data-options="field:'qty',width:80,editor: {type: 'numberbox', options: {required: true}}">Qty</th>
+                    <th rowspan="2" data-options="field:'currency',width:80, editor: {
+                        type: 'combobox',
+                        options: {
+                            url: '<?= base_url('master/currencies/reads') ?>',
+                            editable:false,
+                            valueField: 'number',
+                            textField: 'number',
+                            panelHeight: 'auto',
+                            prompt: 'Choose Currency',
+                            onChange: function(val){
+                                var dg = $('#dg2');
+                                var row = dg.datagrid('getSelected');
+                                var rowIndex = dg.datagrid('getRowIndex', row);
+
+                                var ed = dg.datagrid('getEditor', {
+                                    index: rowIndex,
+                                    field: 'rates'
+                                });
+
+                                if(val == 'INR'){
+                                    $(ed.target).numberbox('setValue', 1);
+                                    $(ed.target).numberbox({readonly: true});
+                                }else{
+                                    $(ed.target).numberbox('setValue', 0);
+                                    $(ed.target).numberbox({readonly: false});
+                                }
+                            }
+                        }}">Currency</th>
+                    <th rowspan="2" data-options="field:'amount',width:100,halign:'center',align:'right',formatter:numberformatDefaultIdr,editor: {type: 'numberbox', options: {required: true, precision:2}}">Taxable<br>Amount</th>
+                    <th rowspan="2" data-options="field:'rates',width:80,halign:'center',align:'right',formatter:numberformatDefaultIdr,editor: {type: 'numberbox', options: {required: true, precision:2}}">Rates</th>
+                    <th rowspan="2" data-options="field:'taxes',width:100, halign:'center', editor: {type: 'combogrid', options: {
                             url: '<?= base_url("finance/taxes/reads");  ?>',
                             panelWidth: 350,
                             panelHeight: 200,
@@ -218,7 +251,11 @@
                                 var amount = $(ed.target).numberbox('getValue');
 
                                 if(amount > 0){
-                                    $(ed3.target).numberbox('setValue', (parseFloat(amount) * ((parseFloat(rows.cgst2) + parseFloat(rows.sgst2) + parseFloat(rows.igst2)) / 100)));
+                                    var igst = parseFloat(((parseFloat(amount) * parseFloat(rows.igst2)) / 100).toFixed(2));
+                                    var cgst = parseFloat(((parseFloat(amount) * parseFloat(rows.cgst2)) / 100).toFixed(2));
+                                    var sgst = parseFloat(((parseFloat(amount) * parseFloat(rows.sgst2)) / 100).toFixed(2));
+
+                                    $(ed3.target).numberbox('setValue', (igst + cgst + sgst));
                                     $(ed4.target).combobox('clear');
                                 }else{
                                     toastr.error('Amount Still Empty');
@@ -228,8 +265,8 @@
                             }
                         }
                     }">GST<br>Conditions</th>
-                    <th data-options="field:'taxes_amount',width:100, halign:'center', editor: {type: 'numberbox', options: {precision: 2, readonly: true}}">GST Amount</th>
-                    <th data-options="field:'debitcredit',width:100,editor: {type: 'combobox',
+                    <th rowspan="2" data-options="field:'taxes_amount',width:100, halign:'center', editor: {type: 'numberbox', options: {precision: 2, readonly: true}}">GST Amount</th>
+                    <th rowspan="2" data-options="field:'debitcredit',width:100,editor: {type: 'combobox',
                         options: {
                             data: [
                                 {name: 'DEBIT'},
@@ -260,6 +297,11 @@
                                     field: 'local_credit'
                                 });
 
+                                var ed3 = dg.datagrid('getEditor', {
+                                    index: rowIndex,
+                                    field: 'rates'
+                                });
+
                                 var ed4 = dg.datagrid('getEditor', {
                                     index: rowIndex,
                                     field: 'debitcredit'
@@ -275,32 +317,75 @@
                                     field: 'taxes'
                                 });
 
+                                var ed7 = dg.datagrid('getEditor', {
+                                    index: rowIndex,
+                                    field: 'original_debit'
+                                });
+
+                                var ed8 = dg.datagrid('getEditor', {
+                                    index: rowIndex,
+                                    field: 'original_credit'
+                                });
+
+                                var ed9 = dg.datagrid('getEditor', {
+                                    index: rowIndex,
+                                    field: 'currency'
+                                });
+
                                 var amount = $(ed.target).numberbox('getValue');
+                                var rates = $(ed3.target).numberbox('getValue');
                                 var taxes_amount = $(ed5.target).numberbox('getValue');
                                 var taxes = $(ed6.target).numberbox('getValue');
+                                var currency = $(ed9.target).combobox('getValue');
 
-                                if(amount == '' && taxes_amount == ''){
+                                if(currency == 'INR'){
+                                    var amount_local = parseFloat(amount);
+                                    var amount_tax_local = (parseFloat(amount) + parseFloat(taxes_amount));
+                                    var amount_ori = parseFloat(amount);
+                                    var amount_tax_ori = (parseFloat(amount) + parseFloat(taxes_amount));
+                                }else{
+                                    var amount_local = (parseFloat(amount) * parseFloat(rates));
+                                    var amount_tax_local = ((parseFloat(amount) + parseFloat(taxes_amount)) * parseFloat(rates));
+                                    var amount_ori = parseFloat(amount);
+                                    var amount_tax_ori = (parseFloat(amount) + parseFloat(taxes_amount));
+                                }
+
+                                if(amount == '' && taxes_amount == '' || rates == 0){
                                     toastr.error('Please Complete the amount');
                                     $(ed4.target).combobox('clear');
                                 }else if(taxes == 'C1' || taxes == 'C2'){
                                     if(db.name == 'DEBIT'){
-                                        $(ed1.target).numberbox('setValue', parseFloat(amount));
+                                        $(ed1.target).numberbox('setValue', amount_local);
                                         $(ed2.target).numberbox('setValue', 0);
+                                        $(ed7.target).numberbox('setValue', amount_ori);
+                                        $(ed8.target).numberbox('setValue', 0);
                                     }else {
                                         $(ed1.target).numberbox('setValue', 0);
-                                        $(ed2.target).numberbox('setValue', parseFloat(amount));
+                                        $(ed2.target).numberbox('setValue', amount_local);
+                                        $(ed7.target).numberbox('setValue', 0);
+                                        $(ed8.target).numberbox('setValue', amount_ori);
                                     }
                                 }else if(db.name == 'DEBIT'){
-                                    $(ed1.target).numberbox('setValue', (parseFloat(amount) + parseFloat(taxes_amount)));
+                                    $(ed1.target).numberbox('setValue', amount_tax_local);
                                     $(ed2.target).numberbox('setValue', 0);
+                                    $(ed7.target).numberbox('setValue', amount_tax_ori);
+                                    $(ed8.target).numberbox('setValue', 0);
                                 }else if(db.name == 'CREDIT'){
                                     $(ed1.target).numberbox('setValue', 0);
-                                    $(ed2.target).numberbox('setValue', (parseFloat(amount) + parseFloat(taxes_amount)));
+                                    $(ed2.target).numberbox('setValue', amount_tax_local);
+                                    $(ed7.target).numberbox('setValue', 0);
+                                    $(ed8.target).numberbox('setValue', amount_tax_ori);
                                 }else{
                                     $(ed4.target).combobox('clear');
                                 }
                             }
                         }}">Debit / Credit</th>
+                    <th colspan="2" data-options="field:'',width:100, halign:'center'">Original</th>
+                    <th colspan="2" data-options="field:'',width:100, halign:'center'">Local</th>
+                </tr>
+                <tr>
+                    <th data-options="field:'original_debit',width:100,halign:'center',align:'right',formatter:numberformatDefaultIdr,editor: {type: 'numberbox', options: {readonly: true, precision:2}}">Debit</th>
+                    <th data-options="field:'original_credit',width:100,halign:'center',align:'right',formatter:numberformatDefaultIdr,editor: {type: 'numberbox', options: {readonly: true, precision:2}}">Credit</th>
                     <th data-options="field:'local_debit',width:100,halign:'center',align:'right',formatter:numberformatDefaultIdr,editor: {type: 'numberbox', options: {readonly: true, precision:2}}">Debit</th>
                     <th data-options="field:'local_credit',width:100,halign:'center',align:'right',formatter:numberformatDefaultIdr,editor: {type: 'numberbox', options: {readonly: true, precision:2}}">Credit</th>
                 </tr>
@@ -313,15 +398,22 @@
     <table id="dg3" class="easyui-datagrid" style="width:100%;" showFooter="true">
         <thead>
             <tr>
-                <th data-options="field:'journal_date',width:100,halign:'center'">Posting Date</th>
-                <th data-options="field:'trans_date',width:120,halign:'center'">Invoice Date</th>
-                <th data-options="field:'document_no',width:220,halign:'center'">Invoice No</th>
+                <th rowspan="2" data-options="field:'journal_date',width:100,halign:'center'">Posting Date</th>
+                <th rowspan="2" data-options="field:'trans_date',width:120,halign:'center'">Invoice Date</th>
+                <th rowspan="2" data-options="field:'document_no',width:220,halign:'center'">Invoice No</th>
                 <!-- <th data-options="field:'invoice_no',width:150,halign:'center'">Supplier Invoice</th> -->
-                <th data-options="field:'company_name',width:200,halign:'center'">Company Name</th>
-                <th data-options="field:'account_number',width:100,halign:'center'">Account No</th>
-                <th data-options="field:'account_name',width:250,halign:'center'">Account Name</th>
-                <th data-options="field:'description',width:150,halign:'center'">Description</th>
-                <th data-options="field:'currency',width:80,align:'center'">Currency</th>
+                <th rowspan="2" data-options="field:'company_id',width:150,halign:'center'">Code</th>
+                <th rowspan="2" data-options="field:'company_name',width:250,halign:'center'">Name</th>
+                <th rowspan="2" data-options="field:'account_number',width:100,halign:'center'">Account No</th>
+                <th rowspan="2" data-options="field:'account_name',width:250,halign:'center'">Account Name</th>
+                <th rowspan="2" data-options="field:'description',width:150,halign:'center'">Description</th>
+                <th rowspan="2" data-options="field:'currency',width:80,align:'center'">Currency</th>
+                <th colspan="2" data-options="field:'a',width:250,halign:'center'">Original</th>
+                <th colspan="2" data-options="field:'b',width:250,halign:'center'">Local</th>
+            </tr>
+            <tr>
+                <th data-options="field:'original_debit',width:100,halign:'center',align:'right',formatter:numberformatDefaultIdr">Debit</th>
+                <th data-options="field:'original_credit',width:100,halign:'center',align:'right',formatter:numberformatDefaultIdr">Credit</th>
                 <th data-options="field:'local_debit',width:100,halign:'center',align:'right',formatter:numberformatDefaultIdr">Debit</th>
                 <th data-options="field:'local_credit',width:100,halign:'center',align:'right',formatter:numberformatDefaultIdr">Credit</th>
             </tr>
@@ -329,12 +421,18 @@
     </table>
 </div>
 
-<div id="dlg_journal" class="easyui-dialog" title="Preview Journal" data-options="closed: true,modal:true" style="width: 650px; top:20px;">
+<div id="dlg_journal" class="easyui-dialog" title="Preview Journal" data-options="closed: true,modal:true" style="width: 850px; top:20px;">
     <table id="dg4" class="easyui-datagrid" style="width:100%;" showFooter="true">
         <thead>
             <tr>
-                <th data-options="field:'account_number',width:100,halign:'center'">Account No</th>
-                <th data-options="field:'account_name',width:250,halign:'center'">Account Name</th>
+                <th rowspan="2" data-options="field:'account_number',width:100,halign:'center'">Account No</th>
+                <th rowspan="2" data-options="field:'account_name',width:250,halign:'center'">Account Name</th>
+                <th colspan="2" data-options="field:'a',width:250,halign:'center'">Original</th>
+                <th colspan="2" data-options="field:'b',width:250,halign:'center'">Local</th>
+            </tr>
+            <tr>
+                <th data-options="field:'original_debit',width:100,halign:'center',align:'right',formatter:numberformatDefaultIdr">Debit</th>
+                <th data-options="field:'original_credit',width:100,halign:'center',align:'right',formatter:numberformatDefaultIdr">Credit</th>
                 <th data-options="field:'local_debit',width:100,halign:'center',align:'right',formatter:numberformatDefaultIdr">Debit</th>
                 <th data-options="field:'local_credit',width:100,halign:'center',align:'right',formatter:numberformatDefaultIdr">Credit</th>
             </tr>
@@ -420,14 +518,15 @@
     }
 
     //NOMOR AUTOMATIC
-    function number(id_menu) {
+    function number(id_menu, journal_date) {
         $.ajax({
             type: "post",
-            url: "<?= base_url('finance/journal_posting_adjustments/number/') ?>" + id_menu,
+            url: "<?= base_url('finance/journal_posting_adjustments/number/') ?>" + id_menu + "/" + btoa(journal_date),
             dataType: "html",
             success: function(result) {
                 if(result == ""){
                     toastr.info("Please Check Configuration in Serial No First");
+                    $("#number").textbox('clear');
                 }else{
                     $("#number").textbox('setValue', result);
                 }
@@ -481,37 +580,49 @@
                 var totalrows = rows.length;
                 
                 var amount = 0;
-                var local_amount = 0;
+                var rates = 0;
+                var currency = "";
+                var original_amount = 0;
                 for (let i = 0; i < totalrows; i++) {
                     if(rows[i].debitcredit == "DEBIT"){
-                        local_amount += parseFloat(rows[i].local_debit);
+                        original_amount += parseFloat(rows[i].original_debit);
                     }else{
-                        local_amount -= parseFloat(rows[i].local_credit);
+                        original_amount -= parseFloat(rows[i].original_credit);
                     }
 
+                    currency = rows[i].currency;
+                    rates = rows[i].rates;
                     amount += parseFloat(rows[i].amount);
                 }
 
-                if(local_amount > 0){
+                if(original_amount > 0){
                     var debitcredit1 = "CREDIT";
+                    var original_debit = 0;
+                    var original_credit = original_amount;
                     var local_debit = 0;
-                    var local_credit = local_amount;
-                }else if(local_amount < 0){
+                    var local_credit = (parseFloat(original_amount) * parseFloat(rates));
+                }else if(original_amount < 0){
                     var debitcredit1 = "DEBIT";
-                    var local_debit = local_amount;
+                    var original_debit = original_amount;
+                    var original_credit = 0;
+                    var local_debit = (parseFloat(original_amount) * parseFloat(rates));
                     var local_credit = 0;
                 }else{
                     var debitcredit1 = "";
-                    var local_debit = 0;
-                    var local_credit = 0;
+                    var original_debit = 0;
+                    var original_credit = 0;
                 }
 
                 $('#dg2').datagrid('appendRow', {
                     "flag": 1,
-                    "currency": "INR",
+                    "currency": currency,
                     "debitcredit": debitcredit1,
-                    "amount": (local_debit + local_credit),
+                    "amount": (original_debit + original_credit),
                     "taxes_amount": 0,
+                    "qty": 0,
+                    "rates": rates,
+                    "original_debit": original_debit,
+                    "original_credit": original_credit,
                     "local_debit": local_debit,
                     "local_credit": local_credit,
                 });
@@ -525,6 +636,15 @@
                     field: 'account_number'
                 });
 
+                var ed2 = $('#dg2').datagrid('getEditor', {
+                    index: editIndex,
+                    field: 'qty'
+                });
+
+                if(journal_type == "ASSET - ASSET"){
+                    $(ed2.target).numberbox('readonly', false);
+                }
+
                 var urls = '<?= base_url('finance/journal_posting_adjustments/readCoa?category=') ?>' + btoa(journal_type);
 
                 $(ed.target).combogrid({
@@ -532,7 +652,7 @@
                     panelWidth: 450,
                     panelHeight: 200,
                     idField: 'account_number',
-                    textField: 'name',
+                    textField: 'account_number',
                     mode: 'remote', 
                     fitColumns: true,
                     prompt: 'Choose Account No',
@@ -876,7 +996,7 @@
             $("#modul").textbox('disable');
             $("#journal_type_id").combogrid('disable');
             $("#company_name").combobox('disable');
-            $("#document_no").combobox('disable');
+            // $("#document_no").combobox('disable');
             $("#number").textbox('disable');
             $("#append").linkbutton('enable');
 
@@ -1096,10 +1216,15 @@
                     var local_debit_total = 0;
                     var local_credit_total = 0;
 
+                    if(document_no == ""){
+                        toastr.error("Please Input Invoice No");
+                        return false;
+                    }
+
                     for (let i = 0; i < totalrows; i++) {
                         var data = rows[i];
 
-                        if(data.account_number == "" || data.account_name == ""){
+                        if(data.account_number == "" || data.account_number == null){
                             toastr.error("Account Not Valid, Please Check your data input and save again!!");
                             return false;
                         }
@@ -1120,137 +1245,154 @@
 
                     $.ajax({
                         type: "post",
-                        url: "<?= base_url('closing/locks/checkLock') ?>",
-                        data: "period=" + journal_date + "&menus_id=<?= $menus_id ?>",
+                        url: "<?= base_url('finance/journal_posting_adjustments/checkInvoice') ?>",
+                        data: "document_no=" + document_no,
                         dataType: "json",
-                        success: function (lock) {
-                            if(lock.total > 0){
-                                toastr.error("This period is not active by Accounting");
+                        success: function (inv) {
+                            if(inv.total > 0 && proses == "ADD"){
+                                toastr.error("Invoice already created, you cannot save for this invoice");
                                 return false;
-                            }
+                            }else{
+                                $.ajax({
+                                    type: "post",
+                                    url: "<?= base_url('closing/locks/checkLock') ?>",
+                                    data: "period=" + journal_date + "&menus_id=<?= $menus_id ?>",
+                                    dataType: "json",
+                                    success: function (lock) {
+                                        if(lock.total > 0){
+                                            toastr.error("This period is not active by Accounting");
+                                            return false;
+                                        }
 
-                            if (rows.length > 0) {
-                                if(local_debit == local_credit){
-                                    $.messager.confirm('Warning', 'Are you sure you want to save this data?', function(r) {
-                                        if (r) {
-                                            Swal.fire({
-                                                title: 'Please Wait for Saving Data',
-                                                showConfirmButton: false,
-                                                allowOutsideClick: false,
-                                                allowEscapeKey: false,
-                                                didOpen: () => {
-                                                    Swal.showLoading();
-                                                },
-                                            });
+                                        if (rows.length > 0) {
+                                            if(local_debit == local_credit){
+                                                $.messager.confirm('Warning', 'Are you sure you want to save this data?', function(r) {
+                                                    if (r) {
+                                                        Swal.fire({
+                                                            title: 'Please Wait for Saving Data',
+                                                            showConfirmButton: false,
+                                                            allowOutsideClick: false,
+                                                            allowEscapeKey: false,
+                                                            didOpen: () => {
+                                                                Swal.showLoading();
+                                                            },
+                                                        });
 
-                                            $.ajax({
-                                                type: "post",
-                                                url: "<?= base_url('finance/journal_posting_adjustments/number/' . $menus_id) ?>",
-                                                dataType: "html",
-                                                success: function(numberValue) {
-                                                    if(numberValue == ""){
-                                                        Swal.close();
-                                                        toastr.info("Please Check Configuration in Serial No First");
-                                                        return false;
-                                                    }
+                                                        $.ajax({
+                                                            type: "post",
+                                                            url: "<?= base_url('finance/journal_posting_adjustments/number/' . $menus_id) ?>/" + btoa(journal_date),
+                                                            dataType: "html",
+                                                            success: function(numberValue) {
+                                                                if(numberValue == ""){
+                                                                    Swal.close();
+                                                                    toastr.info("Please Check Configuration in Serial No First");
+                                                                    return false;
+                                                                }
 
-                                                    if(proses == "UPDATE"){
-                                                        var numberFinal = number;
-                                                    }else{
-                                                        var numberFinal = numberValue;
-                                                    }
+                                                                if(proses == "UPDATE"){
+                                                                    var numberFinal = number;
+                                                                }else{
+                                                                    var numberFinal = numberValue;
+                                                                }
 
-                                                    $.ajax({
-                                                        method: 'post',
-                                                        url: '<?= base_url('finance/journal_posting_adjustments/delete') ?>',
-                                                        data: {
-                                                            number: numberFinal
-                                                        },
-                                                        success: function(result) {
-                                                            requestData(totalrows, rows);
-                                                            $('#dlg_insert').dialog('close');
-                                                            $('#dlg_generate').dialog('open');
-                                                        },
-                                                    });
+                                                                $.ajax({
+                                                                    method: 'post',
+                                                                    url: '<?= base_url('finance/journal_posting_adjustments/delete') ?>',
+                                                                    data: {
+                                                                        number: numberFinal
+                                                                    },
+                                                                    success: function(result) {
+                                                                        requestData(totalrows, rows);
+                                                                        $('#dlg_insert').dialog('close');
+                                                                        $('#dlg_generate').dialog('open');
+                                                                    },
+                                                                });
 
-                                                    function requestData(total, json, jml = 1, value = 0) {
-                                                        if (value < 100) {
-                                                            value = Math.floor((jml / total) * 100);
-                                                            var i = (jml - 1);
+                                                                function requestData(total, json, jml = 1, value = 0) {
+                                                                    if (value < 100) {
+                                                                        value = Math.floor((jml / total) * 100);
+                                                                        var i = (jml - 1);
 
-                                                            $('#p_upload').progressbar('setValue', value);
-                                                            $('#p_start').html(jml);
-                                                            $('#p_finish').html(totalrows);
+                                                                        $('#p_upload').progressbar('setValue', value);
+                                                                        $('#p_start').html(jml);
+                                                                        $('#p_finish').html(totalrows);
 
-                                                            $.ajax({
-                                                                type: "post",
-                                                                url: '<?= base_url('finance/journal_posting_adjustments/create') ?>',
-                                                                data: {
-                                                                    journal_date: journal_date,
-                                                                    modul: modul,
-                                                                    journal_type_id: journal_type_id,
-                                                                    journal_type: journal_type,
-                                                                    number: numberFinal,
-                                                                    remarks: remarks,
-                                                                    proses: proses,
-                                                                    // id: json[i].id,
-                                                                    id: "",
-                                                                    document_no: document_no,
-                                                                    document_date: document_date,
-                                                                    amount: json[i].amount,
-                                                                    taxes: json[i].taxes,
-                                                                    taxes_amount: json[i].taxes_amount,
-                                                                    debitcredit: json[i].debitcredit,
-                                                                    account_number: json[i].account_number,
-                                                                    account_name: json[i].account_name,
-                                                                    description: json[i].description,
-                                                                    company_id: json[i].company_id,
-                                                                    company_name: json[i].company_name,
-                                                                    currency: json[i].currency,
-                                                                    local_debit: json[i].local_debit,
-                                                                    local_credit: json[i].local_credit
-                                                                },
-                                                                dataType: "json",
-                                                                success: function(result) {
-                                                                    requestData(total, json, jml + 1, value);
+                                                                        $.ajax({
+                                                                            type: "post",
+                                                                            url: '<?= base_url('finance/journal_posting_adjustments/create') ?>',
+                                                                            data: {
+                                                                                journal_date: journal_date,
+                                                                                modul: modul,
+                                                                                journal_type_id: journal_type_id,
+                                                                                journal_type: journal_type,
+                                                                                number: numberFinal,
+                                                                                remarks: remarks,
+                                                                                proses: proses,
+                                                                                // id: json[i].id,
+                                                                                id: "",
+                                                                                document_no: document_no,
+                                                                                document_date: document_date,
+                                                                                amount: json[i].amount,
+                                                                                taxes: json[i].taxes,
+                                                                                taxes_amount: json[i].taxes_amount,
+                                                                                debitcredit: json[i].debitcredit,
+                                                                                account_number: json[i].account_number,
+                                                                                account_name: json[i].account_name,
+                                                                                description: json[i].description,
+                                                                                company_id: json[i].company_id,
+                                                                                company_name: json[i].company_name,
+                                                                                qty: json[i].qty,
+                                                                                rates: json[i].rates,
+                                                                                currency: json[i].currency,
+                                                                                local_debit: json[i].local_debit,
+                                                                                local_credit: json[i].local_credit,
+                                                                                original_debit: json[i].original_debit,
+                                                                                original_credit: json[i].original_credit
+                                                                            },
+                                                                            dataType: "json",
+                                                                            success: function(result) {
+                                                                                requestData(total, json, jml + 1, value);
 
-                                                                    if (result.theme == "success") {
-                                                                        var title = "<b style='color: green;'>" + result.title + "</b> | " + result.message;
-                                                                    } else {
-                                                                        var title = "<b style='color: red;'>" + result.title + "</b> | " + result.message;
-                                                                    }
+                                                                                if (result.theme == "success") {
+                                                                                    var title = "<b style='color: green;'>" + result.title + "</b> | " + result.message;
+                                                                                } else {
+                                                                                    var title = "<b style='color: red;'>" + result.title + "</b> | " + result.message;
+                                                                                }
 
-                                                                    $("#p_remarks").append(title + "<br>");
+                                                                                $("#p_remarks").append(title + "<br>");
 
-                                                                    if (i == (totalrows - 1)) {
-                                                                        Swal.close();
-                                                                        $('#dlg_generate').dialog('close');
+                                                                                if (i == (totalrows - 1)) {
+                                                                                    Swal.close();
+                                                                                    $('#dlg_generate').dialog('close');
 
-                                                                        Swal.fire({
-                                                                            title: result.message,
-                                                                            icon: result.theme,
-                                                                            confirmButtonText: 'Ok',
-                                                                            allowOutsideClick: false,
-                                                                        }).then((result) => {
-                                                                            if (result.isConfirmed) {
-                                                                                // window.location.reload();
-                                                                                $("#dg").datagrid('reload');
+                                                                                    Swal.fire({
+                                                                                        title: result.message,
+                                                                                        icon: result.theme,
+                                                                                        confirmButtonText: 'Ok',
+                                                                                        allowOutsideClick: false,
+                                                                                    }).then((result) => {
+                                                                                        if (result.isConfirmed) {
+                                                                                            // window.location.reload();
+                                                                                            $("#dg").datagrid('reload');
+                                                                                        }
+                                                                                    });
+                                                                                }
                                                                             }
                                                                         });
                                                                     }
                                                                 }
-                                                            });
-                                                        }
+                                                            }
+                                                        });
                                                     }
-                                                }
-                                            });
+                                                });
+                                            } else {
+                                                toastr.error("Debit & Credit Not Balance");
+                                            }
+                                        } else {
+                                            toastr.info("Please Checklist Posting");
                                         }
-                                    });
-                                } else {
-                                    toastr.error("Debit & Credit Not Balance");
-                                }
-                            } else {
-                                toastr.info("Please Checklist Posting");
+                                    }
+                                });
                             }
                         }
                     });
@@ -1386,7 +1528,7 @@
 
         $("#journal_date").datebox({
             onChange: function(val) {
-                number("<?= $menus_id ?>");
+                number("<?= $menus_id ?>", val);
             }
         });
     });

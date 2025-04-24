@@ -289,24 +289,14 @@ class Production_schedules extends CI_Controller
             $rows   = isset($rows) ? intval($rows) : 10;
             $offset = ($page - 1) * $rows;
             $result = array();
-            //Select Query
-            // $this->db->select("a.*, b.number as customer_number, b.name as customer_name, b.type as customer_type, 
-            //     c.number as item_number, c.name as item_name, c.number_customer, c.uom,
-            //     SUM(f.qty) as total_rfg,
-            //     (CASE WHEN SUM(f.qty) >= a.qty THEN 1 ELSE 0 END) as status_wip2,
-            //     (CASE WHEN SUM(f.qty) >= a.qty THEN 2 ELSE a.status END) as status_wo");
+
             $this->db->select("a.*, b.number as customer_number, b.name as customer_name, b.type as customer_type, 
-                c.number as item_number, c.name as item_name, c.number_customer, c.uom");
+                c.number as item_number, c.name as item_name, c.number_customer, c.uom, COALESCE(d.total_rfg, 0) as total_rfg");
             $this->db->from('production_schedules a');
             $this->db->join('customers b', 'a.customer_id = b.id');
             $this->db->join('item_fg c', 'a.item_fg_id = c.id');
-            // $this->db->join('scan_item_receipts_fg f', 'a.workorder = f.workorder', 'left');
+            $this->db->join("(SELECT workorder, item_fg_id, SUM(qty) as total_rfg FROM wip_receipts GROUP BY workorder, item_fg_id) d", 'a.item_fg_id = d.item_fg_id and a.workorder = d.workorder', 'left');
             $this->db->where('a.deleted', 0);
-            // if($filter_status == "0"){
-            //     $this->db->where("a.status", 0);
-            // }elseif($filter_status == "2"){
-            //     $this->db->where("f.id != ''");
-            // }
             $this->db->like('a.month', $filter_month);
             $this->db->like('a.year', $filter_year);
             if($filter_wp != ""){
@@ -354,23 +344,25 @@ class Production_schedules extends CI_Controller
                 $rowQty = $sqlQty->row();
                 $qty_scan = empty(@$rowQty->qty) ? 0 : @$rowQty->qty;
 
-                if($qty_scan >= $record['qty']){
-                    $status_wip2 = "1";
+                if($record['qty'] > $record['total_rfg']){
+                    $status_rfg = "0";
                 }else{
-                    $status_wip2 = "0";
+                    $status_rfg = "1";
                 }
 
                 if($qty_scan >= $record['qty']){
-                    $status_wo = "2";
+                    $status_visual = "2";
                 }else{
-                    $status_wo = $record['status'];
+                    $status_visual = "0";
                 }
 
-                $arr[] = array_merge($record, [
-                    "total_rfg" => $qty_scan,
-                    "status_wip2" => $status_wip2,
-                    "status_wo" => $status_wo,
-                ]);
+                if($filter_status == $status_rfg || $filter_status == ""){
+                    $arr[] = array_merge($record, [
+                        "total_visual" => $qty_scan,
+                        "status_rfg" => $status_rfg,
+                        "status_visual" => $status_visual,
+                    ]);
+                }
             }
 
             //Mapping Data
@@ -434,191 +426,6 @@ class Production_schedules extends CI_Controller
         echo $send;
     }
 
-    public function print_job_order($id)
-    {
-        //Config
-        $this->db->select('*');
-        $this->db->from('config');
-        $config = $this->db->get()->row();
-        $config_iso = $this->db->get('config_iso')->row();
-
-        $this->db->select('a.*, b.lot');
-        $this->db->from('production_schedules a');
-        $this->db->join('item_fg b', 'a.item_fg_id = b.id');
-        $this->db->where('a.deleted', 0);
-        $this->db->where('a.id', $id);
-        $label = $this->db->get()->row();
-        $amountQty = ceil($label->qty / $label->lot);
-        for ($i = 1; $i <= $amountQty; $i++) {
-            $lots = sprintf("%03s", $i);
-            $this->db->select('b.circuit');
-            $this->db->from('production_schedules a');
-            $this->db->join('job_orders b', 'a.item_fg_id = b.item_fg_id and a.customer_id and b.customer_id', 'left');
-            $this->db->where('a.deleted', 0);
-            $this->db->where('a.id', $id);
-            $this->db->order_by('b.circuit', 'asc');
-            $totalRows = $this->db->count_all_results('', false);
-            $job_orders = $this->db->get()->result_array();
-            $no = 1;
-            $qty = $label->qty;
-            foreach ($job_orders as $job_order) {
-                $sequence = sprintf("%03s", $no);
-                $label_no = $label->workorder . $lots . $sequence;
-                if ($no == $totalRows) {
-                    $finalQty = $qty;
-                } else {
-                    $finalQty = $label->lot;
-                }
-                $dataJobOrderLabel = array(
-                    "workorder" => $label->workorder,
-                    "label_no" => $label_no,
-                    "circuit" => $job_order['circuit'],
-                    "qty" => $finalQty,
-                );
-                $jobOrderLabel = $this->crud->read("job_order_labels", [], ["label_no" => $label_no]);
-                if (empty($jobOrderLabel->id)) {
-                    $this->crud->create("job_order_labels", $dataJobOrderLabel);
-                }
-                $qty -= $label->lot;
-                $no++;
-            }
-        }
-        $this->db->select('b.*, a.workorder, a.so_date, a.trans_date, a.qty, c.label_no, c.circuit, d.number as item_number, d.lot');
-        $this->db->from('production_schedules a');
-        $this->db->join('job_order_labels c', 'a.workorder = c.workorder');
-        $this->db->join('job_orders b', 'a.item_fg_id = b.item_fg_id and a.customer_id and b.customer_id and c.circuit = b.circuit', 'left');
-        $this->db->join('item_fg d', 'a.item_fg_id = d.id');
-        $this->db->where('a.deleted', 0);
-        $this->db->where('a.id', $id);
-        $this->db->group_by('c.circuit');
-        $this->db->group_by('c.label_no');
-        $this->db->order_by('c.label_no', 'asc');
-        $records = $this->db->get()->result_object();
-        if ($records) {
-            $html = '<html>
-                    <head>
-                        <title>' . $label->workorder . '</title>
-                        <link rel="icon" href="' . $config->favicon . '" type="image/png" sizes="16x16">
-                    </head>
-                    <style>body {font-family: Arial, Helvetica, sans-serif;}#customers {border-collapse: collapse;width: 20cm;font-size: 12px;}#customers td, #customers th {border: 1px solid black;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: #ddd;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: center;color: black;}</style><body>';
-            foreach ($records as $record) {
-                //Generate QRcode
-                $this->createQrcode($record->label_no, "assets/image/qrcode/");
-                $html .= '  <table id="customers" border="1" style="margin-bottom:20px;">
-                                <tr>
-                                    <th colspan="4" style="font-size:16px; padding:10px; text-align:center;"><b>JOB ORDER ' . $config->name . '</b></th>
-                                    <th width="150">
-                                        <table style="width:100%; font-size:10px; border:0;">
-                                            <tr style="border:0;">
-                                                <td width="60">Doc No</td>
-                                                <td width="100">' . $config_iso->doc_job_order . '</td>
-                                            </tr>
-                                            <tr style="border:0;">
-                                                <td>Form</td>
-                                                <td>' . $config_iso->form_job_order . '</td>
-                                            </tr>
-                                        </table>
-                                    </th>
-                                </tr>
-                                <tr>
-                                    <th style="text-align:center;">MODEL</th>
-                                    <th style="text-align:center;">PLAN QTY</th>
-                                    <th style="text-align:center;">LOT</th>
-                                    <th style="text-align:center;">START DATE</th>
-                                    <th style="text-align:center;">ISSUE DATE</th>
-                                </tr>
-                                <tr>
-                                    <td style="text-align:center;">' . $record->item_number . '</td>
-                                    <td style="text-align:center;">' . $record->qty . '</td>
-                                    <td style="text-align:center;">' . $record->lot . '</td>
-                                    <td style="text-align:center;">' . $record->trans_date . '</td>
-                                    <td style="text-align:center;">' . $record->so_date . '</td>
-                                </tr>
-                                <tr>
-                                    <th style="text-align:center;">WIRE CODE</th>
-                                    <th style="text-align:center;">TYPE & SIZE</th>
-                                    <th style="text-align:center;">COLOR</th>
-                                    <th style="text-align:center;">LENGTH</th>
-                                    <th style="text-align:center;">M/C NO</th>
-                                </tr>
-                                <tr>
-                                    <td style="text-align:center;">' . $record->wire . '</td>
-                                    <td style="text-align:center;">' . $record->type . ' ' . $record->size . '</td>
-                                    <td style="text-align:center;">' . $record->color . '</td>
-                                    <td style="text-align:center;">' . $record->length . '</td>
-                                    <td style="text-align:center;"></td>
-                                </tr>
-                                <tr>
-                                    <th style="text-align:center;">TERMINAL SIDE A</th>
-                                    <th style="text-align:center;">TERMINAL SIDE B</th>
-                                    <th colspan="3" style="text-align:center;">WO. No</th>
-                                </tr>
-                                <tr>
-                                    <td style="text-align:center; height:20px;">' . $record->a_terminal . '</td>
-                                    <td style="text-align:center; height:20px;">' . $record->b_terminal . '</td>
-                                    <td rowspan="7" colspan="3" style="text-align:center;">' . $record->workorder . '</td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align:center; height:20px;">' . $record->a_seal . '</td>
-                                    <td style="text-align:center; height:20px;">' . $record->b_seal . '</td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align:center; height:20px;">' . $record->a_chi . '</td>
-                                    <td style="text-align:center; height:20px;">' . $record->b_chi . '</td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align:center; height:20px;">' . $record->a_chc . '</td>
-                                    <td style="text-align:center; height:20px;">' . $record->b_chc . '</td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align:center; height:20px;">' . $record->a_stripping . '</td>
-                                    <td style="text-align:center; height:20px;">' . $record->b_stripping . '</td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align:center; height:20px;">' . $record->a_process . '</td>
-                                    <td style="text-align:center; height:20px;">' . $record->b_process . '</td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align:center; height:20px;">' . $record->a_note . '</td>
-                                    <td style="text-align:center; height:20px;">' . $record->b_note . '</td>
-                                </tr>
-                                <tr>
-                                    <th style="text-align:center;">CIRCUIT NO</th>
-                                    <th style="text-align:center;">SERIAL NO</th>
-                                    <th style="text-align:center;">OPERATOR</th>
-                                    <th style="text-align:center;">CHECK BY</th>
-                                    <th style="text-align:center;">INSPECT BY</th>
-                                </tr>
-                                <tr>
-                                    <th rowspan="3" style="text-align:center; height:50px; font-size:40px;">' . $record->circuit . '</th>
-                                    <td rowspan="3" style="text-align:center; height:50px;">
-                                        <img src="' . base_url('assets/image/qrcode/' . $record->label_no . '.png') . '" width="80"/>
-                                        <br>
-                                        <span>' . $record->label_no . '</span>
-                                    </td>
-                                    <th style="text-align:center; height:80px;"></th>
-                                    <th style="text-align:center; height:80px;"></th>
-                                    <th style="text-align:center; height:80px;"></th>
-                                </tr>
-                                <tr>
-                                    <th style="text-align:left;">Name :</th>
-                                    <th style="text-align:left;">Name :</th>
-                                    <th style="text-align:left;">Name :</th>
-                                </tr>
-                                <tr>
-                                    <th style="text-align:left;">Date :</th>
-                                    <th style="text-align:left;">Date :</th>
-                                    <th style="text-align:left;">Date :</th>
-                                </tr>
-                            </table>';
-            }
-            $html .= "<script>window.print()</script>";
-            die($html);
-        } else {
-            echo "<h1>NOT FOUND JOB ORDER</h1>";
-        }
-    }
-
     public function print($option = "")
     {
         if ($option == "excel") {
@@ -644,22 +451,13 @@ class Production_schedules extends CI_Controller
         $this->db->from('config');
         $config = $this->db->get()->row();
         
-        // $this->db->select("a.*, b.number as customer_number, b.name as customer_name, b.type as customer_type, 
-        //     c.number as item_number, c.name as item_name, c.number_customer, c.uom,
-        //     SUM(f.qty) as total_rfg,
-        //     (CASE WHEN f.id != '' THEN 2 ELSE a.status END) as status_wo");
         $this->db->select("a.*, b.number as customer_number, b.name as customer_name, b.type as customer_type, 
-            c.number as item_number, c.name as item_name, c.number_customer, c.uom");
+            c.number as item_number, c.name as item_name, c.number_customer, c.uom, COALESCE(d.total_rfg, 0) as total_rfg");
         $this->db->from('production_schedules a');
         $this->db->join('customers b', 'a.customer_id = b.id');
         $this->db->join('item_fg c', 'a.item_fg_id = c.id');
-        // $this->db->join('scan_item_receipts_fg f', 'a.workorder = f.workorder', 'left');
+        $this->db->join("(SELECT workorder, item_fg_id, SUM(qty) as total_rfg FROM wip_receipts GROUP BY workorder, item_fg_id) d", 'a.item_fg_id = d.item_fg_id and a.workorder = d.workorder', 'left');
         $this->db->where('a.deleted', 0);
-        // if($filter_status == "0"){
-        //     $this->db->where("a.status", 0);
-        // }elseif($filter_status == "2"){
-        //     $this->db->where("f.id != ''");
-        // }
         $this->db->like('a.month', $filter_month);
         $this->db->like('a.year', $filter_year);
         if($filter_wp != ""){
@@ -668,7 +466,7 @@ class Production_schedules extends CI_Controller
         $this->db->like('a.workorder', $filter_workorder);
         $this->db->like('a.customer_id', $filter_customers);
         $this->db->like('a.item_fg_id', $filter_item_fg_id);
-        // $this->db->group_by('a.workorder');
+        $this->db->group_by('a.workorder');
         $this->db->order_by('a.trans_date', 'DESC');
         $this->db->order_by('b.name', 'ASC');
         $this->db->order_by('c.number', 'ASC');
@@ -700,6 +498,7 @@ class Production_schedules extends CI_Controller
             <table id="customers" border="1">
                 <tr>
                     <th width="20">No</th>
+                    <th>Status<br>Visual</th>
                     <th>Status<br>RFG</th>
                     <th>Production<br>Order</th>
                     <th>Period</th>
@@ -714,6 +513,7 @@ class Production_schedules extends CI_Controller
                     <th>Product Name</th>
                     <th>UoM</th>
                     <th>Qty</th>
+                    <th>Visual Qty</th>
                     <th>RFG Qty</th>
                     <th>Created By</th>
                     <th>Created Date</th>
@@ -747,40 +547,47 @@ class Production_schedules extends CI_Controller
             $rowQty = $sqlQty->row();
             $qty_scan = empty(@$rowQty->qty) ? 0 : @$rowQty->qty;
 
-            if($qty_scan > 0){
-                $style_wo = "style='background-color:#FFDFBD;'";
-                $status_wo = "SUPPLY";
-            }elseif(round($qty_scan) == round($data['qty'])){
-                $style_wo = "style='background-color:#FFC8C8;'";
-                $status_wo = "CLOSED";
+            if($data['qty'] > $data['total_rfg']){
+                $status_rfg = "0";
+                $status_rfg2 = "OPEN";
             }else{
-                $style_wo = "style='background-color:#C8FFCC;'";
-                $status_wo = "OPEN";
+                $status_rfg = "1";
+                $status_rfg2 = "CLOSED";
             }
 
-            $html .= '<tr>
-                        <td style="text-align:center">' . $no . '</td>
-                        <td '.$style_wo.'>' . $status_wo . '</td>
-                        <td>' . $data['precut_status'] . '</td>
-                        <td>' . $data['period'] . '</td>
-                        <td>' . $data['wp'] . '</td>
-                        <td>' . $data['trans_date'] . '</td>
-                        <td>' . $data['workorder'] . '</td>
-                        <td>' . $data['customer_number'] . '</td>
-                        <td>' . $data['customer_name'] . '</td>
-                        <td>' . $data['customer_type'] . '</td>
-                        <td>' . $data['item_number'] . '</td>
-                        <td>' . $data['number_customer'] . '</td>
-                        <td>' . $data['item_name'] . '</td>
-                        <td>' . $data['uom'] . '</td>
-                        <td>' . number_format($data['qty'], 2) . '</td>
-                        <td>' . number_format($qty_scan, 2) . '</td>
-                        <td>' . $data['created_by'] . '</td>
-                        <td>' . $data['created_date'] . '</td>
-                        <td>' . $data['updated_by'] . '</td>
-                        <td>' . $data['updated_date'] . '</td>
-                    </tr>';
-            $no++;
+            if($qty_scan >= $data['qty']){
+                $status_visual = "CLOSED";
+            }else{
+                $status_visual = "OPEN";
+            }
+
+            if($filter_status == $status_rfg || $filter_status == ""){
+                $html .= '<tr>
+                            <td style="text-align:center">' . $no . '</td>
+                            <td>' . $status_visual . '</td>
+                            <td>' . $status_rfg2 . '</td>
+                            <td>' . $data['precut_status'] . '</td>
+                            <td>' . $data['period'] . '</td>
+                            <td>' . $data['wp'] . '</td>
+                            <td>' . $data['trans_date'] . '</td>
+                            <td>' . $data['workorder'] . '</td>
+                            <td>' . $data['customer_number'] . '</td>
+                            <td>' . $data['customer_name'] . '</td>
+                            <td>' . $data['customer_type'] . '</td>
+                            <td>' . $data['item_number'] . '</td>
+                            <td>' . $data['number_customer'] . '</td>
+                            <td>' . $data['item_name'] . '</td>
+                            <td>' . $data['uom'] . '</td>
+                            <td>' . number_format($data['qty'], 2) . '</td>
+                            <td>' . number_format($qty_scan, 2) . '</td>
+                            <td>' . number_format($data['total_rfg'], 2) . '</td>
+                            <td>' . $data['created_by'] . '</td>
+                            <td>' . $data['created_date'] . '</td>
+                            <td>' . $data['updated_by'] . '</td>
+                            <td>' . $data['updated_date'] . '</td>
+                        </tr>';
+                $no++;
+            }
         }
         $html .= '</table></body></html>';
         echo $html;

@@ -379,7 +379,7 @@
 
         $("#receipt_date").datebox({
             onChange: function(val) {
-                number("<?= $menus_id ?>");
+                number("<?= $menus_id ?>", val);
             }
         });
     }
@@ -392,7 +392,7 @@
 
             setTimeout(function() {
                 balance_journal();
-                number("<?= $menus_id ?>");
+                number("<?= $menus_id ?>", "<?= date("Y-m-d") ?>");
             }, 2000);
 
             $("#note").textbox('setValue', 'REVERSAL');
@@ -838,14 +838,15 @@
     }
 
     //NOMOR AUTOMATIC
-    function number(id_menu) {
+    function number(id_menu, trans_date) {
         $.ajax({
             type: "post",
-            url: "<?= base_url('finance/ar_receipts/number/') ?>" + id_menu,
+            url: "<?= base_url('finance/ar_receipts/number/') ?>" + id_menu + "/" + btoa(trans_date),
             dataType: "html",
             success: function(result) {
                 if (result == "") {
                     toastr.info("Please Check Configuration in Serial No First");
+                    $("#receipt_no").textbox('clear');
                 } else {
                     $("#receipt_no").textbox('setValue', result);
                 }

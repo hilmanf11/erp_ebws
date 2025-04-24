@@ -11,7 +11,7 @@
             <th rowspan="2" data-options="field:'product_family_name',width:120,halign:'center'">Product Family</th>
             <th rowspan="2" data-options="field:'stock_whs',width:80,halign:'center',align:'right',styler:cellStyler, formatter:numberformat">Stock WHS</th>
             <th rowspan="2" data-options="field:'os_supply',width:80,halign:'center',align:'right',styler:cellStyler, formatter:numberformat">OS Supply</th>
-            <th rowspan="2" data-options="field:'os_wo',width:80,halign:'center',align:'right',styler:cellStyler, formatter:numberformat">OS WO</th>
+            <!-- <th rowspan="2" data-options="field:'os_wo',width:80,halign:'center',align:'right',styler:cellStyler, formatter:numberformat">OS WO</th> -->
             <th rowspan="2" data-options="field:'stock_hand',width:80,halign:'center',align:'right',styler:cellStyler, formatter:numberformat">Onhand<br>Stock</th>
             <th rowspan="2" data-options="field:'eta',width:80,halign:'center',align:'right',styler:cellStyler, formatter:numberformat">Scan In</th>
             <th rowspan="2" data-options="field:'total',width:100,halign:'center',align:'right',styler:cellStyler, formatter:BtnBalance">Total Need</th>
@@ -116,6 +116,7 @@
                         <div class="fitem">
                             <span style="width:35%; display:inline-block;"></span>
                             <a href="javascript:;" class="easyui-linkbutton" onclick="filter()"><i class="fa fa-search"></i> Filter Data</a>
+                            <a href="javascript:;" class="easyui-linkbutton" onclick="formula()"><i class="fa fa-list"></i> Formula</a>
                         </div>
                     </div>
                     <div style="width: 50%; float: left;">
@@ -186,6 +187,28 @@
 
 <iframe id="printout" src="" style="width: 100%; height:95%; border: 0;" hidden></iframe>
 <script>
+    function formula(){
+        Swal.fire({
+            width: 600,
+            html: `<div style="text-align:left;">
+                    <center><b style="font-size:16px !important;">FORMULA</b><hr></center>
+                    <ul>
+                        <li><b>Stock WHS</b> Taken From Historical Transaction Rm Based On Cut Off Date</li>
+                        <li><b>OS Supply</b> Taken From Historical Transaction Kanban Period Month -1 Until Cut Off</li>
+                        <li><b>On Hand Stock</b> Stock Whs - Os Supply</li>
+                        <li><b>Scan In</b> Taken From Gate Entry On The Same Period</li>
+                        <li><b>Total Need</b> Taken From Mpp Column Plotting * BOM</li>
+                        <li><b>Total Balance</b> On Hand Stock + Scan In - Total Need</li>
+                        <li><b>Scan In by Date</b> Taken From Gate Entry On The Same Date And Period</li>
+                        <li><b>Need by Date</b> Taken From Mpp Column Wp * BOM</li>
+                        <li><b>Supply by Date</b> Taken From Historical Transaction Rm By On The Same Date</li>
+                        <li><b>Balance by Date</b> On Hand Stock + Scan In By Date - Need By Date - Supply By Date</li>
+                        <li><b>Free Stock</b> Accumulated Ending Balance. If Minus Auto Zero (0)</li>
+                    </ul>
+                    </div>`,
+        });
+    }
+
      //Add Data
     function add() {
         var filter_month = $("#filter_month").combobox('getValue');
@@ -407,12 +430,12 @@
         if (filter_month != "" && filter_year != "" && filter_revision != "") {
             $('#dg').datagrid({
                 url: '<?= base_url('planning/material_calculation/datatables') ?>' + url,
-                pagination: true,
+                pagination: false,
                 rownumbers: true,
                 singleSelect: true,
                 fit: true,
-                pageList: [20, 50, 100, 500, 1000],
-                pageSize: 20,
+                // pageList: [20, 50, 100, 500, 1000],
+                // pageSize: 20,
             });
 
             $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");

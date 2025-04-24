@@ -398,9 +398,10 @@
         $("#f_cheque_no").hide();
         $("#f_account").hide();
         $("#f_imprest").hide();
+        
         $("#payment_date").datebox({
             onChange: function(val) {
-                number("<?= $menus_id ?>");
+                number("<?= $menus_id ?>", val);
             }
         });
     }
@@ -419,7 +420,7 @@
 
             setTimeout(function() {
                 balance_journal();
-                number("<?= $menus_id ?>");
+                number("<?= $menus_id ?>", "<?= date("Y-m-d") ?>");
             }, 2000);
 
             $("#note").textbox('setValue', 'REVERSAL');
@@ -892,20 +893,22 @@
         }
     }
     //NOMOR AUTOMATIC
-    function number(id_menu) {
+    function number(id_menu, trans_date) {
         $.ajax({
             type: "post",
-            url: "<?= base_url('finance/ap_payments/number/') ?>" + id_menu,
+            url: "<?= base_url('finance/ap_payments/number/') ?>" + id_menu + "/" + btoa(trans_date),
             dataType: "html",
             success: function(result) {
                 if (result == "") {
                     toastr.info("Please Check Configuration in Serial No First");
+                    $("#payment_no").textbox('clear');
                 } else {
                     $("#payment_no").textbox('setValue', result);
                 }
             }
         });
     }
+
     var editIndex = undefined;
     function preview(link = "") {
         var purchase_invoice = $("#purchase_invoice").combogrid('getText');
@@ -1300,6 +1303,7 @@
                     var total_payment = $("#total_payment").numberbox('getValue');
                     var balance_debit = $("#balance_debit").numberbox('getValue');
                     var balance_credit = $("#balance_credit").numberbox('getValue');
+                    
                     $.ajax({
                         type: "post",
                         url: "<?= base_url('closing/locks/checkLock') ?>",
@@ -1310,6 +1314,7 @@
                                 toastr.error("This period is not active by Accounting");
                                 return false;
                             }
+
                             if (parseFloat(balance_debit) == parseFloat(balance_credit)) {
                                 //if (parseFloat(balance_debit) == parseFloat(total_payment)) {
                                 if (purchase_invoice == "" || bank_account == "" || payment_date == "" || payment_by == "") {
@@ -1318,9 +1323,29 @@
                                     $('#dg2').datagrid('acceptChanges');
                                     var rows = $('#dg2').datagrid('getRows');
                                     var totalrows = rows.length;
+                                    
                                     var rows2 = $('#dg3').datagrid('getRows');
                                     var totalrows2 = rows2.length;
                                     endEditing2();
+
+                                    for (let z = 0; z < totalrows; z++) {
+                                        var dataz = rows[z];
+
+                                        if(dataz.account_number == "" || dataz.account_number == null){
+                                            toastr.error("Account No Not valid, Please Check your data input and save again!!");
+                                            return false;
+                                        }
+                                    }
+
+                                    for (let c = 0; c < totalrows2; c++) {
+                                        var datac = rows2[c];
+
+                                        if(datac.account_number == "" || datac.account_number == null){
+                                            toastr.error("Account No Not valid, Please Check your data input and save again!!");
+                                            return false;
+                                        }
+                                    }
+                                    
                                     if (totalrows > 0) {
                                         requestData(totalrows, rows);
                                         $('#dlg_insert').dialog('close');
@@ -1333,6 +1358,7 @@
                                                 Swal.showLoading();
                                             },
                                         });
+                                        
                                         $.ajax({
                                             method: 'post',
                                             url: '<?= base_url('finance/ap_payments/deleteJournal') ?>',
@@ -1365,6 +1391,7 @@
                                                 }
                                             }
                                         });
+
                                         function requestData(total, json, jml = 1, value = 0) {
                                             if (value < 100) {
                                                 value = Math.floor((jml / total) * 100);

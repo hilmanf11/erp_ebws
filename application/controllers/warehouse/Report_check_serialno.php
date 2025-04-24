@@ -243,6 +243,55 @@ class Report_check_serialno extends CI_Controller
             $this->db->group_by('a.label_no');
             $this->db->order_by('a.id', 'ASC');
             $records = $this->db->get()->result_array();
+        }else if($filter_type == "RGP"){
+            //Details
+            $this->db->select('a.label_no,
+                (CASE WHEN e.name is null THEN ec.name ELSE e.name END) as supplier_name,
+                d.id as item_rm_id,
+                d.number as item_rm_number,
+                d.name as item_rm_name,
+                c.rgp_id as receipt_id,
+                c.transaction_date as receipt_date,
+                c.qty as qty_receipt,
+                a.warehouse,
+                a.qty as scan_in, 
+                a.created_date as scan_in_date,
+                a.created_by as scan_in_by, 
+                (CASE WHEN f.request_no is not null THEN f.request_no WHEN i.rgp_number is not null THEN i.rgp_number ELSE null END) as request_no,
+                (CASE WHEN f.qty is not null THEN f.qty WHEN i.qty is not null THEN i.qty ELSE null END) as scan_out,
+                (CASE WHEN f.created_date is not null THEN f.created_date WHEN i.created_date is not null THEN i.created_date ELSE null END) as scan_out_date,
+                (CASE WHEN f.created_by is not null THEN f.created_by WHEN i.created_by is not null THEN i.created_by ELSE null END) as scan_out_by,
+                (CASE WHEN h.id is not null THEN 3 WHEN g.id is not null THEN 2 WHEN a.status = 1 THEN 1 WHEN f.request_no is null THEN 0 ELSE 1 END) as status
+            ');
+            $this->db->from('scan_item_receipts a');
+            $this->db->join('rgp_transactions c', 'a.receipt_id = c.rgp_id');
+            $this->db->join('item_rm d', 'c.item_id = d.id');
+            $this->db->join('suppliers e', 'c.company_id = e.id', 'left');
+            $this->db->join('customers ec', 'c.company_id = ec.id', 'left');
+            $this->db->join('issued_material_details f', 'a.label_no = f.label_no', 'left');
+            $this->db->join('scan_item_rejections g', 'a.label_no = g.label_no', 'left');
+            $this->db->join('barcode_divides h', 'a.label_no = h.label_no', 'left');
+            $this->db->join('scan_item_rgp i', "a.label_no = i.label_no and i.type = 'OUT'", 'left');
+            $this->db->where("DATE_FORMAT(a.created_date, '%Y-%m-%d') between '$filter_from' and '$filter_to'");
+            $this->db->like('a.label_no', $filter_serial_no);
+            $this->db->like('c.company_id', $filter_supplier);
+            $this->db->like('c.number', $filter_receipt);
+            $this->db->like('c.item_id', $filter_product_no);
+            if ($filter_status == "0") {
+                $this->db->where('f.request_no is null');
+                $this->db->where('g.id is null');
+                $this->db->where('h.id is null');
+            }elseif($filter_status == "1"){
+                $this->db->where('f.request_no is not null');
+            }elseif($filter_status == "2"){
+                $this->db->where('g.id is not null');
+            }elseif($filter_status == "3"){
+                $this->db->where('h.id is not null');
+            }
+            $this->db->group_by('a.label_no');
+            $this->db->order_by('a.id', 'ASC');
+            // $this->db->order_by('a.created_date', 'ASC');
+            $records = $this->db->get()->result_array();
         }
         
         //Config

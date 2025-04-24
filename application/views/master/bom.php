@@ -392,9 +392,26 @@
                             readonly: true
                         }
                     }
+                }, {
+                    field: 'remove',
+                    width: 80,
+                    align: 'center',
+                    hidden: true,
+                    title: "Remove",
+                    editor: {
+                        type: 'numberbox',
+                        options: {
+                            readonly: true
+                        }
+                    }
                 }]
             ],
-            onClickCell: onClickCell
+            onClickCell: onClickCell,
+            rowStyler: function(index,row){
+                if (row.remove == 1){
+                    return 'background-color:red; color:#fff; font-weight:bold;';
+                }
+            }
         });
     }
 
@@ -566,9 +583,26 @@
                             readonly: true
                         }
                     }
+                }, {
+                    field: 'remove',
+                    width: 80,
+                    hidden: true,
+                    align: 'center',
+                    title: "Remove",
+                    editor: {
+                        type: 'numberbox',
+                        options: {
+                            readonly: true
+                        }
+                    }
                 }]
             ],
-            onClickCell: onClickCellCopy
+            onClickCell: onClickCellCopy,
+            rowStyler: function(index,row){
+                if (row.remove == 1){
+                    return 'background-color:red; color:#fff; font-weight:bold;';
+                }
+            }
         });
     }
 
@@ -629,30 +663,39 @@
             field: 'item_rm_id'
         });
 
-        var item_fg_id = $("#item_fg_id").combogrid('getValue');
-        var item_rm_id = $(ed.target).textbox('getValue');
-
-        $.ajax({
-            method: 'post',
-            url: '<?= base_url('master/bom/delete') ?>',
-            data: {
-                item_fg_id: row.item_fg_id,
-                item_rm_id: item_rm_id
-            },
-            success: function(result) {
-                var result = eval('(' + result + ')');
-                toastr.success(result.message);
-            },
-            error: function(jqXHR, textStatus, errorThrown) {
-                toastr.error("This data is already used in other modules, You must delete it First", "Error");
-
-            },
-            complete: function(data) {
-                $('#dg').datagrid('reload');
-            }
+        var ed2 = dg.datagrid('getEditor', {
+            index: editIndex,
+            field: 'remove'
         });
 
-        $('#dg2').datagrid('cancelEdit', editIndex).datagrid('deleteRow', editIndex);
+        var item_fg_id = $("#item_fg_id").combogrid('getValue');
+        var item_rm_id = $(ed.target).textbox('getValue');
+        $(ed2.target).numberbox('setValue', 1);
+
+        // $.ajax({
+        //     method: 'post',
+        //     url: '<?= base_url('master/bom/remove') ?>',
+        //     data: {
+        //         item_fg_id: row.item_fg_id,
+        //         item_rm_id: item_rm_id
+        //     },
+        //     success: function(result) {
+        //         var result = eval('(' + result + ')');
+        //         toastr.success(result.message);
+        //         $('#dg2').datagrid('reload');
+        //     },
+        //     error: function(jqXHR, textStatus, errorThrown) {
+        //         toastr.error("This data is already used in other modules, You must delete it First", "Error");
+
+        //     },
+        //     complete: function(data) {
+        //         $('#dg').datagrid('reload');
+        //     }
+        // });
+
+        endEditing();
+        // $('#dg2').datagrid('reload');
+        // $('#dg2').datagrid('cancelEdit', editIndex).datagrid('deleteRow', editIndex);
         editIndex = undefined;
     }
 
@@ -719,7 +762,7 @@
 
         $.ajax({
             method: 'post',
-            url: '<?= base_url('master/bom/delete') ?>',
+            url: '<?= base_url('master/bom/remove') ?>',
             data: {
                 item_fg_id: row.item_fg_id,
                 item_rm_id: item_rm_id
@@ -727,6 +770,7 @@
             success: function(result) {
                 var result = eval('(' + result + ')');
                 toastr.success(result.message);
+                $('#dg-copy').datagrid('reload');
             },
             error: function(jqXHR, textStatus, errorThrown) {
                 toastr.error("This data is already used in other modules, You must delete it First", "Error");
@@ -737,7 +781,7 @@
             }
         });
 
-        $('#dg-copy').datagrid('cancelEdit', editIndexCopy).datagrid('deleteRow', editIndexCopy);
+        // $('#dg-copy').datagrid('cancelEdit', editIndexCopy).datagrid('deleteRow', editIndexCopy);
         editIndexCopy = undefined;
     }
 
@@ -1076,14 +1120,17 @@
                     combinedBom = [];
                     for (let i = 0; i < totalrows; i++) {
                         var json = rows[i];
-                        combinedBom.push({
-                            item_fg_id: item_fg_id,
-                            revision: new_revision,
-                            drawing: drawing,
-                            item_rm_id: json.item_rm_id,
-                            main_process: json.main_process,
-                            composition: json.composition,
-                        });
+                        // if(json.remove == 0){
+                            combinedBom.push({
+                                item_fg_id: item_fg_id,
+                                revision: new_revision,
+                                drawing: drawing,
+                                item_rm_id: json.item_rm_id,
+                                main_process: json.main_process,
+                                composition: json.composition,
+                                remove: json.remove
+                            });
+                        // }
                     }
 
                     $.ajax({
@@ -1146,14 +1193,16 @@
                             combinedBom = [];
                             for (let i = 0; i < totalrows; i++) {
                                 var json = rows[i];
-                                combinedBom.push({
-                                    item_fg_id_copy_1: item_fg_id_copy_1,
-                                    item_fg_id_copy_2: item_fg_id_copy_2,
-                                    type: "COPY",
-                                    item_rm_id: json.item_rm_id,
-                                    main_process: json.main_process,
-                                    composition: json.composition,
-                                });
+                                if(json.remove == 0){
+                                    combinedBom.push({
+                                        item_fg_id_copy_1: item_fg_id_copy_1,
+                                        item_fg_id_copy_2: item_fg_id_copy_2,
+                                        type: "COPY",
+                                        item_rm_id: json.item_rm_id,
+                                        main_process: json.main_process,
+                                        composition: json.composition,
+                                    });
+                                }
                             }
 
                             $.ajax({

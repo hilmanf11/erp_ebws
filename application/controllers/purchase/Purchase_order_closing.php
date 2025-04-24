@@ -91,8 +91,13 @@ class Purchase_order_closing extends CI_Controller
         echo json_encode($records);
     }
 
-    public function request_no($id_menu, $add = ""){
-        $datenow = date("Y-m-d");
+    public function request_no($id_menu, $add = "", $trans_date = ""){
+        if($trans_date == ""){
+            $datenow = date("Y-m-d");
+        }else{
+            $datenow = base64_decode($trans_date);
+        }
+        
         $sql_menu = $this->db->query("SELECT * FROM menus_no WHERE menus_id = '$id_menu' and `status` = '0' and `start_date` <= '$datenow' and end_date >= '$datenow'");
         $row_menu = $sql_menu->row();
 
@@ -547,9 +552,7 @@ class Purchase_order_closing extends CI_Controller
                                                 Del. Sch No : ' . $purchase_orders->po_no . '<br>
                                                 Date : ' . $purchase_orders->po_date . '<br>
                                                 Revision : ' . $purchase_orders->revision . '<br>
-                                                Office Address : <br>
-                                                <b>' . @$config->name . '</b><br>
-                                                '.@$config->address.'<br><br>
+                                                <b>ELCON BANSHU WIRING SYSTEM PVT. LTD.</b><br>
                                                 Factory / Shipping Address : <br>
                                                 '.@$config->address2.'<br>
                                                 GST No : '.@$config->gst_no.'

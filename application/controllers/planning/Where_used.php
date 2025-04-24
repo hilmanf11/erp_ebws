@@ -47,7 +47,7 @@ class Where_used extends CI_Controller
                 LEFT JOIN item_rm d ON a.item_rm_id = d.id
                 LEFT JOIN customers e ON c.customer_id = e.id
                 WHERE a.item_rm_id like '%$filter_item_rm_id%' 
-                GROUP BY b.id
+                GROUP BY a.item_fg_id, a.item_rm_id
                 ORDER BY a.item_rm_id ASC");
             $records = $query->result_array();
 

@@ -192,6 +192,9 @@ class Bom extends CI_Controller
                 $this->db->join('item_familys d', 'c.item_family_id = d.id');
                 $this->db->where('a.item_fg_id', $item_fg_id);
                 $this->db->where('a.revision', $revision);
+                $this->db->where('a.remove', 0);
+                $this->db->group_by('a.item_fg_id');
+                $this->db->group_by('a.item_rm_id');
                 $this->db->order_by('c.number', 'ASC');
                 $records = $this->db->get()->result_array();
             }else{
@@ -226,16 +229,17 @@ class Bom extends CI_Controller
                     "main_process" => $data['main_process'],
                     "revision" => $data['revision'],
                     "drawing" => $data['drawing'],
-                    "composition" => $data['composition']
+                    "composition" => $data['composition'],
+                    "remove" => $data['remove']
                 );
 
                 if($data['revision'] == ""){
                     $bom = $this->crud->read("bom", [], ["item_fg_id" => $data['item_fg_id'], "item_rm_id" => $data['item_rm_id']]);
                     if (@$bom->item_fg_id != "") {
-                        $send = $this->crud->update('bom', ["item_fg_id" => $data['item_fg_id'], "item_rm_id" => $data['item_rm_id']], $data, "logs");
+                        $this->crud->update('bom', ["item_fg_id" => $data['item_fg_id'], "item_rm_id" => $data['item_rm_id']], $data, "logs");
                         $this->db->update("bom_log", $dataFinal, ["item_fg_id" => $data['item_fg_id'], "item_rm_id" => $data['item_rm_id']]);
                     } else {
-                        $send = $this->crud->create('bom', $data, "logs");
+                        $this->crud->create('bom', $data, "logs");
                         $this->db->insert("bom_log", $dataFinal);
                     }
                 }else{
@@ -246,12 +250,12 @@ class Bom extends CI_Controller
                         }
 
                         if($data['revision'] > 0){
-                            $send = $this->crud->update('bom', ["item_fg_id" => $data['item_fg_id'], "item_rm_id" => $data['item_rm_id']], $data, "logs");
+                            $this->crud->update('bom', ["item_fg_id" => $data['item_fg_id'], "item_rm_id" => $data['item_rm_id']], $data, "logs");
                         }else{
-                            $send = $this->db->update('bom', $data, ["item_fg_id" => $data['item_fg_id'], "item_rm_id" => $data['item_rm_id']]);
+                            $this->db->update('bom', $data, ["item_fg_id" => $data['item_fg_id'], "item_rm_id" => $data['item_rm_id']]);
                         }
                     } else {
-                        $send = $this->crud->create('bom', $data, "logs");
+                        $this->crud->create('bom', $data);
                     }
 
                     $this->db->insert("bom_log", $dataFinal);
@@ -677,43 +681,43 @@ class Bom extends CI_Controller
         $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#customers {border-collapse: collapse;width: 100%;font-size: 12px;}#customers td, #customers th {border: 1px solid #ddd;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: #ddd;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: center;color: black;}</style><body>
             <table id="customers" border="1">
             <tr>
-                <td><b>Source</b></td>
-                <td colspan="7" style="mso-number-format:\@;"><b>' . @$item_fg_source->number . ' | ' . @$item_fg_source->number_customer . '</b></td>
-                <td><b>Compare</b></td>
-                <td colspan="8" style="mso-number-format:\@;"><b>' . @$item_fg_compare->number . ' | ' . @$item_fg_compare->number_customer . '</b></td>
+                <td colspan="2"><b>Source</b></td>
+                <td colspan="6" style="mso-number-format:\@;"><b>' . @$item_fg_source->number . ' | ' . @$item_fg_source->number_customer . '</b></td>
+                <td colspan="2"><b>Compare</b></td>
+                <td colspan="7" style="mso-number-format:\@;"><b>' . @$item_fg_compare->number . ' | ' . @$item_fg_compare->number_customer . '</b></td>
             </tr>
             <tr>
-                <td><b>Customer</b></td>
-                <td colspan="7"><b>' . @$customer_source->name . '</b></td>
-                <td><b>Customer</b></td>
-                <td colspan="8"><b>' . @$customer_compare->name . '</b></td>
+                <td colspan="2"><b>Customer</b></td>
+                <td colspan="6"><b>' . @$customer_source->name . '</b></td>
+                <td colspan="2"><b>Customer</b></td>
+                <td colspan="7"><b>' . @$customer_compare->name . '</b></td>
             </tr>
             <tr>
-                <td><b>Revision</b></td>
-                <td colspan="7"><b>' . @$bom_source->revision . '</b></td>
-                <td><b>Revision</b></td>
-                <td colspan="8"><b>' . @$bom_compare->revision . '</b></td>
+                <td colspan="2"><b>Revision</b></td>
+                <td colspan="6"><b>' . @$bom_source->revision . '</b></td>
+                <td colspan="2"><b>Revision</b></td>
+                <td colspan="7"><b>' . @$bom_compare->revision . '</b></td>
             </tr>
             <tr>
-                <td><b>Last Rev</b></td>
-                <td colspan="7"><b>' . @$bom_source->created_date . '</b></td>
-                <td><b>Last Rev</b></td>
-                <td colspan="8"><b>' . @$bom_compare->created_date . '</b></td>
+                <td colspan="2"><b>Last Rev</b></td>
+                <td colspan="6"><b>' . @$bom_source->created_date . '</b></td>
+                <td colspan="2"><b>Last Rev</b></td>
+                <td colspan="7"><b>' . @$bom_compare->created_date . '</b></td>
             </tr>
             <tr>
-                <td><b>Rev By</b></td>
-                <td colspan="7"><b>' . @$bom_source->created_by . '</b></td>
-                <td><b>Rev By</b></td>
-                <td colspan="8"><b>' . @$bom_compare->created_by . '</b></td>
+                <td colspan="2"><b>Rev By</b></td>
+                <td colspan="6"><b>' . @$bom_source->created_by . '</b></td>
+                <td colspan="2"><b>Rev By</b></td>
+                <td colspan="7"><b>' . @$bom_compare->created_by . '</b></td>
             </tr>
             <tr>
-                <td><b>Circuit</b></td>
-                <td colspan="7"><b>' . @$circuit_source->total_cct . '</b></td>
-                <td><b>Circuit</b></td>
-                <td colspan="8"><b>' . @$circuit_compare->total_cct . '</b></td>
+                <td colspan="2"><b>Circuit</b></td>
+                <td colspan="6"><b>' . @$circuit_source->total_cct . '</b></td>
+                <td colspan="2"><b>Circuit</b></td>
+                <td colspan="7"><b>' . @$circuit_compare->total_cct . '</b></td>
             </tr>';
         $html .= '<tr>
-        <th>No</th>
+        <th width="5">No</th>
         <th>Part No EBWS</th>
         <th>Part No Supplier</th>
         <th>Product Family</th>
@@ -721,7 +725,7 @@ class Bom extends CI_Controller
         <th>Maker</th>
         <th>UoM</th>
         <th>QPA</th>
-        <th>No</th>
+        <th width="5">No</th>
         <th>Part No EBWS</th>
         <th>Part No Supplier</th>
         <th>Product Family</th>
@@ -741,7 +745,7 @@ class Bom extends CI_Controller
             join item_rm b on a.item_rm_id = b.id
             join item_familys c on b.item_family_id = c.id
             join makers d on b.maker_id = d.id
-            where a.item_fg_id='$item_fg_id_source' and a.revision='$revision_source' and a.item_rm_id='" . $record['item_rm_id'] . "'
+            where a.item_fg_id='$item_fg_id_source' and a.revision='$revision_source' and a.item_rm_id='" . $record['item_rm_id'] . "' and a.remove = 0
             ")->row();
 
             // assy compare
@@ -751,7 +755,7 @@ class Bom extends CI_Controller
             join item_rm b on a.item_rm_id = b.id
             join item_familys c on b.item_family_id = c.id
             join makers d on b.maker_id = d.id
-            where a.item_fg_id='$item_fg_id_compare' and a.revision='$revision_compare' and a.item_rm_id='" . $record['item_rm_id'] . "'
+            where a.item_fg_id='$item_fg_id_compare' and a.revision='$revision_compare' and a.item_rm_id='" . $record['item_rm_id'] . "' and a.remove = 0
             ")->row();
 
             if (@$bom_source->item_rm_id == @$bom_compare->item_rm_id && @$bom_source->composition == @$bom_compare->composition) {

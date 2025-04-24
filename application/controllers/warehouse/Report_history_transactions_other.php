@@ -211,7 +211,12 @@ class Report_history_transactions_other extends CI_Controller
                     GROUP BY a.id");
 
                     //RGP TRANSACTION
-                    $rgps = $this->crud->query("SELECT a.*, b.name as company_name FROM rgp_transactions a JOIN suppliers b ON a.company_id = b.id WHERE a.item_id = '$item_rm_id' and a.transaction_date = '$working_date'");
+                    $rgps = $this->crud->query("SELECT 
+                    a.*, case when b.name <> null then b.name else c.name end as company_name
+                    FROM rgp_transactions a 
+                    LEFT JOIN suppliers b ON a.company_id = b.id 
+                    LEFT JOIN customers c ON a.company_id = c.id 
+                    WHERE a.item_id = '$item_rm_id' and a.transaction_date = '$working_date'");
 
                     //Purchase Order Receipt
                     foreach ($receipts as $receipt) {
@@ -258,8 +263,8 @@ class Report_history_transactions_other extends CI_Controller
                                         <td>' . $rgp->transaction_date . '</td>
                                         <td>' . $rgp->company_id . '</td>
                                         <td>' . $rgp->company_name . '</td>
+                                        <td>' . $rgp->number . '</td>
                                         <td>' . $rgp->reference_number . '</td>
-                                        <td>' . $rgp->rgp_number . '</td>
                                         <td style="text-align:right;">' . number_format($begin, 2) . '</td>
                                         <td style="text-align:right;">' . number_format($rgp_qty_in) . '</td>
                                         <td style="text-align:right;">' . number_format($rgp_qty_out, 2)  . '</td>

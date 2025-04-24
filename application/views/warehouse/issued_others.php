@@ -527,6 +527,23 @@
                     var totalrows = rows.length;
                     endEditing();
 
+                    if(location_other_number == ""){
+                        toastr.error("Location Store cannot empty!");
+                        return false;
+                    }
+
+                    for (let z = 0; z < totalrows; z++) {
+                        if (rows[z].balance == null || rows[z].balance == "" || parseFloat(rows[z].balance) < 0) {
+                            toastr.error("Balance cannt empty or minus");
+                            return false;
+                        }
+
+                        if(rows[z].remarks == null || rows[z].remarks == ""){
+                            toastr.error("Remarks still Empty!");
+                            return false;
+                        }
+                    }
+
                     for (let i = 0; i < totalrows; i++) {
                         if (rows[i].item_rm_id) {
                             $.ajax({

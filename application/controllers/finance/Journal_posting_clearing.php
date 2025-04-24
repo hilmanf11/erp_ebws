@@ -144,7 +144,7 @@ class Journal_posting_clearing extends CI_Controller
                 FROM journal_postings 
                 WHERE account_number IN ('27000001') 
                 GROUP BY document_no, account_number) b ON a.receipt_no = b.document_no
-            WHERE a.customer_id = '$company_id' AND a.plant = '$plant' AND a.sales_invoice NOT IN (SELECT DISTINCT number FROM sales_invoices) AND a.status_cl = '0'
+            WHERE a.customer_id = '$company_id' AND a.plant = '$plant' AND a.sales_invoice NOT IN (SELECT DISTINCT number FROM sales_invoices WHERE `status` = 1) AND a.status_cl = '0'
             GROUP BY a.receipt_no");
         $ar_receipts = $sql_1->result_array();
 
@@ -159,14 +159,14 @@ class Journal_posting_clearing extends CI_Controller
                 b.journal_date AS voucher_date,
                 b.number AS voucher_no,
                 b.account_number,
-                a.currency,
+                'INR' as currency,
                 (b.local_credit - b.local_debit) as amount
             FROM ap_payments a
             LEFT JOIN (SELECT journal_date, number, document_no, account_number, SUM(local_debit) AS local_debit, SUM(local_credit) AS local_credit 
                 FROM journal_postings 
                 WHERE account_number IN ('16000001','16000002','16000003','16000004','16000005','16000006','16000007','16000008') 
                 GROUP BY document_no, account_number) b ON a.payment_no = b.document_no
-            WHERE a.supplier_id = '$company_id' AND a.status_cl = '0' AND a.purchase_invoice NOT IN (SELECT DISTINCT number FROM purchase_invoices)
+            WHERE a.supplier_id = '$company_id' AND a.status_cl = '0' AND a.purchase_invoice NOT IN (SELECT DISTINCT number FROM purchase_invoices WHERE `status` = 1)
             GROUP BY a.payment_no");
         $ap_payments = $sql_2->result_array();
 
@@ -181,7 +181,7 @@ class Journal_posting_clearing extends CI_Controller
                 a.journal_date AS voucher_date,
                 a.number AS voucher_no,
                 a.account_number,
-                a.currency,
+                'INR' as currency,
                 (SUM(a.local_credit) - SUM(a.local_debit)) AS amount
             FROM journal_postings a
             WHERE a.company_id = '$company_id' and a.company_name like '%$company_name%'
@@ -201,7 +201,7 @@ class Journal_posting_clearing extends CI_Controller
                 a.journal_date AS voucher_date,
                 a.number AS voucher_no,
                 a.account_number,
-                a.currency,
+                'INR' as currency,
                 (SUM(a.local_debit) - SUM(a.local_credit)) AS amount
             FROM journal_postings a
             WHERE a.company_id = '$company_id' and a.company_name like '%$company_name%'
@@ -221,7 +221,7 @@ class Journal_posting_clearing extends CI_Controller
             b.journal_date AS voucher_date,
             b.number AS voucher_no,
             b.account_number,
-            a.currency,
+            'INR' as currency,
             (b.local_credit - b.local_debit) as amount
         FROM purchase_invoices a
         JOIN (SELECT journal_date, number, document_no, account_number, description, SUM(local_debit) AS local_debit, SUM(local_credit) AS local_credit 
@@ -244,7 +244,7 @@ class Journal_posting_clearing extends CI_Controller
             b.journal_date AS voucher_date,
             b.number AS voucher_no,
             b.account_number,
-            a.currency,
+            'INR' as currency,
             (b.local_debit - b.local_credit) as amount
         FROM sales_invoices a
         JOIN (SELECT journal_date, number, document_no, account_number, description, SUM(local_debit) AS local_debit, SUM(local_credit) AS local_credit 
@@ -267,7 +267,7 @@ class Journal_posting_clearing extends CI_Controller
             a.journal_date AS voucher_date,
             a.number AS voucher_no,
             a.account_number,
-            a.currency,
+            'INR' as currency,
             (CASE WHEN a.account_number = '27000001' THEN (SUM(a.local_debit) - SUM(a.local_credit)) ELSE (SUM(a.local_credit) - SUM(a.local_debit)) END) as amount
         FROM journal_postings a
         WHERE a.company_id = '$company_id' and a.company_name like '%$company_name%'
@@ -280,9 +280,9 @@ class Journal_posting_clearing extends CI_Controller
         die(json_encode($datas));
     }
 
-    public function number($id_menu)
+    public function number($id_menu, $journal_date)
     {
-        $datenow = date("Y-m-d");
+        $datenow = base64_decode($journal_date);
         $sql_menu = $this->db->query("SELECT * FROM menus_no WHERE menus_id = '$id_menu' and `status` = '0' and `start_date` <= '$datenow' and end_date >= '$datenow'");
         $row_menu = $sql_menu->row();
 
@@ -396,7 +396,7 @@ class Journal_posting_clearing extends CI_Controller
                 WHERE account_number IN ('27000001') 
                 GROUP BY document_no, account_number) b ON a.receipt_no = b.document_no
             JOIN customers c ON a.customer_id = c.id
-            WHERE a.id IN ($document_no_str) and a.customer_id = '$company_id' and a.plant = '$plant' AND a.sales_invoice NOT IN (SELECT DISTINCT number FROM sales_invoices) AND a.status_cl = '0'
+            WHERE a.id IN ($document_no_str) and a.customer_id = '$company_id' and a.plant = '$plant' AND a.sales_invoice NOT IN (SELECT DISTINCT number FROM sales_invoices WHERE `status` = 1) AND a.status_cl = '0'
             GROUP BY a.receipt_no");
         $ar_receipts = $sql_1->result_array();
 
@@ -413,7 +413,7 @@ class Journal_posting_clearing extends CI_Controller
                 b.description,
                 b.account_number,
                 b.account_name,
-                a.currency,
+                'INR' as currency,
                 (b.local_credit - b.local_debit) as amount
             FROM ap_payments a
             JOIN (SELECT trans_date, journal_type_id, number, description, document_no, account_number, account_name, SUM(local_debit) AS local_debit, SUM(local_credit) AS local_credit 
@@ -421,7 +421,7 @@ class Journal_posting_clearing extends CI_Controller
                 WHERE account_number IN ('16000001','16000002','16000003','16000004','16000005','16000006','16000007','16000008') 
                 GROUP BY document_no, account_number) b ON a.payment_no = b.document_no
             JOIN suppliers c ON a.supplier_id = c.id
-            WHERE a.id IN ($document_no_str) and a.supplier_id = '$company_id' AND a.status_cl = '0' AND a.purchase_invoice NOT IN (SELECT DISTINCT number FROM purchase_invoices)
+            WHERE a.id IN ($document_no_str) and a.supplier_id = '$company_id' AND a.status_cl = '0' AND a.purchase_invoice NOT IN (SELECT DISTINCT number FROM purchase_invoices WHERE `status` = 1)
             GROUP BY a.payment_no");
         $ap_payments = $sql_2->result_array();
 
@@ -438,7 +438,7 @@ class Journal_posting_clearing extends CI_Controller
                 a.description,
                 a.account_number,
                 a.account_name,
-                a.currency,
+                'INR' as currency,
                 (SUM(a.local_credit) - SUM(a.local_debit)) AS amount
             FROM journal_postings a
             LEFT JOIN (SELECT company_id, company_name, document_no, invoice_no, description, SUM(local_debit) as cl_debit, SUM(local_credit) as cl_credit 
@@ -464,7 +464,7 @@ class Journal_posting_clearing extends CI_Controller
                 a.description,
                 a.account_number,
                 a.account_name,
-                a.currency,
+                'INR' as currency,
                 (SUM(a.local_debit) - SUM(a.local_credit)) AS amount
             FROM journal_postings a
             LEFT JOIN (SELECT company_id, company_name, document_no, invoice_no, description, SUM(local_debit) as cl_debit, SUM(local_credit) as cl_credit 
@@ -490,7 +490,7 @@ class Journal_posting_clearing extends CI_Controller
             b.description,
             b.account_number,
             b.account_name,
-            a.currency,
+            'INR' as currency,
             (b.local_credit - b.local_debit) as amount
         FROM purchase_invoices a
         JOIN (SELECT journal_date, number, document_no, account_number, account_name, description, SUM(local_debit) AS local_debit, SUM(local_credit) AS local_credit 
@@ -516,7 +516,7 @@ class Journal_posting_clearing extends CI_Controller
             b.description,
             b.account_number,
             b.account_name,
-            a.currency,
+            'INR' as currency,
             (b.local_debit - b.local_credit) as amount
         FROM sales_invoices a
         JOIN (SELECT trans_date, number, document_no, company_name, account_number, account_name, description, SUM(local_debit) AS local_debit, SUM(local_credit) AS local_credit 
@@ -541,7 +541,7 @@ class Journal_posting_clearing extends CI_Controller
                 a.description,
                 a.account_number,
                 a.account_name,
-                a.currency,
+                'INR' as currency,
                 (CASE WHEN a.account_number = '27000001' THEN (SUM(a.local_debit) - SUM(a.local_credit)) ELSE (SUM(a.local_credit) - SUM(a.local_debit)) END) as amount
             FROM journal_postings a
             LEFT JOIN (SELECT company_id, company_name, document_no, invoice_no, description, SUM(local_debit) as cl_debit, SUM(local_credit) as cl_credit 
@@ -756,24 +756,40 @@ class Journal_posting_clearing extends CI_Controller
         $arrTax = array();
         
         $total_adjustment = 0;
-        $debit = 0;
-        $credit = 0;
+        $total_debit = 0;
+        $total_credit = 0;
         foreach ($jsonDatas as $post) {
             $total_adjustment += $post['adjustment'];
 
             if($journal_type == "CL - SUPPLIER"){
                 if($post['amount'] > 0){
-                    $credit += $post['amount'];
+                    $credit = $post['amount'];
+                    $debit = 0;
                 }else{
-                    $debit += $post['amount'];
+                    $debit = $post['amount'];
+                    $credit = 0;
                 }
             }else{
                 if($post['amount'] > 0){
-                    $debit += $post['amount'];
+                    $debit = $post['amount'];
+                    $credit = 0;
                 }else{
-                    $credit += $post['amount'];
+                    $credit = $post['amount'];
+                    $debit = 0;
                 }
             }
+
+            $arr[] = array(
+                "description" => "CLEARING ADJUSTMENT",
+                "account_number" => $post['account_number'],
+                "account_name" => $post['account_name'],
+                "local_debit" => abs($debit),
+                "local_credit" => abs($credit),
+                "status_cl" => 1
+            );
+
+            $total_debit += abs($debit);
+            $total_credit += abs($credit);  
         }
 
         if($total_adjustment != 0){
@@ -805,32 +821,10 @@ class Journal_posting_clearing extends CI_Controller
             );
         }
 
-        if(abs($debit) > 0){
-            $arr[] = array(
-                "description" => "CLEARING ADJUSTMENT",
-                "account_number" => $post['account_number'],
-                "account_name" => $post['account_name'],
-                "local_debit" => abs($debit),
-                "local_credit" => 0,
-                "status_cl" => 1
-            );
-        }
-
-        if(abs($credit) > 0){
-            $arr[] = array(
-                "description" => "CLEARING ADJUSTMENT",
-                "account_number" => $post['account_number'],
-                "account_name" => $post['account_name'],
-                "local_debit" => 0,
-                "local_credit" => abs($credit),
-                "status_cl" => 1
-            );
-        }
-
         $footer[] = array(
             "account_number" => "TOTAL",
-            "local_debit" => abs($local_debit + $debit),
-            "local_credit" => abs($local_credit + $credit),
+            "local_debit" => abs($local_debit + $total_debit),
+            "local_credit" => abs($local_credit + $total_credit),
         );
 
         $rows = array_merge($arr, $arrTax);

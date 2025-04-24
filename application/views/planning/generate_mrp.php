@@ -70,7 +70,30 @@
         </div>
         <?= $button ?>
         <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="formula()"><i class="fa fa-info"></i> Help</a>
+        <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="exceptions()"><i class="fa fa-file"></i> Exception Report</a>
     </div>
+</div>
+
+<div id="toolbar">
+    <a href="javascript:;" class="easyui-linkbutton" data-options="plain:true" onclick="excel_exception()"><i class="fa fa-file"></i> Export Excel</a>
+</div>
+
+<!-- EXCEPTION REPORT -->
+<div id="dlg_exception" class="easyui-dialog" title="Exception Report" data-options="closed: true,modal:true" style="width: 80%; height: 550px; top: 20px;">
+    <table id="dg_exception" class="easyui-datagrid" style="width:100%;" toolbar="#toolbar">
+        <thead>
+            <tr>
+                <th data-options="field:'item_rm_id',width:120,halign:'center'">Part No EBWS</th>
+                <th data-options="field:'item_rm_number',width:250,halign:'center'">Part No Supplier</th>
+                <th data-options="field:'item_rm_name',width:250,halign:'center'">Description</th>
+                <th data-options="field:'mpq',width:80,align:'center', styler:numberStyle">MPQ</th>
+                <th data-options="field:'moq',width:80,align:'center', styler:numberStyle">MOQ</th>
+                <th data-options="field:'leadtime',width:80,align:'center', styler:numberStyle">Leadtime <br>(Days)</th>
+                <th data-options="field:'share_order',width:80,align:'center', styler:numberStyle">Share Order %</th>
+                <th data-options="field:'hsn_code',width:100,align:'center', styler:hsnStyle">HSN</th>
+            </tr>
+        </thead>
+    </table>
 </div>
 
 <div id="p" class="easyui-panel" title="Print Preview" style="width:100%;" data-options="fit:true">
@@ -85,10 +108,10 @@
                         <ul>
                             <li><b>Breakdown LTTP & BOM</b> is taken from (Generate LTTP x Bom)</li>
                             <li><b>WHS</b> is taken from Ending Stock in Store of Cut off</li>
-                            <li><b>WIP</b> is taken (-1 Month to Cutoff) from Production Schedules - Issued If result Minus</li>
-                            <li><b>OS SUPPLIER</b> is taken from Purchase Order (Open) - Gate Entry of Cut Off</li>
+                            <li><b>WIP</b> is taken from Generate MPP - Issued If result Minus</li>
+                            <li><b>OS SUPPLIER</b> is taken from Purchase Order - Gate Entry of Cut Off</li>
                             <li><b>TOTAL STOCK</b> is taken from (WHS + WIP + OS SUPPLIER)</li>
-                            <li><b>OS SUPPLY</b> is taken (-1 Month to Cutoff) from Production Schedules - Issued If result Plus</li>
+                            <li><b>OS SUPPLY</b> Generate MPP - Issued If result Plus</li>
                         </ul>
                         <center><b style="font-size:16px !important;">FORMULA</b><hr></center>
                         <ul>
@@ -104,6 +127,34 @@
                             <li><b>MRP RESULT</b> is taken from Round Up from TOTAL NEED</li>
                         </ul>
                     </div>`,
+        });
+    }
+
+    function exceptions(){
+        var filter_month = $("#filter_month").combobox('getValue');
+        var filter_year = $("#filter_year").combobox('getValue');
+        var filter_revision = $("#filter_revision").combobox('getValue');
+
+        if(filter_month == "" || filter_year == "" || filter_revision == ""){
+            toastr.warning("Please Choose Filter Date and Revision!");
+            return false;
+        }
+
+        $('#dlg_exception').dialog('open');
+        $('#dg_exception').datagrid('loading');
+        
+        $.ajax({
+            url: "<?= base_url('planning/generate_mrp/datatableException') ?>",
+            type: 'POST',
+            data: {
+                filter_month: filter_month,
+                filter_year: filter_year,
+                filter_revision: filter_revision
+            },
+            dataType: 'json',
+            success: function(result) {
+                $('#dg_exception').datagrid('loadData', result).datagrid('loaded');
+            }
         });
     }
 
@@ -514,12 +565,26 @@
         }
     }
 
+    function excel_exception() {
+        $('#dg_exception').datagrid('toExcel', 'report_exceptions.xls');
+    }
+
     function reload() {
         window.location.reload();
     }
 
     $(function() {
     	$("#add").html("Generate");
+
+        $('#dg_exception').datagrid({
+            pagination: true,
+            clientPaging: true,
+            rownumbers: true,
+            fit: true,
+            pageList: [20, 50, 100, 500, 1000],
+            pageSize: 20,
+        }).datagrid('enableFilter');
+
         $('#filter_month').combobox({
             url: '<?php echo base_url('planning/mst_data/readMonths'); ?>',
             valueField: 'id',
@@ -667,6 +732,22 @@
             return new Date(y, m - 1, d);
         } else {
             return new Date();
+        }
+    }
+
+    function numberStyle(value, row, index) {
+        if (value == 0) {
+            return 'background-color:#FFC8C8;';
+        } else {
+            return 'background-color:#C8FFCC;';
+        }
+    }
+
+    function hsnStyle(value, row, index) {
+        if (value == "-") {
+            return 'background-color:#FFC8C8;';
+        } else {
+            return 'background-color:#C8FFCC;';
         }
     }
 </script>

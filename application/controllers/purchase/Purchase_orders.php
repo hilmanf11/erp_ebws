@@ -39,10 +39,10 @@ class Purchase_orders extends CI_Controller
         $p_year = $this->input->post('p_year');
 
         $this->db->select('max(revision) as revision');
-        $this->db->from('generate_mrp');
+        $this->db->from('generate_mrp_finals');
         $this->db->where('p_month', $p_month);
         $this->db->where('p_year', $p_year);
-        $this->db->group_by('revision');
+        // $this->db->group_by('revision');
         $rev = $this->db->get()->row();
 
         // die(json_encode($rev));
@@ -1201,6 +1201,7 @@ class Purchase_orders extends CI_Controller
                                                 Register No : ' . $purchase_orders->po_no . '<br>
                                                 Date : ' . $purchase_orders->po_date . '<br>
                                                 Revision : ' . $purchase_orders->revision . '<br><br>
+                                                <b>ELCON BANSHU WIRING SYSTEM PVT. LTD.</b><br>
                                                 Factory / Shipping Address : <br>
                                                 '.@$config->address2.'<br>
                                                 GST No : '.@$config->gst_no.'

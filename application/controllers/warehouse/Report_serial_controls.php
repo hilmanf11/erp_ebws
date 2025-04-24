@@ -96,7 +96,7 @@ class Report_serial_controls extends CI_Controller
             $this->db->like('a.customer_id', $filter_customer);
         }
         if($filter_product_no != ""){
-            $this->db->like('a.item_fg_id', $filter_product_no);
+            $this->db->like('h.id', $filter_product_no);
         }
         if($filter_do_no != ""){
             $this->db->like('d.delivery_order_no ', $filter_do_no);

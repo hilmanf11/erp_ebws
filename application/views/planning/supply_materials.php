@@ -83,7 +83,7 @@
             <div style="width: 50%; float: left;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Request Date</span>
-                    <input style="width:60%;" name="request_date" id="request_date" value="<?= date("Y-m-d") ?>" required="" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
+                    <input style="width:60%;" name="request_date" id="request_date" required="" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Request No</span>
@@ -153,52 +153,20 @@
     function add() {
         $('#dlg_insert').dialog('open');
         $('#dg2').datagrid('loadData', []);
-        request_no("<?= $id_menu ?>");
 
         $("#request_date").datebox('enable');
-
-        // $("#period").combobox({
-        //     url: '<?= base_url('planning/production_schedules/readPeriodAll') ?>',
-        //     valueField: 'period',
-        //     textField: 'period',
-        //     prompt: "Choose Period",
-        //     onSelect: function(rowPeriod) {
-        //         $("#wp").combogrid({
-        //             url: '<?= base_url('planning/production_schedules/readWpAll?period=') ?>' + window.btoa(rowPeriod.period),
-        //             panelWidth: 300,
-        //             idField: 'wp',
-        //             textField: 'wp',
-        //             mode: 'remote',
-        //             fitColumns: true,
-        //             prompt: "Choose WP",
-        //             columns: [
-        //                 [{
-        //                     field: 'wp',
-        //                     title: 'WP',
-        //                     width: 80
-        //                 }, {
-        //                     field: 'workorder',
-        //                     title: 'Workorder',
-        //                     width: 150
-        //                 }]
-        //             ],
-        //             onSelect: function(indexWP, rowWP) {
-        //                 $("#workorder").textbox('setValue', rowWP.workorder);
-        //                 $("#item_fg_id").combogrid("setValue", rowWP.item_fg_id);
-        //             }
-        //         });
-        //     }
-        // });
+        $("#request_date").datebox('setValue', "<?= date("Y-m-d") ?>");
     }
 
-    function request_no(id_menu = "") {
+    function request_no(id_menu = "", trans_date) {
         $.ajax({
             type: "post",
-            url: "<?= base_url('planning/supply_materials/request_no') ?>/" + id_menu,
+            url: "<?= base_url('planning/supply_materials/request_no') ?>/" + id_menu + "/" + btoa(trans_date),
             dataType: "html",
             success: function(result) {
                 if(result == ""){
                     toastr.info("Please Check Configuration in Serial No First");
+                    $("#request_no").textbox('clear');
                 }else{
                     $("#request_no").textbox('setValue', result);
                 }
@@ -527,6 +495,13 @@
     }
     $(function() {
         addTable();
+
+        $("#request_date").datebox({
+            onChange: function(val){
+                request_no("<?= $id_menu ?>", val);
+            }
+        });
+
         $('#dg').treegrid({
             url: '<?= base_url('planning/supply_materials/datatables') ?>',
             pagination: true,

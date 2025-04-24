@@ -93,9 +93,23 @@ class Delivery_confirm_others extends CI_Controller
         echo json_encode($data);
     }
 
+    public function checkInvoice(){
+        $invoice_no = trim($this->input->post("invoice_no"));
+        // $read = $this->crud->reads("purchase_order_receipts", [], ["bc_document" => $invoice_no]);
+        $read = $this->crud->reads("purchase_confirm_others", [], ["invoice_no" => $invoice_no]);
+        
+        if(count($read) > 0){
+            die("NG");
+        }else{
+            die("OK");
+        }
+    }
+
     public function datatables()
     {
         if ($this->input->post()) {
+            $filter_from = $this->input->get('filter_from');
+            $filter_to   = $this->input->get('filter_to');
             $filter_supplier = base64_decode($this->input->get('filter_supplier'));
             $filter_status = base64_decode($this->input->get('filter_status'));
             $filter_po_no = base64_decode($this->input->get('filter_po_no'));
@@ -119,6 +133,10 @@ class Delivery_confirm_others extends CI_Controller
             $this->db->join('item_familys d', 'c.item_family_id = d.id');
             $this->db->join('purchase_order_others e', 'a.supplier_id = e.supplier_id and a.item_rm_id = e.item_rm_id and a.po_no = e.po_no');
             $this->db->join("(SELECT supplier_id, item_rm_id, po_no, SUM(delivery) as qty_confirm FROM purchase_confirm_others GROUP BY supplier_id, item_rm_id, po_no) f", 'a.supplier_id = f.supplier_id and a.item_rm_id = f.item_rm_id and a.po_no = f.po_no');
+            if ($filter_from != "" and $filter_to != "") {
+                $this->db->where('a.created_date >=', $filter_from);
+                $this->db->where('a.created_date <=', $filter_to);
+            }
             if($filter_po_date != ""){
                 $this->db->where('a.po_date', $filter_po_date);
             }
@@ -381,6 +399,8 @@ class Delivery_confirm_others extends CI_Controller
         $this->db->from('config');
         $config = $this->db->get()->row();
 
+        $filter_from = $this->input->get('filter_from');
+        $filter_to = $this->input->get('filter_to');
         $filter_supplier = base64_decode($this->input->get('filter_supplier'));
         $filter_status = base64_decode($this->input->get('filter_status'));
         $filter_po_no = base64_decode($this->input->get('filter_po_no'));
@@ -394,6 +414,10 @@ class Delivery_confirm_others extends CI_Controller
         $this->db->join('suppliers b', 'a.supplier_id = b.id');
         $this->db->join('item_rm c', 'a.item_rm_id = c.id');
         $this->db->join('item_familys d', 'c.item_family_id = d.id');
+        if ($filter_from != "" and $filter_to != "") {
+            $this->db->where('a.created_date >=', $filter_from);
+            $this->db->where('a.created_date <=', $filter_to);
+        }
         if($filter_po_date != ""){
             $this->db->where('a.po_date', $filter_po_date);
         }

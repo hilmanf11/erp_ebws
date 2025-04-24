@@ -90,6 +90,7 @@ class Rgp_scan_in extends CI_Controller
         $this->db->join('item_categories e', 'd.item_category_id = e.id', 'left');
         $this->db->join('item_familys f', 'b.item_family_id = f.id', 'left');
         $this->db->where('d.number', @$rgp_transaction->rgp_number);
+        $this->db->where('a.type', 'IN');
         $this->db->group_by('a.label_no');
         //Total Data
         $totalRows = $this->db->count_all_results('', false);
@@ -106,13 +107,13 @@ class Rgp_scan_in extends CI_Controller
     {
         if ($this->input->post()) {
             if ($this->form_validation->run() == TRUE) {
-                $post   = $this->input->post();
-                $scan_item_rgp = $this->crud->read("scan_item_rgp", [], ["label_no" => $post['label_no']]);
-                if (!$scan_item_rgp) {
+                $post = $this->input->post();
+                $scan_item_rgp = $this->crud->read("scan_item_rgp", [], ["label_no" => $post['label_no'], "type" => "IN"]);
 
+                if (!$scan_item_rgp) {
                     $item_rm = $this->crud->read("item_rm", [], ["id" => $post['item_id']]);
                     if (!empty(@$item_rm->id)) { //jika RM
-                        $send   = $this->crud->create('scan_item_rgp', $post);
+                        $send   = $this->crud->create('scan_item_rgp', array_merge($post, ["type" => "IN"]));
                         if ($send) {
                             $postItemReceipts = array(
                                 "receipt_id" => $post['rgp_id'],
@@ -125,7 +126,7 @@ class Rgp_scan_in extends CI_Controller
                             echo $send;
                         }
                     } else { // jika FG
-                        $send   = $this->crud->create('scan_item_rgp', $post);
+                        $send   = $this->crud->create('scan_item_rgp', array_merge($post, ["type" => "IN"]));
                         $rgp_transactions = $this->crud->read("rgp_transactions", [], ["number" => $post['rgp_number'], "item_id" => $post['item_id']]);
                         if ($send) {
                             $postItemReceipts = array(

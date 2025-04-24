@@ -624,8 +624,6 @@
                         }
                     });
                 }
-
-                number("<?= $menus_id ?>");
             }
         });
 
@@ -650,6 +648,12 @@
                         $("#invoice_no").textbox('setValue', invoice_no);
                     }
                 });
+            }
+        });
+
+        $("#trans_date").datebox({
+            onChange: function(trans_date){
+                number("<?= $menus_id ?>", btoa(trans_date));
             }
         });
 
@@ -1226,14 +1230,15 @@
     }
 
     //NOMOR AUTOMATIC
-    function number(menus_id) {
+    function number(menus_id, receipt_date) {
         $.ajax({
             type: "post",
-            url: "<?= base_url('finance/purchase_invoices/number/') ?>" + menus_id,
+            url: "<?= base_url('finance/purchase_invoices/number/') ?>" + menus_id + "/" + receipt_date,
             dataType: "html",
             success: function(result) {
                 if(result == ""){
                     toastr.info("Please Check Configuration in Serial No First");
+                    $("#number").textbox('clear');
                 }else{
                     $("#number").textbox('setValue', result);
                 }

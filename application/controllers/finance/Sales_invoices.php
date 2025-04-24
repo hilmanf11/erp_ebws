@@ -95,16 +95,23 @@ class Sales_invoices extends CI_Controller
         echo json_encode($records);
     }
 
-    public function readScraps()
-    {
-        $records = $this->crud->query("SELECT DISTINCT `number` FROM scrap_booking WHERE `status` = '0' ORDER BY `number` ASC");
-        echo json_encode($records);
-    }
+    // public function readScraps()
+    // {
+    //     $records = $this->crud->query("SELECT DISTINCT `number` FROM scrap_booking WHERE `status` = '0' ORDER BY `number` ASC");
+    //     echo json_encode($records);
+    // }
 
     public function readScrapItem()
     {
-        $number = base64_decode($this->input->get('number'));
-        $records = $this->crud->query("SELECT b.id, b.number, b.number_customer, b.name, b.hsn_code, b.uom, a.qty FROM scrap_booking a JOIN item_fg b ON a.item_fg_id = b.id WHERE a.status = '0' and a.number = '$number' ORDER BY b.number ASC");
+        $post = isset($_POST['q']) ? $_POST['q'] : "";
+        $records = $this->crud->query("SELECT b.id, b.id as number, b.number as number_customer, b.name, b.hsn_code, b.uom, (SUM(a.qty) - COALESCE(c.qty_invoice, 0)) as qty 
+            FROM scrap_booking a 
+            LEFT JOIN item_rm b ON a.item_id = b.id
+            LEFT JOIN (SELECT item_fg_id, SUM(qty) as qty_invoice FROM sales_invoices GROUP BY item_fg_id) c ON a.item_id = c.item_fg_id
+            WHERE (b.id like '%$post%' or b.number like '%$post%') and (a.approved_to is null or a.approved_to = '')
+            GROUP BY a.item_id
+            HAVING qty > 0
+            ORDER BY b.number ASC");
         echo json_encode($records);
     }
 
@@ -384,54 +391,54 @@ class Sales_invoices extends CI_Controller
         die($due_date);
     }
 
-    public function number()
-    {
-        $datenow    = "IN0";
-        $sqlGetID   = $this->db->query("SELECT max(`number`) as kode FROM sales_invoices WHERE `number` like '%$datenow%'");
-        $rowID      = $sqlGetID->row();
-        $kode       = $rowID->kode;
-        if ($kode == NULL) {
-            $autoID = "001679";
-        } else {
-            $urutan = (int) substr($kode, 3);
-            $urutan++;
-            $autoID = sprintf("%06s", $urutan);
-        }
-        echo $datenow . $autoID;
-    }
-
-    // public function number($id_menu)
+    // public function number()
     // {
-    //     $datenow = date("Y-m-d");
-    //     $sql_menu = $this->db->query("SELECT * FROM menus_no WHERE menus_id = '$id_menu' and `status` = '0' and `start_date` <= '$datenow' and end_date >= '$datenow'");
-    //     $row_menu = $sql_menu->row();
-
-    //     if(@$row_menu->number == ""){
-    //         //
-    //     }else{
-    //         $number = @$row_menu->number;
-    //         $yearnow = date("y", strtotime($row_menu->start_date));
-    //         $yearend = date("y", strtotime($row_menu->end_date));
-
-    //         $whereDate = $number.$yearnow.$yearend."1";
-
-    //         $sqlGetID	= $this->db->query("SELECT max(`number`) as kode FROM sales_invoices WHERE `number` like '%$whereDate%'");
-    //         $rowID = $sqlGetID->row();
-    //         $kode = $rowID->kode;
-            
-    //         if ($kode == NULL) {
-    //             $autoID = sprintf("%0".$row_menu->sequence."s", $kode + 1);
-    //             $autoNo = $whereDate.$autoID;
-    //         } else {
-    //             $urutan = (int) substr($kode, -6);
-    //             $urutan++;
-    //             $autoID	= sprintf("%0".$row_menu->sequence."s", $urutan);
-    //             $autoNo = $whereDate.$autoID;
-    //         }
-
-    //         echo $autoNo;
+    //     $datenow    = "IN0";
+    //     $sqlGetID   = $this->db->query("SELECT max(`number`) as kode FROM sales_invoices WHERE `number` like '%$datenow%'");
+    //     $rowID      = $sqlGetID->row();
+    //     $kode       = $rowID->kode;
+    //     if ($kode == NULL) {
+    //         $autoID = "001679";
+    //     } else {
+    //         $urutan = (int) substr($kode, 3);
+    //         $urutan++;
+    //         $autoID = sprintf("%06s", $urutan);
     //     }
+    //     echo $datenow . $autoID;
     // }
+
+    public function number($id_menu)
+    {
+        $datenow = date("Y-m-d");
+        $sql_menu = $this->db->query("SELECT * FROM menus_no WHERE menus_id = '$id_menu' and `status` = '0' and `start_date` <= '$datenow' and end_date >= '$datenow'");
+        $row_menu = $sql_menu->row();
+
+        if(@$row_menu->number == ""){
+            //
+        }else{
+            $number = @$row_menu->number;
+            $yearnow = date("y", strtotime($row_menu->start_date));
+            $yearend = date("y", strtotime($row_menu->end_date));
+
+            $whereDate = $number.$yearnow.$yearend."1";
+
+            $sqlGetID	= $this->db->query("SELECT max(`number`) as kode FROM sales_invoices WHERE `number` like '%$whereDate%'");
+            $rowID = $sqlGetID->row();
+            $kode = $rowID->kode;
+            
+            if ($kode == NULL) {
+                $autoID = sprintf("%0".$row_menu->sequence."s", $kode + 1);
+                $autoNo = $whereDate.$autoID;
+            } else {
+                $urutan = (int) substr($kode, -6);
+                $urutan++;
+                $autoID	= sprintf("%0".$row_menu->sequence."s", $urutan);
+                $autoNo = $whereDate.$autoID;
+            }
+
+            echo $autoNo;
+        }
+    }
 
     public function datatablesTemp()
     {
@@ -622,8 +629,9 @@ class Sales_invoices extends CI_Controller
                 }
 
                 $send = $this->crud->create('sales_invoices', $post);
-                $update = $this->crud->update('delivery_notes', ["delivery_note_no" => $post['dn_number'], "sales_order_no" => $post['so_number'], "item_fg_id" => $post['item_fg_id']], ["status" => "1"]);
-                $update = $this->crud->update('rgp_transactions', ["number" => $post['dn_number'], "item_id" => $post['item_fg_id']], ["status_si" => "1"]);
+                $update = $this->db->update('delivery_notes', ["status" => "1"], ["delivery_note_no" => $post['dn_number'], "sales_order_no" => $post['so_number'], "item_fg_id" => $post['item_fg_id']]);
+                $update = $this->db->update('rgp_transactions', ["status_si" => "1"], ["number" => $post['dn_number'], "item_id" => $post['item_fg_id']]);
+                $update = $this->db->update('scrap_booking', ["status" => "1"], ["number" => $post['dn_number']]);
                 echo $send;
             }
         } else {
@@ -917,9 +925,9 @@ class Sales_invoices extends CI_Controller
             $send = $this->crud->delete('sales_invoices', $data);
             $this->db->delete('sales_invoice_journals', ["number" => $data['number']]);
             $this->db->delete('journal_postings', ["document_no" => $data['number']]);
-            $this->crud->update('delivery_notes', ["delivery_note_no" => $data['dn_number']], ["status" => "0"]);
-            $this->crud->update('scrap_booking', ["number" => $data['dn_number']], ["status" => "0"]);
-            $this->crud->update('rgp_transactions', ["number" => $post['dn_number']], ["status_si" => "0"]);
+            $this->db->update('delivery_notes', ["status" => "0"], ["delivery_note_no" => $data['dn_number']]);
+            $this->db->update('scrap_booking', ["status" => "0"], ["number" => $data['dn_number']]);
+            $this->db->update('rgp_transactions', ["status_si" => "0"], ["number" => $data['dn_number']]);
             echo $send;
         }
     }
@@ -1228,7 +1236,7 @@ class Sales_invoices extends CI_Controller
             $sgst = 0;
             $igst = 0;
             $dataQr2 = "";
-            for ($a=0; $a < 10; $a++) {
+            for ($a=0; $a < 15; $a++) {
                 if(!empty($records[$a]['qty'])){
                     if($records[$a]['cgst'] == 0){ $cgstRate = 0; $cgstAmount = 0; }else{ $cgstRate = $records[$a]['p_cgst']; $cgstAmount = $records[$a]['cgst']; }
                     if($records[$a]['sgst'] == 0){ $sgstRate = 0; $sgstAmount = 0; }else{ $sgstRate = $records[$a]['p_sgst']; $sgstAmount = $records[$a]['sgst']; }

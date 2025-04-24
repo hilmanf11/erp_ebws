@@ -61,6 +61,8 @@
                     <option value="item_mpq">Item MPQ</option>
                     <option value="sales_orders">Sales Orders</option>
                     <option value="sample_requests">Purch. Sample Requests</option>
+                    <!-- <option value="rgp_transactions">RGP Transactions</option> -->
+                    <option value="scrap_booking">Scrap Booking</option>
                 </select>
             </div>
             <div class="fitem">

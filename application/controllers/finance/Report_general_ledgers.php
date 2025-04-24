@@ -49,6 +49,14 @@ class Report_general_ledgers extends CI_Controller
             $filter_account_explode = explode(",", $filter_account);
         }
 
+        if($filter_from != "" && $filter_to != ""){
+            $where_period = "and a.journal_date between '$filter_from' and '$filter_to'";
+            $where_period2 = "and journal_date between '$filter_from' and '$filter_to'";
+        }else{
+            $where_period = "";
+            $where_period2 = "";
+        }
+
         $filter_before = date("2023-01-01", strtotime($filter_from));
         $filter_before_to = date("Y-m-t", strtotime("-1 month", strtotime($filter_from)));
 
@@ -61,15 +69,6 @@ class Report_general_ledgers extends CI_Controller
 
         for ($i = 0; $i < count($filter_account_explode); $i++) {
             $filter_account = $filter_account_explode[$i];
-
-            // $this->db->select('*');
-            // $this->db->from('journal_postings');
-            // $this->db->where("journal_date between '$filter_from' and '$filter_to'");
-            // $this->db->where("account_number", $filter_account);
-            // $this->db->order_by('journal_date', 'asc');
-            // $this->db->order_by('document_no', 'asc');
-            // $this->db->order_by('account_number', 'asc');
-            // $journals = $this->db->get()->result_array();
 
             $query_1 = $this->db->query("SELECT 
                 a.journal_date, 
@@ -90,7 +89,7 @@ class Report_general_ledgers extends CI_Controller
             LEFT JOIN sales_invoices c ON a.document_no = c.number
             LEFT JOIN ap_payments d ON a.document_no = d.payment_no
             LEFT JOIN ar_receipts e ON a.document_no = e.receipt_no
-            WHERE a.journal_date between '$filter_from' and '$filter_to' and a.account_number = '$filter_account' and a.modul != 'BANK STATEMENT'
+            WHERE a.account_number = '$filter_account' and a.modul != 'BANK STATEMENT' $where_period
             GROUP BY a.id");
             $data_1 = $query_1->result_array();
 
@@ -106,10 +105,10 @@ class Report_general_ledgers extends CI_Controller
                 modul, 
                 `description`, 
                 currency, 
-                (CASE WHEN SUM(local_credit) > 0 THEN SUM(local_credit) ELSE 0 END) as local_credit,
-                (CASE WHEN SUM(local_debit) > 0 THEN SUM(local_debit) ELSE 0 END) as local_debit
+                (CASE WHEN SUM(local_credit) > 0 THEN SUM(local_credit) ELSE 0 END) as local_debit,
+                (CASE WHEN SUM(local_debit) > 0 THEN SUM(local_debit) ELSE 0 END) as local_credit
             FROM journal_postings
-            WHERE journal_date between '$filter_from' and '$filter_to' and account_number = '$filter_account' and modul = 'BANK STATEMENT'
+            WHERE account_number = '$filter_account' and modul = 'BANK STATEMENT' $where_period2
             GROUP BY `number`");
             $data_2 = $query_2->result_array();
 
@@ -206,31 +205,55 @@ class Report_general_ledgers extends CI_Controller
             }
 
             $html .= '  <tr>
-                                <td style="text-align:center">-</td>
-                                <td>' . $filter_from . '</td>
-                                <td></td>
-                                <td></td>
-                                <td></td>
-                                <td></td>
-                                <td></td>
-                                <td></td>
-                                <td></td>
-                                <td>BALANCE</td>
-                                <td style="text-align:center;">INR</td>
-                                <td style="text-align:right;font-weight:bold;">' . number_format(0, 2) . '</td>
-                                <td style="text-align:right;font-weight:bold;">' . number_format(0, 2) . '</td>
-                                <td style="text-align:right;font-weight:bold;'.$hstyle.'">' . number_format(abs($local_balance), 2) . '</td>
-                            </tr>';
+                            <td style="text-align:center">-</td>
+                            <td>' . $filter_from . '</td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td>BALANCE</td>
+                            <td style="text-align:center;">INR</td>
+                            <td style="text-align:right;font-weight:bold;">' . number_format(0, 2) . '</td>
+                            <td style="text-align:right;font-weight:bold;">' . number_format(0, 2) . '</td>
+                            <td style="text-align:right;font-weight:bold;'.$hstyle.'">' . number_format(abs($local_balance), 2) . '</td>
+                        </tr>';
 
             foreach ($journals as $journal) {
                 $account_no = $journal['account_number'];
 
-                $this->db->select('e.number');
-                $this->db->from('account_coa b');
-                $this->db->join('account_group_details d', 'b.account_group_detail_id = d.id');
-                $this->db->join('account_groups e', 'd.account_group_id = e.id');
-                $this->db->where('b.account_number', $account_no);
-                $group = $this->db->get()->row();
+                // $this->db->select('e.number');
+                // $this->db->from('account_coa b');
+                // $this->db->join('account_group_details d', 'b.account_group_detail_id = d.id');
+                // $this->db->join('account_groups e', 'd.account_group_id = e.id');
+                // $this->db->where('b.account_number', $account_no);
+                // $group = $this->db->get()->row();
+
+                if($journal['modul'] == "ADJUSTMENT"){
+                    $this->db->select("a.company_name");
+                    $this->db->from('journal_postings a');
+                    $this->db->join('suppliers b', 'a.company_id = b.id');
+                    $this->db->where('a.number', $journal['number']);
+                    $j = $this->db->get()->row();
+                    $company_name = @$j->company_name;
+
+                    if(empty($j)){
+                        $this->db->select("a.company_name");
+                        $this->db->from('journal_postings a');
+                        $this->db->join('customers b', 'a.company_id = b.id');
+                        $this->db->where('a.number', $journal['number']);
+                        $j = $this->db->get()->row();
+                        $company_name = @$j->company_name;
+
+                        if(empty($j)){
+                            $company_name = $journal['company_name'];
+                        }
+                    }
+                }else{
+                    $company_name = $journal['company_name'];
+                }
 
                 // if($ori_balance > 0){
                 //     $ori_style = "color:green;";
@@ -250,6 +273,23 @@ class Report_general_ledgers extends CI_Controller
                     $local_style = "color:red;";
                 }
 
+                $explode = explode("|", $journal['description']);
+                if($journal['modul'] == "PURCHASE INVOICING"){
+                    if(@$explode[4] == ""){
+                        $desciption = @$explode[3];
+                    }else{
+                        $desciption = @$explode[4];
+                    }
+                }elseif($journal['modul'] == "AP PAYMENT"){
+                    $desciption = @$explode[3];
+                }elseif($journal['modul'] == "SALES INVOICING"){
+                    $desciption = @$explode[3] ." | ". @$explode[4];
+                }elseif($journal['modul'] == "AR RECEIPT"){
+                    $desciption = @$explode[3];
+                }else{
+                    $desciption = $journal['description'];
+                }
+
                 $html .= '  <tr>
                                     <td style="text-align:center">' . $no . '</td>
                                     <td>' . $journal['journal_date'] . '</td>
@@ -257,10 +297,10 @@ class Report_general_ledgers extends CI_Controller
                                     <td>' . $journal['document_no'] . '</td>
                                     <td>' . $journal['invoice_no'] . '</td>
                                     <td>' . $journal['invoice_date'] . '</td>
-                                    <td>' . $journal['company_name'] . '</td>
+                                    <td>' . $company_name . '</td>
                                     <td style="mso-number-format:\@;">' . $journal['account_number'] . '</td>
                                     <td>' . $journal['account_name'] . '</td>
-                                    <td>' . $journal['description'] . '</td>
+                                    <td>' . $desciption . '</td>
                                     <td style="text-align:center;">INR</td>
                                     <td style="text-align:right;font-weight:bold;color:green;">' . number_format($journal['local_debit'], 2) . '</td>
                                     <td style="text-align:right;font-weight:bold;color:red;">' . number_format($journal['local_credit'], 2) . '</td>

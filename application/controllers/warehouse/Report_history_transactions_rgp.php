@@ -176,6 +176,8 @@ class Report_history_transactions_rgp extends CI_Controller
                 WHEN g.id is not null THEN g.id
                 ELSE h.number
         END) as item_id,
+        g.id as item_id_rm,
+        h.id as item_id_fg,
 		a.uom,
 		COALESCE(d.begin_stock,0) as begin_stock,
 		COALESCE(d.begin_value,0) as begin_value,
@@ -265,7 +267,11 @@ class Report_history_transactions_rgp extends CI_Controller
                 ';
         $no = 1;
         foreach ($records as $record) {
-            $item_id = $record->item_id;
+            if ($record->item_id_rm != null) {
+                $item_id = @$record->item_id_rm;
+            } else {
+                $item_id = @$record->item_id_fg;
+            }
 
             $html .= '  <tr>
                             <td style="text-align:center">' . $no . '</td>

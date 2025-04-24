@@ -203,6 +203,7 @@
                     success: function(response) {
                         if(response == ""){
                             toastr.info("Please Check Configuration in Serial No First");
+                            $('#document_no').textbox('clear');
                         }else{
                             $('#document_no').textbox('setValue', response);
                         }

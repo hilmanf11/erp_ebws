@@ -37,7 +37,7 @@ class Item_mpq extends CI_Controller
     public function readItems()
     {
         $post = isset($_POST['q']) ? $_POST['q'] : "";
-       
+
         $this->db->select('c.id, c.number, c.name, a.mpq');
         $this->db->from('item_mpq a');
         $this->db->join('item_rm c', 'a.item_rm_id = c.id');
@@ -62,20 +62,23 @@ class Item_mpq extends CI_Controller
             $offset = ($page - 1) * $rows;
             $result = array();
             //Select Query
-            $this->db->select('a.*, b.number as item_rm_number, b.name as item_rm_name, c.name as supplier_name');
+            $this->db->select('a.*, b.number as item_rm_number, b.name as item_rm_name, c.name as supplier_name,d.name as customer_name');
             $this->db->from('item_mpq a');
             $this->db->join('item_rm b', 'a.item_rm_id = b.id');
             $this->db->join('suppliers c', 'a.supplier_id = c.id');
+            $this->db->join('customers d', 'a.customer_id = d.id', 'left');
             if (@count($filters) > 0) {
                 foreach ($filters as $filter) {
-                    if($filter->field == "item_rm_number"){
+                    if ($filter->field == "item_rm_number") {
                         $this->db->like("b.number", $filter->value);
-                    }elseif($filter->field == "item_rm_name"){
+                    } elseif ($filter->field == "item_rm_name") {
                         $this->db->like("b.name", $filter->value);
-                    }elseif($filter->field == "supplier_name"){
+                    } elseif ($filter->field == "supplier_name") {
                         $this->db->like("c.name", $filter->value);
-                    }else{
-                        $this->db->like("a.".$filter->field, $filter->value);
+                    } elseif ($filter->field == "customer_name") {
+                        $this->db->like("d.name", $filter->value);
+                    } else {
+                        $this->db->like("a." . $filter->field, $filter->value);
                     }
                 }
             }
@@ -143,6 +146,8 @@ class Item_mpq extends CI_Controller
                 'item_rm_id' => $data->val($i, 2),
                 'supplier_id' => $data->val($i, 3),
                 'mpq' => $data->val($i, 4),
+                'calculate' => $data->val($i, 5),
+                'customer_id' => $data->val($i, 6),
             );
         }
         $datas['total'] = count($datas);
@@ -188,19 +193,25 @@ class Item_mpq extends CI_Controller
             $item_rm = $this->crud->read('item_rm', [], ["id" => $data['item_rm_id']]);
             $supplier = $this->crud->read('suppliers', [], ["id" => $data['supplier_id']]);
             $item_mpq = $this->crud->read('item_mpq', [], ["item_rm_id" => $data['item_rm_id'], 'supplier_id' => $data['supplier_id']]);
+            $customer = $this->crud->read('customers', [], ["id" => $data['customer_id']]);
 
             $dataFinal = array(
                 "supplier_id" => @$supplier->id,
                 "item_rm_id" => @$item_rm->id,
                 "mpq" => $data['mpq'],
+                "calculate" => strtoupper($data['calculate']),
+                "customer_id" => @$customer->id,
             );
 
-            if(empty($item_rm->id)){
+            if (empty($item_rm->id)) {
                 echo json_encode(array("title" => "Not Found", "message" => "Part No " . $data['item_rm_id'] . " Not Found", "theme" => "error"));
-            } else if(empty($supplier->id)){
+            } else if (empty($supplier->id)) {
                 echo json_encode(array("title" => "Not Found", "message" => "Supplier " . $data['supplier_id'] . " Not Found", "theme" => "error"));
-            } else if(!empty($item_mpq->id)){
-                echo json_encode(array("title" => "Duplicate", "message" => "Part No " . $data['item_rm_id'] . " Duplicate", "theme" => "error"));
+            } else if (empty($customer->id) && $data['customer_id'] != "") {
+                echo json_encode(array("title" => "Not Found", "message" => "Customer " . $data['customer_id'] . " Not Found", "theme" => "error"));
+            } else if (!empty($item_mpq->id)) {
+                $send = $this->crud->update('item_mpq', ["item_rm_id" => $data['item_rm_id'], 'supplier_id' => $data['supplier_id']], $dataFinal);
+                echo $send;
             } else {
                 $send = $this->crud->create('item_mpq', $dataFinal);
                 echo $send;
@@ -223,10 +234,11 @@ class Item_mpq extends CI_Controller
         $this->db->from('config');
         $config = $this->db->get()->row();
 
-        $this->db->select('a.*, b.number as item_rm_number, b.name as item_rm_name, c.name as supplier_name');
+        $this->db->select('a.*, b.number as item_rm_number, b.name as item_rm_name, c.name as supplier_name,d.name as customer_name');
         $this->db->from('item_mpq a');
         $this->db->join('item_rm b', 'a.item_rm_id = b.id');
         $this->db->join('suppliers c', 'a.supplier_id = c.id');
+        $this->db->join('customers d', 'a.customer_id = d.id', 'left');
         $this->db->order_by('b.number', 'ASC');
         $records = $this->db->get()->result_array();
 
@@ -261,6 +273,9 @@ class Item_mpq extends CI_Controller
                 <th>Part No Supplier</th>
                 <th>Description</th>
                 <th>MPQ</th>
+                <th>Calculate</th>
+                <th>Customer ID</th>
+                <th>Customer Name</th>
             </tr>';
         $no = 1;
         foreach ($records as $data) {
@@ -271,7 +286,10 @@ class Item_mpq extends CI_Controller
                     <td>' . $data['item_rm_id'] . '</td>
                     <td>' . $data['item_rm_number'] . '</td>
                     <td>' . $data['item_rm_name'] . '</td>
-                    <td>' . $data['mpq'] . '</td>';
+                    <td>' . $data['mpq'] . '</td>
+                    <td>' . $data['calculate'] . '</td>
+                    <td>' . $data['customer_id'] . '</td>
+                    <td>' . $data['customer_name'] . '</td>';
             $no++;
         }
         $html .= '</table></body></html>';

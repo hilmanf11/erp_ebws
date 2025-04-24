@@ -201,7 +201,7 @@ class Report_history_transactions_fg extends CI_Controller
                         WHERE a.item_fg_id = '$item_fg_id' and DATE_FORMAT(a.created_date, '%Y-%m-%d') = '$working_date' and a.status != '2'");
 
                     //RGP TRANSACTION
-                    $rgps = $this->crud->query("SELECT a.*, b.label_no, b.qty as qty_scan
+                    $rgps = $this->crud->query("SELECT a.*, b.label_no, b.qty as qty_scan, b.created_date as scan_date
                         FROM rgp_transactions a 
                         JOIN scan_item_rgp b ON a.number = b.rgp_number and a.item_id = b.item_id
                         WHERE a.item_id = '$item_fg_id' and a.transaction_date = '$working_date'
@@ -303,7 +303,7 @@ class Report_history_transactions_fg extends CI_Controller
                                         <td style="text-align:center">' . $nod . '</td>
                                         <td>' . $rgp_status . '</td>
                                         <td>' . $user->name . '</td>
-                                        <td>' . $rgp->transaction_date . '</td>
+                                        <td>' . $rgp->scan_date . '</td>
                                         <td>' . $rgp->number . '</td>
                                         <td>' . $rgp->label_no . '</td>
                                         <td style="text-align:right;">' . number_format($begin, 2) . '</td>

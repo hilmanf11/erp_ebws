@@ -68,7 +68,7 @@ class Report_tds extends CI_Controller
             (CASE WHEN SUBSTRING(b.pen, 4, 1) = 'P' THEN 'Non Company' ELSE 'Company' END) AS tds_status,
             c.individual, d.account_number, a.invoice_no, a.invoice_date, a.currency, SUM(a.total) as total, 
             a.number as posting_no, a.trans_date as posting_date,
-            ABS(d.debit - d.credit) AS tds_amount");
+            (d.credit - d.debit) AS tds_amount");
         $this->db->from('purchase_invoices a');
         $this->db->join('suppliers b', 'a.supplier_id = b.id');
         $this->db->join("(SELECT number, account_number, SUM(debit) as debit, SUM(credit) as credit FROM purchase_invoice_journals WHERE account_number IN ('17000001','17000002','17000003','17000004','17000005','17000006','17000028','17000029','17000034') GROUP BY number) d", 'a.number = d.number');
@@ -95,10 +95,10 @@ class Report_tds extends CI_Controller
             b.invoice_no,
             b.trans_date AS invoice_date,
             b.currency,
-            COALESCE(ABS(d.local_debit - d.local_credit), 0) AS total,
+            COALESCE((d.local_credit - d.local_debit), 0) AS total,
             a.number AS posting_no,
             a.journal_date AS posting_date,
-            ABS(b.debit - b.credit) AS tds_amount");
+            (b.credit - b.debit) AS tds_amount");
         $this->db->from("(SELECT a.*, b.name AS supplier_name, b.pen FROM journal_postings a JOIN suppliers b ON a.company_id = b.id GROUP BY a.number) a");
         $this->db->join("(SELECT number, account_number, account_name, invoice_no, trans_date, currency, SUM(local_debit) as debit, SUM(local_credit) as credit FROM journal_postings WHERE account_number IN ('17000001','17000002','17000003','17000004','17000005','17000006','17000028','17000029','17000034') GROUP BY number) b", "a.number = b.number");
         $this->db->join('tds c', "b.account_number = c.account_number", 'left');
@@ -154,6 +154,16 @@ class Report_tds extends CI_Controller
                 </tr>';
         $no = 1;
         foreach ($records as $data) {
+            if($data['tds_amount'] < 0){
+                $style = "color:red;";
+                $tds_amount = (abs($data['tds_amount']) * -1);
+                $total = (abs($data['total']) * -1);
+            }else{
+                $style = "";
+                $tds_amount = abs($data['tds_amount']);
+                $total = abs($data['total']);
+            }
+
             $html .= '  <tr>
                             <td style="text-align:center">' . $no . '</td>
                             <td>' . $data['supplier_id'] . '</td>
@@ -168,8 +178,8 @@ class Report_tds extends CI_Controller
                             <td>' . $data['posting_no'] . '</td>
                             <td>' . $data['posting_date'] . '</td>
                             <td>' . $data['currency'] . '</td>
-                            <td style="text-align:right;">' . $data['total'] . '</td>
-                            <td style="text-align:right;">' . $data['tds_amount'] . '</td>
+                            <td style="text-align:right;'.$style.'">' . $total . '</td>
+                            <td style="text-align:right;'.$style.'">' . $tds_amount . '</td>
                         </tr>';
             $no++;
         }

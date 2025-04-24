@@ -42,14 +42,15 @@
     <fieldset style="width:100%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px; display: grid; grid-template-columns: auto auto auto; grid-gap: 5px; display: flex;">
         
     <legend><b>Filter Data</b></legend>
-        <div style="width:30%;">
+        <div style="width:35%;">
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Create Date</span>
+                <input style="width:28%;" id="filter_from" class="easyui-datebox" value="<?= date("Y-m-01") ?>" data-options="formatter:myformatter,parser:myparser, editable:false"> To
+                <input style="width:28%;" id="filter_to" class="easyui-datebox" value="<?= date("Y-m-t") ?>" data-options="formatter:myformatter,parser:myparser, editable:false">
+            </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Supplier</span>
                 <input style="width:60%;" id="filter_supplier" class="easyui-combobox">
-            </div>
-            <div class="fitem">
-                <span style="width:35%; display:inline-block;">Invoice No</span>
-                <input style="width:60%;" id="filter_invoice_no" class="easyui-combobox">
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;"></span>
@@ -58,10 +59,14 @@
         </div>
         <div style="width: 30%;">
             <div class="fitem">
+                <span style="width:35%; display:inline-block;">Invoice No</span>
+                <input style="width:60%;" id="filter_invoice_no" class="easyui-combobox">
+            </div>
+            <div class="fitem">
                 <span style="width:35%; display:inline-block;">PO No</span>
                 <input style="width:60%;" id="filter_po_no" class="easyui-combobox">
             </div>
-            <div class="fitem">
+            <div class="fitem" hidden>
                 <span style="width:35%; display:inline-block;">PO Date</span>
                 <input style="width:60%;" id="filter_po_date" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser">
             </div>
@@ -682,6 +687,8 @@
     }
     
     function filter() {
+        var filter_from = $("#filter_from").datebox('getValue');
+        var filter_to = $("#filter_to").datebox('getValue');
         var filter_supplier = $("#filter_supplier").combobox('getValue');
         var filter_status = $("#filter_status").combobox('getValue');
         var filter_po_no = $("#filter_po_no").combobox('getValue');
@@ -690,7 +697,8 @@
         var filter_invoice_no = $("#filter_invoice_no").combobox('getValue');
         var filter_item_rm_id = $("#filter_item_rm_id").combogrid('getValue');
 
-        var url = "?filter_supplier=" + window.btoa(filter_supplier) +
+        var url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + 
+            "&filter_supplier=" + window.btoa(filter_supplier) +
             "&filter_status=" + window.btoa(filter_status) +
             "&filter_po_no=" + window.btoa(filter_po_no) +
             "&filter_po_date=" + window.btoa(filter_po_date) +
@@ -710,6 +718,8 @@
     }
 
     function excel() {
+        var filter_from = $("#filter_from").datebox('getValue');
+        var filter_to = $("#filter_to").datebox('getValue');
         var filter_supplier = $("#filter_supplier").combobox('getValue');
         var filter_status = $("#filter_status").combobox('getValue');
         var filter_po_no = $("#filter_po_no").combobox('getValue');
@@ -718,7 +728,8 @@
         var filter_invoice_no = $("#filter_invoice_no").combobox('getValue');
         var filter_item_rm_id = $("#filter_item_rm_id").combogrid('getValue');
 
-        var url = "?filter_supplier=" + window.btoa(filter_supplier) +
+        var url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + 
+            "&filter_supplier=" + window.btoa(filter_supplier) +
             "&filter_status=" + window.btoa(filter_status) +
             "&filter_po_no=" + window.btoa(filter_po_no) +
             "&filter_po_date=" + window.btoa(filter_po_date) +
@@ -735,11 +746,13 @@
 
     $(function() {
         $('#dg').datagrid({
-            url: '<?= base_url('purchase/delivery_confirm_others/datatables') ?>',
+            // url: '<?= base_url('purchase/delivery_confirm_others/datatables') ?>',
             pagination: true,
             rownumbers: true,
             fit: true
         });
+
+        filter();
 
         $("#u_attachment").filebox({
             onChange: function () {
@@ -779,90 +792,103 @@
                     var attachment = $("#attachment").textbox('getValue');
 
                     if(supplier_id != "" && delivery_no != "" && invoice_no != "" && invoice_date != ""){
-                        $('#dg2').datagrid('acceptChanges');
-                        var rows = $('#dg2').datagrid('getRows');
-                        var totalrows = rows.length;
-                        endEditing();
+                        $.ajax({
+                            type: "post",
+                            url: "<?= base_url('purchase/delivery_confirm_others/checkInvoice') ?>",
+                            data: "invoice_no=" + invoice_no,
+                            dataType: "html",
+                            success: function (data) {
+                                if(data == "NG"){
+                                    toastr.error("Invoice No already created, Please check again");
+                                    return false;
+                                }
+                                
+                                $('#dg2').datagrid('acceptChanges');
+                                var rows = $('#dg2').datagrid('getRows');
+                                var totalrows = rows.length;
+                                endEditing();
 
-                        for (let z = 0; z < totalrows; z++) {
-                            var jsonCheck = rows[z];
-                            if((parseFloat(jsonCheck.qty) - parseFloat(jsonCheck.delivery)) < 0){
-                                toastr.error("Please Check Invoice Qty cannot > Remain");
-                                return false;
-                            }
+                                for (let z = 0; z < totalrows; z++) {
+                                    var jsonCheck = rows[z];
+                                    if((parseFloat(jsonCheck.qty) - parseFloat(jsonCheck.delivery)) < 0){
+                                        toastr.error("Please Check Invoice Qty cannot > Remain");
+                                        return false;
+                                    }
 
-                            if(parseFloat(jsonCheck.delivery) == 0){
-                                toastr.error("Invoice Qty Still 0");
-                                return false;
-                            }
-                        }
-                        
-                        $('#dlg_insert').dialog('close');
+                                    if(parseFloat(jsonCheck.delivery) == 0){
+                                        toastr.error("Invoice Qty Still 0");
+                                        return false;
+                                    }
+                                }
+                                
+                                $('#dlg_insert').dialog('close');
 
-                        Swal.fire({
-                            title: 'Please Wait...',
-                            showConfirmButton: false,
-                            allowOutsideClick: false,
-                            allowEscapeKey: false,
-                            didOpen: () => {
-                                Swal.showLoading();
-                            },
-                        });
+                                Swal.fire({
+                                    title: 'Please Wait...',
+                                    showConfirmButton: false,
+                                    allowOutsideClick: false,
+                                    allowEscapeKey: false,
+                                    didOpen: () => {
+                                        Swal.showLoading();
+                                    },
+                                });
 
-                        requestData(totalrows, rows);
-                        function requestData(total, json, number = 1, value = 0, success = 1, failed = 1) {
-                            var i = (number - 1);
-                            if (value < 100) {
-                                value = Math.floor((number / total) * 100);
+                                requestData(totalrows, rows);
+                                function requestData(total, json, number = 1, value = 0, success = 1, failed = 1) {
+                                    var i = (number - 1);
+                                    if (value < 100) {
+                                        value = Math.floor((number / total) * 100);
 
-                                if(json[i].balance >= 0){
-                                    $.ajax({
-                                        type: "post",
-                                        url: '<?= base_url('purchase/delivery_confirm_others/create') ?>',
-                                        data: {
-                                            supplier_id: supplier_id,
-                                            delivery_no: delivery_no,
-                                            invoice_no: invoice_no,
-                                            invoice_date: invoice_date,
-                                            awb_no: awb_no,
-                                            awb_date: awb_date,
-                                            attachment: attachment,
-                                            po_no: json[i].po_no,
-                                            po_date: json[i].po_date,
-                                            item_rm_id: json[i].item_rm_id,
-                                            uom: json[i].uom,
-                                            eta: json[i].eta,
-                                            etd: json[i].etd,
-                                            qty: json[i].qty,
-                                            delivery: json[i].delivery,
-                                            balance: json[i].balance,
-                                            id: json[i].id,
-                                        },
-                                        dataType: "json",
-                                        success: function(result) {
-                                            if (i == (total - 1)) {
-                                                Swal.close();
-                                                Swal.fire({
-                                                    title: result.message,
-                                                    icon: result.theme,
-                                                    confirmButtonText: 'Ok',
-                                                    allowOutsideClick: false,
-                                                }).then((result) => {
-                                                    if (result.isConfirmed) {
-                                                        // window.location.reload();
-                                                        $('#dg').datagrid('reload');
+                                        if(json[i].balance >= 0){
+                                            $.ajax({
+                                                type: "post",
+                                                url: '<?= base_url('purchase/delivery_confirm_others/create') ?>',
+                                                data: {
+                                                    supplier_id: supplier_id,
+                                                    delivery_no: delivery_no,
+                                                    invoice_no: invoice_no,
+                                                    invoice_date: invoice_date,
+                                                    awb_no: awb_no,
+                                                    awb_date: awb_date,
+                                                    attachment: attachment,
+                                                    po_no: json[i].po_no,
+                                                    po_date: json[i].po_date,
+                                                    item_rm_id: json[i].item_rm_id,
+                                                    uom: json[i].uom,
+                                                    eta: json[i].eta,
+                                                    etd: json[i].etd,
+                                                    qty: json[i].qty,
+                                                    delivery: json[i].delivery,
+                                                    balance: json[i].balance,
+                                                    id: json[i].id,
+                                                },
+                                                dataType: "json",
+                                                success: function(result) {
+                                                    if (i == (total - 1)) {
+                                                        Swal.close();
+                                                        Swal.fire({
+                                                            title: result.message,
+                                                            icon: result.theme,
+                                                            confirmButtonText: 'Ok',
+                                                            allowOutsideClick: false,
+                                                        }).then((result) => {
+                                                            if (result.isConfirmed) {
+                                                                // window.location.reload();
+                                                                $('#dg').datagrid('reload');
+                                                            }
+                                                        });
                                                     }
-                                                });
-                                            }
 
-                                            requestData(total, json, number + 1, value, success + 1, failed + 0);
+                                                    requestData(total, json, number + 1, value, success + 1, failed + 0);
+                                                }
+                                            });
+                                        }else{
+                                            toastr.error("Balance Cannot Minus"); 
                                         }
-                                    });
-                                }else{
-                                    toastr.error("Balance Cannot Minus"); 
+                                    }
                                 }
                             }
-                        }
+                        });
                     }else{
                         toastr.error("Please Complete Your input");    
                     }

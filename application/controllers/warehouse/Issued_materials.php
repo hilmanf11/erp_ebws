@@ -192,29 +192,39 @@ class Issued_materials extends CI_Controller
             $this->db->where('a.label_no', $label_no);
             $totalRows = $this->db->count_all_results('', false);
             $records = $this->db->get()->result_array();
+            
             if (!$records) {
-                $this->db->select('b.label_no, a.item_rm_id, b.qty');
-                $this->db->from('os_rm a');
-                $this->db->join('scan_item_receipts b', 'a.id = b.receipt_id');
-                $this->db->where('b.label_no', $label_no);
+                $this->db->select('a.label_no, b.item_id as item_rm_id, a.qty');
+                $this->db->from('scan_item_receipts a');
+                $this->db->join('rgp_transactions b', 'a.receipt_id = b.rgp_id');
+                $this->db->where('a.label_no', $label_no);
                 $totalRows = $this->db->count_all_results('', false);
                 $records = $this->db->get()->result_array();
-                
+
                 if (!$records) {
-                    $this->db->select('a.label_divided as label_no, b.item_rm_id, a.qty');
-                    $this->db->from('barcode_divides a');
-                    $this->db->join('purchase_order_receipts b', 'a.reff = b.receipt_id');
-                    $this->db->where('a.label_divided', $label_no);
+                    $this->db->select('b.label_no, a.item_rm_id, b.qty');
+                    $this->db->from('os_rm a');
+                    $this->db->join('scan_item_receipts b', 'a.id = b.receipt_id');
+                    $this->db->where('b.label_no', $label_no);
                     $totalRows = $this->db->count_all_results('', false);
                     $records = $this->db->get()->result_array();
-
+                    
                     if (!$records) {
                         $this->db->select('a.label_divided as label_no, b.item_rm_id, a.qty');
                         $this->db->from('barcode_divides a');
-                        $this->db->join('os_rm b', 'a.reff = b.id');
+                        $this->db->join('purchase_order_receipts b', 'a.reff = b.receipt_id');
                         $this->db->where('a.label_divided', $label_no);
                         $totalRows = $this->db->count_all_results('', false);
                         $records = $this->db->get()->result_array();
+
+                        if (!$records) {
+                            $this->db->select('a.label_divided as label_no, b.item_rm_id, a.qty');
+                            $this->db->from('barcode_divides a');
+                            $this->db->join('os_rm b', 'a.reff = b.id');
+                            $this->db->where('a.label_divided', $label_no);
+                            $totalRows = $this->db->count_all_results('', false);
+                            $records = $this->db->get()->result_array();
+                        }
                     }
                 }
             }
@@ -267,9 +277,11 @@ class Issued_materials extends CI_Controller
                 $totalSupply = $this->crud->query("SELECT SUM(qty) as qty FROM issued_material_details WHERE request_no = '$request_no' and item_rm_id='$item_rm_id'");
                 $purchase_order_receipts = $this->crud->read("purchase_order_receipts", [], ["receipt_id" => $scan_item_receipts->receipt_id]);
                 $trans_date = @$purchase_order_receipts->receipt_date;
+                $item_id_po = @$purchase_order_receipts->item_rm_id;
                 if(empty($purchase_order_receipts)){
                     $purchase_order_receipts = $this->crud->read("os_rm", [], ["id" => $scan_item_receipts->receipt_id]);
                     $trans_date = @$purchase_order_receipts->trans_date;
+                    $item_id_po = @$purchase_order_receipts->item_rm_id;
                 }
 
                 $checkItems = $this->crud->query("SELECT a.receipt_date, b.label_no as label_1, a.receipt_id, b.receipt_id, c.label_no as label_2, d.label_no as label_3
@@ -278,7 +290,7 @@ class Issued_materials extends CI_Controller
                 LEFT JOIN barcode_divides c ON b.label_no = c.label_no
                 LEFT JOIN issued_material_details d ON a.item_rm_id = d.item_rm_id and b.label_no = d.label_no
                 JOIN scan_item_receipts e ON b.label_no = e.label_no AND e.status = 0
-                WHERE a.item_rm_id = '$purchase_order_receipts->item_rm_id' and a.receipt_date < '$trans_date' AND d.label_no is null and c.label_no is null and b.status = 1 and a.status != 2
+                WHERE a.item_rm_id = '$item_id_po' and a.receipt_date < '$trans_date' AND d.label_no is null and c.label_no is null and b.status = 1 and a.status != 2
                 ORDER BY receipt_date ASC");
 
                 if (($totalSupply[0]->qty + $qty_label) <= $qty || $qty == "0") {
@@ -344,9 +356,11 @@ class Issued_materials extends CI_Controller
 
                 $purchase_order_receipts = $this->crud->read("purchase_order_receipts", [], ["receipt_id" => $barcode_divides->reff]);
                 $receipt_date = @$purchase_order_receipts->receipt_date;
+                $item_id_po = @$purchase_order_receipts->item_rm_id;
                 if(empty($purchase_order_receipts)){
                     $purchase_order_receipts = $this->crud->read("os_rm", [], ["id" => $barcode_divides->reff]);
                     $receipt_date = @$purchase_order_receipts->trans_date;
+                    $item_id_po = @$purchase_order_receipts->item_rm_id;
                 }
 
                 $checkItems = $this->crud->query("SELECT a.receipt_date, c.label_divided, c.label_no as label_1, a.receipt_id, b.receipt_id, d.label_no as label_2
@@ -355,7 +369,7 @@ class Issued_materials extends CI_Controller
                 LEFT JOIN barcode_divides c ON b.label_no = c.label_no and c.type = 'SUPPLY'
                 LEFT JOIN issued_material_details d ON a.item_rm_id = d.item_rm_id and (b.label_no = d.label_no or c.label_divided = d.label_no)
                 JOIN scan_item_receipts e ON b.label_no = e.label_no AND e.status = 0
-                WHERE a.item_rm_id = '$purchase_order_receipts->item_rm_id' and a.receipt_date < '$receipt_date' AND c.status = 0 AND d.label_no is null and b.status = 1 and a.status != 2
+                WHERE a.item_rm_id = '$item_id_po' and a.receipt_date < '$receipt_date' AND c.status = 0 AND d.label_no is null and b.status = 1 and a.status != 2
                 ORDER BY receipt_date ASC");
 
                 if (($totalSupply[0]->qty + $qty_label) <= $qty || $qty == "0") {

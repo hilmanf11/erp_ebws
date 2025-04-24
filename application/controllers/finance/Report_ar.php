@@ -73,15 +73,16 @@ class Report_ar extends CI_Controller
             a.currency,
             b.local_debit,
             b.local_credit,
-            a.status
+            (CASE WHEN d.number is null THEN a.status ELSE 1 END) as status
         FROM sales_invoices a
         JOIN (SELECT journal_date, number, document_no, account_number, description, SUM(local_debit) AS local_debit, SUM(local_credit) AS local_credit 
             FROM journal_postings 
-            WHERE  modul != 'CLEARING' and account_number IN ('27000001') 
+            WHERE  modul NOT IN ('CLEARING','ADJUSTMENT') and account_number IN ('27000001') 
             GROUP BY number, document_no, account_number) b ON a.number = b.document_no
         LEFT JOIN journal_clearings c ON a.number = c.document_no
-        WHERE a.customer_id = '$customer_id' AND a.plant = '$plant' AND b.journal_date < '$filter_from'
-        GROUP BY a.number
+        LEFT JOIN sales_invoices d ON a.number = d.number and d.cancel = 1
+        WHERE a.customer_id = '$customer_id' AND a.plant = '$plant' AND b.journal_date < '$filter_from' AND a.status LIKE '%$filter_status%'
+        GROUP BY a.number, b.number
         ORDER BY b.journal_date ASC");
         $data_1 = $query_1->result_array();
 
@@ -98,8 +99,8 @@ class Report_ar extends CI_Controller
             d.number as cl_no,
             d.journal_date as cl_date,
             a.currency,
-            (CASE WHEN a.account_type = 'DEBIT' THEN SUM(a.receipt) ELSE 0 END) as local_debit,
-            (CASE WHEN a.account_type = 'CREDIT' THEN SUM(a.receipt) ELSE 0 END) as local_credit,
+            (CASE WHEN a.account_type = 'DEBIT' THEN b.local_debit ELSE 0 END) as local_debit,
+            (CASE WHEN a.account_type = 'CREDIT' THEN b.local_credit ELSE 0 END) as local_credit,
             (CASE WHEN c.status IS NULL THEN a.status_cl ELSE c.status END) as status
         FROM ar_receipts a
         LEFT JOIN (SELECT journal_date, number, document_no, account_number, description, SUM(local_debit) AS local_debit, SUM(local_credit) AS local_credit 
@@ -108,8 +109,8 @@ class Report_ar extends CI_Controller
             GROUP BY number, document_no, account_number) b ON a.receipt_no = b.document_no
         LEFT JOIN sales_invoices c ON a.sales_invoice = c.number
         LEFT JOIN journal_clearings d ON a.receipt_no = d.document_no
-        WHERE a.customer_id = '$customer_id' AND a.plant = '$plant' AND b.journal_date < '$filter_from'
-        GROUP BY a.receipt_no
+        WHERE a.customer_id = '$customer_id' AND a.plant = '$plant' AND b.journal_date < '$filter_from' AND (CASE WHEN c.status IS NULL THEN a.status_cl ELSE c.status END) LIKE '%$filter_status%'
+        GROUP BY a.receipt_no, a.account_number
         ORDER BY b.journal_date");
         $data_2 = $query_2->result_array();
 
@@ -135,6 +136,7 @@ class Report_ar extends CI_Controller
         AND a.modul IN ('CURRENCY REVALUATION','ADJUSTMENT') 
         AND a.account_number IN ('27000001','28000004','28000007')
         AND a.journal_date < '$filter_from'
+        AND a.status_cl LIKE '%$filter_status%'
         GROUP BY a.number
         ORDER BY a.journal_date ASC");
         $data_3 = $query_3->result_array();
@@ -158,7 +160,7 @@ class Report_ar extends CI_Controller
         FROM journal_postings a
         LEFT JOIN journal_clearings b ON a.id = b.document_no and a.number = b.invoice_no and a.company_id = b.company_id
         WHERE a.company_id = '$customer_id' and (a.company_name like '%$company_name%' or a.company_name like '%$company_name2%')
-        AND a.modul IN ('CLEARING')
+        AND a.modul IN ('CLEARING') and a.account_number IN ('27000001') 
         AND a.journal_date < '$filter_from'
         GROUP BY a.id
         ORDER BY a.journal_date ASC");
@@ -200,6 +202,10 @@ class Report_ar extends CI_Controller
 
         $filter_from = base64_decode($this->input->get("filter_from"));
         $filter_to = base64_decode($this->input->get("filter_to"));
+        if($filter_from == "" && $filter_to == ""){
+            $filter_from = "2024-11-01";
+            $filter_to = date("Y-m-d");
+        }
         $filter_customer = $this->input->get("filter_customer");
         $filter_plant = $this->input->get("filter_plant");
         $filter_currency = $this->input->get("filter_currency");
@@ -352,15 +358,16 @@ class Report_ar extends CI_Controller
                 a.currency,
                 b.local_debit,
                 b.local_credit,
-                a.status
+                (CASE WHEN d.number is null THEN a.status ELSE 1 END) as status
             FROM sales_invoices a
             JOIN (SELECT journal_date, number, document_no, account_number, description, SUM(local_debit) AS local_debit, SUM(local_credit) AS local_credit 
                 FROM journal_postings 
-                WHERE  modul != 'CLEARING' and account_number IN ('27000001') 
+                WHERE  modul NOT IN ('CLEARING','ADJUSTMENT') and account_number IN ('27000001') 
                 GROUP BY number, document_no, account_number) b ON a.number = b.document_no
             LEFT JOIN journal_clearings c ON a.number = c.document_no
+            LEFT JOIN sales_invoices d ON a.number = d.number and d.cancel = 1
             WHERE a.customer_id = '$customer_id' AND a.plant = '$plant' AND b.journal_date BETWEEN '$filter_from' AND '$filter_to' AND a.status LIKE '%$filter_status%'
-            GROUP BY a.number
+            GROUP BY a.number, b.number
             ORDER BY b.journal_date ASC");
             $data_1 = $query_1->result_array();
 
@@ -377,8 +384,8 @@ class Report_ar extends CI_Controller
                 d.number as cl_no,
                 d.journal_date as cl_date,
                 a.currency,
-                (CASE WHEN a.account_type = 'DEBIT' THEN SUM(a.receipt) ELSE 0 END) as local_debit,
-                (CASE WHEN a.account_type = 'CREDIT' THEN SUM(a.receipt) ELSE 0 END) as local_credit,
+                (CASE WHEN a.account_type = 'DEBIT' THEN b.local_debit ELSE 0 END) as local_debit,
+                (CASE WHEN a.account_type = 'CREDIT' THEN b.local_credit ELSE 0 END) as local_credit,
                 (CASE WHEN c.status IS NULL THEN a.status_cl ELSE c.status END) as status
             FROM ar_receipts a
             LEFT JOIN (SELECT journal_date, number, document_no, account_number, description, SUM(local_debit) AS local_debit, SUM(local_credit) AS local_credit 
@@ -388,7 +395,7 @@ class Report_ar extends CI_Controller
             LEFT JOIN sales_invoices c ON a.sales_invoice = c.number
             LEFT JOIN journal_clearings d ON a.receipt_no = d.document_no
             WHERE a.customer_id = '$customer_id' AND a.plant = '$plant' $where_inv AND b.journal_date BETWEEN '$filter_from' AND '$filter_to' AND (CASE WHEN c.status IS NULL THEN a.status_cl ELSE c.status END) LIKE '%$filter_status%'
-            GROUP BY a.receipt_no
+            GROUP BY a.receipt_no, a.account_number
             ORDER BY b.journal_date");
             $data_2 = $query_2->result_array();
 
@@ -438,7 +445,7 @@ class Report_ar extends CI_Controller
             FROM journal_postings a
             LEFT JOIN journal_clearings b ON a.id = b.document_no and a.number = b.invoice_no and a.company_id = b.company_id
             WHERE a.company_id = '$customer_id' and (a.company_name like '%$company_name%' or a.company_name like '%$company_name2%')
-            AND a.modul IN ('CLEARING')
+            AND a.modul IN ('CLEARING') and a.account_number IN ('27000001') 
             AND a.journal_date BETWEEN '$filter_from' and '$filter_to'
             GROUP BY a.id
             ORDER BY a.journal_date ASC");
@@ -595,9 +602,6 @@ class Report_ar extends CI_Controller
                                     <td style="text-align:right;">' . number_format($local_credit, 2) . '</td>
                                     <td style="text-align:right;">' . $this->formatNo($balance_local) . '</td>
                                     <td style="text-align:right;">' . $this->formatNo($accumulated) . '</td>
-                                </tr>
-                                <tr>
-                                    <td colspan="20" style="height:20px;"></td>
                                 </tr>';
 
                 $invoice .= '  <tr style="background: #E5E5E5; font-weight:bold;">
@@ -621,9 +625,6 @@ class Report_ar extends CI_Controller
                                     <td style="text-align:right;">' . number_format($local_credit, 2) . '</td>
                                     <td style="text-align:right;">' . $this->formatNo($balance_local) . '</td>
                                     <td style="text-align:right;">' . $this->formatNo($accumulated) . '</td>
-                                </tr>
-                                <tr>
-                                    <td colspan="20" style="height:20px;"></td>
                                 </tr>';
             }
 

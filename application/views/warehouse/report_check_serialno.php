@@ -14,6 +14,7 @@
                     <select style="width:20%;" id="filter_type" class="easyui-combobox" panelHeight="auto">
                         <option value="STO">STO</option>
                         <option value="POR">GATE ENTRY</option>
+                        <option value="RGP">NRGP</option>
                         <option value="DIV">BARCODE DIVIDED</option>
                         <option value="REJ">REJECTION</option>
                     </select>

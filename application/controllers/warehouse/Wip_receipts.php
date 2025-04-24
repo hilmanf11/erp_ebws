@@ -365,7 +365,7 @@ class Wip_receipts extends CI_Controller
                 // }
                 
                 if (count($read) > 0) {
-                    echo json_encode(array("title" => "Error", "message" => "Duplicate Checksheet Number", "theme" => "error"));
+                    echo json_encode(array("title" => "Error", "message" => "Duplicate Checksheet Number, Please try again", "theme" => "error"));
                 } else {
                     $send_wip_receipt = $this->crud->create('wip_receipts', $post);
                     $this->db->update('production_schedules', ["status_wip" => 1], ["workorder" => $post['workorder']]);

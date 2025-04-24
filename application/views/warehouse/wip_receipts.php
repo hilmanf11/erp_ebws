@@ -268,16 +268,12 @@
 
                     qty.numberbox({
                         onChange: function(val){
-                            if(parseInt(val) < parseInt(qty_box)){
-                                toastr.info("Qty Receipt Cannot < Lot Box");
-                                qty.numberbox('setValue', qty_receipt);
-                                label_box.numberbox('setValue', 0);
-                            }else if(parseInt(val) > parseInt(qty_receipt)){
+                            if(parseInt(val) > parseInt(qty_receipt)){
                                 toastr.info("Qty Receipt Cannot > Qty");
                                 qty.numberbox('setValue', qty_receipt);
                                 label_box.numberbox('setValue', 0);
                             }else{
-                                label_box.numberbox('setValue', Math.round(parseInt(val) / parseInt(qty_box)));
+                                label_box.numberbox('setValue', Math.ceil(parseInt(val) / parseInt(qty_box)));
                             }
                         }
                     });
@@ -478,8 +474,10 @@
                                                             if (value >= 100) {
                                                                 Swal.close();
                                                                 toastr.error(result.message, result.title);
+                                                                return false;
                                                             }else{
                                                                 toastr.error(result.message, result.title);
+                                                                return false;
                                                                 requestData(total, json, number + 1, value, success + 1, failed + 0);
                                                             }
                                                         }

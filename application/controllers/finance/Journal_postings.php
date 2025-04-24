@@ -518,9 +518,10 @@ class Journal_postings extends CI_Controller
         }
     }
 
-    public function number($id_menu)
+    public function number($id_menu, $journal_date)
     {
-        $datenow = date("Y-m-d");
+        // $datenow = date("Y-m-d");
+        $datenow = base64_decode($journal_date);
         $sql_menu = $this->db->query("SELECT * FROM menus_no WHERE menus_id = '$id_menu' and `status` = '0' and `start_date` <= '$datenow' and end_date >= '$datenow'");
         $row_menu = $sql_menu->row();
 
@@ -652,12 +653,12 @@ class Journal_postings extends CI_Controller
 
                                 if ($purchase_invoice['account_type'] == "DEBIT") {
                                     // $local_debit = round($purchase_invoice['total'] * @$exchange->middle, 2);
-                                    $local_debit = round($purchase_invoice['total'] * @$purchase_invoice['rate'], 2);
+                                    $local_debit = ($purchase_invoice['total'] * @$purchase_invoice['rate']);
                                     $local_credit = 0;
                                 } else {
                                     $local_debit = 0;
                                     // $local_credit = round($purchase_invoice['total'] * @$exchange->middle, 2);
-                                    $local_credit = round($purchase_invoice['total'] * @$purchase_invoice['rate'], 2);
+                                    $local_credit = ($purchase_invoice['total'] * @$purchase_invoice['rate']);
                                 }
 
                                 // $rates = @$exchange->middle;
@@ -694,8 +695,8 @@ class Journal_postings extends CI_Controller
                                 "original_debit" => $original_debit,
                                 "original_credit" => $original_credit,
                                 "rates" => $rates,
-                                "local_debit" => $local_debit,
-                                "local_credit" => $local_credit,
+                                "local_debit" => round($local_debit, 2),
+                                "local_credit" => round($local_credit, 2),
                             );
 
                             $bal_original_debit += $original_debit;
@@ -1776,7 +1777,7 @@ class Journal_postings extends CI_Controller
                 SUM(a.local_credit) as local_credit');
             $this->db->from('journal_postings a');
             $this->db->join('journal_types b', 'a.journal_type_id = b.id');
-            $this->db->where("a.modul != 'ADJUSTMENT'");
+            $this->db->where("a.modul not in ('ADJUSTMENT','CLEARING')");
             if ($filter_from != "" && $filter_to != "") {
                 $this->db->where("a.journal_date BETWEEN '$filter_from' and '$filter_to'");
             }
@@ -2365,7 +2366,7 @@ class Journal_postings extends CI_Controller
         $this->db->select('a.*, b.name as journal_type_name');
         $this->db->from('journal_postings a');
         $this->db->join('journal_types b', 'a.journal_type_id = b.id');
-        $this->db->where("a.modul != 'ADJUSTMENT'");
+        $this->db->where("a.modul not in ('ADJUSTMENT','CLEARING')");
         if ($filter_from != "" && $filter_to != "") {
             $this->db->where("a.journal_date BETWEEN '$filter_from' and '$filter_to'");
         }
