@@ -185,10 +185,10 @@ class Journal_posting_banks extends CI_Controller
         );
 
         $footer[] = array(
-            "original_debit" => $grand_original_debit + $grand_original_credit,
-            "original_credit" => $grand_original_credit + $grand_original_debit,
-            "local_debit" => $grand_local_debit + $grand_local_credit,
-            "local_credit" => $grand_local_credit + $grand_local_debit,
+            "original_debit" => ($grand_original_debit + $grand_original_credit),
+            "original_credit" => ($grand_original_credit + $grand_original_debit),
+            "local_debit" => ($grand_local_debit + $grand_local_credit),
+            "local_credit" => ($grand_local_credit + $grand_local_debit),
         );
 
         $result['total'] = count($data);

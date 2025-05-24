@@ -193,22 +193,24 @@
         $("#p_year").combobox('setValue', '<?= date("Y") ?>');
         $("#issued_date").datebox('setValue', '<?= date("Y-m-d") ?>');
 
-        $("#issued_date").datebox({
-            onChange: function(value){
-                $.ajax({
-                    type: "post",
-                    url: "<?= base_url('planning/forecasts/autoid/'. $id_menu) ?>",
-                    data: "issued_date="+value,
-                    dataType: "html",
-                    success: function(response) {
-                        if(response == ""){
-                            toastr.info("Please Check Configuration in Serial No First");
-                            $('#document_no').textbox('clear');
-                        }else{
-                            $('#document_no').textbox('setValue', response);
-                        }
-                    }
-                });
+        // $("#issued_date").datebox({
+        //     onChange: function(value){
+                
+        //     }
+        // });
+
+        $.ajax({
+            type: "post",
+            url: "<?= base_url('planning/forecasts/autoid/'. $id_menu) ?>",
+            data: "issued_date=<?= date("Y-m-d") ?>",
+            dataType: "html",
+            success: function(response) {
+                if(response == ""){
+                    toastr.info("Please Check Configuration in Serial No First");
+                    $('#document_no').textbox('clear');
+                }else{
+                    $('#document_no').textbox('setValue', response);
+                }
             }
         });
     }
@@ -881,6 +883,11 @@
                     var totalrows = rows.length;
                     endEditing();
 
+                    if (totalrows == 0) {
+                        toastr.error("Data still Empty!!");
+                        return false;
+                    }
+
                     if(document_no != "" && plant != ""){
                         if(typeInsert == "add"){
                             var r = "";
@@ -906,73 +913,54 @@
                                 },
                             });
 
-                            requestData(totalrows, rows);
-                            function requestData(total, rows, number = 1, value = 0, success = 1, failed = 1) {
-                                var i = (number - 1);
-                                if (value < 100) {
-                                    value = Math.floor((number / total) * 100);
-                                    $.ajax({
-                                        type: "post",
-                                        url: '<?= base_url('planning/forecasts/create') ?>',
-                                        data: {
-                                            p_month: p_month,
-                                            p_year: p_year,
-                                            customer_id: customer_id,
-                                            plant: plant,
-                                            document_no: document_no,
-                                            issued_date: issued_date,
-                                            revision: revision,
-                                            reason: reason,
-                                            item_fg_id: rows[i].item_fg_id,
-                                            month_1: rows[i].month_1,
-                                            month_2: rows[i].month_2,
-                                            month_3: rows[i].month_3,
-                                            month_4: rows[i].month_4,
-                                            month_5: rows[i].month_5,
-                                            month_6: rows[i].month_6,
-                                            month_7: rows[i].month_7,
-                                            month_8: rows[i].month_8,
-                                            month_9: rows[i].month_9,
-                                            month_10: rows[i].month_10,
-                                            month_11: rows[i].month_11,
-                                            month_12: rows[i].month_12,
-                                            remark: rows[i].remark,
-                                        },
-                                        dataType: "json",
-                                        success: function(result) {
-                                            if (result.theme == "success") {
-                                                if (value >= 100) {
-                                                    Swal.close();
-                                                    Swal.fire({
-                                                        title: result.message,
-                                                        icon: result.theme,
-                                                        confirmButtonText: 'Ok',
-                                                        allowOutsideClick: false,
-                                                    }).then((result) => {
-                                                        if (result.isConfirmed) {
-                                                            window.location.reload();
-                                                        }
-                                                    });
-                                                }else{
-                                                    requestData(total, rows, number + 1, value, success + 1, failed + 0);
-                                                }
-                                            } else {
-                                                Swal.close();
-                                                Swal.fire({
-                                                    title: result.message,
-                                                    icon: result.theme,
-                                                    confirmButtonText: 'Ok',
-                                                    allowOutsideClick: false,
-                                                }).then((result) => {
-                                                    if (result.isConfirmed) {
-                                                        window.location.reload();
-                                                    }
-                                                });
-                                            }
-                                        },
+                            combined = [];
+                            for (let i = 0; i < totalrows; i++) {
+                                combined.push({
+                                    p_month: p_month,
+                                    p_year: p_year,
+                                    customer_id: customer_id,
+                                    plant: plant,
+                                    document_no: document_no,
+                                    issued_date: issued_date,
+                                    revision: revision,
+                                    reason: reason,
+                                    item_fg_id: rows[i].item_fg_id,
+                                    month_1: rows[i].month_1,
+                                    month_2: rows[i].month_2,
+                                    month_3: rows[i].month_3,
+                                    month_4: rows[i].month_4,
+                                    month_5: rows[i].month_5,
+                                    month_6: rows[i].month_6,
+                                    month_7: rows[i].month_7,
+                                    month_8: rows[i].month_8,
+                                    month_9: rows[i].month_9,
+                                    month_10: rows[i].month_10,
+                                    month_11: rows[i].month_11,
+                                    month_12: rows[i].month_12,
+                                    remark: rows[i].remark,
+                                });
+                            }
+
+                            $.ajax({
+                                type: "post",
+                                url: '<?= base_url('planning/forecasts/create') ?>',
+                                data: JSON.stringify({ data: combined }),
+                                dataType: "json",
+                                success: function (result) {
+                                    Swal.close();
+                                    
+                                    Swal.fire({
+                                        title: result.message,
+                                        icon: result.theme,
+                                        confirmButtonText: 'Ok',
+                                        allowOutsideClick: false,
+                                    }).then((result) => {
+                                        if (result.isConfirmed) {
+                                            window.location.reload();
+                                        }
                                     });
                                 }
-                            }
+                            });
                         }
                     }else{
                         toastr.error("Please Complete your data");

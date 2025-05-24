@@ -70,15 +70,16 @@ defined('BASEPATH') or exit('No direct script access allowed');
 | The $query_builder variables lets you determine whether or not to load
 | the query builder class.
 */
+
 $active_group = 'default';
 $query_builder = TRUE;
 
 $db['default'] = array(
-	'dsn'	=> '',
+	'dsn' => '',
 	'hostname' => 'localhost',
-	'username' => 'erp-ebws-dummy',
-	'password' => '8zSz8GH2jnmGD5RX',
-	'database' => 'erp-ebws-dummy',
+	'username' => 'erp',
+	'password' => 'SNLfb7EDpDtrAejy',
+	'database' => 'erp',
 	'dbdriver' => 'mysqli',
 	'dbprefix' => '',
 	'pconnect' => FALSE,
@@ -99,10 +100,11 @@ $db['default'] = array(
 $db['dummy'] = array(
 	'dsn' => '',
 	// 'hostname' => '43.254.126.105',
-	'hostname' => '103.141.99.23',
+	// 'hostname' => '103.141.99.23',
+	'hostname' => '192.168.11.1',
 	'username' => 'postgres',
 	'password' => 'skipad#0712pt%',
-	'database' => 'mrp_ebws_21082024',
+	'database' => 'mrp_ebws',
 	'dbdriver' => 'postgre',
 	'dbprefix' => '',
 	'pconnect' => FALSE,
@@ -117,16 +119,17 @@ $db['dummy'] = array(
 	'stricton' => FALSE,
 	'failover' => array(),
 	'save_queries' => TRUE,
-	'port' => '5433'
+	'port' => '5432'
 );
 
 $db['qas'] = array(
 	'dsn' => '',
 	// 'hostname' => '43.254.126.105',
-	'hostname' => '103.141.99.23',
+	// 'hostname' => '103.141.99.23',
+    'hostname' => '192.168.11.1',
 	'username' => 'postgres',
 	'password' => 'skipad#0712pt%',
-	'database' => 'qas_ebws_dummy',
+	'database' => 'qas_ebws',
 	'dbdriver' => 'postgre',
 	'dbprefix' => '',
 	'pconnect' => FALSE,
@@ -141,5 +144,5 @@ $db['qas'] = array(
 	'stricton' => FALSE,
 	'failover' => array(),
 	'save_queries' => TRUE,
-	'port' => '5433'
+	'port' => '5432'
 );

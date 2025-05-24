@@ -23,7 +23,7 @@ class Sales_invoices extends CI_Controller
         } elseif ($this->checkuserAccess($this->id_menu()) > 0) {
             $data['button'] = $this->getbutton($this->id_menu());
             $data['menus_id'] = $this->id_menu();
-            
+
             $this->load->view('template/header', $data);
             $this->load->view('finance/sales_invoices');
         } else {
@@ -126,11 +126,19 @@ class Sales_invoices extends CI_Controller
             GROUP BY a.number 
             ORDER BY a.number ASC");
 
-        $records2 = $this->crud->query("SELECT DISTINCT a.number 
+        // $records2 = $this->crud->query("SELECT DISTINCT a.number 
+        //     FROM rgp_transactions a 
+        //     JOIN item_rm b ON a.item_id = b.id 
+        //     JOIN item_categories c ON b.item_category_id = c.id
+        //     WHERE a.status_si = '0' and a.type = 'OUT' and c.number != 'RM' and a.process_type = 'FOC'
+        //     GROUP BY a.number 
+        //     ORDER BY a.number ASC");
+
+        $records2 = $this->crud->query("
+            SELECT DISTINCT a.number 
             FROM rgp_transactions a 
-            JOIN item_rm b ON a.item_id = b.id 
-            JOIN item_categories c ON b.item_category_id = c.id
-            WHERE a.status_si = '0' and a.type = 'OUT' and c.number != 'RM' and a.process_type = 'FOC'
+            JOIN item_fg b ON a.item_id = b.id 
+            WHERE a.status_si = '0' and a.type = 'OUT' and a.process_type = 'FOC'
             GROUP BY a.number 
             ORDER BY a.number ASC");
 
@@ -150,13 +158,20 @@ class Sales_invoices extends CI_Controller
             GROUP BY a.id
             ORDER BY b.number ASC");
 
+        // $records2 = $this->crud->query("SELECT DISTINCT b.id, b.id as number, b.number as number_customer, b.name, b.hsn_code, b.uom, a.qty, a.price 
+        //     FROM rgp_transactions a 
+        //     JOIN item_rm b ON a.item_id = b.id 
+        //     JOIN item_categories c ON b.item_category_id = c.id 
+        //     WHERE a.status_si = '0' and a.type = 'OUT' and a.number = '$number' and c.number != 'RM' and a.process_type = 'FOC'
+        //     GROUP BY a.id
+        //     ORDER BY b.number ASC");
+
         $records2 = $this->crud->query("SELECT DISTINCT b.id, b.id as number, b.number as number_customer, b.name, b.hsn_code, b.uom, a.qty, a.price 
-            FROM rgp_transactions a 
-            JOIN item_rm b ON a.item_id = b.id 
-            JOIN item_categories c ON b.item_category_id = c.id 
-            WHERE a.status_si = '0' and a.type = 'OUT' and a.number = '$number' and c.number != 'RM' and a.process_type = 'FOC'
-            GROUP BY a.id
-            ORDER BY b.number ASC");
+        FROM rgp_transactions a 
+        JOIN item_fg b ON a.item_id = b.id 
+        WHERE a.status_si = '0' and a.type = 'OUT' and a.number = '$number' and a.process_type = 'FOC'
+        GROUP BY a.id
+        ORDER BY b.number ASC");
 
         $explode = array_merge($records1, $records2);
         echo json_encode($explode);
@@ -202,7 +217,8 @@ class Sales_invoices extends CI_Controller
         echo json_encode($arr);
     }
 
-    public function readGst($type = ""){
+    public function readGst($type = "")
+    {
         $post = $this->input->post();
         $customer_id = $post['customer_id'];
         $plant = $post['plant'];
@@ -215,28 +231,28 @@ class Sales_invoices extends CI_Controller
         $customer_address = $this->crud->read("customer_address", [], ["customer_id" => $customer_id, "plant" => $plant]);
         $item_fg = $this->crud->read("item_fg", [], ["id" => $item_fg_id]);
         $hsn = $this->crud->read("hsn", [], ["number" => @$item_fg->hsn_code]);
-        if(empty($hsn)){
+        if (empty($hsn)) {
             $item_fg = $this->crud->read("item_rm", [], ["id" => $item_fg_id]);
             $hsn = $this->crud->read("hsn", [], ["number" => $item_fg->hsn_code]);
         }
 
-        if($type == "RM"){
+        if ($type == "RM") {
             $account_number = "30000004";
             $account_name = "Sales of Raw Material";
-        }else{
+        } else {
             $account_number = $item_fg->account_number;
             $account_name = $item_fg->account_name;
         }
 
-        if($customer_address->bill_state == ""){
+        if ($customer_address->bill_state == "") {
             $igst = 0;
             $cgst = 0;
             $sgst = 0;
-        }elseif($customer_address->bill_state == $config->state){
+        } elseif ($customer_address->bill_state == $config->state) {
             $igst = 0;
             $cgst = ($hsn->cgst / 100);
             $sgst = ($hsn->sgst / 100);
-        }else{
+        } else {
             $igst = ($hsn->igst / 100);
             $cgst = 0;
             $sgst = 0;
@@ -297,7 +313,7 @@ class Sales_invoices extends CI_Controller
                 $total_ap2 = 0;
 
                 foreach ($jsonDatas as $jsonData) {
-                    if($jsonData['account_number'] != "5311006"){
+                    if ($jsonData['account_number'] != "5311006") {
                         if ($jsonData['account_number'] == $journal['account_number'] && $jsonData['account_type'] == "DEBIT") {
                             $total_debit += $jsonData['total'];
                         } elseif ($jsonData['account_number'] == $journal['account_number'] && $jsonData['account_type'] == "CREDIT") {
@@ -413,27 +429,27 @@ class Sales_invoices extends CI_Controller
         $sql_menu = $this->db->query("SELECT * FROM menus_no WHERE menus_id = '$id_menu' and `status` = '0' and `start_date` <= '$datenow' and end_date >= '$datenow'");
         $row_menu = $sql_menu->row();
 
-        if(@$row_menu->number == ""){
+        if (@$row_menu->number == "") {
             //
-        }else{
+        } else {
             $number = @$row_menu->number;
             $yearnow = date("y", strtotime($row_menu->start_date));
             $yearend = date("y", strtotime($row_menu->end_date));
 
-            $whereDate = $number.$yearnow.$yearend."1";
+            $whereDate = $number . $yearnow . $yearend . "1";
 
-            $sqlGetID	= $this->db->query("SELECT max(`number`) as kode FROM sales_invoices WHERE `number` like '%$whereDate%'");
+            $sqlGetID    = $this->db->query("SELECT max(`number`) as kode FROM sales_invoices WHERE `number` like '%$whereDate%'");
             $rowID = $sqlGetID->row();
             $kode = $rowID->kode;
-            
+
             if ($kode == NULL) {
-                $autoID = sprintf("%0".$row_menu->sequence."s", $kode + 1);
-                $autoNo = $whereDate.$autoID;
+                $autoID = sprintf("%0" . $row_menu->sequence . "s", $kode + 1);
+                $autoNo = $whereDate . $autoID;
             } else {
                 $urutan = (int) substr($kode, -6);
                 $urutan++;
-                $autoID	= sprintf("%0".$row_menu->sequence."s", $urutan);
-                $autoNo = $whereDate.$autoID;
+                $autoID    = sprintf("%0" . $row_menu->sequence . "s", $urutan);
+                $autoNo = $whereDate . $autoID;
             }
 
             echo $autoNo;
@@ -476,8 +492,8 @@ class Sales_invoices extends CI_Controller
         $total_sgst = 0;
         $total_local = 0;
         foreach ($records as $record) {
-            
-            if($record['state'] == ""){
+
+            if ($record['state'] == "") {
                 $igst = 0;
                 $cgst = 0;
                 $sgst = 0;
@@ -486,7 +502,7 @@ class Sales_invoices extends CI_Controller
                 $total_igst += 0;
                 $total_cgst += 0;
                 $total_sgst += 0;
-            }elseif($record['state'] == $config->state){
+            } elseif ($record['state'] == $config->state) {
                 $igst = 0;
                 $cgst = $record['cgst'];
                 $sgst = $record['sgst'];
@@ -495,7 +511,7 @@ class Sales_invoices extends CI_Controller
                 $total_igst += 0;
                 $total_cgst += $record['cgst'];
                 $total_sgst += $record['sgst'];
-            }else{
+            } else {
                 $igst = $record['igst'];
                 $cgst = 0;
                 $sgst = 0;
@@ -624,7 +640,7 @@ class Sales_invoices extends CI_Controller
                 echo $send;
             } else {
                 $sales_invoices = $this->crud->reads('sales_invoices', [], ["dn_number" => $post['dn_number'], "number" => $post['number'], "item_no" => $post['item_no'], "customer_id" => $post['customer_id']]);
-                if(count($sales_invoices) > 0){
+                if (count($sales_invoices) > 0) {
                     die(json_encode(array("title" => "Available", "message" => "Data Already Created", "theme" => "error")));
                 }
 
@@ -667,34 +683,35 @@ class Sales_invoices extends CI_Controller
         }
     }
 
-    public function createPosting(){
+    public function createPosting()
+    {
         $document_no = $this->input->post('number');
 
         $datenow = date("Y-m-d");
         $sql_menu = $this->db->query("SELECT * FROM menus_no WHERE menus_id = '20240227000005' and `status` = '0' and `start_date` <= '$datenow' and end_date >= '$datenow'");
         $row_menu = $sql_menu->row();
 
-        if(@$row_menu->number == ""){
+        if (@$row_menu->number == "") {
             $voucher_no = "";
-        }else{
+        } else {
             $number = @$row_menu->number;
             $yearnow = date("y", strtotime($row_menu->start_date));
             $yearend = date("y", strtotime($row_menu->end_date));
 
-            $whereDate = $number.$yearnow.$yearend."1";
+            $whereDate = $number . $yearnow . $yearend . "1";
 
-            $sqlGetID	= $this->db->query("SELECT max(`number`) as kode FROM journal_postings WHERE `number` like '%$whereDate%'");
+            $sqlGetID    = $this->db->query("SELECT max(`number`) as kode FROM journal_postings WHERE `number` like '%$whereDate%'");
             $rowID = $sqlGetID->row();
             $kode = $rowID->kode;
-            
+
             if ($kode == NULL) {
-                $autoID = sprintf("%0".$row_menu->sequence."s", $kode + 1);
-                $autoNo = $whereDate.$autoID;
+                $autoID = sprintf("%0" . $row_menu->sequence . "s", $kode + 1);
+                $autoNo = $whereDate . $autoID;
             } else {
                 $urutan = (int) substr($kode, -6);
                 $urutan++;
-                $autoID	= sprintf("%0".$row_menu->sequence."s", $urutan);
-                $autoNo = $whereDate.$autoID;
+                $autoID    = sprintf("%0" . $row_menu->sequence . "s", $urutan);
+                $autoNo = $whereDate . $autoID;
             }
 
             $voucher_no = $autoNo;
@@ -863,12 +880,12 @@ class Sales_invoices extends CI_Controller
             }
         }
 
-        if($voucher_no == ""){
+        if ($voucher_no == "") {
             die(json_encode(array("title" => "Configuration", "message" => "Please Check Configuration in Serial No (Journal Posting) First", "theme" => "error")));
         }
 
-        if(round($grand_local_debit, 2) != round($grand_local_credit, 2)){
-            die(json_encode(array("title" => "Failed", "message" => "Balance Debit (".$grand_local_debit.") Cannot match on Balance Credit (" . $grand_local_credit . ")", "theme" => "error")));
+        if (round($grand_local_debit, 2) != round($grand_local_credit, 2)) {
+            die(json_encode(array("title" => "Failed", "message" => "Balance Debit (" . $grand_local_debit . ") Cannot match on Balance Credit (" . $grand_local_credit . ")", "theme" => "error")));
         }
 
         foreach ($data as $dt) {
@@ -938,27 +955,27 @@ class Sales_invoices extends CI_Controller
         $sql_menu = $this->db->query("SELECT * FROM menus_no WHERE menus_id = '$id_menu' and `status` = '0' and `start_date` <= '$datenow' and end_date >= '$datenow'");
         $row_menu = $sql_menu->row();
 
-        if(@$row_menu->number == ""){
+        if (@$row_menu->number == "") {
             //
-        }else{
+        } else {
             $number = @$row_menu->number;
             $yearnow = date("y", strtotime($row_menu->start_date));
             $yearend = date("y", strtotime($row_menu->end_date));
 
-            $whereDate = $number.$yearnow.$yearend."1";
+            $whereDate = $number . $yearnow . $yearend . "1";
 
-            $sqlGetID	= $this->db->query("SELECT max(`number`) as kode FROM journal_postings WHERE `number` like '%$whereDate%'");
+            $sqlGetID    = $this->db->query("SELECT max(`number`) as kode FROM journal_postings WHERE `number` like '%$whereDate%'");
             $rowID = $sqlGetID->row();
             $kode = $rowID->kode;
-            
+
             if ($kode == NULL) {
-                $autoID = sprintf("%0".$row_menu->sequence."s", $kode + 1);
-                $autoNo = $whereDate.$autoID;
+                $autoID = sprintf("%0" . $row_menu->sequence . "s", $kode + 1);
+                $autoNo = $whereDate . $autoID;
             } else {
                 $urutan = (int) substr($kode, -6);
                 $urutan++;
-                $autoID	= sprintf("%0".$row_menu->sequence."s", $urutan);
-                $autoNo = $whereDate.$autoID;
+                $autoID    = sprintf("%0" . $row_menu->sequence . "s", $urutan);
+                $autoNo = $whereDate . $autoID;
             }
 
             return $autoNo;
@@ -971,7 +988,7 @@ class Sales_invoices extends CI_Controller
         $sales_invoices = $this->crud->reads("sales_invoices", [], ["number" => $data['number']]);
         $this->db->update('sales_invoices', ["cancel" => 1, "cancel_date" => date("Y-m-d H:i:s")], ["number" =>  $data['number']]);
         $number = $this->numberJournal("20240227000005");
-        
+
         $journal_postings = $this->crud->reads("journal_postings", [], ["document_no" => $data['number']]);
         foreach ($journal_postings as $journal_posting) {
             $data = array(
@@ -1001,7 +1018,7 @@ class Sales_invoices extends CI_Controller
 
         foreach ($sales_invoices as $sales_invoice) {
             $this->db->update('delivery_notes', ["status" => 2], ["delivery_note_no" => $sales_invoice->dn_number, "item_fg_id" => $sales_invoice->item_fg_id]);
-            
+
             $delivery_notes = $this->crud->reads("delivery_notes", [], ["delivery_note_no" => $sales_invoice->dn_number, "item_fg_id" => $sales_invoice->item_fg_id]);
             foreach ($delivery_notes as $delivery_note) {
                 $shipping_orders = $this->crud->reads("shipping_orders", [], ["delivery_order_no" => $delivery_note->delivery_order_no, "item_fg_id" => $delivery_note->item_fg_id]);
@@ -1010,7 +1027,7 @@ class Sales_invoices extends CI_Controller
                 foreach ($shipping_orders as $shipping_order) {
                     $this->db->update('scan_item_receipts_fg', ["status" => 0], ["checksheet_label" => $shipping_order->checksheet_label]);
                 }
-                
+
                 foreach ($delivery_orders as $delivery_order) {
                     $this->db->update('sales_order_deliveries', ["status" => 0], [
                         "item_fg_id" => $delivery_order->item_fg_id,
@@ -1041,9 +1058,9 @@ class Sales_invoices extends CI_Controller
         $page = ceil(count($sales_invoices) / $rows);
         //Generate QRcode
         $imgIrn = "";
-        if($sales_invoice->barcode != ""){
+        if ($sales_invoice->barcode != "") {
             // $this->createQrcodeIrn($sales_invoice->barcode, "assets/image/qrcode/", $sales_invoice->number);
-            $imgIrn = '<img src="' . base_url('assets/qrcode/qrcode.php?s=qrm&sf=1&d='. $sales_invoice->barcode) . '" width="150px;"/>';
+            $imgIrn = '<img src="' . base_url('assets/qrcode/qrcode.php?s=qrm&sf=1&d=' . $sales_invoice->barcode) . '" width="150px;"/>';
         }
 
         //Header Print
@@ -1110,22 +1127,22 @@ class Sales_invoices extends CI_Controller
                                                 <tr>
                                                     <td width="100">Invoice Number</td>
                                                     <td width="5">:</td>
-                                                    <td>'.@$records[0]['number'].'</td>
+                                                    <td>' . @$records[0]['number'] . '</td>
                                                 </tr>
                                                 <tr>
                                                     <td width="100">Invoice Date</td>
                                                     <td width="5">:</td>
-                                                    <td>'.date("d-m-Y", strtotime(@$records[0]['trans_date'])).'</td>
+                                                    <td>' . date("d-m-Y", strtotime(@$records[0]['trans_date'])) . '</td>
                                                 </tr>
                                                 <tr>
                                                     <td width="100">Order No</td>
                                                     <td width="5">:</td>
-                                                    <td>'.@$records[0]['so_number'].'</td>
+                                                    <td>' . @$records[0]['so_number'] . '</td>
                                                 </tr>
                                                 <tr>
                                                     <td width="100">Order Date</td>
                                                     <td width="5">:</td>
-                                                    <td>'.date("d-m-Y", strtotime(@$records[0]['trans_date'])).'</td>
+                                                    <td>' . date("d-m-Y", strtotime(@$records[0]['trans_date'])) . '</td>
                                                 </tr>
                                             </table>
                                         </div>
@@ -1139,53 +1156,53 @@ class Sales_invoices extends CI_Controller
                                         <td width="300">
                                             <b style="font-size:14px;">' . $config->name . '</b><br>
                                             <span style="font-size:10px;">' . $config->address2 . '</span><br><br>
-                                            <b style="font-size:12px;">CIN NO :</b> '.$config->cin_no.'<br>
-                                            <b style="font-size:12px;">GST NO :</b> '.$config->gst_no.'<br>
-                                            <b style="font-size:12px;">PAN NO :</b> '.$config->pan_no.'<br>
-                                            <b style="font-size:12px;">ACK NO :</b> '.$records[0]['ack_no'].'<br>
-                                            <b style="font-size:12px;">ACK DATE :</b> '.$records[0]['ack_date'].'<br>
+                                            <b style="font-size:12px;">CIN NO :</b> ' . $config->cin_no . '<br>
+                                            <b style="font-size:12px;">GST NO :</b> ' . $config->gst_no . '<br>
+                                            <b style="font-size:12px;">PAN NO :</b> ' . $config->pan_no . '<br>
+                                            <b style="font-size:12px;">ACK NO :</b> ' . $records[0]['ack_no'] . '<br>
+                                            <b style="font-size:12px;">ACK DATE :</b> ' . $records[0]['ack_date'] . '<br>
                                         </td>
                                         <td width="200">
                                             <table style="width:100%; font-size: 12px;">
                                                 <tr>
                                                     <td width="100"><b>Plant</b></td>
                                                     <td width="5">:</td>
-                                                    <td width="100">'.@$records[0]['plant'].'</td>
+                                                    <td width="100">' . @$records[0]['plant'] . '</td>
                                                 </tr>
                                                 <tr>
                                                     <td width="100"><b>Customer Code</b></td>
                                                     <td width="5">:</td>
-                                                    <td width="100">'.@$records[0]['customer_id'].'</td>
+                                                    <td width="100">' . @$records[0]['customer_id'] . '</td>
                                                 </tr>
                                                 <tr>
                                                     <td><b>PO Number</b></td>
                                                     <td>:</td>
-                                                    <td>'.@$records[0]['customer_po'].'</td>
+                                                    <td>' . @$records[0]['customer_po'] . '</td>
                                                 </tr>
                                                 <tr>
                                                     <td><b>Ship By</b></td>
                                                     <td>:</td>
-                                                    <td>'.@$records[0]['ship_by'].'</td>
+                                                    <td>' . @$records[0]['ship_by'] . '</td>
                                                 </tr>
                                                 <tr>
                                                     <td><b>Payment Terms</b></td>
                                                     <td>:</td>
-                                                    <td>'.@$records[0]['payment_term'].' Days</td>
+                                                    <td>' . @$records[0]['payment_term'] . ' Days</td>
                                                 </tr>
                                                 <tr>
                                                     <td><b>Remarks</b></td>
                                                     <td>:</td>
-                                                    <td>'.@$records[0]['remarks'].'</td>
+                                                    <td>' . @$records[0]['remarks'] . '</td>
                                                 </tr>
                                             </table>
                                         </td>
                                         <td width="200" style="text-align:right;" rowspan="2">
-                                            '.$imgIrn.'
+                                            ' . $imgIrn . '
                                         </td>
                                     </tr>
                                     <tr>
                                         <td colspan="2">
-                                            IRN NO : '.$sales_invoice->irn.'
+                                            IRN NO : ' . $sales_invoice->irn . '
                                         </td>
                                     </tr>
                                 </table>
@@ -1194,18 +1211,18 @@ class Sales_invoices extends CI_Controller
                             <div style="width:100%; float: left; padding: 10px;">
                                 <div style="width:46%; height: 120px; float:left; border:1px solid black; font-size:12px !important; padding: 5px; margin-right:20px;">
                                     <b>Details of Consignee (Bill To) :</b><br>
-                                    <b>'.@$records[0]['customer_name'].'</b><br>
-                                    <span>'.@$records[0]['bill_address'].'</span><br>
-                                    <b>PAN NO : </b><span>'.@$records[0]['pan_no'].'</span><br>
-                                    <b>GST NO : </b><span>'.@$records[0]['gst_no'].'</span><br>
-                                    <b>VENDOR CODE : </b><span>'.@$records[0]['vendor_code'].'</span>
+                                    <b>' . @$records[0]['customer_name'] . '</b><br>
+                                    <span>' . @$records[0]['bill_address'] . '</span><br>
+                                    <b>PAN NO : </b><span>' . @$records[0]['pan_no'] . '</span><br>
+                                    <b>GST NO : </b><span>' . @$records[0]['gst_no'] . '</span><br>
+                                    <b>VENDOR CODE : </b><span>' . @$records[0]['vendor_code'] . '</span>
                                 </div>
                                 <div style="width:46%; height: 120px; float:left; border:1px solid black; font-size:12px !important; padding: 5px;">
                                     <b>Details of Consignee (Ship To) :</b><br>
-                                    <b>'.@$records[0]['customer_name'].'</b><br>
-                                    <span>'.@$records[0]['ship_address'].'</span><br>
-                                    <b>PAN NO : </b><span>'.@$records[0]['pan_no'].'</span><br>
-                                    <b>GST NO : </b><span>'.@$records[0]['gst_no'].'</span>
+                                    <b>' . @$records[0]['customer_name'] . '</b><br>
+                                    <span>' . @$records[0]['ship_address'] . '</span><br>
+                                    <b>PAN NO : </b><span>' . @$records[0]['pan_no'] . '</span><br>
+                                    <b>GST NO : </b><span>' . @$records[0]['gst_no'] . '</span>
                                 </div>
                             </div>
                             <table id="customers">
@@ -1236,15 +1253,33 @@ class Sales_invoices extends CI_Controller
             $sgst = 0;
             $igst = 0;
             $dataQr2 = "";
-            for ($a=0; $a < 15; $a++) {
-                if(!empty($records[$a]['qty'])){
-                    if($records[$a]['cgst'] == 0){ $cgstRate = 0; $cgstAmount = 0; }else{ $cgstRate = $records[$a]['p_cgst']; $cgstAmount = $records[$a]['cgst']; }
-                    if($records[$a]['sgst'] == 0){ $sgstRate = 0; $sgstAmount = 0; }else{ $sgstRate = $records[$a]['p_sgst']; $sgstAmount = $records[$a]['sgst']; }
-                    if($records[$a]['igst'] == 0){ $igstRate = 0; $igstAmount = 0; }else{ $igstRate = $records[$a]['p_igst']; $igstAmount = $records[$a]['igst']; }
+            for ($a = 0; $a < 15; $a++) {
+                if (!empty($records[$a]['qty'])) {
+                    if ($records[$a]['cgst'] == 0) {
+                        $cgstRate = 0;
+                        $cgstAmount = 0;
+                    } else {
+                        $cgstRate = $records[$a]['p_cgst'];
+                        $cgstAmount = $records[$a]['cgst'];
+                    }
+                    if ($records[$a]['sgst'] == 0) {
+                        $sgstRate = 0;
+                        $sgstAmount = 0;
+                    } else {
+                        $sgstRate = $records[$a]['p_sgst'];
+                        $sgstAmount = $records[$a]['sgst'];
+                    }
+                    if ($records[$a]['igst'] == 0) {
+                        $igstRate = 0;
+                        $igstAmount = 0;
+                    } else {
+                        $igstRate = $records[$a]['p_igst'];
+                        $igstAmount = $records[$a]['igst'];
+                    }
 
                     $html .= '  <tr>
                                     <td style="text-align:center; border-top: 0; border-bottom: 0; height:30px;">' . $no . '</td>
-                                    <td style="font-size:10px; border-top: 0; border-bottom: 0;">' . $records[$a]['alias'] . ' -<br>'.$records[$a]['item_fg_name'].'</td>
+                                    <td style="font-size:10px; border-top: 0; border-bottom: 0;">' . $records[$a]['alias'] . ' -<br>' . $records[$a]['item_fg_name'] . '</td>
                                     <td style="font-size:10px; border-top: 0; border-bottom: 0;">' . $records[$a]['hsn_code'] . '</td>
                                     <td style="text-align:center; border-top: 0; border-bottom: 0;">' . number_format($records[$a]['qty']) . '</td>
                                     <td style="text-align:center; border-top: 0; border-bottom: 0;"><span style="font-size:10px;">' . $records[$a]['uom'] . '</span></td>
@@ -1260,13 +1295,13 @@ class Sales_invoices extends CI_Controller
                                 </tr>';
                     $urutan = sprintf("%02s", $no - 1);
                     // $dataQr2 .= " $urutan ".$records[$a]['number_customer']." ".$records[$a]['hsn_code']." ".$records[$a]['price'];
-                    $dataQr2 .= $records[$a]['alias']."%09".$records[$a]['hsn_code']."%09".round($records[$a]['qty'])."%09".$records[$a]['price']."%09";
+                    $dataQr2 .= $records[$a]['alias'] . "%09" . $records[$a]['hsn_code'] . "%09" . round($records[$a]['qty']) . "%09" . $records[$a]['price'] . "%09";
                     $sub_qty += ($records[$a]['qty']);
                     $sub_total += ($records[$a]['price'] * $records[$a]['qty']);
                     $cgst += $records[$a]['cgst'];
                     $sgst += $records[$a]['sgst'];
                     $igst += $records[$a]['igst'];
-                }else{
+                } else {
                     $html .= '  <tr>
                                     <td style="text-align:center; border-top: 0; border-bottom: 0; height:30px;"></td>
                                     <td style="text-align:center; border-top: 0; border-bottom: 0;"></td>
@@ -1288,10 +1323,10 @@ class Sales_invoices extends CI_Controller
                 $no++;
             }
 
-            $dataQr = @$records[0]['vendor_code']."%09".@$records[0]['customer_po']."%09".@$records[0]['number']."%09".date("d.m.Y", strtotime(@$records[0]['trans_date']))."%09".
-                       $config->gst_no."%09".($sub_total + ($cgst + $sgst + $igst))."%09".$sub_total."%090%09".$sgst."%09".$igst."%09".$sgst."%09".$records[0]['tcs']."%09".$dataQr2;
+            $dataQr = @$records[0]['vendor_code'] . "%09" . @$records[0]['customer_po'] . "%09" . @$records[0]['number'] . "%09" . date("d.m.Y", strtotime(@$records[0]['trans_date'])) . "%09" .
+                $config->gst_no . "%09" . ($sub_total + ($cgst + $sgst + $igst)) . "%09" . $sub_total . "%090%09" . $sgst . "%09" . $igst . "%09" . $sgst . "%09" . $records[0]['tcs'] . "%09" . $dataQr2;
             // $this->createQrcode($dataQr, "assets/image/qrcode/", $sales_invoice->number."-00");
-            $imgIrn2 = '<img src="' . base_url('assets/qrcode/qrcode.php?s=qrm&sf=2&d='. $dataQr) . '"/>';
+            $imgIrn2 = '<img src="' . base_url('assets/qrcode/qrcode.php?s=qrm&sf=2&d=' . $dataQr) . '"/>';
 
             $html .= '<tr>
                         <td colspan="3" style="text-align:right"><b>Sub Total</b></td>
@@ -1309,7 +1344,7 @@ class Sales_invoices extends CI_Controller
                     </tr>
                     <tr>
                         <td colspan="9" style="height:50px; padding: 10px;">
-                            <b>Total Invoice value in (Words) </b><small>'.ucwords($this->convertcurrency->convertCurrencyToWords(($sub_total + ($cgst + $sgst + $igst)), $records[0]['currency'])).'</small><br><br>
+                            <b>Total Invoice value in (Words) </b><small>' . ucwords($this->convertcurrency->convertCurrencyToWords(($sub_total + ($cgst + $sgst + $igst)), $records[0]['currency'])) . '</small><br><br>
                             <div style="float:left; width:50%;">
                                 <b>No of Boxes</b><br>
                                 <b>Net Weight (KG)</b> : 0.00
@@ -1318,18 +1353,18 @@ class Sales_invoices extends CI_Controller
                                 <table>
                                     <tr>
                                         <td width="100" style="border:0;"><b>CGST</b></td>
-                                        <td width="100" style="border:0;">'.number_format($records[0]['p_cgst'], 2).' %</td>
-                                        <td width="100" style="text-align:right; border:0;">'.number_format($cgst, 2).'</td>
+                                        <td width="100" style="border:0;">' . number_format($records[0]['p_cgst'], 2) . ' %</td>
+                                        <td width="100" style="text-align:right; border:0;">' . number_format($cgst, 2) . '</td>
                                     </tr>
                                     <tr>
                                         <td width="100" style="border:0;"><b>SGST</b></td>
-                                        <td width="100" style="border:0;">'.number_format($records[0]['p_sgst'], 2).' %</td>
-                                        <td width="100" style="text-align:right; border:0;">'.number_format($sgst, 2).'</td>
+                                        <td width="100" style="border:0;">' . number_format($records[0]['p_sgst'], 2) . ' %</td>
+                                        <td width="100" style="text-align:right; border:0;">' . number_format($sgst, 2) . '</td>
                                     </tr>
                                     <tr>
                                         <td width="100" style="border:0;"><b>IGST</b></td>
-                                        <td width="100" style="border:0;">'.number_format($records[0]['p_igst'], 2).' %</td>
-                                        <td width="100" style="text-align:right; border:0;">'.number_format($igst, 2).'</td>
+                                        <td width="100" style="border:0;">' . number_format($records[0]['p_igst'], 2) . ' %</td>
+                                        <td width="100" style="text-align:right; border:0;">' . number_format($igst, 2) . '</td>
                                     </tr>
                                 </table>
                             </div>
@@ -1341,9 +1376,9 @@ class Sales_invoices extends CI_Controller
                                 <b>Total Invoice Value</b>
                             </div>
                             <div style="float:left; width:50%; text-align:right;">
-                                <span>'.number_format($sub_total, 2).'</span><br> 
-                                <span>'.number_format($cgst + $sgst + $igst, 2).'</span><br>
-                                <span>'.number_format($sub_total + ($cgst + $sgst + $igst), 2).'</span>
+                                <span>' . number_format($sub_total, 2) . '</span><br> 
+                                <span>' . number_format($cgst + $sgst + $igst, 2) . '</span><br>
+                                <span>' . number_format($sub_total + ($cgst + $sgst + $igst), 2) . '</span>
                             </div>
                         </td>
                     </tr>
@@ -1361,12 +1396,12 @@ class Sales_invoices extends CI_Controller
                                 <b>Terms and Condition :</b>
                             </div>
                             <div style="float:right; width: 20%;">
-                                '.$imgIrn2.'
+                                ' . $imgIrn2 . '
                             </div>
                         </td>
                     </tr>
                 </table>';
-                
+
 
             if ($i + 1 != $page) {
                 $html .= '<div style="page-break-after:always;"></div>';
@@ -1580,11 +1615,11 @@ class Sales_invoices extends CI_Controller
                 }
 
                 $amount = ($record['total_grand_local']);
-                if($record['account_type'] == "CREDIT"){
+                if ($record['account_type'] == "CREDIT") {
                     $grand_total += $record['total2'];
                     $grand_total_all += $record['total'];
                     $grand_total_local += $amount;
-                }else{
+                } else {
                     $grand_total -= $record['total2'];
                     $grand_total_all -= $record['total'];
                     $grand_total_local -= $amount;
@@ -1618,10 +1653,10 @@ class Sales_invoices extends CI_Controller
 
             $html .= '  <tr>
                             <th colspan="13" style="text-align:right">TOTAL</th>
-                            <th style="text-align:right">'.number_format($grand_total, 2).'</th>
+                            <th style="text-align:right">' . number_format($grand_total, 2) . '</th>
                             <th></th>
                             <th></th>
-                            <th style="text-align:right">'.number_format($grand_total_local, 2).'</th>
+                            <th style="text-align:right">' . number_format($grand_total_local, 2) . '</th>
                         </tr>
                     </table>';
 
@@ -1690,7 +1725,7 @@ class Sales_invoices extends CI_Controller
                                 <td style="font-weight:bold; text-align:right;">' . @number_format(@$total_cgst, 2) . '</td>
                             </tr>
                             <tr>
-                                <td style="font-weight:bold;">TDS ('.@$records[0]['tds'].')</td>
+                                <td style="font-weight:bold;">TDS (' . @$records[0]['tds'] . ')</td>
                                 <td style="font-weight:bold; text-align:right;">' . @number_format((($grand_total_all * @$records[0]['individual']) / 100), 2) . '</td>
                             </tr>
                             <tr>
@@ -1951,7 +1986,7 @@ class Sales_invoices extends CI_Controller
             <br><br>
             <center>
                 <h2>SALES REGISTER REPORT</h2>
-                <small>PERIOD '.$periode.'</small>
+                <small>PERIOD ' . $periode . '</small>
             </center>
             <br><br>
             
@@ -1994,21 +2029,21 @@ class Sales_invoices extends CI_Controller
                 </tr>';
         $no = 1;
         foreach ($records as $data) {
-            if($data['igst'] > 0){
+            if ($data['igst'] > 0) {
                 $igst_rate = $data['igst_rate'];
-            }else{
+            } else {
                 $igst_rate = 0;
             }
 
-            if($data['sgst'] > 0){
+            if ($data['sgst'] > 0) {
                 $sgst_rate = $data['sgst_rate'];
-            }else{
+            } else {
                 $sgst_rate = 0;
             }
 
-            if($data['cgst'] > 0){
+            if ($data['cgst'] > 0) {
                 $cgst_rate = $data['cgst_rate'];
-            }else{
+            } else {
                 $cgst_rate = 0;
             }
             $html .= '  <tr>

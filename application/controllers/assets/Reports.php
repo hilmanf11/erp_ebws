@@ -47,13 +47,14 @@ class Reports extends CI_Controller
 
         if ($filter_category == "SUMMARY") {
 
-            $this->db->select('SUM(a.cost) as asset_cost, SUM(a.book_value) as book_value, a.estimate_month, b.name as asset_category_name');
+            $this->db->select('SUM(a.cost) as asset_cost, SUM(a.residual) as residual, (SUM(a.residual) * a.estimate_year) as residual_year, SUM(a.depreciation) as depreciation, a.estimate_month, b.name as asset_category_name');
             $this->db->from('asset_fixeds a');
-            $this->db->join('asset_categories b', 'a.asset_category_number = b.number');
+            $this->db->join('item_familys b', 'a.item_family_id = b.id');
             $this->db->where('a.trans_date >=', $filter_from);
             $this->db->where('a.trans_date <=', $filter_to);
             $this->db->group_by('a.estimate_month');
             $this->db->group_by('b.name');
+            $this->db->having("SUM(a.cost) >", 0);
             $this->db->order_by('b.name', 'asc');
             $records = $this->db->get()->result_array();
 
@@ -89,10 +90,10 @@ class Reports extends CI_Controller
                     <th width="20">No</th>
                     <th>Asset Category</th>
                     <th>Asset Cost</th>
-                    <th>Estimated Economic Life<br>(Month)</th>
+                    <th>Est Economic Life<br>(Month)</th>
                     <th>Residual Value/Month</th>
                     <th>Residual Value/Years</th>
-                    <th>Book Value</th>
+                    <th>Depreciation</th>
                 </tr>';
 
             $no = 1;
@@ -102,9 +103,9 @@ class Reports extends CI_Controller
                             <td>' . $record['asset_category_name'] . '</td>
                             <td>' . number_format($record['asset_cost']) . '</td>
                             <td>' . $record['estimate_month'] . '</td>
-                            <td>' . number_format($record['asset_cost'] / $record['estimate_month']) . '</td>
-                            <td>' . number_format($record['asset_cost'] / ($record['estimate_month'] / 12)) . '</td>
-                            <td>' . number_format($record['book_value']) . '</td>
+                            <td>' . number_format($record['residual']) . '</td>
+                            <td>' . number_format($record['residual_year']) . '</td>
+                            <td>' . number_format($record['depreciation']) . '</td>
                         </tr>';
                 $no++;
             }
@@ -113,17 +114,17 @@ class Reports extends CI_Controller
             echo $html;
         } else {
 
-            $this->db->select('a.*, b.name as asset_category_name, b.type as asset_category_type');
+            $this->db->select('a.*, b.name as asset_category_name');
             $this->db->from('asset_fixeds a');
-            $this->db->join('asset_categories b', 'a.asset_category_number = b.number');
+            $this->db->join('item_familys b', 'a.item_family_id = b.id');
             $this->db->where('a.trans_date >=', $filter_from);
             $this->db->where('a.trans_date <=', $filter_to);
-            $this->db->group_by('b.number');
+            $this->db->group_by('a.id');
             $this->db->order_by('a.number', 'asc');
             $records = $this->db->get()->result_array();
 
             $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#customers {border-collapse: collapse;width: 100%;font-size: 12px;}#customers td, #customers th {border: 1px solid #ddd;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: #ddd;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: center;color: black;}</style><body>
-                <div style="width:1500px;">
+                <div style="width:100%;">
                 <center>
                     <div style="float: left; font-size: 12px; text-align: left;">
                         <table style="width: 100%;">
@@ -158,12 +159,11 @@ class Reports extends CI_Controller
                     <th>Asset Category</th>
                     <th>Purchase Invoice No</th>
                     <th>Purchase Date</th>
-                    <th>Estimated Economic Life<br>(Month)</th>
+                    <th>Est Economic Life<br>(Month)</th>
                     <th>Asset Cost</th>
                     <th>Residual Value<br>(Month)</th>
                     <th>Residual Value<br>(Years)</th>
                     <th>Depreciation<br>(Amount)</th>
-                    <th>Book Value</th>
                 </tr>';
 
             $no = 1;
@@ -173,14 +173,13 @@ class Reports extends CI_Controller
                         <td>' . $record['number'] . '</td>
                         <td>' . $record['name'] . '</td>
                         <td>' . $record['asset_category_name'] . '</td>
-                        <td>' . $record['purchase_invoice_number'] . '</td>
+                        <td>' . $record['purchase_invoice_no'] . '</td>
                         <td>' . $record['trans_date'] . '</td>
                         <td>' . $record['estimate_month'] . '</td>
                         <td>' . number_format($record['cost']) . '</td>
-                        <td>' . number_format($record['cost'] / $record['estimate_month']) . '</td>
-                        <td>' . number_format($record['cost'] / ($record['estimate_month'] / 12)) . '</td>
-                        <td></td>
-                        <td>' . number_format($record['book_value']) . '</td>
+                        <td>' . number_format($record['residual']) . '</td>
+                        <td>' . number_format(@($record['residual'] * $record['estimate_year'])) . '</td>
+                        <td>' . number_format($record['depreciation']) . '</td>
                     </tr>';
                 $no++;
             }

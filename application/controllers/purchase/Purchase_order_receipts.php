@@ -429,7 +429,7 @@ class Purchase_order_receipts extends CI_Controller
                 "qty" => $qty,
             ];
 
-            $send = $this->crud->create('purchase_order_labels', $arrLabel);
+            $send = $this->crud->create('purchase_order_labels', $arrLabel, "log");
             die($send);
         }else{
             die(json_encode(array("title" => "Finish", "message" => "Already more Qty Label", "theme" => "error")));

@@ -170,7 +170,7 @@ class Assets extends CI_Controller
         if ($this->input->post()) {
             $id = $this->input->post('id');
             $post = $this->input->post();
-            $send = $this->crud->update('assets', ["request_no" => $post['request_no'], "item_rm_id" => $post['item_rm_id']], $post);
+            $send = $this->crud->update('assets', ["request_no" => $post['request_no'], "number" => $post['number'], "item_rm_id" => $post['item_rm_id']], $post);
             echo $send;
         } else {
             show_error("Cannot Process your request");
@@ -272,7 +272,7 @@ class Assets extends CI_Controller
         $this->db->select('a.*, b.name as item_family_name');
         $this->db->from('assets a');
         $this->db->join('item_familys b', 'a.item_family_id = b.id');
-        $this->db->order_by('a.number', 'DESC');
+        $this->db->order_by('a.id', 'desc');
         $records = $this->db->get()->result_array();
         
         $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#customers {border-collapse: collapse;width: 100%;font-size: 12px;}#customers td, #customers th {border: 1px solid black;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: black;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: center;color: black;}</style><body>
@@ -301,21 +301,26 @@ class Assets extends CI_Controller
             <tr>
                 <th width="20">No</th>
                 <th>Asset Category</th>
+                <th>Request No</th>
                 <th>Asset Code</th>
                 <th>Asset Name</th>
                 <th>Uom</th>
                 <th>Qty</th>
+                <th>Description</th>
+                <th>Created By</th>
             </tr>';
         $no = 1;
         foreach ($records as $data) {
             $html .= '<tr>
                         <td style="text-align:center">' . $no . '</td>
                         <td>' . $data['item_family_name'] . '</td>
+                        <td>' . $data['request_no'] . '</td>
                         <td>' . $data['number'] . '</td>
                         <td>' . $data['name'] . '</td>
                         <td>' . $data['uom'] . '</td>
                         <td>' . $data['qty'] . '</td>
-                        <td>' . $data['status'] . '</td>
+                        <td>' . $data['description'] . '</td>
+                        <td>' . $data['created_by'] . '</td>
                     </tr>';
             $no++;
         }

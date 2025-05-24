@@ -773,6 +773,7 @@
                                             });
                                         }else{
                                             toastr.error("Cannot Create " + rows[i].item_rm_no + " Because The Qty Still Outstanding");
+                                            requestData(total, rows, number + 1, value, success + 1, failed + 0, status);
                                         }
                                     }
                                 }

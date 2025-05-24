@@ -68,15 +68,15 @@ class Wos extends CI_Controller
     //GET DATATABLES
     public function datatables()
     {
-        if ($this->input->post()) {
-            $filters = json_decode($this->input->post('filterRules'));
-            $page = $this->input->post('page');
-            $rows = $this->input->post('rows');
+        // if ($this->input->post()) {
+            // $filters = json_decode($this->input->post('filterRules'));
+            // $page = $this->input->post('page');
+            // $rows = $this->input->post('rows');
             //Pagination 1-10
-            $page   = isset($page) ? intval($page) : 1;
-            $rows   = isset($rows) ? intval($rows) : 10;
-            $offset = ($page - 1) * $rows;
-            $result = array();
+            // $page   = isset($page) ? intval($page) : 1;
+            // $rows   = isset($rows) ? intval($rows) : 10;
+            // $offset = ($page - 1) * $rows;
+            // $result = array();
             //Select Query
             $this->db->select('a.*, 
                 b.number as item_fg_number,
@@ -86,32 +86,32 @@ class Wos extends CI_Controller
             $this->db->from('wos a');
             $this->db->join('item_fg b', 'a.item_fg_id = b.id');
             $this->db->where('a.deleted', 0);
-            if (@count($filters) > 0) {
-                foreach ($filters as $filter) {
-                    if($filter->field == "item_fg_number"){
-                        $this->db->like("b.number", $filter->value);
-                    }elseif($filter->field == "item_fg_name"){
-                        $this->db->like("b.name", $filter->value);
-                    }elseif($filter->field == "number_customer"){
-                        $this->db->like("b.number_customer", $filter->value);
-                    }else{
-                        $this->db->like("a.".$filter->field, $filter->value);
-                    }
-                }
-            }
+            // if (@count($filters) > 0) {
+            //     foreach ($filters as $filter) {
+            //         if($filter->field == "item_fg_number"){
+            //             $this->db->like("b.number", $filter->value);
+            //         }elseif($filter->field == "item_fg_name"){
+            //             $this->db->like("b.name", $filter->value);
+            //         }elseif($filter->field == "number_customer"){
+            //             $this->db->like("b.number_customer", $filter->value);
+            //         }else{
+            //             $this->db->like("a.".$filter->field, $filter->value);
+            //         }
+            //     }
+            // }
             $this->db->order_by('a.item_fg_id', 'asc');
             $this->db->order_by('CAST(a.circuit_no AS UNSIGNED)', 'asc');
             //Total Data
             $totalRows = $this->db->count_all_results('', false);
             //Limit 1 - 10
-            $this->db->limit($rows, $offset);
+            // $this->db->limit($rows, $offset);
             //Get Data Array
             $records = $this->db->get()->result_array();
             //Mapping Data
             $result['total'] = $totalRows;
             $result = array_merge($result, ['rows' => $records]);
             echo json_encode($result);
-        }
+        // }
     }
 
     //CREATE DATA
@@ -119,8 +119,7 @@ class Wos extends CI_Controller
     {
         if ($this->input->post()) {
             if ($this->form_validation->run() == TRUE) {
-                $post   = $this->input->post();
-
+                $post = $this->input->post();
                 $wos = $this->crud->read("wos", [], ["circuit_no" => $post['circuit_no'], "item_fg_id" => $post['item_fg_id']]);
 
                 if(empty($wos)){
@@ -285,6 +284,11 @@ class Wos extends CI_Controller
         $this->dummy->where("mstwos_circuitno", $data['circuit_no']);
         $read = $this->dummy->get()->result_array();
 
+        $this->dummy->select("cd_machine");
+        $this->dummy->from("wip_mst_machine");
+        $this->dummy->where("cd_machine", $data['mc']);
+        $machine = $this->dummy->get()->result_array();
+
         $whereDate = date("ym");
         $sqlGetID	= $this->dummy->query("SELECT max(mstwos_idwos) as kode FROM wip_mst_wos");
         $rowID = $sqlGetID->row();
@@ -301,6 +305,11 @@ class Wos extends CI_Controller
             $autoID = sprintf("%05s", $urutan + 1);
             $autoNo = $whereDate.$autoID;
         }
+
+        if(count($machine) == 0 && $data['mc'] != ""){
+            die(json_encode(array("title" => "Failed", "message" => @$data['number_customer'] . " | ".@$data['circuit_no']." | Cannot Process Because Machine Code not same with Banshu ERP", "theme" => "error")));
+        }
+
 
         $dataFinal = array(
             "mstwos_idwos" => $autoNo,
@@ -414,149 +423,149 @@ class Wos extends CI_Controller
     }
 
     //PRINT & EXCEL DATA
-    public function print($option = "")
-    {
-        if ($option == "excel") {
-            $format  = date("Ymd");
-            header("Content-type: application/vnd-ms-excel");
-            header("Content-Disposition: attachment; filename=wos_$format.xls");
-        }
-        //Config
-        $this->db->select('*');
-        $this->db->from('config');
-        $config = $this->db->get()->row();
+    // public function print($option = "")
+    // {
+    //     if ($option == "excel") {
+    //         $format  = date("Ymd");
+    //         header("Content-type: application/vnd-ms-excel");
+    //         header("Content-Disposition: attachment; filename=wos_$format.xls");
+    //     }
+    //     //Config
+    //     $this->db->select('*');
+    //     $this->db->from('config');
+    //     $config = $this->db->get()->row();
 
-        $this->db->select('a.*, 
-            b.number as item_fg_number,
-            b.number_customer, 
-            b.name as item_fg_name');
-        $this->db->from('wos a');
-        $this->db->join('item_fg b', 'a.item_fg_id = b.id');
-        $this->db->where('a.deleted', 0);
-        $this->db->order_by('a.item_fg_id', 'asc');
-        $this->db->order_by('a.circuit_no', 'asc');
-        $records = $this->db->get()->result_array();
+    //     $this->db->select('a.*, 
+    //         b.number as item_fg_number,
+    //         b.number_customer, 
+    //         b.name as item_fg_name');
+    //     $this->db->from('wos a');
+    //     $this->db->join('item_fg b', 'a.item_fg_id = b.id');
+    //     $this->db->where('a.deleted', 0);
+    //     $this->db->order_by('a.item_fg_id', 'asc');
+    //     $this->db->order_by('a.circuit_no', 'asc');
+    //     $records = $this->db->get()->result_array();
 
-        $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#customers {border-collapse: collapse;width: 100%;font-size: 12px;}#customers td, #customers th {border: 1px solid #ddd;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: #ddd;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: left;color: black;}</style><body>
-        <center>
-            <div style="float: left; font-size: 12px; text-align: left;">
-                <table style="width: 100%;">
-                    <tr>
-                        <td width="50" style="font-size: 12px; vertical-align: top; text-align: center; vertical-align:jus margin-right:10px;">
-                            <img src="' . $config->favicon . '" width="30">
-                        </td>
-                        <td style="font-size: 14px; text-align: left; margin:2px;">
-                            <b>' . $config->name . '</b><br>
-                            <small>'.$config->description.'</small>
-                        </td>
-                    </tr>
-                </table>
-            </div>
-            <div style="float: right; font-size: 12px; text-align: right;">
-                Print Date ' . date("d M Y H:m:s") . ' <br>
-                Print By ' . $this->session->username . '  
-            </div>
-            <br><br>
-            <div style="float: centet; font-size: 16px; text-align: center;">
-                <h3>MASTER WOS</h3>
-            </div>
-        </center>
+    //     $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#customers {border-collapse: collapse;width: 100%;font-size: 12px;}#customers td, #customers th {border: 1px solid #ddd;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: #ddd;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: left;color: black;}</style><body>
+    //     <center>
+    //         <div style="float: left; font-size: 12px; text-align: left;">
+    //             <table style="width: 100%;">
+    //                 <tr>
+    //                     <td width="50" style="font-size: 12px; vertical-align: top; text-align: center; vertical-align:jus margin-right:10px;">
+    //                         <img src="' . $config->favicon . '" width="30">
+    //                     </td>
+    //                     <td style="font-size: 14px; text-align: left; margin:2px;">
+    //                         <b>' . $config->name . '</b><br>
+    //                         <small>'.$config->description.'</small>
+    //                     </td>
+    //                 </tr>
+    //             </table>
+    //         </div>
+    //         <div style="float: right; font-size: 12px; text-align: right;">
+    //             Print Date ' . date("d M Y H:m:s") . ' <br>
+    //             Print By ' . $this->session->username . '  
+    //         </div>
+    //         <br><br>
+    //         <div style="float: centet; font-size: 16px; text-align: center;">
+    //             <h3>MASTER WOS</h3>
+    //         </div>
+    //     </center>
         
-        <table id="customers" border="1">
-            <tr>
-                <th width="20">No</th>
-                <th>Product No EBWS</th>
-                <th>Part No Customer</th>
-                <th>Description</th>
-                <th>Circuit No</th>
-                <th>Kind</th>
-                <th>Size</th>
-                <th>Base Color</th>
-                <th>Line 1 Color</th>
-                <th>C/L</th>
-                <th>J. No</th>
-                <th>Twist</th>
-                <th>M. No</th>
-                <th>D/C 1</th>
-                <th>Terminal 1</th>
-                <th>Strip 1</th>
-                <th>CH/C 1</th>
-                <th>CW/C 1</th>
-                <th>CH/I 1</th>
-                <th>CW/I 1</th>
-                <th>D/C 2</th>
-                <th>Terminal 2</th>
-                <th>Strip 2</th>
-                <th>CH/C 2</th>
-                <th>CW/C 2</th>
-                <th>CH/I 2</th>
-                <th>CW/I 2</th>
-                <th>Accessories 1</th>
-                <th>Accessories 2</th>
-                <th>Mark R</th>
-                <th>Mark F</th>
-                <th>Tube 1</th>
-                <th>Tube Size 1</th>
-                <th>Tube 2</th>
-                <th>Tube Size 2</th>
-                <th>End 1</th>
-                <th>End 2</th>
-                <th>Note R</th>
-                <th>Note F</th>
-                <th>CCT Order</th>
-                <th>CCT Range</th>
-                <th>MC No</th>
-                <th>Process<br>Sequence 1</th>
-            </tr>';
-        $no = 1;
-        foreach ($records as $data) {
-            $html .= '<tr>
-                    <td>' . $no . '</td>
-                    <td style="mso-number-format:\@;">' . $data['item_fg_number'] . '</td>
-                    <td style="mso-number-format:\@;">' . $data['number_customer'] . '</td>
-                    <td style="mso-number-format:\@;">' . $data['item_fg_name'] . '</td>
-                    <td>' . $data['circuit_no'] . '</td>
-                    <td>' . $data['kind'] . '</td>
-                    <td>' . $data['size'] . '</td>
-                    <td>' . $data['color'] . '</td>
-                    <td>' . $data['line_color'] . '</td>
-                    <td>' . $data['cl'] . '</td>
-                    <td>' . $data['jno'] . '</td>
-                    <td>' . $data['twist'] . '</td>
-                    <td>' . $data['mno'] . '</td>
-                    <td>' . $data['dc_1'] . '</td>
-                    <td>' . $data['terminal_1'] . '</td>
-                    <td>' . $data['strip_1'] . '</td>
-                    <td>' . $data['chc_1'] . '</td>
-                    <td>' . $data['cwc_1'] . '</td>
-                    <td>' . $data['chi_1'] . '</td>
-                    <td>' . $data['cwi_1'] . '</td>
-                    <td>' . $data['dc_2'] . '</td>
-                    <td>' . $data['terminal_2'] . '</td>
-                    <td>' . $data['strip_2'] . '</td>
-                    <td>' . $data['chc_2'] . '</td>
-                    <td>' . $data['cwc_2'] . '</td>
-                    <td>' . $data['chi_2'] . '</td>
-                    <td>' . $data['cwi_2'] . '</td>
-                    <td>' . $data['accessories_1'] . '</td>
-                    <td>' . $data['accessories_2'] . '</td>
-                    <td>' . $data['mark_r'] . '</td>
-                    <td>' . $data['mark_f'] . '</td>
-                    <td>' . $data['tube_1'] . '</td>
-                    <td>' . $data['tube_size_1'] . '</td>
-                    <td>' . $data['tube_2'] . '</td>
-                    <td>' . $data['tube_size_2'] . '</td>
-                    <td>' . $data['end_1'] . '</td>
-                    <td>' . $data['end_2'] . '</td>
-                    <td>' . $data['note_r'] . '</td>
-                    <td>' . $data['note_f'] . '</td>
-                    <td>' . $data['cct_order'] . '</td>
-                    <td>' . $data['cct_range'] . '</td>
-                    <td>' . $data['mc'] . '</td>
-                    <td>' . $data['order'] . '</td>';
-            $no++;
-        }
-        $html .= '</table></body></html>';
-        echo $html;
-    }
+    //     <table id="customers" border="1">
+    //         <tr>
+    //             <th width="20">No</th>
+    //             <th>Product No EBWS</th>
+    //             <th>Part No Customer</th>
+    //             <th>Description</th>
+    //             <th>Circuit No</th>
+    //             <th>Kind</th>
+    //             <th>Size</th>
+    //             <th>Base Color</th>
+    //             <th>Line 1 Color</th>
+    //             <th>C/L</th>
+    //             <th>J. No</th>
+    //             <th>Twist</th>
+    //             <th>M. No</th>
+    //             <th>D/C 1</th>
+    //             <th>Terminal 1</th>
+    //             <th>Strip 1</th>
+    //             <th>CH/C 1</th>
+    //             <th>CW/C 1</th>
+    //             <th>CH/I 1</th>
+    //             <th>CW/I 1</th>
+    //             <th>D/C 2</th>
+    //             <th>Terminal 2</th>
+    //             <th>Strip 2</th>
+    //             <th>CH/C 2</th>
+    //             <th>CW/C 2</th>
+    //             <th>CH/I 2</th>
+    //             <th>CW/I 2</th>
+    //             <th>Accessories 1</th>
+    //             <th>Accessories 2</th>
+    //             <th>Mark R</th>
+    //             <th>Mark F</th>
+    //             <th>Tube 1</th>
+    //             <th>Tube Size 1</th>
+    //             <th>Tube 2</th>
+    //             <th>Tube Size 2</th>
+    //             <th>End 1</th>
+    //             <th>End 2</th>
+    //             <th>Note R</th>
+    //             <th>Note F</th>
+    //             <th>CCT Order</th>
+    //             <th>CCT Range</th>
+    //             <th>MC No</th>
+    //             <th>Process<br>Sequence 1</th>
+    //         </tr>';
+    //     $no = 1;
+    //     foreach ($records as $data) {
+    //         $html .= '<tr>
+    //                 <td>' . $no . '</td>
+    //                 <td style="mso-number-format:\@;">' . $data['item_fg_number'] . '</td>
+    //                 <td style="mso-number-format:\@;">' . $data['number_customer'] . '</td>
+    //                 <td style="mso-number-format:\@;">' . $data['item_fg_name'] . '</td>
+    //                 <td>' . $data['circuit_no'] . '</td>
+    //                 <td>' . $data['kind'] . '</td>
+    //                 <td>' . $data['size'] . '</td>
+    //                 <td>' . $data['color'] . '</td>
+    //                 <td>' . $data['line_color'] . '</td>
+    //                 <td>' . $data['cl'] . '</td>
+    //                 <td>' . $data['jno'] . '</td>
+    //                 <td>' . $data['twist'] . '</td>
+    //                 <td>' . $data['mno'] . '</td>
+    //                 <td>' . $data['dc_1'] . '</td>
+    //                 <td>' . $data['terminal_1'] . '</td>
+    //                 <td>' . $data['strip_1'] . '</td>
+    //                 <td>' . $data['chc_1'] . '</td>
+    //                 <td>' . $data['cwc_1'] . '</td>
+    //                 <td>' . $data['chi_1'] . '</td>
+    //                 <td>' . $data['cwi_1'] . '</td>
+    //                 <td>' . $data['dc_2'] . '</td>
+    //                 <td>' . $data['terminal_2'] . '</td>
+    //                 <td>' . $data['strip_2'] . '</td>
+    //                 <td>' . $data['chc_2'] . '</td>
+    //                 <td>' . $data['cwc_2'] . '</td>
+    //                 <td>' . $data['chi_2'] . '</td>
+    //                 <td>' . $data['cwi_2'] . '</td>
+    //                 <td>' . $data['accessories_1'] . '</td>
+    //                 <td>' . $data['accessories_2'] . '</td>
+    //                 <td>' . $data['mark_r'] . '</td>
+    //                 <td>' . $data['mark_f'] . '</td>
+    //                 <td>' . $data['tube_1'] . '</td>
+    //                 <td>' . $data['tube_size_1'] . '</td>
+    //                 <td>' . $data['tube_2'] . '</td>
+    //                 <td>' . $data['tube_size_2'] . '</td>
+    //                 <td>' . $data['end_1'] . '</td>
+    //                 <td>' . $data['end_2'] . '</td>
+    //                 <td>' . $data['note_r'] . '</td>
+    //                 <td>' . $data['note_f'] . '</td>
+    //                 <td>' . $data['cct_order'] . '</td>
+    //                 <td>' . $data['cct_range'] . '</td>
+    //                 <td>' . $data['mc'] . '</td>
+    //                 <td>' . $data['order'] . '</td>';
+    //         $no++;
+    //     }
+    //     $html .= '</table></body></html>';
+    //     echo $html;
+    // }
 }

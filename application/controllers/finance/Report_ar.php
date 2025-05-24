@@ -203,7 +203,7 @@ class Report_ar extends CI_Controller
         $filter_from = base64_decode($this->input->get("filter_from"));
         $filter_to = base64_decode($this->input->get("filter_to"));
         if($filter_from == "" && $filter_to == ""){
-            $filter_from = "2024-11-01";
+            $filter_from = "2024-10-01";
             $filter_to = date("Y-m-d");
         }
         $filter_customer = $this->input->get("filter_customer");
@@ -460,19 +460,19 @@ class Report_ar extends CI_Controller
 
             $begin_balance_local = $this->begin_balance($customer_id, $plant, $filter_from, $filter_status, @$customer['balance_local']);
 
-            if (count($sales_invoices) > 0) {
+            // if (count($sales_invoices) > 0) {
                 $detail .= '  <tr style="background: #DEE2FF; font-weight:bold;">
-                                    <td colspan="16">BEGINING BALANCE</td>
+                                    <td colspan="16">BEGINING BALANCE ('.$customer_name.')</td>
                                     <td colspan="3"></td>
                                     <td style="text-align:right;">' . number_format(@$begin_balance_local, 2) . '</td>
                                 </tr>';
 
                 $invoice .= '    <tr style="background: #DEE2FF; font-weight:bold;">
-                                    <td colspan="16">BEGINING BALANCE</td>
+                                    <td colspan="16">BEGINING BALANCE ('.$customer_name.')</td>
                                     <td colspan="3"></td>
                                     <td style="text-align:right;">' . number_format(@$begin_balance_local, 2) . '</td>
                                 </tr>';
-            }
+            // }
 
             $accumulated = $begin_balance_local;
             foreach ($sales_invoices as $sales_invoice) {
@@ -664,7 +664,7 @@ class Report_ar extends CI_Controller
                             <td style="text-align:right;">' . number_format($grand_local_debit, 2) . '</td>
                             <td style="text-align:right;">' . number_format($grand_local_credit, 2) . '</td>
                             <td style="text-align:right;">' .$this->formatNo($grand_local_balance) . '</td>
-                            <td style="text-align:right;">-</td>
+                            <td style="text-align:right;">' . $this->formatNo($grand_summary_total) . '</td>
                         </tr>';
 
         $invoice .= '   <tr style="background: #C3FFB4; font-weight:bold;">
@@ -687,7 +687,7 @@ class Report_ar extends CI_Controller
                             <td style="text-align:right;">' . number_format($grand_local_debit, 2) . '</td>
                             <td style="text-align:right;">' . number_format($grand_local_credit, 2) . '</td>
                             <td style="text-align:right;">' . $this->formatNo($grand_local_balance) . '</td>
-                            <td style="text-align:right;">-</td>
+                            <td style="text-align:right;">' . $this->formatNo($grand_summary_total) . '</td>
                         </tr>';
 
         $summary .= '   <tr style="font-weight:bold;">

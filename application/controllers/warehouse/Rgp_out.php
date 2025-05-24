@@ -92,6 +92,7 @@ class Rgp_out extends CI_Controller
                 a.type = 'IN' 
                 AND a.number LIKE '%$post%' 
                 AND a.process_type = 'RGP' 
+                AND (a.approved_to is null or a.approved_to = '')
                 $company 
                 $item_category
                 group by a.number
@@ -167,8 +168,8 @@ class Rgp_out extends CI_Controller
                 LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) AS qty_receipt FROM purchase_order_receipts a JOIN scan_item_receipts b ON a.receipt_id = b.receipt_id WHERE a.receipt_date <= '$trans_date' GROUP BY item_rm_id) e ON a.id = e.item_rm_id
                 LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) AS qty FROM issued_material_details WHERE DATE_FORMAT(created_date, '%Y-%m-%d') <= '$trans_date' GROUP BY item_rm_id) f ON a.id = f.item_rm_id
                 LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) AS qty_reject FROM purchase_order_receipts a JOIN scan_item_rejections b ON a.receipt_id  = b.receipt_id WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') <= '$trans_date' GROUP BY item_rm_id) h ON a.id = h.item_rm_id
-                LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) as qty_rgp_in FROM rgp_transactions a JOIN scan_item_rgp b ON a.number = b.rgp_number and a.item_id = b.item_id WHERE a.type = 'IN' and a.transaction_date <= '$trans_date' GROUP BY a.item_id) j ON a.id = j.item_id
-                LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) as qty_rgp_out FROM rgp_transactions a JOIN scan_item_rgp b ON a.number = b.rgp_number and a.item_id = b.item_id WHERE a.type = 'OUT' and a.transaction_date <= '$trans_date' GROUP BY a.item_id) k ON a.id = k.item_id
+                LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) as qty_rgp_in FROM rgp_transactions a JOIN scan_item_rgp b ON a.number = b.rgp_number and a.item_id = b.item_id WHERE a.type = 'IN' and a.transaction_date <= '$trans_date'  GROUP BY a.item_id) j ON a.id = j.item_id
+                LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) as qty_rgp_out FROM rgp_transactions a JOIN scan_item_rgp b ON a.number = b.rgp_number and a.item_id = b.item_id WHERE a.type = 'OUT' and a.transaction_date <= '$trans_date'  GROUP BY a.item_id) k ON a.id = k.item_id
                 LEFT JOIN (SELECT a.item_rm_id, SUM(c.qty) AS return_qty
                     FROM return_materials a 
                     JOIN return_material_labels b ON a.return_id = b.return_id
@@ -227,8 +228,8 @@ class Rgp_out extends CI_Controller
                 LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as qty FROM issued_others WHERE trans_date <= '$trans_date' and `status` = '1' GROUP BY item_rm_id) d ON a.id = d.item_rm_id
                 LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_in FROM rgp_transactions WHERE type = 'IN' and transaction_date <= '$trans_date' GROUP BY item_id) e ON a.id = e.item_id
                 LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_out FROM rgp_transactions WHERE type = 'OUT' and transaction_date <= '$trans_date' GROUP BY item_id) f ON a.id = f.item_id
-                LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as sto_qty_in FROM sto_ot WHERE type = 'IN' and trans_date <= '$trans_date' and (approved_to = '' or approved_to is null) GROUP BY item_rm_id) g ON a.id = g.item_rm_id
-                LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as sto_qty_out FROM sto_ot WHERE type = 'OUT' and trans_date <= '$trans_date' and (approved_to = '' or approved_to is null) GROUP BY item_rm_id) i ON a.id = i.item_rm_id
+                LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as sto_qty_in FROM sto_ot WHERE type = 'IN' and trans_date <= '$trans_date'  GROUP BY item_rm_id) g ON a.id = g.item_rm_id
+                LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as sto_qty_out FROM sto_ot WHERE type = 'OUT' and trans_date <= '$trans_date'  GROUP BY item_rm_id) i ON a.id = i.item_rm_id
                 LEFT JOIN (SELECT
                     a.id,
                     (c.qty_receipt + COALESCE(e.qty_rgp_in,0) + COALESCE(g.sto_qty_in, 0) - COALESCE(i.sto_qty_out, 0) - COALESCE(f.qty_rgp_out,0) - d.qty) AS begin_stock
@@ -238,8 +239,8 @@ class Rgp_out extends CI_Controller
                     LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as qty FROM issued_others WHERE trans_date <= '$trans_date' and `status` = '1' GROUP BY item_rm_id) d ON a.id = d.item_rm_id
                     LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_in FROM rgp_transactions WHERE type = 'IN' and transaction_date <= '$trans_date' GROUP BY item_id) e ON a.id = e.item_id
                     LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_out FROM rgp_transactions WHERE type = 'OUT' and transaction_date <= '$trans_date' GROUP BY item_id) f ON a.id = f.item_id
-                    LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as sto_qty_in FROM sto_ot WHERE type = 'IN' and trans_date <= '$trans_date' and (approved_to = '' or approved_to is null) GROUP BY item_rm_id) g ON a.id = g.item_rm_id
-                    LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as sto_qty_out FROM sto_ot WHERE type = 'OUT' and trans_date <= '$trans_date' and (approved_to = '' or approved_to is null) GROUP BY item_rm_id) i ON a.id = i.item_rm_id
+                    LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as sto_qty_in FROM sto_ot WHERE type = 'IN' and trans_date <= '$trans_date'  GROUP BY item_rm_id) g ON a.id = g.item_rm_id
+                    LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as sto_qty_out FROM sto_ot WHERE type = 'OUT' and trans_date <= '$trans_date'  GROUP BY item_rm_id) i ON a.id = i.item_rm_id
                     GROUP BY a.id) h on a.id = h.id
                 
                 LEFT JOIN supplier_items k ON a.id = k.item_rm_id 
@@ -291,7 +292,7 @@ class Rgp_out extends CI_Controller
 
             $whereDate = $number . $yearnow . $yearend . "1";
 
-            $sqlGetID    = $this->db->query("SELECT max(number) as kode FROM rgp_transactions WHERE type='OUT' and number like '%$whereDate%'");
+            $sqlGetID    = $this->db->query("SELECT max(number) as kode FROM rgp_transactions WHERE type='OUT' and number like '$whereDate%'");
             $rowID = $sqlGetID->row();
             $kode = $rowID->kode;
 
@@ -774,6 +775,17 @@ class Rgp_out extends CI_Controller
                 $send = $this->crud->update('rgp_transactions', ["number" => $post['number'], "item_id" => $item_id, "type" => "OUT"], $postFinal);
             } else {
                 $send = $this->crud->create('rgp_transactions', $postFinal);
+
+                $approval = $this->crud->read('approvals', [], ["table_name" => "rgp_transaction_out"]);
+                if (!empty($approval)) {
+                    $formApprove = [
+                        "approved" => 1,
+                        "approved_to" => $approval->user_approval_1,
+                        "approved_by" => $this->session->username,
+                    ];
+
+                    $this->db->update('rgp_transactions', $formApprove, ["number" => $post['number'], "item_id" => $item_id, "type" => "OUT"]);
+                }
             }
 
             $rgp_in = $this->db->query("

@@ -93,37 +93,38 @@
     }
 
     //DELETE DATA
-    function deleted() {
-        // var rows = $('#dg').datagrid('getSelections');
-        // if (rows.length > 0) {
-        //     $.messager.confirm('Warning', 'Are you sure you want to delete this data?', function(r) {
-        //         if (r) {
-        //             for (var i = 0; i < rows.length; i++) {
-        //                 var row = rows[i];
-        //                 $.ajax({
-        //                     method: 'post',
-        //                     url: '<?= base_url('warehouse/wip_balances/delete') ?>',
-        //                     data: {
-        //                         id: row.id
-        //                     },
-        //                     success: function(result) {
-        //                         var result = eval('(' + result + ')');
-        //                     },
-        //                     error: function(jqXHR, textStatus, errorThrown) {
-        //                         toastr.error("This data is already used in other modules, You must delete it First", "Error");
+    // function deleted() {
+    //     var rows = $('#dg').datagrid('getSelections');
+    //     if (rows.length > 0) {
+    //         $.messager.confirm('Warning', 'Are you sure you want to delete this data?', function(r) {
+    //             if (r) {
+    //                 for (var i = 0; i < rows.length; i++) {
+    //                     var row = rows[i];
+    //                     $.ajax({
+    //                         method: 'post',
+    //                         url: '<?= base_url('warehouse/wip_balances/delete') ?>',
+    //                         data: {
+    //                             id: row.id,
+    //                             workorder: row.workorder,
+    //                         },
+    //                         success: function(result) {
+    //                             var result = eval('(' + result + ')');
+    //                         },
+    //                         error: function(jqXHR, textStatus, errorThrown) {
+    //                             toastr.error("This data is already used in other modules, You must delete it First", "Error");
                                 
-        //                     },
-        //                     complete: function(data) {
-        //                         $('#dg').datagrid('reload');
-        //                     }
-        //                 });
-        //             }
-        //         }
-        //     });
-        // } else {
-        //     toastr.warning("Please select one of the data in the table first!", "Information");
-        // }
-    }
+    //                         },
+    //                         complete: function(data) {
+    //                             $('#dg').datagrid('reload');
+    //                         }
+    //                     });
+    //                 }
+    //             }
+    //         });
+    //     } else {
+    //         toastr.warning("Please select one of the data in the table first!", "Information");
+    //     }
+    // }
 
     //PRINT PDF
     function pdf() {

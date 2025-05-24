@@ -76,8 +76,8 @@ class Report_history_transactions_other extends CI_Controller
         JOIN item_familys b ON a.item_family_id = b.id
         LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty_receipt), 0) as qty_receipt FROM purchase_order_receipt_others WHERE receipt_date between '$filter_from' and '$filter_to' and store != 0 GROUP BY item_rm_id) c ON a.id = c.item_rm_id
         LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as qty FROM issued_others WHERE trans_date between '$filter_from' and '$filter_to' GROUP BY item_rm_id) d ON a.id = d.item_rm_id
-        LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_in FROM rgp_transactions WHERE type = 'IN' and transaction_date between '$filter_from' and '$filter_to' GROUP BY item_id) e ON a.id = e.item_id
-        LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_out FROM rgp_transactions WHERE type = 'OUT' and transaction_date between '$filter_from' and '$filter_to' GROUP BY item_id) f ON a.id = f.item_id
+        LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_in FROM rgp_transactions WHERE type = 'IN' and transaction_date between '$filter_from' and '$filter_to' and (approved_to = '' or approved_to is null) GROUP BY item_id) e ON a.id = e.item_id
+        LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_out FROM rgp_transactions WHERE type = 'OUT' and transaction_date between '$filter_from' and '$filter_to' and (approved_to = '' or approved_to is null) GROUP BY item_id) f ON a.id = f.item_id
         LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as sto_qty_in FROM sto_ot WHERE type = 'IN' and trans_date between '$filter_from' and '$filter_to' and (approved_to = '' or approved_to is null) GROUP BY item_rm_id) g ON a.id = g.item_rm_id
         LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as sto_qty_out FROM sto_ot WHERE type = 'OUT' and trans_date between '$filter_from' and '$filter_to' and (approved_to = '' or approved_to is null) GROUP BY item_rm_id) i ON a.id = i.item_rm_id
         LEFT JOIN (SELECT
@@ -87,8 +87,8 @@ class Report_history_transactions_other extends CI_Controller
             JOIN item_familys b ON a.item_family_id = b.id AND b.number != '006'
             LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty_receipt), 0) as qty_receipt FROM purchase_order_receipt_others WHERE receipt_date < '$filter_from' and store != 0 GROUP BY item_rm_id) c ON a.id = c.item_rm_id
             LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as qty FROM issued_others WHERE trans_date < '$filter_from' GROUP BY item_rm_id) d ON a.id = d.item_rm_id
-            LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_in FROM rgp_transactions WHERE type = 'IN' and transaction_date < '$filter_from' GROUP BY item_id) e ON a.id = e.item_id
-            LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_out FROM rgp_transactions WHERE type = 'OUT' and transaction_date < '$filter_from' GROUP BY item_id) f ON a.id = f.item_id
+            LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_in FROM rgp_transactions WHERE type = 'IN' and transaction_date < '$filter_from' and (approved_to = '' or approved_to is null) GROUP BY item_id) e ON a.id = e.item_id
+            LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_out FROM rgp_transactions WHERE type = 'OUT' and transaction_date < '$filter_from' and (approved_to = '' or approved_to is null) GROUP BY item_id) f ON a.id = f.item_id
             LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as sto_qty_in FROM sto_ot WHERE type = 'IN' and trans_date < '$filter_from' and (approved_to = '' or approved_to is null) GROUP BY item_rm_id) g ON a.id = g.item_rm_id
             LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as sto_qty_out FROM sto_ot WHERE type = 'OUT' and trans_date < '$filter_from' and (approved_to = '' or approved_to is null) GROUP BY item_rm_id) i ON a.id = i.item_rm_id
             GROUP BY a.id) h on a.id = h.id
@@ -216,7 +216,7 @@ class Report_history_transactions_other extends CI_Controller
                     FROM rgp_transactions a 
                     LEFT JOIN suppliers b ON a.company_id = b.id 
                     LEFT JOIN customers c ON a.company_id = c.id 
-                    WHERE a.item_id = '$item_rm_id' and a.transaction_date = '$working_date'");
+                    WHERE a.item_id = '$item_rm_id' and a.transaction_date = '$working_date' and (a.approved_to = '' or a.approved_to is null)");
 
                     //Purchase Order Receipt
                     foreach ($receipts as $receipt) {

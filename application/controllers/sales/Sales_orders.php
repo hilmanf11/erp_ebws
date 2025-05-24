@@ -44,7 +44,7 @@ class Sales_orders extends CI_Controller
             JOIN item_fg b ON a.item_fg_id = b.id
             JOIN customers c ON a.customer_id = c.id
             LEFT JOIN delivery_orders d ON b.id = d.item_fg_id and d.status = 0 and c.id = d.customer_id and a.plant = d.plant
-            WHERE a.customer_id = '$customer_id' and a.plant = '$plant' and (b.number LIKE '%$post%' or b.name LIKE '%$post%') and a.approved_to = '' GROUP BY b.number");
+            WHERE a.customer_id = '$customer_id' and a.plant = '$plant' and (b.number LIKE '%$post%' or b.name LIKE '%$post%') and (a.approved_to = '' or a.approved_to is null) GROUP BY b.number");
         echo json_encode($send);
     }
 

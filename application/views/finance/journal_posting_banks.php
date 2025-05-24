@@ -194,7 +194,7 @@
                 <th rowspan="2" data-options="field:'company_name',width:200,halign:'center'">Company Name</th>
                 <th rowspan="2" data-options="field:'account_number',width:100,halign:'center'">Account No</th>
                 <th rowspan="2" data-options="field:'account_name',width:200,halign:'center'">Account Name</th>
-                <th rowspan="2" data-options="field:'description',width:600,halign:'center'">Description</th>
+                <th rowspan="2" data-options="field:'description',width:700,halign:'center'">Description</th>
                 <th hidden colspan="3" data-options="field:'',width:100">Original Currency</th>
                 <th colspan="3" data-options="field:'',width:100">Local Currency</th>
             </tr>

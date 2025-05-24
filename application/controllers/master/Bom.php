@@ -224,41 +224,43 @@ class Bom extends CI_Controller
                 $dataFinal = array(
                     "created_by" => $this->session->username,
                     "created_date" => date("Y-m-d H:i:s"),
-                    "item_fg_id" => $data['item_fg_id'],
-                    "item_rm_id" => $data['item_rm_id'],
-                    "main_process" => $data['main_process'],
-                    "revision" => $data['revision'],
-                    "drawing" => $data['drawing'],
-                    "composition" => $data['composition'],
-                    "remove" => $data['remove']
+                    "item_fg_id" => @$data['item_fg_id'],
+                    "item_rm_id" => @$data['item_rm_id'],
+                    "main_process" => @$data['main_process'],
+                    "revision" => @$data['revision'],
+                    "drawing" => @$data['drawing'],
+                    "composition" => @$data['composition'],
+                    "remove" => @$data['remove']
                 );
 
-                if($data['revision'] == ""){
-                    $bom = $this->crud->read("bom", [], ["item_fg_id" => $data['item_fg_id'], "item_rm_id" => $data['item_rm_id']]);
-                    if (@$bom->item_fg_id != "") {
-                        $this->crud->update('bom', ["item_fg_id" => $data['item_fg_id'], "item_rm_id" => $data['item_rm_id']], $data, "logs");
-                        $this->db->update("bom_log", $dataFinal, ["item_fg_id" => $data['item_fg_id'], "item_rm_id" => $data['item_rm_id']]);
-                    } else {
-                        $this->crud->create('bom', $data, "logs");
+                if(@$data['item_rm_id'] != "" && @$data['main_process'] != "" && $data['composition'] != ""){
+                    if($data['revision'] == ""){
+                        $bom = $this->crud->read("bom", [], ["item_fg_id" => $data['item_fg_id'], "item_rm_id" => $data['item_rm_id']]);
+                        if (@$bom->item_fg_id != "") {
+                            $this->crud->update('bom', ["item_fg_id" => $data['item_fg_id'], "item_rm_id" => $data['item_rm_id']], $data, "logs");
+                            $this->db->update("bom_log", $dataFinal, ["item_fg_id" => $data['item_fg_id'], "item_rm_id" => $data['item_rm_id']]);
+                        } else {
+                            $this->crud->create('bom', $data, "logs");
+                            $this->db->insert("bom_log", $dataFinal);
+                        }
+                    }else{
+                        $bom = $this->crud->read("bom", [], ["item_fg_id" => $data['item_fg_id'], "item_rm_id" => $data['item_rm_id']]);
+                        if (@$bom->item_fg_id != "") {
+                            if(@$bom->approved_to != ""){
+                                die(json_encode(array("title" => "Failed", "message" => "Data Cannot Save because the Data still Process Approvals", "theme" => "error")));
+                            }
+
+                            if($data['revision'] > 0){
+                                $this->crud->update('bom', ["item_fg_id" => $data['item_fg_id'], "item_rm_id" => $data['item_rm_id']], $data, "logs");
+                            }else{
+                                $this->db->update('bom', $data, ["item_fg_id" => $data['item_fg_id'], "item_rm_id" => $data['item_rm_id']]);
+                            }
+                        } else {
+                            $this->crud->create('bom', $data);
+                        }
+
                         $this->db->insert("bom_log", $dataFinal);
                     }
-                }else{
-                    $bom = $this->crud->read("bom", [], ["item_fg_id" => $data['item_fg_id'], "item_rm_id" => $data['item_rm_id']]);
-                    if (@$bom->item_fg_id != "") {
-                        if(@$bom->approved_to != ""){
-                            die(json_encode(array("title" => "Failed", "message" => "Data Cannot Save because the Data still Process Approvals", "theme" => "error")));
-                        }
-
-                        if($data['revision'] > 0){
-                            $this->crud->update('bom', ["item_fg_id" => $data['item_fg_id'], "item_rm_id" => $data['item_rm_id']], $data, "logs");
-                        }else{
-                            $this->db->update('bom', $data, ["item_fg_id" => $data['item_fg_id'], "item_rm_id" => $data['item_rm_id']]);
-                        }
-                    } else {
-                        $this->crud->create('bom', $data);
-                    }
-
-                    $this->db->insert("bom_log", $dataFinal);
                 }
             }
 
@@ -574,7 +576,7 @@ class Bom extends CI_Controller
         $this->db->from('config');
         $config = $this->db->get()->row();
 
-        $this->db->select('a.*, b.number as item_fg_number, b.number_customer, b.name as item_fg_name, c.number as item_rm_number, c.name as item_rm_name, c.item_family_id as product_family, c.uom as uom, , d.name as product_family_name, g.name as maker_name');
+        $this->db->select('a.*, b.number as item_fg_number, b.number_customer, b.name as item_fg_name, c.number as item_rm_number, c.name as item_rm_name, c.item_family_id as product_family, c.uom as uom, , d.name as product_family_name, g.name as maker_name, b.status as status_fg');
         $this->db->from('bom a');
         $this->db->join('item_fg b', 'a.item_fg_id = b.id');
         $this->db->join('item_rm c', 'a.item_rm_id = c.id');
@@ -613,6 +615,7 @@ class Bom extends CI_Controller
         <table id="bom" border="1">
             <tr>
                 <th width="20">No</th>
+                <th>Status</th>
                 <th>Product No EBWS</th>
                 <th>Product No Customer</th>
                 <th>Description</th>
@@ -628,8 +631,16 @@ class Bom extends CI_Controller
             </tr>';
         $no = 1;
         foreach ($records as $data) {
+            if($data['status_fg'] == 0){
+                $status = "ACTIVE";
+                $style = "color:green;";
+            }else{
+                $style = "color:red;";
+                $status = "NOT ACTIVE";
+            }
             $html .= '<tr>
                     <td>' . $no . '</td>
+                    <td style='.$style.'>' . $status . '</td>
                     <td>' . $data['item_fg_number'] . '</td>
                     <td style="mso-number-format:\@;">' . $data['number_customer'] . '</td>
                     <td>' . $data['item_fg_name'] . '</td>

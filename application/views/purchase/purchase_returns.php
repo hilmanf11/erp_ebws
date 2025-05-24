@@ -106,6 +106,10 @@
                 <input style="width:60%;" name="id" id="id" required class="easyui-textbox">
             </div>
             <div class="fitem">
+                <span style="width:35%; display:inline-block;">Part No EBWS</span>
+                <input style="width:60%;" name="item_rm_id" id="item_rm_id" readonly class="easyui-textbox">
+            </div>
+            <div class="fitem">
                 <span style="width:35%; display:inline-block;">Part No</span>
                 <input style="width:60%;" name="item_rm_number" id="item_rm_number" disabled class="easyui-textbox">
             </div>
@@ -116,6 +120,14 @@
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Qty</span>
                 <input style="width:30%;" name="qty" id="qty" required="" class="easyui-numberbox" data-options="precision:2">
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">PO No</span>
+                <input style="width:60%;" name="po_no" id="po_no" required="" class="easyui-textbox">
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Remarks</span>
+                <input style="width:60%;" name="remarks" id="remarks" class="easyui-textbox">
             </div>
         </fieldset>
     </form>
@@ -388,7 +400,8 @@
                                 url: '<?= base_url('purchase/purchase_returns/delete') ?>',
                                 data: {
                                     id: row.id,
-                                    receipt_id: row.receipt_id
+                                    receipt_id: row.receipt_id,
+                                    item_rm_id: row.item_rm_id
                                 },
                                 success: function(result) {
                                     var result = eval('(' + result + ')');

@@ -1790,15 +1790,17 @@
     }
 
     function BtnPrint(val, row) {
-        var send = "print_label('" + row.number + "','" + row.item_id + "','" + row.qty + "','" + row.mpq + "','" + row.qty_label + "','" + row.item_category_id + "')";
+        var send = "print_label('" + row.number + "','" + row.item_id + "','" + row.qty + "','" + row.mpq + "','" + row.qty_label + "','" + row.item_category_id + "','" + row.approved_to + "')";
         return '<a class="btn btn-success w-100" style="pointer-events: visible; opacity:1;" onClick="' + send + '"><i class="fa fa-print"></i> Print</a>';
 
     }
 
+
     function cellStylerApproval(value, row, index) {
-        if (row.approved_to == null) {
-            return 'background: #FF5F5F; color:white;';
-        } else if (row.approved_to == "") {
+        // if (row.approved_to == null) {
+        //     return 'background: #FF5F5F; color:white;';
+        // } else 
+        if (row.approved_to == "" || row.approved_to == null) {
             return 'background: #53D636; color:white;';
         } else {
             return 'background: #FF5F5F; color:white;';
@@ -1806,99 +1808,104 @@
     }
 
     function cellFormatterApproval(val, row) {
-        if (row.approved_to == null) {
-            return 'Not Setting';
-        } else if (row.approved_to == "") {
+        // if (row.approved_to == null) {
+        //     return 'Not Setting';
+        // } else 
+        if (row.approved_to == "" || row.approved_to == null) {
             return 'Approved';
         } else {
             return 'Checking';
         }
     };
 
-    function print_label(rgp_number, item_id, qty, qty_mpq, qty_label, category) {
+    function print_label(rgp_number, item_id, qty, qty_mpq, qty_label, category, approved_to) {
         if (qty_mpq == 'null' || qty_mpq == '') {
             toastr.error("Please check MPQ first!");
         } else {
+            console.log(approved_to);
+            if (approved_to == '' || approved_to == 'null') {
+                $.ajax({
+                    type: "POST",
+                    async: true,
+                    url: "<?= base_url('warehouse/rgp_in/create_check_label') ?>",
+                    data: {
+                        "number": rgp_number,
+                        "item_id": item_id
+                    },
+                    cache: false,
+                    dataType: "json",
+                    success: function(check) {
+                        if (check.total == 0) {
+                            $("#dlg_label").dialog('open');
+                            requestDataBox(qty_label, qty);
 
-            $.ajax({
-                type: "POST",
-                async: true,
-                url: "<?= base_url('warehouse/rgp_in/create_check_label') ?>",
-                data: {
-                    "number": rgp_number,
-                    "item_id": item_id
-                },
-                cache: false,
-                dataType: "json",
-                success: function(check) {
-                    if (check.total == 0) {
-                        $("#dlg_label").dialog('open');
-                        requestDataBox(qty_label, qty);
+                            function requestDataBox(total, qty, number = 1, value = 0, success = 1, failed = 1) {
+                                if (value < 100) {
+                                    value = Math.floor((number / total) * 100);
+                                    $('#p_upload').progressbar('setValue', value);
+                                    $('#p_start').html(number);
+                                    $('#p_finish').html(total);
 
-                        function requestDataBox(total, qty, number = 1, value = 0, success = 1, failed = 1) {
-                            if (value < 100) {
-                                value = Math.floor((number / total) * 100);
-                                $('#p_upload').progressbar('setValue', value);
-                                $('#p_start').html(number);
-                                $('#p_finish').html(total);
+                                    if (parseInt(qty) > parseInt(qty_mpq)) {
+                                        var qty_final = qty_mpq;
+                                    } else {
+                                        var qty_final = qty;
+                                    }
 
-                                if (parseInt(qty) > parseInt(qty_mpq)) {
-                                    var qty_final = qty_mpq;
-                                } else {
-                                    var qty_final = qty;
-                                }
+                                    $.ajax({
+                                        type: "POST",
+                                        async: true,
+                                        url: "<?= base_url('warehouse/rgp_in/create_label') ?>",
+                                        data: {
+                                            "rgp_number": rgp_number,
+                                            "qty": qty_final,
+                                            "item_id": item_id
+                                        },
+                                        cache: false,
+                                        dataType: "json",
+                                        success: function(result) {
+                                            if (result.title != "OK") {
+                                                if (result.theme == "success") {
+                                                    $('#p_success').html(success);
+                                                    var title = "<b style='color: green;'>" + result.title + "</b> | " + result.message;
 
-                                $.ajax({
-                                    type: "POST",
-                                    async: true,
-                                    url: "<?= base_url('warehouse/rgp_in/create_label') ?>",
-                                    data: {
-                                        "rgp_number": rgp_number,
-                                        "qty": qty_final,
-                                        "item_id": item_id
-                                    },
-                                    cache: false,
-                                    dataType: "json",
-                                    success: function(result) {
-                                        if (result.title != "OK") {
-                                            if (result.theme == "success") {
-                                                $('#p_success').html(success);
-                                                var title = "<b style='color: green;'>" + result.title + "</b> | " + result.message;
+                                                    var qty_balance = (parseInt(qty) - parseInt(qty_mpq));
+                                                    requestDataBox(total, qty_balance, number + 1, value, success + 1, failed + 0);
+                                                } else {
+                                                    $('#p_failed').html(failed);
+                                                    var title = "<b style='color: red;'>" + result.title + "</b> | " + result.message;
 
-                                                var qty_balance = (parseInt(qty) - parseInt(qty_mpq));
-                                                requestDataBox(total, qty_balance, number + 1, value, success + 1, failed + 0);
+                                                    var qty_balance = (parseInt(qty) - parseInt(qty_mpq));
+                                                    requestDataBox(total, qty_balance, number + 1, value, success + 0, failed + 1);
+                                                }
+
+                                                $("#p_remarks").append(title + "<br>");
+
+                                                if (value == 100) {
+                                                    $("#dlg_label").dialog('close');
+                                                    $('#dg').datagrid('reload');
+                                                    toastr.success("Create Label Completed");
+                                                    window.open("<?= base_url('warehouse/rgp_in/print_label/') ?>" + window.btoa(rgp_number) + "/" + category + "/" + window.btoa(item_id), '_blank');
+                                                }
                                             } else {
-                                                $('#p_failed').html(failed);
-                                                var title = "<b style='color: red;'>" + result.title + "</b> | " + result.message;
-
-                                                var qty_balance = (parseInt(qty) - parseInt(qty_mpq));
-                                                requestDataBox(total, qty_balance, number + 1, value, success + 0, failed + 1);
-                                            }
-
-                                            $("#p_remarks").append(title + "<br>");
-
-                                            if (value == 100) {
                                                 $("#dlg_label").dialog('close');
-                                                $('#dg').datagrid('reload');
-                                                toastr.success("Create Label Completed");
                                                 window.open("<?= base_url('warehouse/rgp_in/print_label/') ?>" + window.btoa(rgp_number) + "/" + category + "/" + window.btoa(item_id), '_blank');
                                             }
-                                        } else {
-                                            $("#dlg_label").dialog('close');
-                                            window.open("<?= base_url('warehouse/rgp_in/print_label/') ?>" + window.btoa(rgp_number) + "/" + category + "/" + window.btoa(item_id), '_blank');
                                         }
-                                    }
-                                }).fail(function(jqXHR, textStatus) {
-                                    toastr.error("Connection Time Out, Please Wait");
-                                    requestDataBox(total, qty, number, value, success, failed);
-                                });
+                                    }).fail(function(jqXHR, textStatus) {
+                                        toastr.error("Connection Time Out, Please Wait");
+                                        requestDataBox(total, qty, number, value, success, failed);
+                                    });
+                                }
                             }
+                        } else {
+                            window.open("<?= base_url('warehouse/rgp_in/print_label/') ?>" + window.btoa(rgp_number) + "/" + category + "/" + window.btoa(item_id), '_blank');
                         }
-                    } else {
-                        window.open("<?= base_url('warehouse/rgp_in/print_label/') ?>" + window.btoa(rgp_number) + "/" + category + "/" + window.btoa(item_id), '_blank');
                     }
-                }
-            });
+                });
+            } else {
+                toastr.error("RGP Number Document Need to Approve");
+            }
         }
     }
 </script>

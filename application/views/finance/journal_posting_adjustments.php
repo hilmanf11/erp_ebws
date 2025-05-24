@@ -21,7 +21,7 @@
             <th data-options="field:'currency',width:80,align:'center'">Currency</th>
             <th data-options="field:'original_debit',width:100,halign:'center',align:'right',formatter:numberformatDefault">Debit</th>
             <th data-options="field:'original_credit',width:100,halign:'center',align:'right',formatter:numberformatDefault">Credit</th>
-            <th data-options="field:'rates',width:80,halign:'center',align:'right',formatter:numberformatDefault">Rates</th>
+            <th data-options="field:'rates',width:80,halign:'center',align:'right',formatter:numberformatDefault2">Rates</th>
             <th data-options="field:'local_debit',width:100,halign:'center',align:'right',formatter:numberformatDefault">Debit</th>
             <th data-options="field:'local_credit',width:100,halign:'center',align:'right',formatter:numberformatDefault">Credit</th>
             <th data-options="field:'approved_by',width:100,align:'center'"> By</th>
@@ -206,7 +206,7 @@
                             }
                         }}">Currency</th>
                     <th rowspan="2" data-options="field:'amount',width:100,halign:'center',align:'right',formatter:numberformatDefaultIdr,editor: {type: 'numberbox', options: {required: true, precision:2}}">Taxable<br>Amount</th>
-                    <th rowspan="2" data-options="field:'rates',width:80,halign:'center',align:'right',formatter:numberformatDefaultIdr,editor: {type: 'numberbox', options: {required: true, precision:2}}">Rates</th>
+                    <th rowspan="2" data-options="field:'rates',width:80,halign:'center',align:'right',formatter:numberformatDefault2,editor: {type: 'numberbox', options: {required: true, precision:4}}">Rates</th>
                     <th rowspan="2" data-options="field:'taxes',width:100, halign:'center', editor: {type: 'combogrid', options: {
                             url: '<?= base_url("finance/taxes/reads");  ?>',
                             panelWidth: 350,
@@ -580,7 +580,7 @@
                 var totalrows = rows.length;
                 
                 var amount = 0;
-                var rates = 0;
+                var rates = 1;
                 var currency = "";
                 var original_amount = 0;
                 for (let i = 0; i < totalrows; i++) {
@@ -615,11 +615,11 @@
 
                 $('#dg2').datagrid('appendRow', {
                     "flag": 1,
-                    "currency": currency,
+                    "currency": 'INR',
                     "debitcredit": debitcredit1,
                     "amount": (original_debit + original_credit),
                     "taxes_amount": 0,
-                    "qty": 0,
+                    "qty": 1,
                     "rates": rates,
                     "original_debit": original_debit,
                     "original_credit": original_credit,
@@ -986,6 +986,16 @@
     function update() {
         var row = $('#dg').datagrid('getSelected');
         if (row) {
+            if(row.status_bank == 1){
+                toastr.error("Cannot update because this journal already created in Posting Bank");
+                return false;
+            }
+
+            if(row.status_cl == 1){
+                toastr.error("Cannot update because this journal already created in Clearing Adjustment");
+                return false;
+            }
+
             // toastr.warning("Not Available");
             $('#dlg_insert').dialog('open');
             $('#frm_insert').form('load', row);
@@ -1041,6 +1051,16 @@
                 if (r) {
                     for (var i = 0; i < rows.length; i++) {
                         var row = rows[i];
+
+                        if(row.status_bank == 1){
+                            toastr.error("Cannot delete because this journal already created in Posting Bank");
+                            return false;
+                        }
+
+                        if(row.status_cl == 1){
+                            toastr.error("Cannot delete because this journal already created in Clearing Adjustment");
+                            return false;
+                        }
 
                         $.ajax({
                             type: "post",
@@ -1574,6 +1594,15 @@
         if (value != null) {
             const formatter = new Intl.NumberFormat('ja-JP', {
                 minimumFractionDigits: 2
+            });
+            return "<b>" + formatter.format(value) + "</b>";
+        }
+    }
+
+    function numberformatDefault2(value, row) {
+        if (value != null) {
+            const formatter = new Intl.NumberFormat('ja-JP', {
+                minimumFractionDigits: 4
             });
             return "<b>" + formatter.format(value) + "</b>";
         }

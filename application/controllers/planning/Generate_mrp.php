@@ -397,11 +397,14 @@ class Generate_mrp extends CI_Controller
             $this->db->from('generate_mrp');
             $this->db->where('p_month', $filter_month);
             $this->db->where('p_year', $filter_year);
-            $this->db->like('revision', $filter_revision);
-            $this->db->group_by('revision');
             $rev = $this->db->get()->row();
+
             if($filter_revision == ""){
-                $revision = empty($rev) ? 0 : ($rev->revision + 1);
+                if(@$rev->revision == ""){
+                    $revision = 0;
+                }else{
+                    $revision = ($rev->revision + 1);
+                }
             }else{
                 $revision = $filter_revision;
             }
@@ -471,15 +474,17 @@ class Generate_mrp extends CI_Controller
             $cutoffDate = date("j", strtotime($filter_cutoff));
 
             $this->db->select('max(revision) as revision');
-            $this->db->from('generate_mrp');
+            $this->db->from('generate_mrp_finals');
             $this->db->where('p_month', $filter_month);
             $this->db->where('p_year', $filter_year);
-            $this->db->like('revision', $revision);
-            $this->db->group_by('revision');
             $rev = $this->db->get()->row();
 
             if($revision == ""){
-                $filter_revision = empty($rev) ? 0 : ($rev->revision + 1);
+                if(@$rev->revision == ""){
+                    $filter_revision = 0;
+                }else{
+                    $filter_revision = ($rev->revision + 1);
+                }
             }else{
                 $filter_revision = $revision;
             }
@@ -882,14 +887,17 @@ class Generate_mrp extends CI_Controller
             $filter_part_no = base64_decode($this->input->get('filter_part_no'));
 
             $this->db->select('max(revision) as revision');
-            $this->db->from('generate_mrp');
+            $this->db->from('generate_mrp_abcclass');
             $this->db->where('p_month', $filter_month);
             $this->db->where('p_year', $filter_year);
-            $this->db->like('revision', $revision);
-            $this->db->group_by('revision');
             $rev = $this->db->get()->row();
+
             if($revision == ""){
-                $filter_revision = empty($rev) ? 0 : ($rev->revision + 1);
+                if(@$rev->revision == ""){
+                    $filter_revision = 0;
+                }else{
+                    $filter_revision = ($rev->revision + 1);
+                }
             }else{
                 $filter_revision = $revision;
             }
@@ -978,28 +986,8 @@ class Generate_mrp extends CI_Controller
     {
         if ($this->input->post()) {
             $post = $this->input->post('data');
-            $records = $this->crud->reads('generate_mrp', [], [
-                "p_month" => $post['p_month'],
-                "p_year" => $post['p_year'],
-                "revision" => $post['revision'],
-                "period" => $post['period'],
-                "item_rm_id" => $post['item_rm_id']
-            ]);
-
-            if (count($records) > 0) {
-                $send = $this->crud->update('generate_mrp', [
-                    "p_month" => $post['p_month'],
-                    "p_year" => $post['p_year'],
-                    "revision" => $post['revision'],
-                    "period" => $post['period'],
-                    "item_rm_id" => $post['item_rm_id']
-                ], $post);
-
-                echo $send;
-            } else {
-                $send = $this->crud->create('generate_mrp', $post);
-                echo $send;
-            }
+            $send = $this->crud->create('generate_mrp', $post, "logs");
+            echo $send;
         }
     }
 

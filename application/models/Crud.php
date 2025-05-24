@@ -92,7 +92,7 @@ class Crud extends CI_Model
         return $records;
     }
 
-    function create($table, $values)
+    function create($table, $values, $logs = "")
     {
         if ($this->session->username != "") {
             if(@empty($values['id'])){
@@ -108,8 +108,10 @@ class Crud extends CI_Model
             ]);
 
             if ($this->db->insert($table, $data)) {
-                $this->logs("Create", json_encode($data), $table);
-                $this->approvals($table, $id);
+                if($logs == ""){
+                    $this->logs("Create", json_encode($data), $table);
+                    $this->approvals($table, $id);
+                }
                 return json_encode(array("title" => "Good Job", "message" => "Data Saved Successfully", "theme" => "success"));
             } else {
                 return log_message('error', 'There is an error in your system or data');

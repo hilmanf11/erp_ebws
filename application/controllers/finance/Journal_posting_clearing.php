@@ -128,7 +128,7 @@ class Journal_posting_clearing extends CI_Controller
 
         $sql_1 = $this->db->query("SELECT
                 'AR' AS source,
-                a.id as documents,
+                a.receipt_no as documents,
                 a.sales_invoice AS invoice_no,
                 a.receipt_date AS invoice_date,
                 '-' AS payment_due,
@@ -150,7 +150,7 @@ class Journal_posting_clearing extends CI_Controller
 
         $sql_2 = $this->db->query("SELECT
                 'AP' AS source,
-                a.id as documents,
+                a.payment_no as documents,
                 a.payment_date AS trans_date,
                 '-' AS due_date,
                 a.payment_no AS document_no,
@@ -172,7 +172,7 @@ class Journal_posting_clearing extends CI_Controller
 
         $sql_3 = $this->db->query("SELECT
                 'AD' AS source,
-                a.id as documents,
+                a.number as documents,
                 a.trans_date,
                 '-' AS due_date,
                 a.document_no,
@@ -192,7 +192,7 @@ class Journal_posting_clearing extends CI_Controller
 
         $sql_33 = $this->db->query("SELECT
                 'AD' AS source,
-                a.id as documents,
+                a.number as documents,
                 a.trans_date,
                 '-' AS due_date,
                 a.document_no,
@@ -212,7 +212,7 @@ class Journal_posting_clearing extends CI_Controller
 
         $sql_4 = $this->db->query("SELECT 
             'PI' AS source,
-            a.id as documents,
+            a.number as documents,
             a.invoice_date as trans_date,
             a.due_date,
             a.number AS document_no,
@@ -235,7 +235,7 @@ class Journal_posting_clearing extends CI_Controller
 
         $sql_5 = $this->db->query("SELECT 
             'SI' AS source,
-            a.id as documents,
+            a.number as documents,
             a.trans_date,
             a.due_date,
             a.number AS document_no,
@@ -396,7 +396,7 @@ class Journal_posting_clearing extends CI_Controller
                 WHERE account_number IN ('27000001') 
                 GROUP BY document_no, account_number) b ON a.receipt_no = b.document_no
             JOIN customers c ON a.customer_id = c.id
-            WHERE a.id IN ($document_no_str) and a.customer_id = '$company_id' and a.plant = '$plant' AND a.sales_invoice NOT IN (SELECT DISTINCT number FROM sales_invoices WHERE `status` = 1) AND a.status_cl = '0'
+            WHERE a.receipt_no IN ($document_no_str) and a.customer_id = '$company_id' and a.plant = '$plant' AND a.sales_invoice NOT IN (SELECT DISTINCT number FROM sales_invoices WHERE `status` = 1) AND a.status_cl = '0'
             GROUP BY a.receipt_no");
         $ar_receipts = $sql_1->result_array();
 
@@ -421,7 +421,7 @@ class Journal_posting_clearing extends CI_Controller
                 WHERE account_number IN ('16000001','16000002','16000003','16000004','16000005','16000006','16000007','16000008') 
                 GROUP BY document_no, account_number) b ON a.payment_no = b.document_no
             JOIN suppliers c ON a.supplier_id = c.id
-            WHERE a.id IN ($document_no_str) and a.supplier_id = '$company_id' AND a.status_cl = '0' AND a.purchase_invoice NOT IN (SELECT DISTINCT number FROM purchase_invoices WHERE `status` = 1)
+            WHERE a.payment_no IN ($document_no_str) and a.supplier_id = '$company_id' AND a.status_cl = '0' AND a.purchase_invoice NOT IN (SELECT DISTINCT number FROM purchase_invoices WHERE `status` = 1)
             GROUP BY a.payment_no");
         $ap_payments = $sql_2->result_array();
 
@@ -445,7 +445,7 @@ class Journal_posting_clearing extends CI_Controller
                 FROM journal_postings 
                 WHERE modul = 'CLEARING' 
                 GROUP BY company_id, company_name, document_no, invoice_no) b ON a.company_id = b.company_id and a.company_name = b.company_name and a.document_no = b.document_no and a.invoice_no = b.invoice_no and a.description = b.description
-            WHERE a.id IN ($document_no_str) and a.company_id = '$company_id' and a.company_name like '%$company_name%'
+            WHERE a.number IN ($document_no_str) and a.company_id = '$company_id' and a.company_name like '%$company_name%'
             AND a.modul IN ('CURRENCY REVALUATION','ADJUSTMENT') AND a.status_cl = '0'
             AND a.account_number IN ('16000001','16000002','16000003','16000004','16000005','16000006','16000007','16000008','28000003','28000006','28000004','28000007')
             GROUP BY a.number");
@@ -471,7 +471,7 @@ class Journal_posting_clearing extends CI_Controller
                 FROM journal_postings 
                 WHERE modul = 'CLEARING' 
                 GROUP BY company_id, company_name, document_no, invoice_no) b ON a.company_id = b.company_id and a.company_name = b.company_name and a.document_no = b.document_no and a.invoice_no = b.invoice_no and a.description = b.description
-            WHERE a.id IN ($document_no_str) and a.company_id = '$company_id' and a.company_name like '%$company_name%'
+            WHERE a.number IN ($document_no_str) and a.company_id = '$company_id' and a.company_name like '%$company_name%'
             AND a.modul IN ('CURRENCY REVALUATION','ADJUSTMENT') AND a.status_cl = '0'
             AND a.account_number IN ('27000001')
             GROUP BY a.number");
@@ -498,7 +498,7 @@ class Journal_posting_clearing extends CI_Controller
             WHERE account_number IN ('16000001','16000002','16000003','16000004','16000005','16000006','16000007','16000008') 
             GROUP BY document_no, account_number) b ON a.number = b.document_no
         JOIN suppliers c ON a.supplier_id = c.id
-        WHERE a.id IN ($document_no_str) and a.supplier_id = '$company_id' AND a.status = '0'
+        WHERE a.number IN ($document_no_str) and a.supplier_id = '$company_id' AND a.status = '0'
         GROUP BY a.number
         ORDER BY b.journal_date asc");
         $purchase_invoices = $sql_4->result_array();
@@ -523,7 +523,7 @@ class Journal_posting_clearing extends CI_Controller
             FROM journal_postings 
             WHERE account_number IN ('27000001') 
             GROUP BY document_no, account_number) b ON a.number = b.document_no
-        WHERE a.id IN ($document_no_str) and a.customer_id = '$company_id' AND a.plant = '$plant' and a.status = 0
+        WHERE a.number IN ($document_no_str) and a.customer_id = '$company_id' AND a.plant = '$plant' and a.status = 0
         GROUP BY a.number
         ORDER BY b.trans_date ASC");
         $sales_invoices = $sql_5->result_array();

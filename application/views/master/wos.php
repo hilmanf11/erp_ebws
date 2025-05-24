@@ -111,7 +111,7 @@
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">CCT Range</span>
-                    <input style="width:60%;" name="cct_range" id="cct_range" required class="easyui-textbox">
+                    <input style="width:60%;" name="cct_range" id="cct_range" class="easyui-textbox">
                 </div>
             </div>
         </fieldset>
@@ -230,7 +230,7 @@
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Index</span>
-                <input style="width:60%;" name="order" id="order" required class="easyui-numberbox">
+                <input style="width:60%;" name="order" id="order" class="easyui-numberbox">
             </div>
         </fieldset>
     </form>
@@ -269,7 +269,7 @@
 </div>
 
 <!-- PDF -->
-<iframe id="printout" src="<?= base_url('master/wos/print') ?>" style="width: 100%;" hidden></iframe>
+<iframe id="printout" style="width: 100%;" hidden></iframe>
 <script>
     function sync() {
         var rows = $('#dg').datagrid('getSelections');
@@ -295,7 +295,9 @@
                                 if (result.theme == "success") {
                                     var title = "<b style='color: green;'>" + result.title + "</b> | " + result.message;
                                 } else {
-                                    var title = "<b style='color: red;'>" + result.title + "</b> | " + result.message;
+                                    $("#dlg_sync").dialog('close');
+                                    Swal.fire(result.title, result.message, 'error');
+                                    return false;
                                 }
 
                                 requestData(total, json, number + 1, value);
@@ -440,8 +442,8 @@
         $('#dg').datagrid({
             url: '<?= base_url('master/wos/datatables') ?>',
             pagination: true,
-            clientPaging: false,
-            remoteFilter: true,
+            // clientPaging: false,
+            // remoteFilter: true,
             rownumbers: true,
             fit: true,
             pageList: [20, 50, 100, 500, 1000],

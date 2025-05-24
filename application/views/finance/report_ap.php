@@ -93,8 +93,13 @@
         if (filter_from == "" && filter_to == "" && filter_supplier == "") {
             toastr.warning("Please select Trans Date or Supplier");
         } else {
-            $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
-            $("#printout").attr('src', '<?= base_url('finance/report_ap/print') ?>' + url);
+            // if(filter_display == "Summary"){
+            //     $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
+            //     $("#printout").attr('src', '<?= base_url('finance/report_ap2/print') ?>' + url);
+            // }else{
+                $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
+                $("#printout").attr('src', '<?= base_url('finance/report_ap/print') ?>' + url);
+            // }
         }
     }
 
@@ -121,10 +126,14 @@
             "&filter_display=" + filter_display +
             "&filter_status=" + filter_status;
 
-            if (filter_from == "" && filter_to == "" && filter_supplier == "") {
+        if (filter_from == "" && filter_to == "" && filter_supplier == "") {
             toastr.warning("Please select Trans Date or Supplier");
         } else {
-            window.location.assign('<?= base_url('finance/report_ap/print/excel') ?>' + url);
+            // if(filter_display == "Summary"){
+            //     window.location.assign('<?= base_url('finance/report_ap2/print/excel') ?>' + url);
+            // }else{
+                window.location.assign('<?= base_url('finance/report_ap/print/excel') ?>' + url);
+            // }
         }
     }
 
@@ -137,7 +146,7 @@
     }
     $(function() {
         $("#filter_supplier").combogrid({
-            url: '<?php echo base_url('master/suppliers/reads'); ?>',
+            url: '<?php echo base_url('finance/report_ap/readSuppliers'); ?>',
             panelWidth: 400,
             idField: 'id',
             textField: 'name',

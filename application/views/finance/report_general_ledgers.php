@@ -5,8 +5,8 @@
             <div style="float: left; width: 30%;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Trans Date</span>
-                    <input style="width:30%;" id="filter_from" value="<?= date("Y-m-01") ?>" class="easyui-datebox" data-options="prompt:'Start Date',formatter:myformatter,parser:myparser, editable:false">
-                    <input style="width:30%;" id="filter_to" value="<?= date("Y-m-t") ?>" class="easyui-datebox" data-options="prompt:'Finish Date',formatter:myformatter,parser:myparser, editable:false">
+                    <input style="width:30%;" id="filter_from" class="easyui-datebox" data-options="prompt:'Start Date',formatter:myformatter,parser:myparser, editable:false">
+                    <input style="width:30%;" id="filter_to" class="easyui-datebox" data-options="prompt:'Finish Date',formatter:myformatter,parser:myparser, editable:false">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;"></span>
@@ -25,6 +25,16 @@
                     <input style="width:60%;" id="filter_account" class="easyui-combogrid">
                 </div>
             </div>
+            <div style="float: left; width: 10%;">
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Status</span>
+                    <select style="width:60%;" id="filter_status" class="easyui-combobox" panelHeight="auto">
+                        <option value="">ALL</option>
+                        <option value="OPEN">OPEN</option>
+                        <option value="CLOSE">CLOSE</option>
+                    </select>
+                </div>
+            </div>
         </fieldset>
     </div>
     <div style="margin-left: 10px; margin-bottom:5px;">
@@ -40,14 +50,16 @@
         var filter_to = $("#filter_to").datebox("getValue");
         var filter_account_category = $("#filter_account_category").combogrid("getValue");
         var filter_account = $("#filter_account").combogrid("getText");
+        var filter_status = $("#filter_status").combobox("getValue");
 
         var url = "?filter_from=" + window.btoa(filter_from) +
             "&filter_to=" + window.btoa(filter_to) +
             "&filter_account_category=" + window.btoa(filter_account_category) +
+            "&filter_status=" + window.btoa(filter_status) +
             "&filter_account=" + window.btoa(filter_account);
 
-        if (filter_from == "" || filter_to == "" || filter_account == "") {
-            toastr.warning("Please select Trans Date, category and account!");
+        if (filter_account == "") {
+            toastr.warning("Please select Account Number!");
         } else {
             $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
             $("#printout").attr('src', '<?= base_url('finance/report_general_ledgers/print') ?>' + url);
@@ -59,14 +71,16 @@
         var filter_to = $("#filter_to").datebox("getValue");
         var filter_account_category = $("#filter_account_category").combogrid("getValue");
         var filter_account = $("#filter_account").combogrid("getText");
+        var filter_status = $("#filter_status").combobox("getValue");
 
         var url = "?filter_from=" + window.btoa(filter_from) +
             "&filter_to=" + window.btoa(filter_to) +
             "&filter_account_category=" + window.btoa(filter_account_category) +
+            "&filter_status=" + window.btoa(filter_status) +
             "&filter_account=" + window.btoa(filter_account);
 
-        if (filter_from == "" || filter_to == "" || filter_account == "") {
-                toastr.warning("Please select Trans Date, category and account!");
+        if (filter_account == "") {
+                toastr.warning("Please select Account Number!");
         } else {
             window.location.assign('<?= base_url('finance/report_general_ledgers/print/excel') ?>' + url);
         }

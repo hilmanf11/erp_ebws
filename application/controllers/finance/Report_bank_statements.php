@@ -39,11 +39,16 @@ class Report_bank_statements extends CI_Controller
         }
 
         $filter_from = base64_decode($this->input->get("filter_from"));
-        $filter_from_1 = date("Y-m-d", strtotime("-1 day", strtotime($filter_from)));
         $filter_to = base64_decode($this->input->get("filter_to"));
         $filter_account = base64_decode($this->input->get("filter_account"));
         $filter_currency = base64_decode($this->input->get("filter_currency"));
+
+        if($filter_from == "" && $filter_to == ""){
+            $filter_from = "2024-11-01";
+            $filter_to = date("Y-m-d");
+        }
         
+        $filter_from_1 = date("Y-m-d", strtotime("-1 day", strtotime($filter_from)));
         $time_start = new DateTime($filter_from);
         $time_to = new DateTime($filter_to);
 
@@ -65,26 +70,20 @@ class Report_bank_statements extends CI_Controller
             JOIN ap_payments b ON a.payment_no = b.payment_no 
             WHERE b.payment_date between '2023-01-01' and '$filter_from_1' and a.account_number = '$filter_account' GROUP BY a.account_number, b.payment_no) a
             GROUP BY a.account_number");
-
-        $journal_adj_begin = $this->crud->query("SELECT a.account_number, (SUM(a.local_debit) - SUM(a.local_credit)) as local_begin, (SUM(a.original_debit) - SUM(a.original_credit)) as original_begin
-            FROM (
-            SELECT a.*
-            FROM journal_postings a 
-            WHERE a.journal_date between '2023-01-01' and '$filter_from_1' and a.account_number = '$filter_account' and a.modul = 'ADJUSTMENT' GROUP BY a.account_number, a.number) a
-            GROUP BY a.account_number");
-
-        // $journal_posting_begin = $this->crud->query("SELECT a.account_number, (SUM(a.local_debit) - SUM(a.local_credit)) as local_begin 
-        //     FROM journal_postings a 
-        //     JOIN journal_revaluations b ON a.document_no = b.number and b.flag = 2
-        //     WHERE a.invoice_no like '%CASHBANK%' and a.account_number = '$filter_account' and a.journal_date < '$filter_from' 
-        //     GROUP BY a.account_number");
-
-        $journal_posting_begin = $this->crud->query("SELECT account_number, 
-            (SUM(original_credit) - SUM(original_debit)) as original_begin,
-            (SUM(local_credit) - SUM(local_debit)) as local_begin
-            FROM journal_postings
-            WHERE account_number = '$filter_account' and modul = 'BANK STATEMENT' and journal_date < '$filter_from'
-            GROUP BY account_number");
+            
+        $journal_adj_begin = $this->crud->query("SELECT `number`, document_no, `description`, currency, rates,
+            (COALESCE(SUM(original_debit), 0) - COALESCE(SUM(original_credit), 0)) as original_begin,
+            (COALESCE(SUM(local_debit), 0) - COALESCE(SUM(local_credit), 0)) as local_begin
+        FROM journal_postings
+        WHERE account_number = '$filter_account' and modul = 'ADJUSTMENT' and journal_date < '$filter_from'
+        GROUP BY account_number");
+        
+        $journal_posting_begin = $this->crud->query("SELECT `number`, document_no, `description`, currency, rates,
+            (COALESCE(SUM(original_credit), 0) - COALESCE(SUM(original_debit), 0)) as original_begin,
+            (COALESCE(SUM(local_credit), 0) - COALESCE(SUM(local_debit), 0)) as local_begin
+        FROM journal_postings
+        WHERE account_number = '$filter_account' and modul = 'BANK STATEMENT' and journal_date < '$filter_from'
+        GROUP BY account_number");
 
         $datas = array();
         $coa_original = (@$account_coa->original_debit - @$account_coa->original_kredit);
@@ -113,12 +112,6 @@ class Report_bank_statements extends CI_Controller
                 LEFT JOIN journal_postings c ON b.payment_no = c.document_no
                 WHERE b.payment_date = '$trans_date' and a.account_number = '$filter_account' 
                 GROUP BY a.payment_no, a.account_number");
-
-            // $journal_postings = $this->crud->query("SELECT a.*, b.rate
-            //     FROM journal_postings a 
-            //     JOIN journal_revaluations b ON a.document_no = b.number and b.flag = 2
-            //     WHERE a.invoice_no like '%CASHBANK%' or  and a.account_number = '$filter_account' and a.journal_date = '$trans_date'
-            //     GROUP BY a.number");
 
             $journal_adjustments = $this->crud->query("SELECT `number`, document_no, `description`, currency, rates,
                     (CASE WHEN SUM(original_credit) > 0 THEN SUM(original_credit) ELSE 0 END) as original_credit,
@@ -258,9 +251,19 @@ class Report_bank_statements extends CI_Controller
 
         $account = $this->crud->read('account_coa', [], ["account_number" => $filter_account]);
 
-        $opening_balance_original = ((@$account_coa->original_debit - @$account_coa->original_kredit) + (@$ar_receipt_begin[0]->original_begin + @$ap_payment_begin[0]->original_begin));
-        // $opening_balance_local = ((@$account_coa->local_debit - @$account_coa->local_kredit) + (@$ar_receipt_begin[0]->local_begin + @$ap_payment_begin[0]->local_begin));
-        $opening_balance_local = ((@$account_coa->local_debit - @$account_coa->local_kredit) + (@$ar_receipt_begin[0]->local_begin + @$ap_payment_begin[0]->local_begin) + @$journal_posting_begin[0]->local_begin);
+        $coa_original = (@$account_coa->original_debit - @$account_coa->original_kredit);
+        $coa_local = (@$account_coa->local_debit - @$account_coa->local_kredit);
+        $ar_begin_local = @$ar_receipt_begin[0]->local_begin;
+        $ar_begin_original = @$ar_receipt_begin[0]->original_begin;
+        $ap_begin_local = @$ap_payment_begin[0]->local_begin;
+        $ap_begin_original = @$ap_payment_begin[0]->original_begin;
+        $journal_begin_original = @$journal_posting_begin[0]->original_begin;
+        $journal_begin_local = @$journal_posting_begin[0]->local_begin;
+        $adj_begin_original = @$journal_adj_begin[0]->original_begin;
+        $adj_begin_local = @$journal_adj_begin[0]->local_begin;
+
+        $opening_balance_original = ($coa_original + $ar_begin_original + $ap_begin_original + $journal_begin_original + $adj_begin_original);
+        $opening_balance_local = ($coa_local + $ar_begin_local + $ap_begin_local + $journal_begin_local + $adj_begin_local);
 
         //Config
         $this->db->select('*');

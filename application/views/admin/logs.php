@@ -14,7 +14,7 @@
         </tr>
     </thead>
 </table>
-<div id="dlg_detail" class="easyui-dialog" title="Detail Description" data-options="closed: true,modal:true" style="width: 1000px; padding:10px; top: 20px;">
+<div id="dlg_detail" class="easyui-dialog" title="Detail Description" data-options="closed: true,modal:true" style="width: 1000px; height: 550px; padding:10px; top: 20px;">
     <div id="remarks">
 
     </div>

@@ -47,6 +47,7 @@ class Delivery_orders extends CI_Controller
         $this->db->where('a.item_fg_id', $item_fg_id);
         $this->db->where('a.plant', $plant);
         $this->db->where('b.status', 0);
+        $this->db->where("(b.approved_to = '' or b.approved_to is null)");
         $this->db->where("(b.qty - COALESCE(d.qty_do, 0)) > 0");
         $this->db->group_by('b.sales_order_no');
         $this->db->order_by('b.sales_order_no', 'asc');
@@ -262,12 +263,18 @@ class Delivery_orders extends CI_Controller
                 "sales_order_no" => $post['sales_order_no']
             ]);
 
+            $sales_orders = $this->crud->read("sales_orders", [], ["sales_order_no" => $post['sales_order_no']]);
+            if(@$sales_orders->approved_to != ""){
+                die(json_encode(array("title" => "Failed", "message" => "Sales Order ". $post['sales_order_no'] . " is Checking, Please Approve First Sales Order", "theme" => "error")));
+            }
+
             if (@$delivery_orders->delivery_order_no != "") {
                 $send = $this->crud->update('delivery_orders', [
                     "delivery_order_no" => $post['delivery_order_no'], 
                     "item_fg_id" => $post['item_fg_id'], 
                     "sales_order_no" => $post['sales_order_no']
-                ], ["remarks" => $post['remarks']]);
+                ], ["remarks" => $post['remarks'], "qty_do" => $post['qty_do']]);
+                
                 echo $send;
             } else {
                 if($post['stock'] >= $post['qty_do']){

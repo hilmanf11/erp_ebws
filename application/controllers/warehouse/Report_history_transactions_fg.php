@@ -47,6 +47,10 @@ class Report_history_transactions_fg extends CI_Controller
         $this->db->select('*');
         $this->db->from('config');
         $config = $this->db->get()->row();
+
+        function compare_trans_date($a, $b) {
+            return strtotime($a['created_date']) - strtotime($b['created_date']);
+        }
         
         $records = $this->crud->query("SELECT
             a.id,
@@ -54,7 +58,7 @@ class Report_history_transactions_fg extends CI_Controller
             a.number_customer,
             a.name, 
             a.uom, 
-            COALESCE(0,0) as begin_stock,
+            COALESCE(i.begin_stock, 0) as begin_stock,
             (COALESCE(b.qty_sto, 0) + COALESCE(d.sto_qty_in,0) + COALESCE(c.qty_wip, 0) + COALESCE(e.qty_rgp_in, 0)) as qty_in,
             (g.qty + COALESCE(h.sto_qty_out, 0) + COALESCE(f.qty_rgp_out, 0)) as qty_out,
             (COALESCE((b.qty_sto + d.sto_qty_in + c.qty_wip),0) + COALESCE(e.qty_rgp_in, 0) - COALESCE(g.qty, 0) - COALESCE(h.sto_qty_out, 0) - COALESCE(f.qty_rgp_out, 0)) as end_stock
@@ -66,6 +70,19 @@ class Report_history_transactions_fg extends CI_Controller
         LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) as qty_rgp_in FROM rgp_transactions a JOIN scan_item_receipts_fg b ON a.rgp_id = b.checksheet_number and a.id = b.workorder WHERE a.type = 'IN' and a.transaction_date between '$filter_from' and '$filter_to' GROUP BY a.item_id) e ON a.id = e.item_id
         LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) as qty_rgp_out FROM rgp_transactions a JOIN scan_item_rgp b ON a.number = b.rgp_number and a.item_id = b.item_id WHERE a.type = 'OUT' and a.transaction_date between '$filter_from' and '$filter_to' GROUP BY a.item_id) f ON a.id = f.item_id
         LEFT JOIN (SELECT item_fg_id, delivery_note_date, COALESCE(SUM(qty), 0) as qty FROM delivery_notes WHERE DATE_FORMAT(created_date, '%Y-%m-%d') between '$filter_from' and '$filter_to' and `status` != '2' GROUP BY item_fg_id) g ON a.id = g.item_fg_id
+        LEFT JOIN ( SELECT
+                        a.id,
+                        (COALESCE(b.qty_sto, 0) + COALESCE(d.sto_qty_in, 0) + COALESCE(c.qty_wip, 0) + COALESCE(e.qty_rgp_in, 0) - COALESCE(g.qty, 0) - COALESCE(h.sto_qty_out, 0) - COALESCE(f.qty_rgp_out, 0)) as begin_stock
+                    FROM item_fg a 
+                    LEFT JOIN (select a.item_fg_id, COALESCE(SUM(b.qty), 0) as qty_sto FROM os_fg a JOIN scan_item_receipts_fg b ON a.id = b.workorder WHERE a.trans_date < '$filter_from' GROUP BY a.item_fg_id) b ON a.id = b.item_fg_id
+                    LEFT JOIN (select a.item_fg_id, COALESCE(SUM(b.qty), 0) as qty_wip FROM wip_receipts a JOIN scan_item_receipts_fg b ON a.workorder = b.workorder and a.checksheet_number = b.checksheet_number WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') < '$filter_from' GROUP BY a.item_fg_id) c ON a.id = c.item_fg_id
+                    LEFT JOIN (SELECT a.item_fg_id, COALESCE(SUM(a.qty), 0) as sto_qty_in FROM sto_fg a WHERE a.trans_date < '$filter_from' and a.type = 'IN' and (a.approved_to = '' or a.approved_to is null) GROUP BY item_fg_id) d ON a.id = d.item_fg_id
+                    LEFT JOIN (SELECT a.item_fg_id, COALESCE(SUM(a.qty), 0) as sto_qty_out FROM sto_fg a WHERE a.trans_date < '$filter_from' and a.type = 'OUT' and (a.approved_to = '' or a.approved_to is null) GROUP BY item_fg_id) h ON a.id = h.item_fg_id
+                    LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) as qty_rgp_in FROM rgp_transactions a JOIN scan_item_receipts_fg b ON  a.rgp_id = b.checksheet_number and a.id = b.workorder WHERE a.type = 'IN' and a.transaction_date < '$filter_from' GROUP BY a.item_id) e ON a.id = e.item_id
+                    LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) as qty_rgp_out FROM rgp_transactions a JOIN scan_item_rgp b ON a.number = b.rgp_number and a.item_id = b.item_id WHERE a.type = 'OUT' and a.transaction_date < '$filter_from' GROUP BY a.item_id) f ON a.id = f.item_id
+                    LEFT JOIN (SELECT item_fg_id, delivery_note_date, COALESCE(SUM(qty), 0) as qty FROM delivery_notes WHERE DATE_FORMAT(created_date, '%Y-%m-%d') < '$filter_from' and `status` != '2' GROUP BY item_fg_id) g ON a.id = g.item_fg_id
+                    GROUP BY a.id
+                    ORDER BY a.number) i ON a.id = i.id
         WHERE a.id like '%$filter_items%'
         GROUP BY a.id
         ORDER BY a.number");
@@ -111,22 +128,6 @@ class Report_history_transactions_fg extends CI_Controller
         $no = 1;
         foreach ($records as $record) {
             $item_fg_id = $record->id;
-
-            $endstock = $this->crud->query("SELECT
-                a.id,
-                (COALESCE(b.qty_sto, 0) + COALESCE(d.sto_qty_in, 0) + COALESCE(c.qty_wip, 0) + COALESCE(e.qty_rgp_in, 0) - COALESCE(g.qty, 0) - COALESCE(h.sto_qty_out, 0) - COALESCE(f.qty_rgp_out, 0)) as begin_stock
-            FROM item_fg a 
-            LEFT JOIN (select a.item_fg_id, COALESCE(SUM(b.qty), 0) as qty_sto FROM os_fg a JOIN scan_item_receipts_fg b ON a.id = b.workorder WHERE a.trans_date < '$filter_from' GROUP BY a.item_fg_id) b ON a.id = b.item_fg_id
-            LEFT JOIN (select a.item_fg_id, COALESCE(SUM(b.qty), 0) as qty_wip FROM wip_receipts a JOIN scan_item_receipts_fg b ON a.workorder = b.workorder and a.checksheet_number = b.checksheet_number WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') < '$filter_from' GROUP BY a.item_fg_id) c ON a.id = c.item_fg_id
-            LEFT JOIN (SELECT a.item_fg_id, COALESCE(SUM(a.qty), 0) as sto_qty_in FROM sto_fg a WHERE a.trans_date < '$filter_from' and a.type = 'IN' and (a.approved_to = '' or a.approved_to is null) GROUP BY item_fg_id) d ON a.id = d.item_fg_id
-            LEFT JOIN (SELECT a.item_fg_id, COALESCE(SUM(a.qty), 0) as sto_qty_out FROM sto_fg a WHERE a.trans_date < '$filter_from' and a.type = 'OUT' and (a.approved_to = '' or a.approved_to is null) GROUP BY item_fg_id) h ON a.id = h.item_fg_id
-            LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) as qty_rgp_in FROM rgp_transactions a JOIN scan_item_receipts_fg b ON  a.rgp_id = b.checksheet_number and a.id = b.workorder WHERE a.type = 'IN' and a.transaction_date < '$filter_from' GROUP BY a.item_id) e ON a.id = e.item_id
-            LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) as qty_rgp_out FROM rgp_transactions a JOIN scan_item_rgp b ON a.number = b.rgp_number and a.item_id = b.item_id WHERE a.type = 'OUT' and a.transaction_date < '$filter_from' GROUP BY a.item_id) f ON a.id = f.item_id
-            LEFT JOIN (SELECT item_fg_id, delivery_note_date, COALESCE(SUM(qty), 0) as qty FROM delivery_notes WHERE DATE_FORMAT(created_date, '%Y-%m-%d') < '$filter_from' and `status` != '2' GROUP BY item_fg_id) g ON a.id = g.item_fg_id
-            WHERE a.id = '$item_fg_id'
-            GROUP BY a.id
-            ORDER BY a.number");
-
             $html .= '  <tr>
                             <td style="text-align:center">' . $no . '</td>
                             <td colspan="2">' . $record->number . '</td>
@@ -134,10 +135,10 @@ class Report_history_transactions_fg extends CI_Controller
                             <td>' . $record->name . '</td>
                             <td>' . $record->uom . '</td>
                             <td>FINISH GOOD</td>
-                            <td style="text-align:right;">' . number_format(@$endstock[0]->begin_stock, 2) . '</td>
+                            <td style="text-align:right;">' . number_format($record->begin_stock, 2) . '</td>
                             <td style="text-align:right;">' . number_format($record->qty_in, 2) . '</td>
                             <td style="text-align:right;">' . number_format($record->qty_out, 2) . '</td>
-                            <td style="text-align:right;">' . number_format((@$endstock[0]->begin_stock + $record->qty_in - $record->qty_out), 2) . '</td>
+                            <td style="text-align:right;">' . number_format(($record->begin_stock + $record->qty_in - $record->qty_out), 2) . '</td>
                         </tr>';
 
             if ($filter_display == "DETAIL") {
@@ -158,188 +159,132 @@ class Report_history_transactions_fg extends CI_Controller
                                 <th>Balance</th>
                             </tr>';
                 $nod = 1;
-                $begin = @$endstock[0]->begin_stock;
+                $begin = $record->begin_stock;
                 $in_qty = 0;
                 $end_qty = 0;
-                $balance = @$endstock[0]->begin_stock;
+                $balance = $record->begin_stock;
 
-                for ($i = $start; $i <= $finish; $i += (60 * 60 * 24)) {
-                    $working_date = date('Y-m-d', $i);
+                //STO BEGIN
+                $q_os_fg = $this->db->query("SELECT
+                    'STO' as trans_type,
+                    a.created_by,
+                    a.created_date,
+                    a.document_no as document_no_1,
+                    a.id as document_no_2,
+                    SUM(b.qty) as qty_in,
+                    '0' as qty_out
+                FROM os_fg a 
+                JOIN scan_item_receipts_fg b ON a.id = b.workorder
+                WHERE a.item_fg_id = '$item_fg_id' and DATE_FORMAT(a.created_date, '%Y-%m-%d') BETWEEN '$filter_from' and '$filter_to'
+                GROUP BY a.id");
+                $d_os_fg = $q_os_fg->result_array();
 
-                    //BEGIN STOCK
-                    $os_rms = $this->crud->query("SELECT
-                        a.*,
-                        SUM(b.qty) as qty,
-                        c.name as username
-                    FROM os_fg a 
-                    JOIN scan_item_receipts_fg b ON a.id = b.workorder
-                    JOIN users c ON a.created_by = c.username
-                    WHERE a.item_fg_id = '$item_fg_id' and a.trans_date = '$working_date'
-                    GROUP BY a.id");
+                //STO ADJUSTMENT IN
+                $q_adj_in = $this->db->query("SELECT
+                    'ADJUSTMENT IN' as trans_type,
+                    a.created_by,
+                    a.created_date,
+                    a.document_no as document_no_1,
+                    a.id as document_no_2,
+                    a.qty as qty_in,
+                    '0' as qty_out
+                FROM sto_fg a 
+                WHERE a.item_fg_id = '$item_fg_id' and DATE_FORMAT(a.created_date, '%Y-%m-%d') BETWEEN '$filter_from' and '$filter_to' and a.type = 'IN'");
+                $d_adj_in = $q_adj_in->result_array();
 
-                    //STO
-                    $sto_rms = $this->crud->query("SELECT
-                        a.*,
-                        c.name as username
-                    FROM sto_fg a 
-                    JOIN users c ON a.created_by = c.username
-                    WHERE a.item_fg_id = '$item_fg_id' and a.trans_date = '$working_date'
-                    GROUP BY a.id");
+                //STO ADJUSTMENT IN
+                $q_adj_out = $this->db->query("SELECT
+                    'ADJUSTMENT OUT' as trans_type,
+                    a.created_by,
+                    a.created_date,
+                    a.document_no as document_no_1,
+                    a.id as document_no_2,
+                    '0' as qty_in,
+                    a.qty as qty_out
+                FROM sto_fg a 
+                WHERE a.item_fg_id = '$item_fg_id' and DATE_FORMAT(a.created_date, '%Y-%m-%d') BETWEEN '$filter_from' and '$filter_to' and a.type = 'OUT'");
+                $d_adj_out = $q_adj_out->result_array();
 
-                    //RECEIPT
-                    $receipts = $this->crud->query("SELECT f.*, c.name as username
-                        FROM wip_receipts e
-                        JOIN scan_item_receipts_fg f ON e.checksheet_number = f.checksheet_number and e.workorder = f.workorder
-                        LEFT JOIN users c ON e.created_by = c.username
-                        WHERE e.item_fg_id = '$item_fg_id' 
-                        and DATE_FORMAT(f.created_date, '%Y-%m-%d') = '$working_date'");
+                //RECEIPT
+                $q_receipt = $this->db->query("SELECT
+                    'RECEIPT FG' as trans_type,
+                    f.created_by,
+                    f.created_date,
+                    f.workorder as document_no_1,
+                    f.checksheet_label as document_no_2,
+                    f.qty as qty_in,
+                    '0' as qty_out
+                FROM wip_receipts e
+                JOIN scan_item_receipts_fg f ON e.checksheet_number = f.checksheet_number and e.workorder = f.workorder
+                WHERE e.item_fg_id = '$item_fg_id' 
+                and DATE_FORMAT(f.created_date, '%Y-%m-%d') BETWEEN '$filter_from' and '$filter_to'");
+                $d_receipt = $q_receipt->result_array();
 
-                    //DELIVERY
-                    $returns = $this->crud->query("SELECT a.*, d.name as username
-                        FROM delivery_notes a 
-                        JOIN users d ON a.created_by = d.username
-                        WHERE a.item_fg_id = '$item_fg_id' and DATE_FORMAT(a.created_date, '%Y-%m-%d') = '$working_date' and a.status != '2'");
+                //DELIVERY
+                $q_delivery = $this->db->query("SELECT
+                    'DELIVERY NOTE' as trans_type,
+                    a.created_by,
+                    a.created_date,
+                    a.delivery_order_no as document_no_1,
+                    a.delivery_note_no as document_no_2,
+                    '0' as qty_in,
+                    a.qty as qty_out
+                FROM delivery_notes a 
+                WHERE a.item_fg_id = '$item_fg_id' and DATE_FORMAT(a.created_date, '%Y-%m-%d') BETWEEN '$filter_from' and '$filter_to' and a.status != '2'");
+                $d_delivery = $q_delivery->result_array();
 
-                    //RGP TRANSACTION
-                    $rgps = $this->crud->query("SELECT a.*, b.label_no, b.qty as qty_scan, b.created_date as scan_date
-                        FROM rgp_transactions a 
-                        JOIN scan_item_rgp b ON a.number = b.rgp_number and a.item_id = b.item_id
-                        WHERE a.item_id = '$item_fg_id' and a.transaction_date = '$working_date'
-                        GROUP BY b.id");
+                //RGP TRANSACTION IN
+                $q_rgp_in = $this->db->query("SELECT
+                    'RGP IN' as trans_type,
+                    b.created_by,
+                    b.created_date,
+                    a.number as document_no_1,
+                    b.label_no as document_no_2,
+                    b.qty as qty_in,
+                    '0' as qty_out
+                FROM rgp_transactions a 
+                JOIN scan_item_rgp b ON a.number = b.rgp_number and a.item_id = b.item_id
+                WHERE a.item_id = '$item_fg_id' and DATE_FORMAT(a.created_date, '%Y-%m-%d') BETWEEN '$filter_from' and '$filter_to' and a.type = 'IN'
+                GROUP BY b.id");
+                $d_rgp_in = $q_rgp_in->result_array();
 
-                    //BEGIN STOCK
-                    foreach ($os_rms as $os_rm) {
-                        $balance = ($begin + $os_rm->qty);
-                        $html .= '  <tr>
-                                        <td></td>
-                                        <td style="text-align:center">' . $nod . '</td>
-                                        <td>STO</td>
-                                        <td>' . $os_rm->username . '</td>
-                                        <td>' . $os_rm->trans_date . '</td>
-                                        <td>' . $os_rm->document_no . '</td>
-                                        <td>' . $os_rm->id . '</td>
-                                        <td style="text-align:right;">' . number_format($begin, 2) . '</td>
-                                        <td style="text-align:right;">' . number_format($os_rm->qty) . '</td>
-                                        <td style="text-align:right;">' . number_format(0)  . '</td>
-                                        <td style="text-align:right;">' . number_format($balance, 2)  . '</td>
-                                    </tr>';
-                        $begin += $os_rm->qty;
-                        $nod++;
-                    }
+                //RGP TRANSACTION OUT
+                $q_rgp_out = $this->db->query("SELECT
+                    'RGP OUT' as trans_type,
+                    b.created_by,
+                    b.created_date,
+                    a.number as document_no_1,
+                    b.label_no as document_no_2,
+                    '0' as qty_in,
+                    b.qty as qty_out
+                FROM rgp_transactions a 
+                JOIN scan_item_rgp b ON a.number = b.rgp_number and a.item_id = b.item_id
+                WHERE a.item_id = '$item_fg_id' and DATE_FORMAT(a.created_date, '%Y-%m-%d') BETWEEN '$filter_from' and '$filter_to' and a.type = 'OUT'
+                GROUP BY b.id");
+                $d_rgp_out = $q_rgp_out->result_array();
 
-                    //STO
-                    foreach ($sto_rms as $sto_rm) {
-                        if($sto_rm->type == "IN"){
-                            $type = "STO ADJUSTMENT IN";
-                            $qty_in = $sto_rm->qty;
-                            $qty_out = 0;
-                            $balance = ($begin + $sto_rm->qty);
-                        }else{
-                            $type = "STO ADJUSTMENT OUT";
-                            $qty_in = 0;
-                            $qty_out = $sto_rm->qty;
-                            $balance = ($begin - $sto_rm->qty);
-                        }
+                $records = array_merge($d_os_fg, $d_adj_in, $d_adj_out, $d_receipt, $d_delivery, $d_rgp_in, $d_rgp_out);
+                usort($records, 'compare_trans_date');
 
-                        $html .= '  <tr>
-                                        <td></td>
-                                        <td style="text-align:center">' . $nod . '</td>
-                                        <td>' . $type . '</td>
-                                        <td>' . $sto_rm->username . '</td>
-                                        <td>' . $sto_rm->trans_date . '</td>
-                                        <td>-</td>
-                                        <td>' . $sto_rm->document_no . '</td>
-                                        <td style="text-align:right;">' . number_format($begin, 2) . '</td>
-                                        <td style="text-align:right;">' . number_format($qty_in, 2) . '</td>
-                                        <td style="text-align:right;">' . number_format($qty_out)  . '</td>
-                                        <td style="text-align:right;">' . number_format($balance, 2)  . '</td>
-                                    </tr>';
-                        if($sto_rm->type == "IN"){
-                            $begin += $sto_rm->qty;
-                        }else{
-                            $begin -= $sto_rm->qty;
-                        }
+                foreach ($records as $record) {
+                    $user = $this->crud->read("users", [], ["username" => $record['created_by']]);
+                    $balance = ($begin + $record['qty_in'] - $record['qty_out']);
+                    $html .= '  <tr>
+                                    <td></td>
+                                    <td style="text-align:center">' . $nod . '</td>
+                                    <td>' . $record['trans_type'] . '</td>
+                                    <td>' . $user->name . '</td>
+                                    <td>' . $record['created_date'] . '</td>
+                                    <td>' . $record['document_no_1'] . '</td>
+                                    <td>' . $record['document_no_2'] . '</td>
+                                    <td style="text-align:right;">' . number_format($begin, 2) . '</td>
+                                    <td style="text-align:right;">' . number_format($record['qty_in'], 2) . '</td>
+                                    <td style="text-align:right;">' . number_format($record['qty_out'], 2)  . '</td>
+                                    <td style="text-align:right;">' . number_format($balance, 2)  . '</td>
+                                </tr>';
 
-                        $nod++;
-                    }
-
-                    //Wip Receipt
-                    foreach ($receipts as $receipt) {
-                        $balance = ($begin + ($receipt->qty - $end_qty));
-                        $html .= '  <tr>
-                                                <td></td>
-                                                <td style="text-align:center">' . $nod . '</td>
-                                                <td>RECEIPT FG</td>
-                                                <td>' . $receipt->username . '</td>
-                                                <td>' . $receipt->created_date . '</td>
-                                                <td>' . $receipt->workorder . '</td>
-                                                <td>' . $receipt->checksheet_label . '</td>
-                                                <td style="text-align:right;">' . number_format($begin, 2) . '</td>
-                                                <td style="text-align:right;">' . number_format($receipt->qty, 2) . '</td>
-                                                <td style="text-align:right;">' . number_format(0)  . '</td>
-                                                <td style="text-align:right;">' . number_format($balance, 2)  . '</td>
-                                            </tr>';
-                        $begin += $receipt->qty;
-                        $nod++;
-                    }
-
-                    //RGP
-                    foreach ($rgps as $rgp) {
-                        $user = $this->crud->read("users", [], ["username" => $rgp->created_by]);
-                        if($rgp->type == "IN"){
-                            $balance = ($begin + $rgp->qty_scan);
-                            $rgp_status = "RGP IN";
-                            $rgp_qty_in = $rgp->qty_scan;
-                            $rgp_qty_out = 0;
-                        }else{
-                            $rgp_status = "RGP OUT";
-                            $balance = ($begin - $rgp->qty_scan);
-                            $rgp_qty_in = 0;
-                            $rgp_qty_out = $rgp->qty_scan;
-                        }
-
-                        $html .= '  <tr>
-                                        <td></td>
-                                        <td style="text-align:center">' . $nod . '</td>
-                                        <td>' . $rgp_status . '</td>
-                                        <td>' . $user->name . '</td>
-                                        <td>' . $rgp->scan_date . '</td>
-                                        <td>' . $rgp->number . '</td>
-                                        <td>' . $rgp->label_no . '</td>
-                                        <td style="text-align:right;">' . number_format($begin, 2) . '</td>
-                                        <td style="text-align:right;">' . number_format($rgp_qty_in, 2) . '</td>
-                                        <td style="text-align:right;">' . number_format($rgp_qty_out, 2)  . '</td>
-                                        <td style="text-align:right;">' . number_format($balance, 2)  . '</td>
-                                    </tr>';
-                        
-                        if($rgp->type == "IN"){
-                            $begin += $rgp_qty_in;
-                        }else{
-                            $begin -= $rgp_qty_out;
-                        }
-
-                        $nod++;
-                    }
-
-                    //Delivery Note
-                    foreach ($returns as $return) {
-                        $balance = ($begin - $return->qty);
-                        $html .= '  <tr>
-                                                <td></td>
-                                                <td style="text-align:center">' . $nod . '</td>
-                                                <td>DELIVERY NOTE</td>
-                                                <td>' . $return->username . '</td>
-                                                <td>' . $return->created_date . '</td>
-                                                <td>' . $return->delivery_order_no  . '</td>
-                                                <td>' . $return->delivery_note_no . '</td>
-                                                <td style="text-align:right;">' . number_format($begin, 2) . '</td>
-                                                <td style="text-align:right;">' . number_format(0, 2) . '</td>
-                                                <td style="text-align:right;">' . number_format($return->qty, 2)  . '</td>
-                                                <td style="text-align:right;">' . number_format($balance, 2)  . '</td>
-                                            </tr>';
-                        $begin -= $return->qty;
-                        $nod++;
-                    }
+                    $begin += ($record['qty_in'] - $record['qty_out']);
+                    $nod++;
                 }
             }
             $no++;

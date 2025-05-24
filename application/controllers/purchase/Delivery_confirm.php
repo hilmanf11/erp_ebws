@@ -145,8 +145,8 @@ class Delivery_confirm extends CI_Controller
             $this->db->join("(SELECT supplier_id, item_rm_id, po_no, SUM(delivery) as qty_confirm FROM purchase_confirm GROUP BY supplier_id, item_rm_id, po_no) f", 'a.supplier_id = f.supplier_id and a.item_rm_id = f.item_rm_id and a.po_no = f.po_no');
             // $this->db->join("(SELECT po_no, bc_document, item_rm_id, supplier_id, SUM(qty_receipt) as receipt FROM purchase_order_receipts GROUP BY po_no, bc_document, item_rm_id, supplier_id) e", 'a.po_no = e.po_no and a.invoice_no = e.bc_document and a.item_rm_id = e.item_id and a.supplier_id = e.supplier_id', 'left');            
             if ($filter_from != "" and $filter_to != "") {
-                $this->db->where('a.created_date >=', $filter_from);
-                $this->db->where('a.created_date <=', $filter_to);
+                $this->db->where("DATE_FORMAT(a.created_date, '%Y-%m-%d') >=", $filter_from);
+                $this->db->where("DATE_FORMAT(a.created_date, '%Y-%m-%d') <=", $filter_to);
             }
             if($filter_po_date != ""){
                 $this->db->where('a.po_date', $filter_po_date);
@@ -225,7 +225,7 @@ class Delivery_confirm extends CI_Controller
             $dataFinals = array(
                 "supplier_id" => $post['supplier_id'],
                 "delivery_no" => $post['delivery_no'],
-                "invoice_no" => $post['invoice_no'],
+                "invoice_no" => trim($post['invoice_no']),
                 "invoice_date" => $post['invoice_date'],
                 "awb_no" => $post['awb_no'],
                 "awb_date" => $post['awb_date'],
@@ -425,8 +425,8 @@ class Delivery_confirm extends CI_Controller
         $this->db->join('item_rm c', 'a.item_rm_id = c.id');
         $this->db->join('item_familys d', 'c.item_family_id = d.id');
         if ($filter_from != "" and $filter_to != "") {
-            $this->db->where('a.created_date >=', $filter_from);
-            $this->db->where('a.created_date <=', $filter_to);
+            $this->db->where("DATE_FORMAT(a.created_date, '%Y-%m-%d') >=", $filter_from);
+            $this->db->where("DATE_FORMAT(a.created_date, '%Y-%m-%d') <=", $filter_to);
         }
         if($filter_po_date != ""){
             $this->db->where('a.po_date', $filter_po_date);

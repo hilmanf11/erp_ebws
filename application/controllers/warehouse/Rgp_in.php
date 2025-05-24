@@ -73,6 +73,12 @@ class Rgp_in extends CI_Controller
             $item_category = "";
         }
 
+        if ($item_category_id == 'C09') { // jika other tidak perlu check status scan label
+            $status_scan_label = "";
+        } else {
+            $status_scan_label = " and a.qty=c.qty_scan";
+        }
+
         if ($process_type == 'NRGP') {
             $send = $this->crud->query("
             SELECT
@@ -80,10 +86,13 @@ class Rgp_in extends CI_Controller
             FROM
                 rgp_transactions a
                 LEFT JOIN ( SELECT rgp_number, item_id, sum( qty ) AS total FROM rgp_transactions WHERE type='IN' GROUP BY rgp_number,item_id ) b ON a.number = b.rgp_number and a.item_id=b.item_id
-            WHERE
+                LEFT JOIN (select rgp_number, item_id, sum(qty) as qty_scan from scan_item_rgp group by rgp_number, item_id) c on a.number=c.rgp_number and a.item_id=c.item_id
+                WHERE
                 a.type = 'OUT' 
                 AND a.number LIKE '%$post%' 
                 AND a.process_type = 'RGP' 
+                AND (a.approved_to is null or a.approved_to = '')
+                $status_scan_label
                 $company  
                 $item_category
                 group by a.number
@@ -419,7 +428,8 @@ class Rgp_in extends CI_Controller
             a.item_category_id,
             b.id as item_rm_id,
             c.id as item_fg_id,
-            c.qty_box
+            c.qty_box,
+            a.approved_to
             ");
             $this->db->from('rgp_transactions a');
             $this->db->join('item_rm b', 'a.item_id = b.id', 'left');
@@ -477,6 +487,7 @@ class Rgp_in extends CI_Controller
                     "departement_name" => $record['departement_name'],
                     "rgp_type_name" => $record['rgp_type_name'],
                     "item_category_id" => $record['item_category_id'],
+                    "approved_to" => $record['approved_to'],
 
                     "mpq" => $mpq,
                     "qty_label" => $qty_label,
@@ -728,7 +739,19 @@ class Rgp_in extends CI_Controller
                     $urutan = (int) substr($id, -3);
                     $rgp_id = $post['number'] . "-" . sprintf("%03s", $urutan + 1);
                 }
+
                 $send = $this->crud->create('rgp_transactions', array_merge($postFinal, ["rgp_id" => $rgp_id]));
+
+                $approval = $this->crud->read('approvals', [], ["table_name" => "rgp_transaction_in"]);
+                if (!empty($approval)) {
+                    $formApprove = [
+                        "approved" => 1,
+                        "approved_to" => $approval->user_approval_1,
+                        "approved_by" => $this->session->username,
+                    ];
+
+                    $this->db->update('rgp_transactions', $formApprove, ["number" => $post['number'], "item_id" => $item_id, "type" => "IN"]);
+                }
             }
 
             $rgp_out = $this->db->query("

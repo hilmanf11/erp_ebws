@@ -142,22 +142,10 @@ class Fixeds extends CI_Controller
     public function datatables()
     {
         if ($this->input->get()) {
-            // $page = $this->input->post('page');
-            // $rows = $this->input->post('rows');
-
-            // //Pagination 1-10
-            // $page   = isset($page) ? intval($page) : 1;
-            // $rows   = isset($rows) ? intval($rows) : 10;
-            // $offset = ($page - 1) * $rows;
-            // $result = array();
-
             $filter_from = base64_decode($this->input->get('filter_from'));
             $filter_to = base64_decode($this->input->get('filter_to'));
-            $filter_number = base64_decode($this->input->get('filter_number'));
-            $filter_category = base64_decode($this->input->get('filter_category'));
-            $filter_estimate = base64_decode($this->input->get('filter_estimate'));
-            $filter_purchase_invoice_number = base64_decode($this->input->get('filter_purchase_invoice_number'));
-            $filter_supplier = base64_decode($this->input->get('filter_supplier'));
+            $cutoff_from = base64_decode($this->input->get('cutoff_from'));
+            $cutoff_to = base64_decode($this->input->get('cutoff_to'));
 
             $filter_period_from = date("Y-m", strtotime($filter_from));
             $filter_period_to = date("Y-m", strtotime($filter_to));
@@ -165,32 +153,140 @@ class Fixeds extends CI_Controller
             //Select Query
             $this->db->select("a.*, 
                 b.name as asset_category_name,
+                b.usefull, b.shift as shift_factor,
                 (CASE WHEN (a.cost - (COALESCE(c.depreciation_acc, 0))) > 0 THEN 0 ELSE 1 END) as status_expired");
             $this->db->from('asset_fixeds a');
             $this->db->join('item_familys b', 'a.item_family_id = b.id');
             $this->db->join("(SELECT asset_no, SUM(debit) as depreciation_acc FROM asset_journals WHERE periode BETWEEN '$filter_period_from' and '$filter_period_to' GROUP BY asset_no) c", 'a.number = c.asset_no', 'left');
             $this->db->where('a.trans_date >=', $filter_from);
             $this->db->where('a.trans_date <=', $filter_to);
-            if($filter_category != ""){
-                $this->db->where('a.item_family_id', $filter_category);
-            }
-            if($filter_number != ""){
-                $this->db->where('a.number', $filter_number);
-            }
-            $this->db->like('a.estimate_year', $filter_estimate);
-            $this->db->like('a.purchase_invoice_no', $filter_purchase_invoice_number);
-            $this->db->like('a.supplier_name', $filter_supplier);
             $this->db->group_by('a.number');
-
-            //Total Data
-            $totalRows = $this->db->count_all_results('', false);
-            //Limit 1 - 10
-            // $this->db->limit($rows, $offset);
-            //Get Data Array
             $records = $this->db->get()->result_array();
+            
+            $datas = [];
+            $total_cost = 0;
+            $total_acq_period = 0;
+            $total_acq_closing = 0;
+            $total_residual = 0;
+            $total_addition_op = 0;
+            $total_addition = 0;
+            $total_addition_total = 0;
+            $total_accum_op = 0;
+            $total_accum_close = 0;
+            $total_wdv = 0;
+            $total_wdv_close = 0;
+            $total_depreciation = 0;
+            foreach ($records as $record) {
+                $trans_date = date_create($record['trans_date']);
+                $start_date = date_create($cutoff_from);
+                $end_date = date_create($cutoff_to);
+
+                if($trans_date < $start_date){
+                    $total_day = (date_diff($start_date, $end_date)->days + 1);
+                }else{
+                    $total_day = (date_diff($trans_date, $end_date)->days + 1);
+                }
+
+                if($record['usefull'] == 0){
+                    $estimate_day = 1;
+                }else{
+                    $estimate_day = ($record['usefull'] * 365);
+                }
+
+                if($record['trans_date'] < $cutoff_from){
+                    $cost = $record['cost'];
+                    $acq_period = 0;
+                }elseif($record['trans_date'] >= $cutoff_from){
+                    $cost = 0;
+                    $acq_period = $record['cost'];
+                }else{
+                    $cost = 0;
+                    $acq_period = 0;
+                }
+
+                if($cost != 0 && $estimate_day > 1){
+                    $addition_op = (round(((($cost - (($cost + $acq_period) * (5 / 100))) / $estimate_day) * $total_day) * $record['shift_factor'], 2));
+                }else{
+                    $addition_op = 0;
+                }
+
+                if($acq_period != 0 && $estimate_day > 1){
+                    $addition = (round(((($acq_period - (($cost + $acq_period) * (5 / 100))) / $estimate_day) * $total_day) * $record['shift_factor'], 2));
+                }else{
+                    $addition = 0;
+                }
+
+                $addition_total = ($addition_op + $addition);
+                $datas[] = array(
+                    "id" => $record['id'],
+                    "number" => $record['number'],
+                    "name" => $record['name'],
+                    "asset_category_name" => $record['asset_category_name'],
+                    "purchase_invoice_no" => $record['purchase_invoice_no'],
+                    "supplier_name" => $record['supplier_name'],
+                    "trans_date" => $record['trans_date'],
+                    "shift" => $record['shift_factor'],
+                    "uom" => $record['uom'],
+                    "qty" => $record['qty'],
+                    "cost" => $cost,
+                    "acq_period" => $acq_period,
+                    "acq_closing" => ($cost + $acq_period),
+                    "residual" => round(($cost + $acq_period) * (5 / 100)),
+                    "estimate_year" => ($record['usefull']),
+                    "estimate_month" => ($record['usefull'] * 12),
+                    "estimate_day" => ($record['usefull'] * 365),
+                    "asset_period" => $total_day,
+                    "addition_op" => $addition_op,
+                    "addition" => $addition,
+                    "addition_total" => $addition_total,
+                    "accum_op" => $record['accum_op'],
+                    "accum_close" => ($addition_total + $record['accum_op']),
+                    "wdv" => ($cost - $record['accum_op']),
+                    "wdv_close" => (($cost + $acq_period) - ($addition_total + $record['accum_op'])),
+                    "posting_date" => $record['posting_date'],
+                    "expired_date" => $record['expired_date'],
+                    "depreciation" => $record['depreciation'],
+                    "departement" => $record['departement'],
+                    "voucher_no" => $record['voucher_no'],
+                    "status" => $record['status'],
+                    "created_by" => $record['created_by'],
+                    "created_date" => $record['created_date'],
+                    "updated_by" => $record['updated_by'],
+                    "updated_date" => $record['updated_date'],
+                );
+
+                $total_cost += $cost;
+                $total_acq_period += $acq_period;
+                $total_acq_closing += ($cost + $acq_period);
+                $total_residual += round(($cost + $acq_period) * (5 / 100));
+                $total_addition_op += round($addition_op, 2);
+                $total_addition += round($addition, 2);
+                $total_addition_total += round($addition_total, 2);
+                $total_accum_op += round($record['accum_op'], 2);
+                $total_accum_close += round(($addition_total + $record['accum_op']), 2);
+                $total_wdv += round(($cost - $record['accum_op']), 2);
+                $total_wdv_close += round((($cost + $acq_period) - ($addition_total + $record['accum_op'])), 2);
+                $total_depreciation += round($record['depreciation'], 2);
+            }
+
             //Mapping Data
-            $result['total'] = $totalRows;
-            $result = array_merge($result, ['rows' => $records]);
+            $result['footer'] = array([
+                "number" => "GRAND TOTAL", 
+                "cost" => $total_cost, 
+                "acq_period" => $total_acq_period,
+                "acq_closing" => $total_acq_closing,
+                "residual" => $total_residual,
+                "addition_op" => $total_addition_op,
+                "addition" => $total_addition,
+                "addition_total" => $total_addition_total,
+                "accum_op" => $total_accum_op,
+                "accum_close" => $total_accum_close,
+                "wdv" => $total_wdv,
+                "wdv_close" => $total_wdv_close,
+                "depreciation" => $total_depreciation,
+            ]);
+            $result['total'] = count($datas);
+            $result = array_merge($result, ['rows' => $datas]);
             echo json_encode($result);
         }
     }
@@ -312,18 +408,9 @@ class Fixeds extends CI_Controller
                 'uom' => $data->val($i, 10),
                 'qty' => $data->val($i, 11),
                 'cost' => $data->val($i, 12),
-                'acq_period' => $data->val($i, 13),
-                'acq_closing' => $data->val($i, 14),
-                'residual' => $data->val($i, 15),
-                'estimate_day' => $data->val($i, 16),
-                'addition_op' => $data->val($i, 17),
-                'addition' => $data->val($i, 18),
-                'addition_total' => $data->val($i, 19),
-                'accum_op' => $data->val($i, 20),
-                'accum_close' => $data->val($i, 21),
-                'wdv' => $data->val($i, 22),
-                'posting_date' => $data->val($i, 23),
-                'departement' => $data->val($i, 24)
+                'accum_op' => $data->val($i, 13),
+                'posting_date' => $data->val($i, 14),
+                'departement' => $data->val($i, 15)
             );
         }
 
@@ -367,61 +454,56 @@ class Fixeds extends CI_Controller
 
             //Product Family
             $item_family = $this->crud->read('item_familys', [], ["number" => $data['item_family_number']]);
-            // $item_rm = $this->crud->read('item_rm', [], ["id" => $data['item_rm_id']]);
-            // $supplier = $this->crud->read('suppliers', [], ["id" => $data['supplier_id']]);
+            $item_rm = $this->crud->read('item_rm', [], ["id" => $data['item_rm_id']]);
+            $supplier = $this->crud->read('suppliers', [], ["id" => $data['supplier_id']]);
             $fixed_assets = $this->crud->read('asset_fixeds', [], ["number" => $data['number']]);
+
+            if(empty($data['cost']) || empty($data['estimate_year'])){
+                $cost = $data['cost'];
+                $depreciation = 0;
+                $total = 0;
+            }else{
+                $cost = $data['cost'];
+                $depreciation = ($data['cost'] / ($data['estimate_year'] * 12));
+                $total = ($data['qty'] * $data['cost']);
+            }
+
+            $dataFinal = array(
+                "item_family_id" => @$item_family->id,
+                "purchase_invoice_no" => $data['purchase_invoice_no'],
+                "supplier_id" => $data['supplier_id'],
+                "supplier_name" => @$supplier->name,
+                // "item_rm_id" => $data['item_rm_id'],
+                "number" => $data['number'],
+                "name" => $data['name'],
+                "shift" => @$item_family->shift,
+                "trans_date" => $data['trans_date'],
+                "uom" => $data['uom'],
+                "qty" => $data['qty'],
+                "currency" => @$supplier->currency,
+                "cost" => $cost,
+                "estimate_day" => ($data['estimate_year'] * 365),
+                "estimate_month" => ($data['estimate_year'] * 12),
+                "estimate_year" => $data['estimate_year'],
+                "expired_date" => date("Y-m-d", strtotime("+" . ($data['estimate_year'] * 12) . ' months', strtotime($data['trans_date']))),
+                "depreciation" => $depreciation,
+                "method" => "UPLOAD",
+                "departement" => $data['departement'],
+                "total" => $total,
+                "accum_op" => $data['accum_op'],
+                "posting_date" => $data['posting_date'],
+            );
 
             if (empty($item_family->id)) {
                 echo json_encode(array("title" => "Not Found", "message" => "Product Family " . $data['item_family_number'] . " Not Found", "theme" => "error"));
             // } elseif (empty($item_rm->id)) {
             //     echo json_encode(array("title" => "Not Found", "message" => "Part No EBWS " . $data['item_rm_id'] . " Not Found", "theme" => "error"));
+            } elseif (empty($supplier->id)) {
+                echo json_encode(array("title" => "Not Found", "message" => "Supplier ID " . $data['supplier_id'] . " Not Found", "theme" => "error"));
             } elseif (!empty($fixed_assets->id)) {
-                echo json_encode(array("title" => "Duplicate", "message" => "Asset No " . $data['number'] . " Duplicate", "theme" => "error"));
+                $send = $this->crud->update('asset_fixeds', ["number" => $data['number']], $dataFinal);
+                echo $send;
             } else {
-                if(empty($data['cost'])){
-                    $cost = 0;
-                    $depreciation = 0;
-                    $total = 0;
-                }else{
-                    $cost = $data['cost'];
-                    $depreciation = ($data['cost'] / ($data['estimate_year'] * 12));
-                    $total = ($data['qty'] * $data['cost']);
-                }
-
-                $dataFinal = array(
-                    "item_family_id" => @$item_family->id,
-                    "purchase_invoice_no" => $data['purchase_invoice_no'],
-                    "supplier_id" => "",
-                    "supplier_name" => $data['supplier_id'],
-                    "item_rm_id" => "",
-                    "number" => $data['number'],
-                    "name" => $data['name'],
-                    "shift" => @$item_family->shift,
-                    "trans_date" => $data['trans_date'],
-                    "uom" => $data['uom'],
-                    "qty" => $data['qty'],
-                    "currency" => @$supplier->currency,
-                    "cost" => $cost,
-                    "estimate_day" => $data['estimate_day'],
-                    "estimate_month" => ($data['estimate_year'] * 12),
-                    "estimate_year" => $data['estimate_year'],
-                    "residual" => $data['residual'],
-                    "expired_date" => date("Y-m-d", strtotime("+" . ($data['estimate_year'] * 12) . ' months', strtotime($data['trans_date']))),
-                    "depreciation" => $depreciation,
-                    "method" => "UPLOAD",
-                    "departement" => $data['departement'],
-                    "total" => $total,
-                    "acq_period" => $data['acq_period'],
-                    "acq_closing" => $data['acq_closing'],
-                    "addition_op" => $data['addition_op'],
-                    "addition" => $data['addition'],
-                    "addition_total" => $data['addition_total'],
-                    "accum_op" => $data['accum_op'],
-                    "accum_close" => $data['accum_close'],
-                    "wdv" => $data['wdv'],
-                    "posting_date" => $data['posting_date'],
-                );
-
                 $send = $this->crud->create('asset_fixeds', $dataFinal);
                 echo $send;
             }

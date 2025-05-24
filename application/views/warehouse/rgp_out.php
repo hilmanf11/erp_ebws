@@ -1807,8 +1807,12 @@
                 return '-';
             } else {
                 if (val == "0") {
-                    var send = "print_doc('" + row.number + "','" + row.process_type + "')";
-                    return '<a class="btn btn-success w-100" style="pointer-events: visible; opacity:1;" onClick="' + send + '"><i class="fa fa-print"></i> Print</a>';
+                    if (row.approved_to == '' || row.approved_to == null) {
+                        var send = "print_doc('" + row.number + "','" + row.process_type + "')";
+                        return '<a class="btn btn-success w-100" style="pointer-events: visible; opacity:1;" onClick="' + send + '"><i class="fa fa-print"></i> Print</a>';
+                    } else {
+                        return '-';
+                    }
                 } else {
                     return '-';
                 }
@@ -1835,9 +1839,10 @@
     }
 
     function cellStylerApproval(value, row, index) {
-        if (row.approved_to == null) {
-            return 'background: #FF5F5F; color:white;';
-        } else if (row.approved_to == "") {
+        // if (row.approved_to == null) {
+        //     return 'background: #FF5F5F; color:white;';
+        // } else 
+        if (row.approved_to == "" || row.approved_to == null) {
             return 'background: #53D636; color:white;';
         } else {
             return 'background: #FF5F5F; color:white;';
@@ -1845,9 +1850,10 @@
     }
 
     function cellFormatterApproval(val, row) {
-        if (row.approved_to == null) {
-            return 'Not Setting';
-        } else if (row.approved_to == "") {
+        // if (row.approved_to == null) {
+        //     return 'Not Setting';
+        // } else 
+        if (row.approved_to == "" || row.approved_to == null) {
             return 'Approved';
         } else {
             return 'Checking';

@@ -1084,6 +1084,11 @@
                         setTimeout(function() {
                             $('#dg').datagrid('fixDetailRowHeight', index);
                         }, 0);
+                    },
+                    rowStyler: function(index,row){
+                        if(row.remove == 1){
+                            return 'background-color:#e5b5b5;font-weight:bold;';
+                        }
                     }
                 });
                 $('#dg').datagrid('fixDetailRowHeight', index);
@@ -1121,15 +1126,20 @@
                     for (let i = 0; i < totalrows; i++) {
                         var json = rows[i];
                         // if(json.remove == 0){
-                            combinedBom.push({
-                                item_fg_id: item_fg_id,
-                                revision: new_revision,
-                                drawing: drawing,
-                                item_rm_id: json.item_rm_id,
-                                main_process: json.main_process,
-                                composition: json.composition,
-                                remove: json.remove
-                            });
+                        if(json.item_rm_id == "" || json.main_process == ""){
+                            toastr.error("Please Completed your data!");
+                            return false;
+                        }
+
+                        combinedBom.push({
+                            item_fg_id: item_fg_id,
+                            revision: new_revision,
+                            drawing: drawing,
+                            item_rm_id: json.item_rm_id,
+                            main_process: json.main_process,
+                            composition: json.composition,
+                            remove: json.remove
+                        });
                         // }
                     }
 

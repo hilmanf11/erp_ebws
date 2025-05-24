@@ -1,18 +1,18 @@
-<table id="dg" class="easyui-datagrid" style="width:99.5%;" toolbar="#toolbar">
+<table id="dg" class="easyui-datagrid" style="width:100%;" toolbar="#toolbar">
     <thead>
         <tr>
             <th rowspan="2" field="ck" checkbox="true"></th>
             <th rowspan="2" data-options="field:'disposal_date',width:100,align:'center'">Disposal Date</th>
-            <th rowspan="2" data-options="field:'number',width:150,halign:'center'">Asset Code</th>
+            <th rowspan="2" data-options="field:'number',width:100,halign:'center'">Asset Code</th>
             <th rowspan="2" data-options="field:'name',width:250,halign:'center'">Asset Name</th>
-            <th rowspan="2" data-options="field:'asset_category_name',width:150,halign:'center'">Asset Category</th>
+            <th rowspan="2" data-options="field:'product_family',width:120,halign:'center'">Asset Category</th>
             <th rowspan="2" data-options="field:'cost',width:100,halign:'center',align:'right', formatter:priceformat">Asset<br>Cost</th>
             <!--<th rowspan="2" data-options="field:'residual',width:100,halign:'center',align:'right', formatter:priceformat">Residual<br>Value</th>-->
             <th rowspan="2" data-options="field:'disposal',width:100,halign:'center',align:'right', formatter:priceformat">Disposal<br>Value</th>
             <th rowspan="2" data-options="field:'book_value',width:100,halign:'center',align:'right', formatter:priceformat">Net Book<br>Value</th>
             <th rowspan="2" data-options="field:'gainloss_type',width:100,align:'center'">Gain/Loss</th>
             <th rowspan="2" data-options="field:'gainloss_value',width:100,halign:'center',align:'right', formatter:priceformat">Gain/Loss<br>Value</th>
-            <th rowspan="2" data-options="field:'remarks',width:150,align:'center'">Remarks</th>
+            <th rowspan="2" data-options="field:'remarks',width:250,halign:'center'">Remarks</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
         </tr>
@@ -25,7 +25,7 @@
     </thead>
 </table>
 
-<div id="toolbar" style="height: 195px;">
+<div id="toolbar" style="height: 155px; padding:10px;">
     <!-- <div style="width: 100%; display: grid; grid-template-columns: auto auto auto; grid-gap: 5px; display: flex;"> -->
     <div style="width: 100%;">
         <fieldset style="width: 100%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
@@ -35,10 +35,6 @@
                     <span style="width:35%; display:inline-block;">Disposal Date</span>
                     <input style="width:28%;" id="filter_from" value="<?= date("Y-m-01") ?>" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false"> To
                     <input style="width:28%;" id="filter_to" value="<?= date("Y-m-t") ?>" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
-                </div>
-                <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Asset Name</span>
-                    <input style="width:60%;" name="filter_number" id="filter_number" class="easyui-combobox">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;"></span>
@@ -185,18 +181,18 @@
     function filter() {
         var filter_from = $("#filter_from").datebox('getValue');
         var filter_to = $("#filter_to").datebox('getValue');
-        var filter_number = $("#filter_number").combogrid('getValue');
 
         var url = "?filter_from=" + window.btoa(filter_from) +
-            "&filter_to=" + window.btoa(filter_to) +
-            "&filter_number=" + window.btoa(filter_number);
+            "&filter_to=" + window.btoa(filter_to);
 
-        $('#dg').datagrid({
-            url: '<?= base_url('assets/disposeds/datatables') ?>' + url,
-            pagination: true,
-            clientPaging: false,
-            remoteFilter: true,
-            rownumbers: true
+        $('#dg').datagrid('loading');
+        $.ajax({
+            url:'<?= base_url('assets/disposeds/datatables') ?>' + url,
+            type:'POST',
+            dataType: 'json',
+            success: function(result) { 
+                $('#dg').datagrid('loadData',result).datagrid('loaded'); 
+            }
         });
 
         $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
@@ -210,11 +206,9 @@
     function excel() {
         var filter_from = $("#filter_from").datebox('getValue');
         var filter_to = $("#filter_to").datebox('getValue');
-        var filter_number = $("#filter_number").combogrid('getValue');
 
         var url = "?filter_from=" + window.btoa(filter_from) +
-            "&filter_to=" + window.btoa(filter_to) +
-            "&filter_number=" + window.btoa(filter_number);
+            "&filter_to=" + window.btoa(filter_to);
 
         window.location.assign('<?= base_url('assets/disposeds/print/excel') ?>' + url);
     }
@@ -224,6 +218,15 @@
     }
     $(function() {
         filter();
+
+        $('#dg').datagrid({
+            pagination: true,
+            clientPaging: true,
+            rownumbers: true,
+            fit: true,
+            pageList: [20, 50, 100, 500, 1000],
+            pageSize: 20,
+        }).datagrid('enableFilter');
 
         //Save Data
         $('#dlg_insert').dialog({
@@ -252,43 +255,37 @@
             }]
         });
         
-        $("#disposal_date").datebox({
-           onChange: function(val){
-               //GET COMPONENT
-                $('#asset_fixed_id').combogrid({
-                    url: '<?= base_url('assets/disposeds/readFixeds/') ?>' + btoa(val),
-                    panelWidth: 420,
-                    idField: 'id',
-                    textField: 'number',
-                    mode: 'remote',
-                    fitColumns: true,
-                    prompt: "Choose Asset No",
-                    columns: [
-                        [{
-                            field: 'number',
-                            title: 'Asset No',
-                            width: 200
-                        }, {
-                            field: 'name',
-                            title: 'Asset Name',
-                            width: 200
-                        }, ]
-                    ],
-                    onSelect: function(index, row) {
-                        $("#asset_name").textbox('setValue', row.name);
-                        $("#asset_date").datebox('setValue', row.usage_date);
-                        $("#asset_cost").numberbox('setValue', row.cost);
-                        $("#currency").textbox('setValue', row.currency);
-                        $("#currency2").textbox('setValue', row.currency);
-                        $("#currency3").textbox('setValue', row.currency);
-                        $("#estimate_year").textbox('setValue', row.estimate_year);
-                        $("#estimate_month").textbox('setValue', row.estimate_month);
-                        // $("#residual_value").numberbox('setValue', row.residual_value);
-                        $("#depreciation").numberbox('setValue', row.depreciation_acc);
-                        $("#book_value").numberbox('setValue', row.book_value2);
-                    }
-                });
-           } 
+        $('#asset_fixed_id').combogrid({
+            url: '<?= base_url('assets/disposeds/readFixeds') ?>',
+            panelWidth: 420,
+            idField: 'id',
+            textField: 'number',
+            mode: 'remote',
+            fitColumns: true,
+            prompt: "Choose Asset No",
+            columns: [
+                [{
+                    field: 'number',
+                    title: 'Asset No',
+                    width: 100
+                }, {
+                    field: 'name',
+                    title: 'Asset Name',
+                    width: 300
+                }, ]
+            ],
+            onSelect: function(index, row) {
+                $("#asset_name").textbox('setValue', row.name);
+                $("#asset_date").datebox('setValue', row.trans_date);
+                $("#asset_cost").numberbox('setValue', row.cost);
+                $("#currency").textbox('setValue', row.currency);
+                $("#currency2").textbox('setValue', row.currency);
+                $("#currency3").textbox('setValue', row.currency);
+                $("#estimate_year").textbox('setValue', row.estimate_year);
+                $("#estimate_month").textbox('setValue', row.estimate_month);
+                $("#depreciation").numberbox('setValue', row.addition_total);
+                $("#book_value").numberbox('setValue', row.wdv_close);
+            }
         });
         
         $("#disposal").numberbox({
@@ -302,31 +299,9 @@
                     var gainloss_type = "LOSS";
                 }
                 
-                
                 $("#gainloss_type").combobox('setValue', gainloss_type);
                 $("#gainloss_value").numberbox('setValue', Math.abs(gainloss_value));
             }
-        });
-
-        $('#filter_number').combogrid({
-            url: '<?= base_url('assets/disposeds/readAssets') ?>',
-            panelWidth: 420,
-            idField: 'id',
-            textField: 'number',
-            mode: 'remote',
-            fitColumns: true,
-            prompt: "Choose Asset No",
-            columns: [
-                [{
-                    field: 'number',
-                    title: 'Asset No',
-                    width: 120
-                }, {
-                    field: 'name',
-                    title: 'Asset Name',
-                    width: 250
-                }, ]
-            ],
         });
     });
 
@@ -337,6 +312,7 @@
         var d = date.getDate();
         return y + '-' + (m < 10 ? ('0' + m) : m) + '-' + (d < 10 ? ('0' + d) : d);
     }
+
     //Format Datepicker
     function myparser(s) {
         if (!s) return new Date();
@@ -353,7 +329,7 @@
 
     function priceformat(value, row) {
         var digits = 0;
-        var format = "id-ID";
+        var format = "ja-JP";
 
         if (value != null) {
             const formatter = new Intl.NumberFormat(format, {

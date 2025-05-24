@@ -605,13 +605,7 @@ class Purchase_orders extends CI_Controller
             ]);
 
             if (count($records) > 0) {
-                $send = $this->crud->update('purchase_orders', [
-                    "p_month" => $post['p_month'],
-                    "p_year" => $post['p_year'],
-                    "revision" => $post['revision'],
-                    "item_rm_id" => $post['item_rm_id'],
-                    "supplier_id" => $post['supplier_id']
-                ], [
+                $send = $this->db->update('purchase_orders', [
                     "qty" => $post['qty'],
                     "price" => $post['price'],
                     "total" => $post['total'],
@@ -619,6 +613,12 @@ class Purchase_orders extends CI_Controller
                     "month_1" => $post['month_1'],
                     "month_2" => $post['month_2'],
                     "month_3" => $post['month_3']
+                ],[
+                    "p_month" => $post['p_month'],
+                    "p_year" => $post['p_year'],
+                    "revision" => $post['revision'],
+                    "item_rm_id" => $post['item_rm_id'],
+                    "supplier_id" => $post['supplier_id']
                 ]);
 
                 echo $send;
@@ -667,13 +667,7 @@ class Purchase_orders extends CI_Controller
             ]);
 
             if (count($records) > 0) {
-                $send = $this->crud->update('purchase_orders', [
-                    "p_month" => $post['p_month'],
-                    "p_year" => $post['p_year'],
-                    "revision" => $post['revision'],
-                    "item_rm_id" => $post['item_rm_id'],
-                    "supplier_id" => $post['supplier_id']
-                ], [
+                $send = $this->db->update('purchase_orders', [
                     "qty" => $post['qty'],
                     "price" => $post['price'],
                     "total" => $post['total'],
@@ -681,6 +675,12 @@ class Purchase_orders extends CI_Controller
                     "month_1" => $post['month_1'],
                     "month_2" => $post['month_2'],
                     "month_3" => $post['month_3']
+                ],[
+                    "p_month" => $post['p_month'],
+                    "p_year" => $post['p_year'],
+                    "revision" => $post['revision'],
+                    "item_rm_id" => $post['item_rm_id'],
+                    "supplier_id" => $post['supplier_id']
                 ]);
 
                 echo $send;

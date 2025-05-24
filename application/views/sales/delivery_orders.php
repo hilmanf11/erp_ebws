@@ -199,6 +199,7 @@
         });
     }
 
+    // function number(delivery_order_date, customer_no){
     function number(id_menu, trans_date){
         $.ajax({
             type: "post",
@@ -567,6 +568,13 @@
                     $('#dg_request').datagrid('acceptChanges');
                     var rows = $('#dg_request').datagrid('getSelections');
                     var totalrows = rows.length;
+
+                    for (let d = 0; d < totalrows; d++) {
+                        if(rows[d].sales_order_no == ""){
+                            toastr.error("Sales Order Cannot Empty!");
+                            return false;
+                        }
+                    }
 
                     if(totalrows > 0){
                         if (customer_id != "" && delivery_order_date != "" && delivery_date != "") {

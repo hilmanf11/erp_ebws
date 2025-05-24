@@ -471,6 +471,8 @@
             },
         });
 
+        proses = "ADD";
+
         $('#dg3').datagrid('loadData', []);
 
         $("#trans_date").datebox('enable');
@@ -1295,6 +1297,8 @@
                     $("#dn_number").combobox('disable');
                     $("#preview").linkbutton('disable');
 
+                    proses = "EDIT";
+
                     $('#customer_id').combogrid({
                         url: '<?= base_url('master/customers/reads') ?>',
                         panelWidth: 420,
@@ -1348,14 +1352,14 @@
                             row.editing = false;
                             $(this).datagrid('refreshRow', index);
                         },
-                        onLoadSuccess: function(row){
-                            $("#total_sub").numberbox('setValue', row.total_sub);
-                            $("#total_igst").numberbox('setValue', row.total_igst);
-                            $("#total_sgst").numberbox('setValue', row.total_sgst);
-                            $("#total_cgst").numberbox('setValue', row.total_cgst);
+                        onLoadSuccess: function(rowzz){
+                            $("#total_sub").numberbox('setValue', rowzz.total_sub);
+                            $("#total_igst").numberbox('setValue', rowzz.total_igst);
+                            $("#total_sgst").numberbox('setValue', rowzz.total_sgst);
+                            $("#total_cgst").numberbox('setValue', rowzz.total_cgst);
                             $("#tcs").numberbox('setValue', row.tcs);
-                            $("#total_grand").numberbox('setValue', row.total_grand);
-                            $("#total_grand_local").numberbox('setValue', row.total_grand_local);
+                            $("#total_grand").numberbox('setValue', rowzz.total_grand);
+                            $("#total_grand_local").numberbox('setValue', rowzz.total_grand_local);
                         }
                     });
 
@@ -1800,7 +1804,7 @@
                 iconCls: 'icon-ok',
                 handler: function() {
                     var trans_date = $("#trans_date").datebox('getValue');
-                    var number = $("#number").textbox('getValue');
+                    var number_edit = $("#number").textbox('getValue');
                     var customer_id = $("#customer_id").combogrid('getValue');
                     var plant = $("#plant").combobox('getValue');
                     var taxes = $("#taxes").numberbox('getValue');
@@ -1864,7 +1868,11 @@
                                                 toastr.info("Please Check Configuration in Serial No First");
                                                 return false;
                                             }else{
-                                                var number = result;
+                                                if(proses == "ADD"){
+                                                    var number = result;
+                                                }else{
+                                                    var number = number_edit;
+                                                }
 
                                                 $.ajax({
                                                     type: "post",

@@ -84,7 +84,7 @@ class Ar_receipts extends CI_Controller
     {
         $number = base64_decode($number);
         // $reads = $this->crud->reads("ar_receipt_journals", [], ["receipt_no" => $number], "", "flag", "asc");
-        $sql = $this->db->query("SELECT * FROM ar_receipt_journals WHERE receipt_no = '$number' and modul ='AR RECEIPT' ORDER BY flag ASC");
+        $sql = $this->db->query("SELECT * FROM ar_receipt_journals WHERE receipt_no = '$number' ORDER BY flag ASC");
         $reads = $sql->result_array();
 
         $arr = [];

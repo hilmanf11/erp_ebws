@@ -200,6 +200,7 @@ class Wip_receipts extends CI_Controller
             $this->db->select('SUM(qty) as qty_rfg');
             $this->db->from('wip_receipts');
             $this->db->where('workorder', $record['workorder']);
+            $this->db->where('item_fg_id', $item_fg_id);
             $rfg = $this->db->get()->row();
             
             if(($qty_scan - round($rfg->qty_rfg)) > 0){
@@ -217,6 +218,7 @@ class Wip_receipts extends CI_Controller
 
             if($qty_scan2 > 0){
                 $arr[] = array(
+                    "item_fg_id" => $record['item_fg_id'],
                     "workorder" => $record['workorder'],
                     "period" => $record['period'],
                     "wp" => $record['wp'],
@@ -291,6 +293,8 @@ class Wip_receipts extends CI_Controller
             $filter_checksheet = $this->input->get('filter_checksheet');
             $filter_workorder = $this->input->get('filter_workorder');
             $filter_item_fg_id = $this->input->get('filter_item_fg_id');
+            $filter_wp = $this->input->get('filter_wp');
+            $filter_period = $this->input->get('filter_period');
             $filter_status = $this->input->get('filter_status');
 
             $page = $this->input->post('page');
@@ -313,6 +317,8 @@ class Wip_receipts extends CI_Controller
             }
             $this->db->like('a.checksheet_number', $filter_checksheet);
             $this->db->like('a.workorder', $filter_workorder);
+            $this->db->like('a.period', $filter_period);
+            $this->db->like('a.wp', $filter_wp);
             $this->db->like('d.id', $filter_item_fg_id);
             if($filter_status == "0"){
                 $this->db->where('b.total_scan < a.label_box');
@@ -731,6 +737,8 @@ class Wip_receipts extends CI_Controller
         $filter_to = $this->input->get('filter_to');
         $filter_checksheet = $this->input->get('filter_checksheet');
         $filter_workorder = $this->input->get('filter_workorder');
+        $filter_wp = $this->input->get('filter_wp');
+        $filter_period = $this->input->get('filter_period');
         $filter_item_fg_id = $this->input->get('filter_item_fg_id');
 
         //Config
@@ -750,6 +758,8 @@ class Wip_receipts extends CI_Controller
         }
         $this->db->like('a.checksheet_number', $filter_checksheet);
         $this->db->like('a.workorder', $filter_workorder);
+        $this->db->like('a.period', $filter_period);
+        $this->db->like('a.wp', $filter_wp);
         $this->db->like('d.id', $filter_item_fg_id);
         $this->db->order_by('a.created_date', 'DESC');
         $this->db->order_by('a.checksheet_number', 'DESC');

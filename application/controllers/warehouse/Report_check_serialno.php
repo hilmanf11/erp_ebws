@@ -159,11 +159,11 @@ class Report_check_serialno extends CI_Controller
                 a.qty as scan_in, 
                 a.created_date as scan_in_date,
                 a.created_by as scan_in_by, 
-                f.request_no,
-                f.qty as scan_out,
-                f.created_date as scan_out_date,
-                f.created_by as scan_out_by,
-                (CASE WHEN h.id is not null THEN 3 WHEN g.id is not null THEN 2 WHEN f.request_no is null THEN 0 ELSE 1 END) as status
+                (CASE WHEN f.request_no is not null THEN f.request_no ELSE i.rgp_number END) as request_no,
+                (CASE WHEN f.qty is not null THEN f.qty ELSE i.qty END) as scan_out,
+                (CASE WHEN f.created_date is not null THEN f.created_date ELSE i.created_date END) as scan_out_date,
+                (CASE WHEN f.created_by is not null THEN f.created_by ELSE i.created_by END) as scan_out_by,
+                (CASE WHEN h.id is not null THEN 3 WHEN g.id is not null THEN 2 WHEN i.id is not null THEN 4 WHEN f.request_no is null THEN 0 ELSE 1 END) as status
             ");
             $this->db->from('barcode_divides a');
             $this->db->join('purchase_order_labels b', 'a.reff = b.receipt_id', 'left');
@@ -174,6 +174,7 @@ class Report_check_serialno extends CI_Controller
             $this->db->join('issued_material_details f', 'a.label_divided = f.label_no', 'left');
             $this->db->join('scan_item_rejections g', 'a.label_no = g.label_no', 'left');
             $this->db->join('barcode_divides h', 'a.label_divided = h.label_no', 'left');
+            $this->db->join('scan_item_rgp i', 'a.label_divided = i.label_no', 'left');
             $this->db->where("DATE_FORMAT(a.created_date, '%Y-%m-%d') between '$filter_from' and '$filter_to'");
             // $this->db->where('a.type', "SUPPLY");
             if($filter_serial_no != ""){
@@ -359,6 +360,8 @@ class Report_check_serialno extends CI_Controller
                 $status = "<b style='color:red;'>CLOSE<br>REJECTION</br>";
             } else if ($data['status'] == 3) {
                 $status = "<b style='color:red;'>CLOSE <br> DIVIDED</br>";
+            } else if ($data['status'] == 4) {
+                $status = "<b style='color:red;'>CLOSE <br> RGP/NRGP</br>";
             }
             
             $html .= '  <tr>

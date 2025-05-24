@@ -108,9 +108,9 @@ class Journal_posting_adjustments extends CI_Controller
         }elseif($category == "GL - ASSET"){
             $sql = $this->db->query("SELECT a.* 
                 FROM (
-                    (SELECT account_number, account_name, account_number as number, account_name as name FROM account_coa WHERE account_number IN ('26000004','26000006','26000008') ORDER BY account_number ASC)
+                    (SELECT account_number, account_name, account_number as number, account_name as name FROM account_coa WHERE account_number IN ('26000004','26000006','26000008','42000008','42000009','45000014','45000015','45000022') ORDER BY account_number ASC)
                 UNION 
-                    (SELECT b.account_number, b.account_name, a.number, a.name FROM assets a JOIN item_familys b ON a.item_family_id = b.id JOIN account_coa c ON b.account_number = c.account_number WHERE a.request_no = 'Additional' and a.status = 0 ORDER BY a.number ASC)
+                    (SELECT b.account_number, b.account_name, a.number, a.name FROM assets a JOIN item_familys b ON a.item_family_id = b.id JOIN account_coa c ON b.account_number = c.account_number ORDER BY a.number ASC)
                 ) a WHERE a.account_number like '%$post%' or a.account_name like '%$post%' or a.number like '%$post%' or a.name like '%$post%' ORDER BY a.account_number");
             $records = $sql->result_array();
         }elseif($category == "ASSET - ASSET"){
@@ -199,7 +199,7 @@ class Journal_posting_adjustments extends CI_Controller
             $offset = ($page - 1) * $rows;
             $result = array();
             //Select Query
-            $this->db->select('a.journal_date, a.journal_type, a.number, a.trans_date, a.journal_type_id, b.name as journal_type_name, a.modul, a.remarks, a.currency, a.rates, a.posting,
+            $this->db->select('a.journal_date, a.journal_type, a.number, a.trans_date, a.journal_type_id, b.name as journal_type_name, a.modul, a.remarks, a.currency, a.rates, a.posting, a.status_bank, a.status_cl,
                 a.created_by, a.created_date, a.updated_by, a.updated_date, a.approved, a.approved_to, a.approved_by, a.approved_date, a.document_no, a.trans_date as document_date, a.tds,
                 SUM(a.original_debit) as original_debit, 
                 SUM(a.original_credit) as original_credit, 
@@ -317,8 +317,11 @@ class Journal_posting_adjustments extends CI_Controller
             (CASE WHEN debitcredit = 'CREDIT' THEN (local_credit + (taxes_amount * rates)) ELSE 0 END) as local_credit");
         $this->db->from('journal_postings');
         $this->db->where('number', $number);
+        $this->db->group_start();
         $this->db->where_not_in('account_number', ["20100003","20100004","20100005","17000008","17000009","17000010","17000011","17000012","17000013"]);
-        
+        $this->db->or_where("taxes = ''");
+        $this->db->group_end();
+
         //Total Data
         $totalRows = $this->db->count_all_results('', false);
         $records = $this->db->get()->result_array();

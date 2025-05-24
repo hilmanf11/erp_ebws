@@ -56,15 +56,8 @@ class Wip_balances extends CI_Controller
                 (CASE WHEN (coalesce(i.qty_issued, 0) - a.qty_act) < 0 THEN 'OPEN' ELSE 'CLOSED' END) as supply_type");
             $this->db->from('supply_sheets a');
             $this->db->join('item_rm c', 'a.item_rm_id = c.id');
-            // $this->db->join('production_schedules e', 'a.item_fg_id = e.item_fg_id and a.workorder = e.workorder');
             $this->db->join("(SELECT request_no, item_rm_id, SUM(qty) as qty_issued FROM issued_material_details GROUP BY request_no, item_rm_id) i", "i.request_no = a.request_no and i.item_rm_id = c.id", "LEFT");
             $this->db->where('a.deleted', 0);
-            // $this->db->where('e.period !=', '202410');
-            // $this->db->select('a.*, b.number as item_number, b.name as item_name, b.uom');
-            // $this->db->from('wip_balances a');
-            // $this->db->join('item_rm b', 'a.item_rm_id = b.id');
-            // $this->db->join('uom c', 'b.uom_id = c.id');
-            // $this->db->where('a.deleted', 0);
             if (@count($filters) > 0) {
                 foreach ($filters as $filter) {
                     if ($filter->field == "item_rm_number") {
@@ -84,8 +77,7 @@ class Wip_balances extends CI_Controller
             }else{
                 $this->db->like("a.created_date", date("Y-m-d"));
             }
-            $this->db->group_by('a.request_no');
-            $this->db->group_by('a.item_rm_id');
+            $this->db->group_by('a.id');
             $this->db->order_by('a.created_date', 'DESC');
             //$this->db->order_by('a.warehouse', 'DESC');
             //Total Data
@@ -127,9 +119,26 @@ class Wip_balances extends CI_Controller
     public function delete()
     {
         $data = $this->input->post();
-        $send = $this->crud->delete('wip_balances', $data);
+        $send = $this->crud->delete('supply_sheets', ["id" => $data['id']]);
+        // $this->db->update('production_schedules', ["workorder" => $data['workorder']], ["status" => 0]);
         echo $send;
     }
+
+    public function deleteIssued(){
+        $querys = $this->crud->query("SELECT * FROM supply_sheets WHERE type = 'PP' ORDER BY created_date ASC");
+        foreach ($querys as $query) {
+            $id = $query->id;
+            $request_no = $query->request_no;
+            $item_rm_id = $query->item_rm_id;
+
+            $querys2 = $this->crud->query("SELECT SUM(qty) as total FROM issued_material_details WHERE request_no = '$request_no' and item_rm_id = '$item_rm_id'");
+            if(@$querys2[0]->total <= 0){
+                $this->db->delete('supply_sheets', ["id" => $id]);
+                echo $request_no . " | " . $item_rm_id . " | Delete <br>";
+            }
+        }
+    }
+
     //PRINT & EXCEL DATA
     public function print($option = "")
     {
@@ -139,33 +148,11 @@ class Wip_balances extends CI_Controller
             header("Content-Disposition: attachment; filename=wip_balances_$format.xls");
         }
 
-        $supply_type  = base64_decode($this->input->get('supply_type'));
-        $item_rm_id  = base64_decode($this->input->get('item_rm_id'));
-        $item_rm_number  = base64_decode($this->input->get('item_rm_number'));
-        $uom  = base64_decode($this->input->get('uom'));
-        $request_no  = base64_decode($this->input->get('request_no'));
-        $workorder  = base64_decode($this->input->get('workorder'));
-        $qty_act  = base64_decode($this->input->get('qty_act'));
-        $issued  = base64_decode($this->input->get('issued'));
-        $qty_issued_bal  = base64_decode($this->input->get('qty_issued_bal'));
-        $created_by  = base64_decode($this->input->get('created_by'));
-        $created_date  = base64_decode($this->input->get('created_date'));
-        $updated_by  = base64_decode($this->input->get('updated_by'));
-        $updated_date  = base64_decode($this->input->get('updated_date'));
-
         //Config
         $this->db->select('*');
         $this->db->from('config');
         $config = $this->db->get()->row();
 
-        // $this->db->select('a.*, b.number as item_number, b.name as item_name, b.uom');
-        // $this->db->from('wip_balances a');
-        // $this->db->join('item_rm b', 'a.item_rm_id = b.id');
-        // $this->db->join('uom c', 'b.uom_id = c.id');
-        // $this->db->where('a.deleted', 0);
-        // $this->db->order_by('b.number', 'ASC');
-        // $this->db->order_by('a.request_no', 'ASC');
-        // $this->db->order_by('a.created_date', 'DESC');
         $this->db->select("a.*, 
             c.number as item_rm_number, 
             c.name as item_rm_name, 
@@ -176,19 +163,6 @@ class Wip_balances extends CI_Controller
         $this->db->from('supply_sheets a');
         $this->db->join('item_rm c', 'a.item_rm_id = c.id');
         $this->db->join("(SELECT request_no, item_rm_id, SUM(qty) as qty_issued FROM issued_material_details GROUP BY request_no, item_rm_id) i", "i.request_no = a.request_no and i.item_rm_id = c.id", "LEFT");
-        // $this->db->like("(CASE WHEN (coalesce(i.qty_issued, 0) - a.qty_act) < 0 THEN 'OPEN' ELSE 'CLOSED' END)", $supply_type);
-        // $this->db->like('a.item_rm_id', $item_rm_id);
-        // $this->db->like('c.number', $item_rm_number);
-        // $this->db->like('c.uom', $uom);
-        // $this->db->like('a.request_no', $request_no);
-        // $this->db->like('a.workorder', $workorder);
-        // $this->db->like('a.qty_act', $qty_act);
-        // $this->db->like('coalesce(i.qty_issued, 0)', $issued);
-        // $this->db->like('(coalesce(i.qty_issued, 0) - a.qty_act)', $qty_issued_bal);
-        // $this->db->like('a.created_by', $created_by);
-        // $this->db->like('a.created_date', $created_date);
-        // $this->db->like('a.updated_by', $updated_by);
-        // $this->db->like('a.updated_date', $updated_date);
         $this->db->group_by('a.request_no');
         $this->db->group_by('a.item_rm_id');
         $this->db->order_by('a.created_date', 'DESC');

@@ -1,4 +1,4 @@
-<table id="dg" class="easyui-datagrid" style="width:99.5%;" toolbar="#toolbar">
+<table id="dg" class="easyui-datagrid" style="width:99.5%;" toolbar="#toolbar" showFooter="true">
     <thead frozen="true">
         <tr>
             <th field="ck" checkbox="true"></th>
@@ -16,27 +16,29 @@
             <th rowspan="2" data-options="field:'uom',width:80,align:'center'">Uom</th>
             <th rowspan="2" data-options="field:'qty',width:80,halign:'center',align:'right'">Qty</th>
             <th rowspan="2" data-options="field:'cost',width:100,halign:'center',align:'right', formatter:priceformat">Opening<br>Acq.Value</th>
-            <th rowspan="2" data-options="field:'acq_period',width:100,halign:'center',align:'right', formatter:priceformat">Acquisition for<br>the period</th>
+            <th rowspan="2" data-options="field:'acq_period',width:100,halign:'center',align:'right', formatter:priceformat">Acquisition<br>for the period</th>
             <th rowspan="2" data-options="field:'acq_closing',width:100,halign:'center',align:'right', formatter:priceformat">Closing Acq<br>value</th>
             <th rowspan="2" data-options="field:'residual',width:100,halign:'center',align:'right', formatter:priceformat">Residual value<br>@5% of cost</th>
-            <th colspan="3" data-options="field:'',width:100,align:'center'">Estimated</th>
+            <th colspan="2" data-options="field:'',width:100,align:'center'">Estimated</th>
+            <th rowspan="2" data-options="field:'asset_period',width:100,halign:'center',align:'center'">Asset Used<br>During Period</th>
             <th rowspan="2" data-options="field:'addition_op',width:100,halign:'center',align:'right', formatter:priceformat">Dep. on<br>opening value</th>
             <th rowspan="2" data-options="field:'addition',width:100,halign:'center',align:'right', formatter:priceformat">Dep. on<br>Addition</th>
             <th rowspan="2" data-options="field:'addition_total',width:100,halign:'center',align:'right', formatter:priceformat">Total Dep. For<br>the period</th>
             <th rowspan="2" data-options="field:'accum_op',width:100,halign:'center',align:'right', formatter:priceformat">Opening<br>Accum Dep</th>
             <th rowspan="2" data-options="field:'accum_close',width:100,halign:'center',align:'right', formatter:priceformat">Closing<br>Accum Dep</th>
             <th rowspan="2" data-options="field:'wdv',width:100,halign:'center',align:'right', formatter:priceformat">Opening<br>WDV</th>
+            <th rowspan="2" data-options="field:'wdv_close',width:100,halign:'center',align:'right', formatter:priceformat">Closing<br>WDV</th>
             <th rowspan="2" data-options="field:'posting_date',width:100,align:'center'">Posting Date</th>
             <th rowspan="2" data-options="field:'expired_date',width:100,align:'center'">Expired Date</th>
-            <th rowspan="2" data-options="field:'depreciation',width:100,halign:'center',align:'right', formatter:priceformat">Depreciation</th>
+            <th hidden rowspan="2" data-options="field:'depreciation',width:100,halign:'center',align:'right', formatter:priceformat">Depreciation</th>
             <th rowspan="2" data-options="field:'departement',width:100,halign:'center'">Departement</th>
-            <th rowspan="2" data-options="field:'status_expired',width:100,align:'center',formatter:statusformat,styler:statusStyle">Status</th>
+            <th rowspan="2" data-options="field:'voucher_no',width:120,halign:'center'">Vourcher No</th>
+            <th rowspan="2" data-options="field:'status',width:100,align:'center',formatter:statusformat,styler:statusStyle">Status</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
         </tr>
         <tr>
             <th data-options="field:'estimate_year',width:80,align:'center'"> Year</th>
-            <th data-options="field:'estimate_month',width:80,align:'center'"> Month</th>
             <th data-options="field:'estimate_day',width:80,align:'center'"> Day</th>
             <th data-options="field:'created_by',width:100,align:'center'"> By</th>
             <th data-options="field:'created_date',width:150,align:'center'"> Date</th>
@@ -46,56 +48,22 @@
     </thead>
 </table>
 
-<div id="toolbar" style="height: 165px; padding: 10px;">
+<div id="toolbar" style="height: 125px; padding: 10px;">
     <!-- <div style="width: 100%; display: grid; grid-template-columns: auto auto auto; grid-gap: 5px; display: flex;"> -->
     <div style="width: 100%;">
         <fieldset style="width: 100%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
             <legend><b>Form Filter Data</b></legend>
-            <div style="width: 30%; float: left;">
+            <div style="width: 80%; float: left;">
                 <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Purchase Date</span>
-                    <input style="width:28%;" id="filter_from" value="<?= $filter_from ?>" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false"> To
-                    <input style="width:28%;" id="filter_to" value="<?= date("Y-m-t") ?>" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
-                </div>
-                <!-- <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Asset Category</span>
-                    <input style="width:60%;" id="filter_category" class="easyui-combobox">
-                </div>
-                <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Asset No</span>
-                    <input style="width:60%;" id="filter_number" class="easyui-combobox">
-                </div> -->
-                <div class="fitem">
-                    <span style="width:35%; display:inline-block;"></span>
+                    <span style="width:12%; display:inline-block;">Capitalization Date</span>
+                    <input style="width:12%;" id="filter_from" value="<?= $filter_from ?>" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false"> To
+                    <input style="width:12%;" id="filter_to" value="<?= date("Y-m-t") ?>" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
+                    <span style="width:12%; display:inline-block;">&nbsp; &nbsp; Financial Date</span>
+                    <input style="width:12%;" id="cutoff_from" value="<?= date("Y-04-01", strtotime("-1 year")) ?>" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false"> To
+                    <input style="width:12%;" id="cutoff_to" value="<?= date("Y-03-t") ?>" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
                     <a href="javascript:;" class="easyui-linkbutton" onclick="filter()"><i class="fa fa-search"></i> Filter Data</a>
                 </div>
             </div>
-            <!-- <div style="width: 50%; float: left;">
-                <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Estimate Economic</span>
-                    <select style="width:60%;" id="filter_estimate" panelHeight="auto" class="easyui-combobox">
-                        <option value="">Choose Estimate Economic</option>
-                        <option value="1">1 Year</option>
-                        <option value="2">2 Year</option>
-                        <option value="3">3 Year</option>
-                        <option value="4">4 Year</option>
-                        <option value="5">5 Year</option>
-                        <option value="6">6 Year</option>
-                        <option value="7">7 Year</option>
-                        <option value="8">8 Year</option>
-                        <option value="9">9 Year</option>
-                        <option value="10">10 Year</option>
-                    </select>
-                </div>
-                <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Purchase Invoice No</span>
-                    <input style="width:60%;" id="filter_purchase_invoice_number" class="easyui-combobox">
-                </div>
-                <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Supplier</span>
-                    <input style="width:60%;" id="filter_supplier" class="easyui-combobox">
-                </div>
-            </div> -->
         </fieldset>
         <?= $button ?>
     </div>
@@ -120,10 +88,6 @@
                     <input style="width:60%;" name="name" id="name" class="easyui-textbox">
                 </div>
                 <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Capitalization Date</span>
-                    <input style="width:60%;" name="trans_date" id="trans_date" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
-                </div>
-                <div class="fitem">
                     <span style="width:35%; display:inline-block;">Supplier</span>
                     <input style="width:60%;" name="supplier_name" id="supplier_name" class="easyui-textbox">
                 </div>
@@ -136,16 +100,20 @@
                     <input style="width:30%;" name="qty" id="qty" class="easyui-numberbox">
                 </div>
                 <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Opening Acq.Value</span>
+                    <span style="width:35%; display:inline-block;">Asset Value</span>
                     <input style="width:30%;" name="cost" id="cost" class="easyui-numberbox" data-options="groupSeparator:',',decimalSeparator:'.',precision:2">
                 </div>
             </div>
             <div style="width: 50%; float: left;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Estimated Economic</span>
-                    <input style="width:20%;" name="estimate_year" id="estimate_year"  class="easyui-numberbox" data-options="prompt:'Year'">
-                    <input style="width:20%;" name="estimate_month" id="estimate_month" class="easyui-numberbox" data-options="prompt:'Month'">
-                    <input style="width:20%;" name="estimate_day" id="estimate_day" class="easyui-numberbox" data-options="prompt:'Day'">
+                    <input style="width:20%;" name="estimate_year" id="estimate_year" readonly class="easyui-numberbox" data-options="prompt:'Year'">
+                    <!-- <input style="width:20%;" name="estimate_month" id="estimate_month" class="easyui-numberbox" data-options="prompt:'Month'"> -->
+                    <input style="width:20%;" name="estimate_day" id="estimate_day" readonly class="easyui-numberbox" data-options="prompt:'Day'">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Capitalization Date</span>
+                    <input style="width:60%;" name="trans_date" id="trans_date" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Posting Date</span>
@@ -157,20 +125,20 @@
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Shift Factor</span>
-                    <input style="width:40%;" name="shift" id="shift" required class="easyui-numberbox">
+                    <input style="width:40%;" name="shift" id="shift" readonly required class="easyui-numberbox">
                 </div>
-                <div class="fitem">
+                <!-- <div class="fitem">
                     <span style="width:35%; display:inline-block;">Depreciation</span>
                     <input style="width:40%;" name="depreciation" id="depreciation" required class="easyui-numberbox" data-options="groupSeparator:',',decimalSeparator:'.',precision:2">
-                </div>
+                </div> -->
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Remarks</span>
                     <input style="width:60%; height: 80px;" name="remarks" id="remarks" class="easyui-textbox" multiline="true">
                 </div>
             </div>
             <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
-                <legend><b>Acquisition, Depreciation and Accumulation Information</b></legend>
-                <div style="width: 35%; float: left;">
+                <legend><b>Accumulation Information</b></legend>
+                <!-- <div style="width: 35%; float: left;">
                     <div class="fitem">
                         <span style="width:60%; display:inline-block;">Acquisition for the period</span>
                         <input style="width:30%;" name="acq_period" id="acq_period" class="easyui-numberbox" data-options="groupSeparator:',',decimalSeparator:'.',precision:2">
@@ -197,20 +165,20 @@
                         <span style="width:60%; display:inline-block;">Total Dep. For the period</span>
                         <input style="width:30%;" name="addition_total" id="addition_total" class="easyui-numberbox" data-options="groupSeparator:',',decimalSeparator:'.',precision:2">
                     </div>
-                </div>
-                <div style="width: 30%; float: left;">
+                </div> -->
+                <div style="width: 50%; float: left;">
                     <div class="fitem">
                         <span style="width:60%; display:inline-block;">Opening Accum Dep</span>
                         <input style="width:30%;" name="accum_op" id="accum_op" class="easyui-numberbox" data-options="groupSeparator:',',decimalSeparator:'.',precision:2">
                     </div>
-                    <div class="fitem">
+                    <!-- <div class="fitem">
                         <span style="width:60%; display:inline-block;">Closing Accum Dep</span>
                         <input style="width:30%;" name="accum_close" id="accum_close" class="easyui-numberbox" data-options="groupSeparator:',',decimalSeparator:'.',precision:2">
                     </div>
                     <div class="fitem">
                         <span style="width:60%; display:inline-block;">Opening WDV</span>
                         <input style="width:30%;" name="wdv" id="wdv" class="easyui-numberbox" data-options="groupSeparator:',',decimalSeparator:'.',precision:2">
-                    </div>
+                    </div> -->
                 </div>
             </fieldset>
             
@@ -356,6 +324,7 @@
         if (row) {
             $('#dlg_insert').dialog('open');
             $('#frm_insert').form('load', row);
+            $("#cost").numberbox('setValue', row.cost + row.acq_period);
             $("#method").textbox('setValue', "Straight Line");
             url_save = '<?= base_url('assets/fixeds/update') ?>?id=' + btoa(row.id);
         } else {
@@ -427,6 +396,8 @@
     function filter() {
         var filter_from = $("#filter_from").datebox('getValue');
         var filter_to = $("#filter_to").datebox('getValue');
+        var cutoff_from = $("#cutoff_from").datebox('getValue');
+        var cutoff_to = $("#cutoff_to").datebox('getValue');
         // var filter_number = $("#filter_number").combobox('getValue');
         // var filter_category = $("#filter_category").combobox('getValue');
         // var filter_estimate = $("#filter_estimate").combobox('getValue');
@@ -434,7 +405,9 @@
         // var filter_supplier = $("#filter_supplier").combobox('getValue');
 
         var url = "?filter_from=" + window.btoa(filter_from) +
-            "&filter_to=" + window.btoa(filter_to);
+            "&filter_to=" + window.btoa(filter_to) +
+            "&cutoff_to=" + window.btoa(cutoff_to) +
+            "&cutoff_from=" + window.btoa(cutoff_from);
             // "&filter_number=" + window.btoa(filter_number) +
             // "&filter_category=" + window.btoa(filter_category) +
             // "&filter_estimate=" + window.btoa(filter_estimate) +
@@ -649,13 +622,6 @@
             }]
         });
 
-        $("#asset_category_number").combobox({
-            url: '<?= base_url('assets/categories/reads') ?>',
-            valueField: 'number',
-            textField: 'name',
-            prompt: "Choose Category",
-        });
-
         $("#filter_category").combobox({
             url: '<?= base_url('assets/categories/reads') ?>',
             valueField: 'number',
@@ -772,15 +738,15 @@
     function statusformat(value, row) {
         if (value == 0) {
             return "<b style='color:green;'>ACTIVE</b>";
-        } else if (value == 1) {
-            return "<b style='color:red;'>EXPIRED</b>";
+        } else {
+            return "<b style='color:red;'>INACTIVE</b>";
         }
     }
 
     function statusStyle(value, row, index) {
         if (value == 0) {
             return 'background-color:#C8FFCC;';
-        } else if (value == 1) {
+        } else {
             return 'background-color:#FFC8C8;';
         }
     }

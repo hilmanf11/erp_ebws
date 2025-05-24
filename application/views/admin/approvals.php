@@ -50,10 +50,14 @@
                     <!-- <option value="supplier_item_prices">Supplier Contract Prices</option> -->
                     <option value="purchase_requests">Purchase Requests</option>
                     <option value="purchase_request_others">Purchase Request Others</option>
+                    <option value="purchase_request_services">Purchase Request Services</option>
+                    <option value="purchase_request_rfq">Request RFQ</option>
                     <option value="purchase_orders">Purchase Order</option>
                     <option value="purchase_order_others">Purchase Order Others</option>
-                    <option value="supply_sheets">Kanban Requests</option>
+                    <option value="purchase_order_services">Purchase Order Services</option>
+                    <option value="purchase_order_rfq">Request for Quotation</option>
                     <option value="supply_materials">Part Requisition</option>
+                    <option value="supply_sheets">Kanban Requests</option>
                     <option value="item_ng">Material NG</option>
                     <option value="sto_rm">STO Raw Material</option>
                     <option value="sto_fg">STO Finish Good</option>
@@ -61,7 +65,8 @@
                     <option value="item_mpq">Item MPQ</option>
                     <option value="sales_orders">Sales Orders</option>
                     <option value="sample_requests">Purch. Sample Requests</option>
-                    <!-- <option value="rgp_transactions">RGP Transactions</option> -->
+                    <option value="rgp_transaction_in">RGP Transaction IN</option>
+                    <option value="rgp_transaction_out">RGP Transaction OUT</option>
                     <option value="scrap_booking">Scrap Booking</option>
                 </select>
             </div>

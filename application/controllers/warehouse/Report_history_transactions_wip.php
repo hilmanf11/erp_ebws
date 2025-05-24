@@ -50,14 +50,16 @@ class Report_history_transactions_wip extends CI_Controller
         $this->db->from('config');
         $config = $this->db->get()->row();
         
-        $records = $this->crud->query("SELECT a.item_rm_id, c.number AS item_rm_number, c.name AS item_rm_name, d.name AS item_family_name, c.uom, SUM(a.total) AS need, b.issued, (COALESCE(b.issued, 0) - SUM(a.total)) AS balance FROM (
+        $records = $this->crud->query("SELECT c.id as item_rm_id, c.number AS item_rm_number, c.name AS item_rm_name, d.name AS item_family_name, c.uom, SUM(a.total) AS need, b.issued, (COALESCE(b.issued, 0) - COALESCE(SUM(a.total), 0)) AS balance 
+            FROM item_rm c
+            LEFT JOIN (
                 SELECT b.item_rm_id, a.item_fg_id, SUM(a.qty), b.composition, (SUM(a.qty) * b.composition) AS total
                 FROM production_schedules a
                 JOIN bom b ON a.item_fg_id = b.item_fg_id
                 WHERE a.trans_date BETWEEN '$filter_from' AND '$filter_to' 
-                GROUP BY a.item_fg_id, b.item_rm_id) a
-            LEFT JOIN (SELECT item_rm_id, SUM(qty) AS issued FROM issued_material_details WHERE DATE_FORMAT(created_date, '%Y-%m-%d') BETWEEN '$filter_from' AND '$filter_to' and request_no NOT LIKE '%PR-%' GROUP BY item_rm_id) b ON a.item_rm_id = b.item_rm_id
-            JOIN item_rm c ON a.item_rm_id = c.id
+                GROUP BY a.item_fg_id, b.item_rm_id
+            ) a ON a.item_rm_id = c.id
+            LEFT JOIN (SELECT item_rm_id, SUM(qty) AS issued FROM issued_material_details WHERE DATE_FORMAT(created_date, '%Y-%m-%d') BETWEEN '$filter_from' AND '$filter_to' and request_no NOT LIKE '%PR-%' GROUP BY item_rm_id) b ON c.id = b.item_rm_id
             JOIN item_familys d ON c.item_family_id = d.id
             WHERE c.item_family_id like '%$filter_item_family%' and c.id like '%$filter_items%'
             GROUP BY a.item_rm_id

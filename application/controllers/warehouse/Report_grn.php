@@ -63,6 +63,7 @@ class Report_grn extends CI_Controller
         $this->db->join('item_familys d', 'c.item_family_id = d.id');
         $this->db->join('(SELECT receipt_id, COUNT(id) as total_scan FROM scan_item_receipts GROUP BY receipt_id) g', 'g.receipt_id = a.receipt_id', 'left');
         $this->db->where('a.deleted', 0);
+        $this->db->where("a.status != 2");
         if ($filter_from != "" and $filter_to != "") {
             $this->db->where('a.receipt_date >=', $filter_from);
             $this->db->where('a.receipt_date <=', $filter_to);

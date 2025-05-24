@@ -5,8 +5,8 @@
             <th rowspan="2" data-options="field:'scan',width:100,halign:'center', styler:cellStylerScan, formatter:cellFormatterScan">Scan</th>
             <th rowspan="2" data-options="field:'checksheet_number',width:150,align:'center'">Checksheet ID</th>
             <th rowspan="2" data-options="field:'workorder',width:150,halign:'center'">Workorder</th>
-            <th rowspan="2" data-options="field:'trans_date_from',width:100,align:'center'">Date<br>From</th>
-            <th rowspan="2" data-options="field:'trans_date_to',width:100,align:'center'">Date<br>To</th>
+            <th rowspan="2" data-options="field:'trans_date_from',width:100,align:'center'">Trans Date</th>
+            <th rowspan="2" data-options="field:'period',width:80,align:'center'">Period</th>
             <th rowspan="2" data-options="field:'wp',width:80,align:'center'">WP</th>
             <th rowspan="2" data-options="field:'item_fg_number',width:150">Product No EBWS</th>
             <th rowspan="2" data-options="field:'number_customer',width:200">Product No Customer</th>
@@ -59,11 +59,16 @@
                     <input style="width:60%;" id="filter_workorder" class="easyui-combobox">
                 </div>
                 <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Product No</span>
-                    <input style="width:60%;" id="filter_item_fg_id" class="easyui-combogrid">
+                    <span style="width:35%; display:inline-block;">Period / WP</span>
+                    <input style="width:30%;" id="filter_period" class="easyui-combobox">
+                    <input style="width:30%;" id="filter_wp" class="easyui-combobox">
                 </div>
             </div>
             <div style="width:30%; float: left;">
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Product No</span>
+                    <input style="width:60%;" id="filter_item_fg_id" class="easyui-combogrid">
+                </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Status Scan</span>
                     <select style="width:60%;" id="filter_status" class="easyui-combobox" panelHeight="auto">
@@ -118,6 +123,7 @@
             <thead>
                 <tr>
                     <th field="ck" checkbox="true"></th>
+                    <th hidden data-options="field:'item_fg_id',width:250">Product No</th>
                     <th data-options="field:'workorder',width:250">Work Order</th>
                     <th data-options="field:'period',width:150">Period</th>
                     <th data-options="field:'wp',width:150">WP</th>
@@ -356,9 +362,11 @@
         var filter_checksheet = $("#filter_checksheet").combogrid('getValue');
         var filter_workorder = $("#filter_workorder").combobox('getValue');
         var filter_item_fg_id = $("#filter_item_fg_id").combogrid('getValue');
+        var filter_period = $("#filter_period").combobox('getValue');
+        var filter_wp = $("#filter_wp").combobox('getValue');
         var filter_status = $("#filter_status").combobox('getValue');
 
-        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_checksheet=" + filter_checksheet + 
+        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_checksheet=" + filter_checksheet + "&filter_wp=" + filter_wp + "&filter_period=" + filter_period +
             "&filter_workorder=" + filter_workorder + "&filter_item_fg_id=" + filter_item_fg_id + "&filter_status=" + filter_status;
 
         $('#dg').datagrid({
@@ -385,9 +393,11 @@
         var filter_checksheet = $("#filter_checksheet").combogrid('getValue');
         var filter_workorder = $("#filter_workorder").combobox('getValue');
         var filter_item_fg_id = $("#filter_item_fg_id").combogrid('getValue');
+        var filter_period = $("#filter_period").combobox('getValue');
+        var filter_wp = $("#filter_wp").combobox('getValue');
         var filter_status = $("#filter_status").combobox('getValue');
 
-        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_checksheet=" + filter_checksheet + 
+        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_checksheet=" + filter_checksheet + "&filter_wp=" + filter_wp + "&filter_period=" + filter_period +
             "&filter_workorder=" + filter_workorder + "&filter_item_fg_id=" + filter_item_fg_id + "&filter_status=" + filter_status;
 
         window.location.assign('<?= base_url('warehouse/wip_receipts/print/excel') ?>' + url);
@@ -450,11 +460,11 @@
                                                     url: '<?= base_url('warehouse/wip_receipts/create') ?>',
                                                     data: {
                                                         customer_id: customer_id,
-                                                        item_fg_id: item_fg_id,
                                                         trans_date_from: trans_date_from,
                                                         trans_date_to: trans_date_to,
                                                         checksheet_number: checksheet_number,
                                                         period: period,
+                                                        item_fg_id: json[i].item_fg_id,
                                                         workorder: json[i].workorder,
                                                         wp: json[i].wp,
                                                         qty: json[i].qty,
@@ -724,6 +734,33 @@
                     $(e.data.target).combobox('clear').combobox('textbox').focus();
                 }
             }],
+        });
+
+        $("#filter_period").combobox({
+            url: '<?= base_url('planning/production_schedules/readPeriod/period') ?>',
+            valueField: 'period',
+            textField: 'period',
+            prompt: "Select Periode",
+            icons: [{
+                iconCls: 'icon-clear',
+                handler: function(e) {
+                    $(e.data.target).combobox('clear').combobox('textbox').focus();
+                }
+            }],
+            onSelect: function(period){
+                $("#filter_wp").combobox({
+                    url: '<?= base_url('planning/production_schedules/readWp?period=') ?>' + btoa(period.period),
+                    valueField: 'wp',
+                    textField: 'wp',
+                    prompt: "Select WP",
+                    icons: [{
+                        iconCls: 'icon-clear',
+                        handler: function(e) {
+                            $(e.data.target).combobox('clear').combobox('textbox').focus();
+                        }
+                    }],
+                });
+            }
         });
 
         $('#filter_item_fg_id').combogrid({

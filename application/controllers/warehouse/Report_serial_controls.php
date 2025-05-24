@@ -82,34 +82,36 @@ class Report_serial_controls extends CI_Controller
         $this->db->from('config');
         $config = $this->db->get()->row();
 
-        $this->db->select('g.delivery_note_no, a.checksheet_number, d.delivery_order_no, d.delivery_order_date, d.sales_order_no, e.name as customer_name, h.number_customer as item_no, h.name as item_name, b.checksheet_label, b.qty, b.status');
-        $this->db->from('item_fg h');
-        $this->db->join('wip_receipts a', 'h.id = a.item_fg_id', 'left');
-        $this->db->join('os_fg i', 'h.id = i.item_fg_id', 'left');
-        $this->db->join('scan_item_receipts_fg b', '((a.checksheet_number = b.checksheet_number and a.workorder = b.workorder) or b.workorder = i.id)');
-        $this->db->join('shipping_orders c', 'b.checksheet_label = c.checksheet_label', 'left');
-        $this->db->join('delivery_orders d', 'c.delivery_order_no = d.delivery_order_no', 'left');
-        $this->db->join('customers e', 'a.customer_id = e.id', 'left');
-        $this->db->join('delivery_notes g', 'd.delivery_order_no = g.delivery_order_no', 'left');
-        $this->db->where("DATE_FORMAT(b.created_date, '%Y-%m') = '$period'");
+        $this->db->select('a.checksheet_number, a.checksheet_label, a.qty, a.status, d.number_customer AS item_no, d.name AS item_name, e.delivery_order_no, e.delivery_order_date, e.sales_order_no, f.name AS customer_name, e.delivery_note_no');
+        $this->db->from('scan_item_receipts_fg a');
+        $this->db->join('wip_receipts b', 'a.checksheet_number = b.checksheet_number', 'left');
+        $this->db->join('os_fg c', 'a.workorder = c.id', 'left');
+        $this->db->join('item_fg d', '(b.item_fg_id = d.id OR c.item_fg_id = d.id)');
+        $this->db->join("(SELECT a.checksheet_label, c.delivery_note_no, b.delivery_order_no, b.delivery_order_date, b.sales_order_no
+            FROM shipping_orders a
+            JOIN delivery_orders b ON a.delivery_order_no = b.delivery_order_no
+            JOIN delivery_notes c ON b.delivery_order_no = c.delivery_order_no
+            GROUP BY a.id) e", 'a.checksheet_label = e.checksheet_label', 'left');
+            $this->db->join('customers f', 'b.customer_id = f.id', 'left');
+        $this->db->where("DATE_FORMAT(a.created_date, '%Y-%m') = '$period'");
         if($filter_customer != ""){
-            $this->db->like('a.customer_id', $filter_customer);
+            $this->db->like('f.id', $filter_customer);
         }
         if($filter_product_no != ""){
-            $this->db->like('h.id', $filter_product_no);
+            $this->db->like('d.id', $filter_product_no);
         }
         if($filter_do_no != ""){
-            $this->db->like('d.delivery_order_no ', $filter_do_no);
+            $this->db->like('e.delivery_order_no ', $filter_do_no);
         }
         if($filter_dn_no != ""){
-            $this->db->like('g.delivery_note_no', $filter_dn_no);
+            $this->db->like('e.delivery_note_no', $filter_dn_no);
         }
         if($filter_serial_no != ""){
-            $this->db->like('b.checksheet_label', $filter_serial_no);
+            $this->db->like('a.checksheet_label', $filter_serial_no);
         }
-        $this->db->group_by('b.checksheet_label');
-        $this->db->order_by('d.delivery_order_no', 'ASC');
-        $this->db->order_by('b.checksheet_label', 'ASC');
+        $this->db->group_by('a.checksheet_label');
+        $this->db->order_by('e.delivery_order_no', 'ASC');
+        $this->db->order_by('a.checksheet_label', 'ASC');
         $records = $this->db->get()->result_array();
 
         $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#customers {border-collapse: collapse;width: 100%;font-size: 12px;}#customers td, #customers th {border: 1px solid #ddd;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: #ddd;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: center;color: black;}</style><body>

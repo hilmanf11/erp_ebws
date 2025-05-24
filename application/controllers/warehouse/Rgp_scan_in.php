@@ -111,35 +111,40 @@ class Rgp_scan_in extends CI_Controller
                 $scan_item_rgp = $this->crud->read("scan_item_rgp", [], ["label_no" => $post['label_no'], "type" => "IN"]);
 
                 if (!$scan_item_rgp) {
+                    $rgp_transactions = $this->crud->read("rgp_transactions", [], ["number" => $post['rgp_number'], "item_id" => $post['item_id']]);
                     $item_rm = $this->crud->read("item_rm", [], ["id" => $post['item_id']]);
-                    if (!empty(@$item_rm->id)) { //jika RM
-                        $send   = $this->crud->create('scan_item_rgp', array_merge($post, ["type" => "IN"]));
-                        if ($send) {
-                            $postItemReceipts = array(
-                                "receipt_id" => $post['rgp_id'],
-                                "label_no" => $post['label_no'],
-                                "qty" => $post['qty'],
-                                "status" => 0,
-                            );
-                            $this->crud->update('rgp_transaction_labels', ["label_no" => $post['label_no']], ["status" => 1]);
-                            $this->crud->create('scan_item_receipts', $postItemReceipts);
-                            echo $send;
+                    if (@$rgp_transactions->approved_to == '' || @$rgp_transactions->approved_to == null) { // cek document RGP sudah di approve
+                        if (!empty(@$item_rm->id)) { //jika RM
+                            $send   = $this->crud->create('scan_item_rgp', array_merge($post, ["type" => "IN"]));
+                            if ($send) {
+                                $postItemReceipts = array(
+                                    "receipt_id" => $post['rgp_id'],
+                                    "label_no" => $post['label_no'],
+                                    "qty" => $post['qty'],
+                                    "status" => 0,
+                                );
+                                $this->crud->update('rgp_transaction_labels', ["label_no" => $post['label_no']], ["status" => 1]);
+                                $this->crud->create('scan_item_receipts', $postItemReceipts);
+                                echo $send;
+                            }
+                        } else { // jika FG
+                            $send   = $this->crud->create('scan_item_rgp', array_merge($post, ["type" => "IN"]));
+                            $rgp_transactions = $this->crud->read("rgp_transactions", [], ["number" => $post['rgp_number'], "item_id" => $post['item_id']]);
+                            if ($send) {
+                                $postItemReceipts = array(
+                                    "checksheet_number" => $post['rgp_id'],
+                                    "checksheet_label" => $post['label_no'],
+                                    "workorder" => @$rgp_transactions->id,
+                                    "qty" => $post['qty'],
+                                    "status" => 0,
+                                );
+                                $this->crud->update('rgp_transaction_labels', ["label_no" => $post['label_no']], ["status" => 1]);
+                                $this->crud->create('scan_item_receipts_fg', $postItemReceipts);
+                                echo $send;
+                            }
                         }
-                    } else { // jika FG
-                        $send   = $this->crud->create('scan_item_rgp', array_merge($post, ["type" => "IN"]));
-                        $rgp_transactions = $this->crud->read("rgp_transactions", [], ["number" => $post['rgp_number'], "item_id" => $post['item_id']]);
-                        if ($send) {
-                            $postItemReceipts = array(
-                                "checksheet_number" => $post['rgp_id'],
-                                "checksheet_label" => $post['label_no'],
-                                "workorder" => @$rgp_transactions->id,
-                                "qty" => $post['qty'],
-                                "status" => 0,
-                            );
-                            $this->crud->update('rgp_transaction_labels', ["label_no" => $post['label_no']], ["status" => 1]);
-                            $this->crud->create('scan_item_receipts_fg', $postItemReceipts);
-                            echo $send;
-                        }
+                    } else {
+                        echo json_encode(array("title" => "Need Approve", "message" => "RGP Number Document Need to Approve", "theme" => "error"));
                     }
                 } else {
                     echo json_encode(array("title" => "Available", "message" => "Data Label No has been Scanned", "theme" => "error"));

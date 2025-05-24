@@ -32,12 +32,129 @@ class Disposeds extends CI_Controller
     public function readFixeds()
     {
         $post = isset($_POST['q']) ? $_POST['q'] : "";
-        $send = $this->crud->query("SELECT *
-            FROM asset_fixeds
-            WHERE status = 0 and (number LIKE '%$post%' or name LIKE '%$post%') 
-            ORDER BY name asc");
 
-        echo json_encode($send);
+        $cutoff_from = date("Y-04-01", strtotime("-1 year"));
+        $cutoff_to = date("Y-03-t");
+
+        //Select Query
+        $this->db->select("a.*, b.name as asset_category_name");
+        $this->db->from('asset_fixeds a');
+        $this->db->join('item_familys b', 'a.item_family_id = b.id');
+        $this->db->where('a.status', 0);
+        $this->db->group_start();
+        $this->db->like('a.number', $post);
+        $this->db->or_like('a.name', $post);
+        $this->db->group_end();
+        $this->db->group_by('a.number');
+        $records = $this->db->get()->result_array();
+        
+        $datas = [];
+        $total_cost = 0;
+        $total_acq_period = 0;
+        $total_acq_closing = 0;
+        $total_residual = 0;
+        $total_addition_op = 0;
+        $total_addition = 0;
+        $total_addition_total = 0;
+        $total_accum_op = 0;
+        $total_accum_close = 0;
+        $total_wdv = 0;
+        $total_wdv_close = 0;
+        $total_depreciation = 0;
+        foreach ($records as $record) {
+            $trans_date = date_create($record['trans_date']);
+            $start_date = date_create($cutoff_from);
+            $end_date = date_create($cutoff_to);
+
+            if($trans_date < $start_date){
+                $total_day = (date_diff($start_date, $end_date)->days + 1);
+            }else{
+                $total_day = (date_diff($trans_date, $end_date)->days + 1);
+            }
+
+            if($record['estimate_year'] == 0){
+                $estimate_day = 1;
+            }else{
+                $estimate_day = ($record['estimate_year'] * 365);
+            }
+
+            if($record['trans_date'] < $cutoff_from){
+                $cost = $record['cost'];
+                $acq_period = 0;
+            }elseif($record['trans_date'] >= $cutoff_from){
+                $cost = 0;
+                $acq_period = $record['cost'];
+            }else{
+                $cost = 0;
+                $acq_period = 0;
+            }
+
+            if($cost != 0 && $estimate_day > 1){
+                $addition_op = (round(((($cost - (($cost + $acq_period) * (5 / 100))) / $estimate_day) * $total_day) * $record['shift'], 2));
+            }else{
+                $addition_op = 0;
+            }
+
+            if($acq_period != 0 && $estimate_day > 1){
+                $addition = (round(((($acq_period - (($cost + $acq_period) * (5 / 100))) / $estimate_day) * $total_day) * $record['shift'], 2));
+            }else{
+                $addition = 0;
+            }
+
+            $addition_total = ($addition_op + $addition);
+            $datas[] = array(
+                "id" => $record['id'],
+                "number" => $record['number'],
+                "name" => $record['name'],
+                "asset_category_name" => $record['asset_category_name'],
+                "purchase_invoice_no" => $record['purchase_invoice_no'],
+                "supplier_name" => $record['supplier_name'],
+                "trans_date" => $record['trans_date'],
+                "shift" => $record['shift'],
+                "uom" => $record['uom'],
+                "qty" => $record['qty'],
+                "cost" => $cost,
+                "acq_period" => $acq_period,
+                "acq_closing" => ($cost + $acq_period),
+                "residual" => round(($cost + $acq_period) * (5 / 100)),
+                "estimate_year" => ($record['estimate_year']),
+                "estimate_month" => ($record['estimate_year'] * 12),
+                "estimate_day" => ($record['estimate_year'] * 365),
+                "asset_period" => $total_day,
+                "addition_op" => $addition_op,
+                "addition" => $addition,
+                "addition_total" => $addition_total,
+                "accum_op" => $record['accum_op'],
+                "accum_close" => ($addition_total + $record['accum_op']),
+                "wdv" => ($cost - $record['accum_op']),
+                "wdv_close" => (($cost + $acq_period) - ($addition_total + $record['accum_op'])),
+                "posting_date" => $record['posting_date'],
+                "expired_date" => $record['expired_date'],
+                "depreciation" => $record['depreciation'],
+                "departement" => $record['departement'],
+                "voucher_no" => $record['voucher_no'],
+                "status" => $record['status'],
+                "created_by" => $record['created_by'],
+                "created_date" => $record['created_date'],
+                "updated_by" => $record['updated_by'],
+                "updated_date" => $record['updated_date'],
+            );
+
+            $total_cost += $cost;
+            $total_acq_period += $acq_period;
+            $total_acq_closing += ($cost + $acq_period);
+            $total_residual += round(($cost + $acq_period) * (5 / 100));
+            $total_addition_op += round($addition_op, 2);
+            $total_addition += round($addition, 2);
+            $total_addition_total += round($addition_total, 2);
+            $total_accum_op += round($record['accum_op'], 2);
+            $total_accum_close += round(($addition_total + $record['accum_op']), 2);
+            $total_wdv += round(($cost - $record['accum_op']), 2);
+            $total_wdv_close += round((($cost + $acq_period) - ($addition_total + $record['accum_op'])), 2);
+            $total_depreciation += round($record['depreciation'], 2);
+        }
+
+        echo json_encode($datas);
     }
 
     public function readAssets()
@@ -54,41 +171,37 @@ class Disposeds extends CI_Controller
     //GET DATATABLES
     public function datatables()
     {
-        if ($this->input->post()) {
-            $page = $this->input->post('page');
-            $rows = $this->input->post('rows');
+        $page = $this->input->post('page');
+        $rows = $this->input->post('rows');
 
-            //Pagination 1-10
-            $page   = isset($page) ? intval($page) : 1;
-            $rows   = isset($rows) ? intval($rows) : 10;
-            $offset = ($page - 1) * $rows;
-            $result = array();
+        //Pagination 1-10
+        $page = isset($page) ? intval($page) : 1;
+        $rows = isset($rows) ? intval($rows) : 10;
+        $offset = ($page - 1) * $rows;
+        $result = array();
 
-            $filter_from = base64_decode($this->input->get('filter_from'));
-            $filter_to = base64_decode($this->input->get('filter_to'));
-            $filter_number = base64_decode($this->input->get('filter_number'));
+        $filter_from = base64_decode($this->input->get('filter_from'));
+        $filter_to = base64_decode($this->input->get('filter_to'));
 
-            //Select Query
-            $this->db->select('a.*, b.number, b.name, b.cost, b.residual, c.name as asset_category_name, c.type as asset_category_type');
-            $this->db->from('asset_disposals a');
-            $this->db->join('asset_fixeds b', 'a.asset_fixed_id = b.id');
-            $this->db->join('asset_categories c', 'b.asset_category_id = c.id');
-            $this->db->where('a.disposal_date >=', $filter_from);
-            $this->db->where('a.disposal_date <=', $filter_to);
-            $this->db->like('a.asset_fixed_id', $filter_number);
-            $this->db->order_by('a.disposal_date', 'asc');
+        //Select Query
+        $this->db->select('a.*, b.number, b.name, b.cost, b.residual, c.name as product_family');
+        $this->db->from('asset_disposals a');
+        $this->db->join('asset_fixeds b', 'a.asset_fixed_id = b.id');
+        $this->db->join('item_familys c', 'b.item_family_id = c.id');
+        $this->db->where('a.disposal_date >=', $filter_from);
+        $this->db->where('a.disposal_date <=', $filter_to);
+        $this->db->order_by('a.disposal_date', 'asc');
 
-            //Total Data
-            $totalRows = $this->db->count_all_results('', false);
-            //Limit 1 - 10
-            $this->db->limit($rows, $offset);
-            //Get Data Array
-            $records = $this->db->get()->result_array();
-            //Mapping Data
-            $result['total'] = $totalRows;
-            $result = array_merge($result, ['rows' => $records]);
-            echo json_encode($result);
-        }
+        //Total Data
+        $totalRows = $this->db->count_all_results('', false);
+        //Limit 1 - 10
+        $this->db->limit($rows, $offset);
+        //Get Data Array
+        $records = $this->db->get()->result_array();
+        //Mapping Data
+        $result['total'] = $totalRows;
+        $result = array_merge($result, ['rows' => $records]);
+        echo json_encode($result);
     }
 
     //CREATE DATA
@@ -124,6 +237,7 @@ class Disposeds extends CI_Controller
     {
         $data = $this->input->post();
         $send = $this->crud->delete('asset_disposals', $data);
+        $this->db->update('asset_fixeds', ["status" => 0], ["asset_fixed_id" => $post['asset_fixed_id']]);
         echo $send;
     }
 
@@ -142,16 +256,14 @@ class Disposeds extends CI_Controller
 
         $filter_from = base64_decode($this->input->get('filter_from'));
         $filter_to = base64_decode($this->input->get('filter_to'));
-        $filter_number = base64_decode($this->input->get('filter_number'));
 
         //Select Query
-        $this->db->select('a.*, b.number, b.name, b.cost, b.residual, c.name as asset_category_name, c.type as asset_category_type');
+        $this->db->select('a.*, b.number, b.name, b.cost, b.residual, c.name as product_family');
         $this->db->from('asset_disposals a');
         $this->db->join('asset_fixeds b', 'a.asset_fixed_id = b.id');
-        $this->db->join('asset_categories c', 'b.asset_category_id = c.id');
+        $this->db->join('item_familys c', 'b.item_family_id = c.id');
         $this->db->where('a.disposal_date >=', $filter_from);
         $this->db->where('a.disposal_date <=', $filter_to);
-        $this->db->like('a.asset_fixed_id', $filter_number);
         $this->db->order_by('a.disposal_date', 'asc');
         $records = $this->db->get()->result_array();
 
@@ -199,7 +311,7 @@ class Disposeds extends CI_Controller
                         <td>' . $data['disposal_date'] . '</td>
                         <td>' . $data['number'] . '</td>
                         <td>' . $data['name'] . '</td>
-                        <td>' . $data['asset_category_name'] . '</td>
+                        <td>' . $data['product_family'] . '</td>
                         <td>' . $data['cost'] . '</td>
                         <td>' . $data['residual'] . '</td>
                         <td>' . $data['disposal'] . '</td>

@@ -46,14 +46,14 @@ class purchase_returns extends CI_Controller
             $datas = $this->crud->query("SELECT a.po_no 
                 FROM scan_item_rejections a 
                 JOIN purchase_order_receipts b ON a.po_no = b.po_no 
-                WHERE b.supplier_id = '$supplier_id' 
+                WHERE b.supplier_id = '$supplier_id' and a.status = 0
                 GROUP BY a.po_no 
                 ORDER BY a.po_no DESC");
             echo json_encode($datas);
         }elseif($source == "SCRAP"){
             $datas = $this->crud->query("SELECT document as po_no FROM scraps a 
                 JOIN supplier_items b ON a.item_rm_id = b.item_rm_id and b.share_order > 0 
-                WHERE b.supplier_id = '$supplier_id' 
+                WHERE b.supplier_id = '$supplier_id' and a.source = 'Vendor' and a.status = 0
                 GROUP BY a.document 
                 ORDER BY a.document DESC");
             echo json_encode($datas);
@@ -70,7 +70,7 @@ class purchase_returns extends CI_Controller
                 FROM purchase_order_receipts a 
                 JOIN item_rm b ON a.item_rm_id = b.id
                 LEFT JOIN purchase_returns c ON a.receipt_id = c.receipt_id and a.item_rm_id = c.item_rm_id and a.supplier_id = c.supplier_id
-                WHERE a.po_no = '$po_no' and (b.number LIKE '%$post%' and b.id like '%$post%')
+                WHERE a.po_no = '$po_no' and (b.number LIKE '%$post%' and b.id like '%$post%') and a.status = 0
                 GROUP BY a.item_rm_id
                 ORDER BY b.number asc");
             echo json_encode($data);
@@ -80,7 +80,7 @@ class purchase_returns extends CI_Controller
                 JOIN purchase_order_receipts d ON a.receipt_id = d.receipt_id
                 JOIN item_rm b ON d.item_rm_id = b.id
                 LEFT JOIN purchase_returns c ON a.receipt_id = c.receipt_id and b.id = c.item_rm_id and d.supplier_id = c.supplier_id
-                WHERE a.po_no = '$po_no' and (b.number LIKE '%$post%' and b.id like '%$post%')
+                WHERE a.po_no = '$po_no' and (b.number LIKE '%$post%' and b.id like '%$post%') and a.status = 0
                 GROUP BY b.id
                 ORDER BY b.number asc");
             echo json_encode($data);
@@ -90,7 +90,7 @@ class purchase_returns extends CI_Controller
                 JOIN item_rm b ON a.item_rm_id = b.id
                 JOIN supplier_items c ON a.item_rm_id = c.item_rm_id and c.share_order > 0
                 LEFT JOIN purchase_returns d ON a.document = d.receipt_id and d.item_rm_id = a.item_rm_id and d.supplier_id = c.supplier_id
-                WHERE a.document = '$po_no' and c.supplier_id = '$supplier_id' and (b.number LIKE '%$post%' and b.id like '%$post%')
+                WHERE a.document = '$po_no' and c.supplier_id = '$supplier_id' and (b.number LIKE '%$post%' and b.id like '%$post%') and a.status = 0
                 GROUP BY a.item_rm_id
                 ORDER BY b.number asc");
             echo json_encode($data);
@@ -239,6 +239,7 @@ class purchase_returns extends CI_Controller
                 } else {
                     $send = $this->crud->create('purchase_returns', $post);
                     $this->crud->update('scan_item_rejections', ["receipt_id" => $post['receipt_id']], ["status" => 1]);
+                    $this->crud->update('scraps', ["receipt_id" => $post['document'], "item_rm_id" => $post['item_rm_id']], ["status" => 1]);
                     echo $send;
                 }
             } else {
@@ -254,8 +255,14 @@ class purchase_returns extends CI_Controller
         if ($this->input->post()) {
             $id   = $this->input->post('id');
             $post = $this->input->post();
-            $send = $this->crud->update('purchase_returns', ["id" => $id], $post);
-            echo $send;
+            $po_no = $this->crud->read("purchase_orders", [], ["po_no" => $post['po_no'], "item_rm_id" => $post['item_rm_id']]);
+
+            if($po_no){
+                $send = $this->crud->update('purchase_returns', ["id" => $id], $post);
+                echo $send;
+            }else{
+                show_error("PO No and Part No Not Found");
+            }
         } else {
             show_error("Cannot Process your request");
         }
@@ -266,6 +273,7 @@ class purchase_returns extends CI_Controller
         $data = $this->input->post();
         $send = $this->crud->delete('purchase_returns', $data);
         $this->db->update('scan_item_rejections', ["status" => 0], ["receipt_id" => $data['receipt_id']]);
+        $this->db->update('scraps', ["status" => 0], ["receipt_id" => $data['document'], "item_rm_id" => $data['item_rm_id']]);
         echo $send;
     }
 

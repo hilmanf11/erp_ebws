@@ -84,7 +84,7 @@ class Ap_payments extends CI_Controller
     {
         $number = base64_decode($number);
         // $reads = $this->crud->reads("ar_receipt_journals", [], ["receipt_no" => $number], "", "flag", "asc");
-        $sql = $this->db->query("SELECT * FROM ap_payment_journals WHERE payment_no = '$number' and modul = 'AP PAYMENT' ORDER BY flag ASC");
+        $sql = $this->db->query("SELECT * FROM ap_payment_journals WHERE payment_no = '$number' ORDER BY flag ASC");
         $reads = $sql->result_array();
 
         $arr = [];
@@ -542,7 +542,7 @@ class Ap_payments extends CI_Controller
             $ap_payment = $this->crud->query("SELECT a.payment_no,
                 (CASE WHEN a.account_type = 'DEBIT' THEN (a.payment * a.rate) ELSE 0 END) AS local_debit,
                 (CASE WHEN a.account_type = 'CREDIT' THEN (a.payment * a.rate) ELSE 0 END) AS local_credit,
-                ABS((CASE WHEN a.account_type = 'CREDIT' THEN (a.payment * a.rate) ELSE 0 END) - (CASE WHEN a.account_type = 'CREDIT' THEN (a.payment * a.rate) ELSE 0 END)) as payment
+                ABS((CASE WHEN a.account_type = 'DEBIT' THEN (a.payment * a.rate) ELSE 0 END) - (CASE WHEN a.account_type = 'CREDIT' THEN (a.payment * a.rate) ELSE 0 END)) as payment
                 FROM ap_payments a
                 WHERE a.purchase_invoice = '$number'
                 GROUP BY a.payment_no");
@@ -654,12 +654,12 @@ class Ap_payments extends CI_Controller
             } else {
                 $send = $this->crud->create('ap_payments', $post);
                 if ($send) {
-                    if ($post['amount'] == $post['payment']) {
+                    if ($post['balance'] == $post['payment']) {
                         $pi = $this->crud->reads("purchase_invoices", [], ["number" => $post['purchase_invoice'], "status" => 0]);
                         if(count($pi) > 0){
-                            $this->crud->update('purchase_invoices', ["number" => $post['purchase_invoice']], ["status" => 1]);
+                            $this->db->update('purchase_invoices', ["status" => 1], ["number" => $post['purchase_invoice']]);
                         }else{
-                            $this->crud->update('purchase_invoices', ["number" => $post['purchase_invoice']], ["status" => 0]);
+                            $this->db->update('purchase_invoices', ["status" => 0], ["number" => $post['purchase_invoice']]);
                         }
                     }
 
@@ -700,6 +700,136 @@ class Ap_payments extends CI_Controller
         }
     }
 
+    public function createPosting(){
+        $document_no = $this->input->post('payment_no');
+
+        $datenow = date("Y-m-d");
+        $sql_menu = $this->db->query("SELECT * FROM menus_no WHERE menus_id = '20240227000005' and `status` = '0' and `start_date` <= '$datenow' and end_date >= '$datenow'");
+        $row_menu = $sql_menu->row();
+
+        if(@$row_menu->number == ""){
+            $voucher_no = "";
+        }else{
+            $number = @$row_menu->number;
+            $yearnow = date("y", strtotime($row_menu->start_date));
+            $yearend = date("y", strtotime($row_menu->end_date));
+
+            $whereDate = $number.$yearnow.$yearend."1";
+
+            $sqlGetID	= $this->db->query("SELECT max(`number`) as kode FROM journal_postings WHERE `number` like '%$whereDate%'");
+            $rowID = $sqlGetID->row();
+            $kode = $rowID->kode;
+            
+            if ($kode == NULL) {
+                $autoID = sprintf("%0".$row_menu->sequence."s", $kode + 1);
+                $autoNo = $whereDate.$autoID;
+            } else {
+                $urutan = (int) substr($kode, -6);
+                $urutan++;
+                $autoID	= sprintf("%0".$row_menu->sequence."s", $urutan);
+                $autoNo = $whereDate.$autoID;
+            }
+
+            $voucher_no = $autoNo;
+        }
+
+        $this->db->select("a.payment_no, b.journal_type_id, b.payment_date, b.purchase_invoice, b.supplier_invoice, c.id as supplier_id, c.name as supplier_name, 
+                b.currency, a.description, a.account_number, a.account_name, a.debit, a.credit, a.flag, a.local_debit, a.local_credit, b.rate,
+                (CASE WHEN e.name is null THEN d.account_name ELSE e.name END) as other_account");
+        $this->db->from('ap_payment_journals a');
+        $this->db->join("(SELECT * FROM ap_payments GROUP BY payment_no) b", "b.payment_no = a.payment_no");
+        $this->db->join("suppliers c", "b.supplier_id = c.id");
+        $this->db->join('account_coa d', 'b.other_account = d.account_number', 'left');
+        $this->db->join('account_imprests e', 'b.imprest_account = e.number', 'left');
+        $this->db->where_in('a.payment_no', $document_no);
+        $this->db->order_by('a.payment_no', 'asc');
+        $this->db->order_by('a.flag', 'asc');
+        $journals = $this->db->get()->result_array();
+
+        $trans_date = "";
+        $customer_name = "";
+        $currency = "";
+
+        $original_debit = 0;
+        $original_credit = 0;
+        $local_debit = 0;
+        $local_credit = 0;
+
+        $grand_original_debit = 0;
+        $grand_original_credit = 0;
+        $grand_local_debit = 0;
+        $grand_local_credit = 0;
+
+        $data = array();
+        foreach ($journals as $journal) {
+            $number = $journal['payment_no'];
+            $account_number = $journal['account_number'];
+            $account_name = $journal['account_name'];
+            $debit = $journal['debit'];
+            $credit = $journal['credit'];
+            $description = $journal['description'];
+            $explode = explode(" | ", $description);
+            $purchase_invoice = @$explode[0];
+            $supplier_invoice = @$explode[1];
+
+            if ($journal['currency'] != "INR") {
+                $original_debit = $debit;
+                $original_credit = $credit;
+                $local_debit = $journal['local_debit'];
+                $local_credit = $journal['local_credit'];
+
+                $rates = $journal['rate'];
+            } else {
+                $original_debit = $debit;
+                $original_credit = $credit;
+                $local_debit = $journal['local_debit'];
+                $local_credit = $journal['local_credit'];
+
+                $rates = 1;
+            }
+
+            $data[] = array(
+                "journal_date" => date("Y-m-d"),
+                "journal_type_id" => $journal['journal_type_id'],
+                "number" => $voucher_no,
+                "trans_date" => $journal['payment_date'],
+                "document_no" => $number,
+                "invoice_no" => $purchase_invoice,
+                "company_id" => $journal['supplier_id'],
+                "company_name" => $journal['supplier_name'] . " (" . $journal['other_account'] . ")",
+                "modul" => "AP PAYMENT",
+                "account_number" => $account_number,
+                "account_name" => $account_name,
+                "description" => "(" . $journal['other_account'] . ") | " . $number . " | " . $purchase_invoice . " | " . $supplier_invoice,
+                "currency" => $journal['currency'],
+                "original_debit" => $original_debit,
+                "original_credit" => $original_credit,
+                "rates" => $rates,
+                "local_debit" => $local_debit,
+                "local_credit" => $local_credit,
+            );
+
+            $grand_original_debit += $original_debit;
+            $grand_original_credit += $original_credit;
+            $grand_local_debit += $local_debit;
+            $grand_local_credit += $local_credit;
+        }
+
+        if($voucher_no == ""){
+            die(json_encode(array("title" => "Configuration", "message" => "Please Check Configuration in Serial No (Journal Posting) First", "theme" => "error")));
+        }
+
+        if(round($grand_local_debit, 2) != round($grand_local_credit, 2)){
+            die(json_encode(array("title" => "Failed", "message" => "Balance Debit (".$grand_local_debit.") Cannot match on Balance Credit (" . $grand_local_credit . ")", "theme" => "error")));
+        }
+
+        foreach ($data as $dt) {
+            $this->crud->create('journal_postings', $dt);
+        }
+
+        die(json_encode(array("title" => "Good Job", "message" => "Data Successfully Created to Journal Posting with Code GL No " . $voucher_no, "theme" => "success")));
+    }
+
     public function update()
     {
         if ($this->input->post()) {
@@ -732,14 +862,15 @@ class Ap_payments extends CI_Controller
 
         $ap_payments = $this->crud->reads("ap_payments", [], ["payment_no" => $data['payment_no']]);
         foreach ($ap_payments as $ap_payment) {
-            $this->crud->update("purchase_invoices", [
+            $this->db->update("purchase_invoices", ["status" => 0], [
                 "number" => $ap_payment->purchase_invoice,
-            ], ["status" => 0]);
+            ]);
 
             $this->crud->update('ap_payments', ["payment_no" => $ap_payment->purchase_invoice], ["status_dp" => 0]);
         }
 
         $send = $this->crud->delete('ap_payments', $data);
+        $send = $this->db->delete('journal_postings', ["document_no" => $data['payment_no']]);
         $send = $this->crud->delete('ap_payment_journals', ["payment_no" => $data['payment_no']]);
         echo $send;
     }
