@@ -79,12 +79,12 @@ class Journal_posting_adjustments extends CI_Controller
         if($category == "GL - GL"){
             $sql = $this->db->query("SELECT account_number, account_name, account_number as number, account_name as name, local_debit as debit, local_kredit as credit
                 FROM account_coa 
-                WHERE (account_number like '%$post%' or account_name like '%$post%') and account_number NOT IN (SELECT number FROM account_group_details) ORDER BY account_number");
+                WHERE (account_number like '%$post%' or account_name like '%$post%') and account_number NOT IN (SELECT number FROM account_group_details) and account_number NOT IN ('16000001','16000002','16000003','16000004','16000005','16000006','16000007','16000008','27000001','28000004','28000007') ORDER BY account_number");
             $records = $sql->result_array();
         }elseif($category == "GL - SUPPLIER"){
             $sql = $this->db->query("SELECT a.* 
                 FROM (
-                    (SELECT account_number, account_name, account_number as number, account_name as name FROM account_coa WHERE account_number NOT IN (SELECT number FROM account_group_details) ORDER BY account_number ASC)
+                    (SELECT account_number, account_name, account_number as number, account_name as name FROM account_coa WHERE account_number NOT IN (SELECT number FROM account_group_details) and account_number NOT IN ('16000001','16000002','16000003','16000004','16000005','16000006','16000007','16000008','27000001','28000004','28000007') ORDER BY account_number ASC)
                 UNION 
                     (SELECT b.account_number, b.account_name, c.id as number, c.name FROM account_balance_suppliers a JOIN account_coa b ON a.account_number = b.account_number JOIN suppliers c ON a.supplier_id = c.id ORDER BY c.name ASC)
                 ) a WHERE a.account_number like '%$post%' or a.account_name like '%$post%' or a.name like '%$post%' ORDER BY a.account_number");
@@ -92,7 +92,7 @@ class Journal_posting_adjustments extends CI_Controller
         }elseif($category == "GL - CUSTOMER"){
             $sql = $this->db->query("SELECT a.* 
                 FROM (
-                    (SELECT account_number, account_name, account_number as number, account_name as name FROM account_coa WHERE account_number NOT IN (SELECT number FROM account_group_details) ORDER BY account_number ASC)
+                    (SELECT account_number, account_name, account_number as number, account_name as name FROM account_coa WHERE account_number NOT IN (SELECT number FROM account_group_details) and account_number NOT IN ('16000001','16000002','16000003','16000004','16000005','16000006','16000007','16000008','27000001','28000004','28000007') ORDER BY account_number ASC)
                 UNION 
                     (SELECT b.account_number, b.account_name, c.id as number, CONCAT('(', a.plant, ') ', c.name) FROM account_balance_customers a JOIN account_coa b ON a.account_number = b.account_number JOIN customers c ON a.customer_id = c.id ORDER BY c.name ASC)
                 ) a WHERE a.account_number like '%$post%' or a.account_name like '%$post%' or a.name like '%$post%' ORDER BY a.account_number");
@@ -100,7 +100,7 @@ class Journal_posting_adjustments extends CI_Controller
         }elseif($category == "GL - BANK"){
             $sql = $this->db->query("SELECT a.* 
                 FROM (
-                    (SELECT account_number, account_name, account_number as number, account_name as name FROM account_coa WHERE account_number NOT IN (SELECT number FROM account_group_details) ORDER BY account_number ASC)
+                    (SELECT account_number, account_name, account_number as number, account_name as name FROM account_coa WHERE account_number NOT IN (SELECT number FROM account_group_details) and account_number NOT IN ('16000001','16000002','16000003','16000004','16000005','16000006','16000007','16000008','27000001','28000004','28000007') ORDER BY account_number ASC)
                 UNION 
                     (SELECT b.account_number, b.account_name, a.bank_account as number, a.bank_name as name FROM account_banks a JOIN account_coa b ON a.account_number = b.account_number ORDER BY a.bank_account ASC)
                 ) a WHERE a.account_number like '%$post%' or a.account_name like '%$post%' or a.name like '%$post%' ORDER BY a.account_number");
@@ -109,9 +109,11 @@ class Journal_posting_adjustments extends CI_Controller
             $sql = $this->db->query("SELECT a.* 
                 FROM (
                     (SELECT account_number, account_name, account_number as number, account_name as name FROM account_coa WHERE account_number IN ('26000004','26000006','26000008','42000008','42000009','45000014','45000015','45000022') ORDER BY account_number ASC)
-                UNION 
+                UNION
                     (SELECT b.account_number, b.account_name, a.number, a.name FROM assets a JOIN item_familys b ON a.item_family_id = b.id JOIN account_coa c ON b.account_number = c.account_number ORDER BY a.number ASC)
-                ) a WHERE a.account_number like '%$post%' or a.account_name like '%$post%' or a.number like '%$post%' or a.name like '%$post%' ORDER BY a.account_number");
+                UNION
+                    (SELECT c.account_number, c.account_name, a.number, a.name FROM asset_fixeds a JOIN item_familys b ON a.item_family_id = b.id JOIN account_coa c ON b.account_number = c.account_number WHERE a.status = 0 GROUP BY a.number ORDER BY a.number ASC)
+                ) a WHERE a.account_number like '%$post%' or a.account_name like '%$post%' or a.number like '%$post%' or a.name like '%$post%' GROUP BY a.number ORDER BY a.account_number");
             $records = $sql->result_array();
         }elseif($category == "ASSET - ASSET"){
             $sql = $this->db->query("SELECT a.* 
@@ -759,7 +761,7 @@ class Journal_posting_adjustments extends CI_Controller
                 $factor = 2;
             }
 
-            $asset_fixeds = $this->crud->read("asset_fixeds", [], ["number" => $number]);
+            $asset_fixeds = $this->crud->read("asset_fixeds", [], ["number" => $number, "purchase_invoice_no" => $document_no]);
             $dataAsset = array(
                 "item_family_id" => @$asset->item_family_id,
                 "purchase_invoice_no" => $document_no,
@@ -803,7 +805,7 @@ class Journal_posting_adjustments extends CI_Controller
                 // die($assets);
             }
         }else{
-            $asset_fixeds = $this->crud->read("asset_fixeds", [], ["number" => $number]);
+            $asset_fixeds = $this->crud->read("asset_fixeds", [], ["number" => $number, "purchase_invoice_no" => $document_no]);
             if(!empty($asset_fixeds)){
                 if($price > 0){
                     $qty = (@$asset_fixeds->qty + $qty);
@@ -844,7 +846,37 @@ class Journal_posting_adjustments extends CI_Controller
                     "status" => $status
                 );
 
-                $this->db->update("asset_fixeds", $dataAsset, ["number" => $number]);
+                $this->db->update("asset_fixeds", $dataAsset, ["number" => $number, "purchase_invoice_no" => $document_no]);
+            }else{
+                $asset_fixeds = $this->crud->read("asset_fixeds", [], ["number" => $number]);
+                if(!empty($asset_fixeds)){
+                    $dataAsset = array(
+                        "item_family_id" => @$asset_fixeds->item_family_id,
+                        "purchase_invoice_no" => $document_no,
+                        "voucher_no" => $gl_no,
+                        "supplier_id" => @$asset_fixeds->supplier_id,
+                        "supplier_name" => @$asset_fixeds->supplier_name,
+                        "item_rm_id" => "",
+                        "number" => $number,
+                        "name" => $name,
+                        "shift" => @$asset_fixeds->shift,
+                        "trans_date" => $trans_date,
+                        "qty" => $qty,
+                        "currency" => @$currency,
+                        "cost" => $price,
+                        "estimate_month" => @$asset_fixeds->estimate_month,
+                        "estimate_year" => @$asset_fixeds->estimate_year,
+                        "expired_date" => @$asset_fixeds->expired_date,
+                        "remarks" => $document_no,
+                        "method" => "JOURNAL ADJUSTMENT",
+                        "departement" => "",
+                        "uom" => @$asset_fixeds->uom,
+                        "posting_date" => date("Y-m-d"),
+                        "estimate_day" =>@$asset_fixeds->estimate_day,
+                    );
+
+                    $this->crud->create('asset_fixeds', $dataAsset);
+                }
             }
         }
     }
@@ -863,7 +895,7 @@ class Journal_posting_adjustments extends CI_Controller
 
         foreach ($journal as $jr) {
             if($jr->journal_type == "ASSET - ASSET" || $jr->journal_type == "FAR - SUPPLIER"){
-                $asset_fixeds = $this->crud->read("asset_fixeds", [], ["number" => $jr->company_id]);
+                $asset_fixeds = $this->crud->read("asset_fixeds", [], ["number" => $jr->company_id, "purchase_invoice_no" => @$jr->document_no]);
                 if(!empty($asset_fixeds)){
                     $price = ($jr->local_credit - $jr->local_debit);
 
@@ -900,16 +932,16 @@ class Journal_posting_adjustments extends CI_Controller
                         "status" => 0
                     );
 
-                    $this->db->update("asset_fixeds", $dataAsset, ["number" => @$jr->company_id]);
+                    $this->db->update("asset_fixeds", $dataAsset, ["number" => @$jr->company_id, "purchase_invoice_no" => $jr->document_no]);
                 }
 
                 $asset = $this->crud->read("assets", [], ["number" => @$jr->company_id]);
                 if(!empty($asset)){
-                    $this->db->delete("asset_fixeds", ["number" => @$jr->company_id]);
+                    $this->db->delete("asset_fixeds", ["number" => @$jr->company_id, "purchase_invoice_no" => $jr->document_no]);
                     $this->db->update("assets", ["status" => 0], ["number" => @$jr->company_id]);
                 }
             }else{
-                $this->db->delete("asset_fixeds", ["number" => @$jr->company_id]);
+                $this->db->delete("asset_fixeds", ["number" => @$jr->company_id, "purchase_invoice_no" => $jr->document_no]);
                 $this->db->update("assets", ["status" => 0], ["number" => @$jr->company_id]);
             }
         }

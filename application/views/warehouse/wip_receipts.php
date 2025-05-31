@@ -318,7 +318,7 @@
                             var row = json[number-1];
                             value = Math.floor((number / total) * 100);
 
-                            if(row.scan <= 0){
+                            // if(row.scan <= 0){
                                 $.ajax({
                                     method: 'post',
                                     url: '<?= base_url('warehouse/wip_receipts/delete') ?>',
@@ -328,6 +328,13 @@
                                     },
                                     success: function(result) {
                                         var result = eval('(' + result + ')');
+                                        
+                                        if (result.theme == "error") {
+                                            toastr.error(result.message, result.title);
+                                            Swal.close();
+                                            return false;
+                                        }
+                                        
                                         requestDelete(total, json, number + 1, value);
 
                                         if (number == total) {
@@ -344,9 +351,10 @@
                                         toastr.error(jqXHR.statusText);
                                     },
                                 });
-                            }else{
-                                toastr.error("Cannot Delete Because The label Already Scan In FG")
-                            }
+                            // }else{
+                            //     Swal.close();
+                            //     toastr.error("Cannot Delete Because The label Already Scan In FG")
+                            // }
                         }
                     }
                 }

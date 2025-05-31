@@ -322,7 +322,7 @@
                         }
 
                         $("#po_no").combobox({
-                            url: '<?= base_url('purchase/delivery_confirm/readPono?invoice_no=') ?>' + btoa(row.invoice_no),
+                            url: '<?= base_url('purchase/delivery_confirm/readPono?invoice_no=') ?>' + btoa(row.invoice_no) + "&supplier_id=" + btoa(supp.id),
                             valueField: 'po_no',
                             textField: 'po_no',
                             prompt: "Select PO No",

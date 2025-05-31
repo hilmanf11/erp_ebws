@@ -152,6 +152,7 @@ class Fixeds extends CI_Controller
 
             //Select Query
             $this->db->select("a.*, 
+                b.account_number,
                 b.name as asset_category_name,
                 b.usefull, b.shift as shift_factor,
                 (CASE WHEN (a.cost - (COALESCE(c.depreciation_acc, 0))) > 0 THEN 0 ELSE 1 END) as status_expired");
@@ -160,7 +161,7 @@ class Fixeds extends CI_Controller
             $this->db->join("(SELECT asset_no, SUM(debit) as depreciation_acc FROM asset_journals WHERE periode BETWEEN '$filter_period_from' and '$filter_period_to' GROUP BY asset_no) c", 'a.number = c.asset_no', 'left');
             $this->db->where('a.trans_date >=', $filter_from);
             $this->db->where('a.trans_date <=', $filter_to);
-            $this->db->group_by('a.number');
+            $this->db->group_by('a.id');
             $records = $this->db->get()->result_array();
             
             $datas = [];
@@ -222,6 +223,7 @@ class Fixeds extends CI_Controller
                     "number" => $record['number'],
                     "name" => $record['name'],
                     "asset_category_name" => $record['asset_category_name'],
+                    "account_number" => $record['account_number'],
                     "purchase_invoice_no" => $record['purchase_invoice_no'],
                     "supplier_name" => $record['supplier_name'],
                     "trans_date" => $record['trans_date'],
@@ -536,6 +538,7 @@ class Fixeds extends CI_Controller
 
         //Select Query
         $this->db->select("a.*, 
+            b.accout_number,
             b.name as asset_category_name, 
             b.type as asset_category_type, 
             PERIOD_DIFF(DATE_FORMAT('$filter_to', '%Y%m'), DATE_FORMAT(trans_date, '%Y%m')) AS qty_month, 
@@ -562,7 +565,7 @@ class Fixeds extends CI_Controller
         if($filter_supplier != ""){
             $this->db->where('a.supplier_name', $filter_supplier);
         }
-        $this->db->group_by('a.number');
+        $this->db->group_by('a.id');
         $records = $this->db->get()->result_array();
 
         $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#customers {border-collapse: collapse;width: 100%;font-size: 12px;}#customers td, #customers th {border: 1px solid black;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: black;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: center;color: black;}</style><body>
@@ -597,6 +600,7 @@ class Fixeds extends CI_Controller
                 <th>Asset No</th>
                 <th>Asset Name</th>
                 <th>Asset Category</th>
+                <th>Account No</th>
                 <th>Asset Type</th>
                 <th>Purchase Invoice</th>
                 <th>Supplier</th>
@@ -626,6 +630,7 @@ class Fixeds extends CI_Controller
                         <td>' . $data['number'] . '</td>
                         <td>' . $data['name'] . '</td>
                         <td>' . $data['asset_category_name'] . '</td>
+                        <td>' . $data['account_number'] . '</td>
                         <td>' . $data['asset_category_type'] . '</td>
                         <td>' . $data['purchase_invoice_number'] . '</td>
                         <td>' . $data['supplier_name'] . '</td>

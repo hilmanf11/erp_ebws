@@ -561,7 +561,7 @@ class Report_ap extends CI_Controller
                 $begin_balance_local = $this->begin_balance($supplier_id, $filter_from, $filter_to, $filter_currency, $filter_status, 0);
             }
 
-            if (count($purchase_invoices) > 0) {
+            // if (count($purchase_invoices) > 0) {
                 $detail .= '  <tr style="background: #DEE2FF; font-weight:bold;">
                                     <td colspan="15">BEGINING BALANCE - '.$supplier['name'].'</td>
                                     <td colspan="3"></td>
@@ -573,7 +573,7 @@ class Report_ap extends CI_Controller
                                     <td colspan="3"></td>
                                     <td style="text-align:right;">' . number_format(@$begin_balance_local, 2) . '</td>
                                 </tr>';
-            }
+            // }
 
             $accumulated = $begin_balance_local;
             foreach ($purchase_invoices as $purchase_invoice) {

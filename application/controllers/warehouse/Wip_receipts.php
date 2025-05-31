@@ -419,46 +419,23 @@ class Wip_receipts extends CI_Controller
     {
         $data = $this->input->post();
         $read = $this->crud->read('wip_receipts', ["id" => $data['id']]);
-        // $item_fg_id = $read->item_fg_id;
-        // $period = $read->period;
-        // $wp = $read->wp;
-        // $item_fg = $this->crud->read("item_fg", [], ["id" => $item_fg_id]);
-
         $checksheet_number = @$read->checksheet_number;
-
-        // $trans_date_from = @$read->trans_date_from;
-        // $trans_date_to = @$read->trans_date_to;
         
-        // $item_fg_number = @$item_fg->number_customer;
-        // $qty = @$read->qty;
+        $scan = $this->crud->reads('scan_item_receipts_fg', ["checksheet_number" => $checksheet_number, "status" => "1"]);
 
-        // if($period == ""){
-        //     $where_period = "and a.tanggal_proses between '$trans_date_from' and '$trans_date_to'";
-        // }else{
-        //     $where_period = "and a.mpp between '$period' and a.wp = '$wp'";
-        // }
+        if(count($scan) > 0){
+            die(json_encode(array("title" => "Error", "message" => "Cannot Delete because the label already Shipping Order", "theme" => "error")));
+        }
 
-        // $this->dummy = $this->load->database('dummy', TRUE);
-        // $qProses = $this->dummy->query("SELECT a.serial_number, a.assy_number, a.mpp, a.wp, a.customer, COUNT(a.qty) as qty, c.temp_woc_id
-        //     from mst_scan_proses a
-        //     left join wip_trx_mpp c ON a.assy_number = c.assy_no and a.wp = c.wp and a.mpp = c.periode
-        //     where a.kode_proses = '5' and status_before = 'false' and status_next = 'true' and sts_rfg = 'true'
-        //     and a.assy_number = '$item_fg_number' $where_period
-        //     GROUP BY a.serial_number, a.assy_number, a.mpp, a.wp, a.customer, c.temp_woc_id
-        //     ORDER BY mpp, wp asc");
-        // $dProses = $qProses->result();
-        
-        // for ($i=0; $i < $qty; $i++) {
-        //     $this->dummy->update("mst_scan_proses", ["sts_rfg" => null], ["serial_number" => $dProses[$i]->serial_number, "kode_proses" => '5']);
-        // }
-        
         $send = $this->crud->delete('wip_receipt_boxs', ["checksheet_number" => $checksheet_number]);
+        $this->crud->delete('scan_item_receipts_fg', ["checksheet_number" => $checksheet_number]);
+        
 
         if($send){
             $send = $this->crud->delete('wip_receipts', ["id" => $data['id']]);
         }
 
-        $update = $this->db->update('production_schedules', ["status_wip" => 0], ["workorder" => $data['workorder']]);
+        $this->db->update('production_schedules', ["status_wip" => 0], ["workorder" => $data['workorder']]);
         echo $send;
     }
 

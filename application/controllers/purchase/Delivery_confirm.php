@@ -48,7 +48,8 @@ class Delivery_confirm extends CI_Controller
     function readPono(){
         $post = isset($_POST['q']) ? $_POST['q'] : "";
         $invoice_no = base64_decode($this->input->get('invoice_no'));
-        $datas = $this->crud->query("SELECT a.po_no, a.po_date FROM purchase_confirm a WHERE a.status = 0 and a.invoice_no = '$invoice_no' GROUP BY a.po_no");
+        $supplier_id = base64_decode($this->input->get('supplier_id'));
+        $datas = $this->crud->query("SELECT a.po_no, a.po_date FROM purchase_confirm a WHERE a.status = 0 and a.invoice_no = '$invoice_no' and a.supplier_id = '$supplier_id' GROUP BY a.po_no");
         echo json_encode($datas);
     }
 
@@ -102,8 +103,9 @@ class Delivery_confirm extends CI_Controller
 
     public function checkInvoice(){
         $invoice_no = trim($this->input->post("invoice_no"));
-        $read = $this->crud->reads("purchase_order_receipts", [], ["bc_document" => $invoice_no]);
-        $read2 = $this->crud->reads("purchase_confirm", [], ["invoice_no" => $invoice_no]);
+        $supplier_id = trim($this->input->post("supplier_id"));
+        $read = $this->crud->reads("purchase_order_receipts", [], ["bc_document" => $invoice_no, "supplier_id" => $supplier_id]);
+        $read2 = $this->crud->reads("purchase_confirm", [], ["invoice_no" => $invoice_no, "supplier_id" => $supplier_id]);
         
         if(count($read) > 0){
             die("NG");
@@ -225,7 +227,7 @@ class Delivery_confirm extends CI_Controller
             $dataFinals = array(
                 "supplier_id" => $post['supplier_id'],
                 "delivery_no" => $post['delivery_no'],
-                "invoice_no" => trim($post['invoice_no']),
+                "invoice_no" => $post['invoice_no'],
                 "invoice_date" => $post['invoice_date'],
                 "awb_no" => $post['awb_no'],
                 "awb_date" => $post['awb_date'],

@@ -1007,24 +1007,24 @@
                 });
 
                 if(row.id != undefined){
-                    $.ajax({
-                        method: 'post',
-                        url: '<?= base_url('finance/purchase_invoices/deleteSingle') ?>',
-                        data: {
-                            id: row.id,
-                        },
-                        success: function(result) {
-                            var result = eval('(' + result + ')');
-                            toastr.success(result.message);
-                        },
-                        error: function(jqXHR, textStatus, errorThrown) {
-                            toastr.error("This data is already used in other modules, You must delete it First", "Error");
+                    // $.ajax({
+                    //     method: 'post',
+                    //     url: '<?= base_url('finance/purchase_invoices/deleteSingle') ?>',
+                    //     data: {
+                    //         id: row.id,
+                    //     },
+                    //     success: function(result) {
+                    //         var result = eval('(' + result + ')');
+                    //         toastr.success(result.message);
+                    //     },
+                    //     error: function(jqXHR, textStatus, errorThrown) {
+                    //         toastr.error("This data is already used in other modules, You must delete it First", "Error");
                             
-                        },
-                        complete: function(data) {
-                            $('#dg').datagrid('reload');
-                        }
-                    });
+                    //     },
+                    //     complete: function(data) {
+                    //         $('#dg').datagrid('reload');
+                    //     }
+                    // });
                 }
 
                 $('#dg2').datagrid('deleteRow', getRowIndex(target));
@@ -1729,6 +1729,25 @@
                                     var rows2 = $('#dg3').datagrid('getRows');
                                     var totalrows2 = rows2.length;
                                     endEditing2();
+
+                                    var total_debit  = 0;
+                                    var total_credit = 0;
+                                    for (let jo = 0; jo < totalrows2; jo++) {
+                                        var dataJ = rows2[jo];
+
+                                        if(dataJ.account_number == "" || dataJ.account_name == ""){
+                                            toastr.error("Account Number Not Valid in Journals, Please Check your data input and save again!!");
+                                            return false;
+                                        }
+
+                                        total_debit += parseFloat(dataJ.debit);
+                                        total_credit += parseFloat(dataJ.credit);
+                                    }
+
+                                    if(total_debit == 0 && total_credit == 0){
+                                        toastr.error("Debit and Credit still 0, please click add to journal first");
+                                        return false;
+                                    }
 
                                     $.ajax({
                                         type: "post",

@@ -416,7 +416,7 @@ class Report_ar extends CI_Controller
                 SUM(a.local_credit) AS local_credit,
                 a.status_cl as status
             FROM journal_postings a
-            LEFT JOIN journal_clearings b ON a.document_no = b.document_no and a.company_id = b.company_id and a.description = b.description
+            LEFT JOIN journal_clearings b ON a.document_no = b.document_no and a.company_id = b.company_id and a.description = b.description and b.company_name like '%$plant%'
             WHERE a.company_id = '$customer_id' and a.company_name like '%$company_name%'
             AND a.modul IN ('CURRENCY REVALUATION','ADJUSTMENT') 
             AND a.account_number IN ('27000001','28000004','28000007')

@@ -837,7 +837,7 @@ class Journal_posting_clearing extends CI_Controller
             $post = $this->input->post();
 
             $this->db->update("journal_postings", ["status_cl" => 1], ["id" => $post['document_no'], "company_id" => $post['company_id']]);
-            $this->db->update("journal_postings", ["status_cl" => 1], ["document_no" => $post['document_no'], "company_id" => $post['company_id'], "description" => $post['description']]);
+            $this->db->update("journal_postings", ["status_cl" => 1], ["document_no" => $post['document_no'], "company_id" => $post['company_id'], "company_name" => $post['company_name'], "description" => $post['description']]);
             $this->db->update("ar_receipts", ["status_cl" => 1], ["receipt_no" => $post['document_no'], "customer_id" => $post['company_id']]);
             $this->db->update("ap_payments", ["status_cl" => 1], ["payment_no" => $post['document_no'], "supplier_id" => $post['company_id']]);
             $this->db->update("purchase_invoices", ["status" => 1], ["number" => $post['document_no'], "supplier_id" => $post['company_id']]);

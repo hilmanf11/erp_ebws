@@ -788,7 +788,7 @@
                         $.ajax({
                             type: "post",
                             url: "<?= base_url('purchase/delivery_confirm/checkInvoice') ?>",
-                            data: "invoice_no=" + invoice_no,
+                            data: "invoice_no=" + invoice_no + "&supplier_id=" + supplier_id,
                             dataType: "html",
                             success: function (data) {
                                 if(data == "NG"){
