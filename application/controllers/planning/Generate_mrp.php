@@ -471,7 +471,14 @@ class Generate_mrp extends CI_Controller
             $month_1 = date("m", strtotime("-1 month", strtotime($filter_year."-".$filter_month."-01")));
             $year_1 = date("Y", strtotime("-1 month", strtotime($filter_year."-".$filter_month."-01")));
 
-            $cutoffDate = date("j", strtotime($filter_cutoff));
+            $date_start = strtotime($filter_year."-".$filter_month."-01");
+            $date_finish = strtotime($filter_cutoff);
+
+            if($date_start > $date_finish){
+                $cutoffDate = date("j", strtotime($filter_year."-".$filter_month."-01"));
+            }else{
+                $cutoffDate = date("j", strtotime($filter_cutoff));
+            }
 
             $this->db->select('max(revision) as revision');
             $this->db->from('generate_mrp_finals');

@@ -60,7 +60,7 @@ class Report_history_transactions_fg extends CI_Controller
             a.uom, 
             COALESCE(i.begin_stock, 0) as begin_stock,
             (COALESCE(b.qty_sto, 0) + COALESCE(d.sto_qty_in,0) + COALESCE(c.qty_wip, 0) + COALESCE(e.qty_rgp_in, 0)) as qty_in,
-            (g.qty + COALESCE(h.sto_qty_out, 0) + COALESCE(f.qty_rgp_out, 0)) as qty_out,
+            (COALESCE(g.qty, 0) + COALESCE(h.sto_qty_out, 0) + COALESCE(f.qty_rgp_out, 0)) as qty_out,
             (COALESCE((b.qty_sto + d.sto_qty_in + c.qty_wip),0) + COALESCE(e.qty_rgp_in, 0) - COALESCE(g.qty, 0) - COALESCE(h.sto_qty_out, 0) - COALESCE(f.qty_rgp_out, 0)) as end_stock
         FROM item_fg a 
         LEFT JOIN (select a.item_fg_id, COALESCE(SUM(b.qty), 0) as qty_sto FROM os_fg a JOIN scan_item_receipts_fg b ON a.id = b.workorder WHERE a.trans_date between '$filter_from' and '$filter_to' GROUP BY a.item_fg_id) b ON a.id = b.item_fg_id

@@ -1,5 +1,4 @@
 <?php
-date_default_timezone_set("Asia/Bangkok");
 defined('BASEPATH') or exit('No direct script access allowed');
 class Sales_invoices extends CI_Controller
 {

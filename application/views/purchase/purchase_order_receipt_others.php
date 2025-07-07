@@ -586,7 +586,7 @@
 
                     var receipt_date = $("#receipt_date").datebox('getValue');
                     var receipt_no = $("#receipt_no").textbox('getValue');
-                    // var bc_kind = $("#bc_kind").textbox('getValue');
+                    var supplier_id = $("#supplier_id").combogrid('getValue');
                     // var bc_aju = $("#bc_aju").textbox('getValue');
                     var attachment = $("#attachment").textbox('getValue');
                     var bc_document = $("#bc_document").combogrid('getValue');
@@ -619,7 +619,7 @@
                                     return false;
                                 }
 
-                                $.post("<?= base_url('purchase/purchase_order_receipt_others/checkInvoice') ?>", {bc_document: bc_document}, function(checkInv) {
+                                $.post("<?= base_url('purchase/purchase_order_receipt_others/checkInvoice') ?>", {bc_document: bc_document, supplier_id: supplier_id}, function(checkInv) {
                                     if(checkInv.theme == "error"){
                                         Swal.close();
                                         toastr.error("Invoice No already Created, Please Check!!");

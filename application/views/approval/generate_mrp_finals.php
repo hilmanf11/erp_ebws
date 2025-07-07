@@ -225,20 +225,20 @@
                                     requestApprove(total, json, number + 1, value);
 
                                     if (number == total) {
+                                        filter();
                                         Swal.close();
                                         Swal.fire(
                                             'Approve Completed',
                                             'Approve Data has been completed, You cannot restore data that has been approved',
                                             'success'
                                         );
+
                                     }
                                 },
                                 error: function(jqXHR, textStatus, errorThrown) {
                                     toastr.error(jqXHR.statusText);
                                 },
                             });
-
-                            $('#dg').datagrid('reload');
                         }
                     }
                 }
@@ -285,7 +285,7 @@
 
                                     if (number == total) {
                                         $('#dg_details').datagrid('reload');
-                                        $('#dg').datagrid('reload');
+                                        filter();
                                         Swal.close();
                                         Swal.fire(
                                             'Approve Completed',
@@ -353,7 +353,7 @@
                                             requestApprove(total, json, number + 1, value);
 
                                             if (number == total) {
-                                                $('#dg').datagrid('reload');
+                                                filter();
                                                 Swal.close();
                                                 Swal.fire(
                                                     'Dispprove Completed',
@@ -430,7 +430,7 @@
 
                                             if (number == total) {
                                                 $('#dg_details').datagrid('reload');
-                                                $('#dg').datagrid('reload');
+                                                filter();
                                                 Swal.close();
                                                 Swal.fire(
                                                     'Dispprove Completed',

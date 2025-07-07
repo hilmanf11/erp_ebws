@@ -214,8 +214,8 @@ class Purchase_order_receipts extends CI_Controller
 
             $id = $_POST['id'];
             if ($id === "0") {
-                $this->db->select('a.po_no, a.receipt_no, a.receipt_date, a.awb_no, a.awb_date, a.bc_kind, a.bc_document, a.bc_aju, a.bc_date, b.id as supplier_id, b.name as supplier_name, a.total_receipt as qty_receipt, a.total_label as qty_label, a.status');
-                $this->db->from('(SELECT *, sum(qty_label) as total_label, sum(qty_receipt) as total_receipt FROM purchase_order_receipts '.$where_item_rm_id.' GROUP BY receipt_no ORDER BY status asc) a');
+                $this->db->select('a.po_no, a.receipt_no, a.receipt_date, a.awb_no, a.awb_date, a.bc_kind, a.bc_document, a.bc_aju, a.bc_date, b.id as supplier_id, b.name as supplier_name, a.total_receipt as qty_receipt, a.total_label as qty_label, a.total_data, a.status');
+                $this->db->from('(SELECT *, COUNT(id) as total_data, sum(qty_label) as total_label, sum(qty_receipt) as total_receipt FROM purchase_order_receipts '.$where_item_rm_id.' GROUP BY receipt_no ORDER BY status asc) a');
                 $this->db->join('suppliers b', 'a.supplier_id = b.id');
                 $this->db->join('purchase_orders c', 'a.po_no = c.po_no and a.item_rm_id = c.item_rm_id');
                 $this->db->where('a.deleted', 0);
@@ -252,7 +252,25 @@ class Purchase_order_receipts extends CI_Controller
                 $records = $this->db->get()->result_array();
                 foreach ($records as $record) {
                     $receipt_no = $record['receipt_no'];
+
+                    if ($filter_item_rm != "") {
+                        $where_item_rm_id = "WHERE item_rm_id = '$filter_item_rm'";
+                    }else{
+                        $where_item_rm_id = "";
+                    }
+
                     $purchase_order_label = $this->crud->query("SELECT receipt_id, count(id) as total_scan FROM scan_item_receipts WHERE receipt_id like '%$receipt_no%'");
+                    $por_status = $this->crud->query("SELECT COUNT(id) as total_cancel FROM purchase_order_receipts WHERE `status` = '2' and receipt_no = '$receipt_no'");
+
+                    if(empty(@$por_status[0]->total_cancel)){
+                        $total_scan = @$purchase_order_label[0]->total_scan;
+                    }elseif(@$por_status[0]->total_cancel == $record['total_data']){
+                        $total_scan = 0;
+                    }elseif(empty(@$purchase_order_label[0]->total_scan)){
+                        $total_scan = @$purchase_order_label[0]->total_scan;
+                    }else{
+                        $total_scan = $record['qty_label'];
+                    }
 
                     // $grn_no = "";
                     // if($purchase_order_label[0]->total_scan == $record['qty_label']){
@@ -274,7 +292,7 @@ class Purchase_order_receipts extends CI_Controller
                         "supplier_id" => $record['supplier_id'],
                         "supplier_name" => $record['supplier_name'],
                         "qty_label" => $record['qty_label'],
-                        "total_scan" => @$purchase_order_label[0]->total_scan,
+                        "total_scan" => $total_scan,
                         "status" => $record['status'],
                         "state" => "closed",
                     );

@@ -713,7 +713,7 @@
                 var total_tds = 0;
             }
 
-            var total_grand = (parseFloat(total_sub) + parseFloat(total_igst) + parseFloat(total_cgst) + parseFloat(total_sgst) - parseFloat(total_tds) + parseFloat(total_tcs) + parseFloat(total_freight));
+            var total_grand = (parseFloat(total_sub.toFixed(2)) + parseFloat(total_igst.toFixed(2)) + parseFloat(total_cgst.toFixed(2)) + parseFloat(total_sgst.toFixed(2)) - parseFloat(total_tds) + parseFloat(total_tcs) + parseFloat(total_freight));
             $("#total_grand").numberbox('setValue', (total_grand));
 
             var tds_val = 0;

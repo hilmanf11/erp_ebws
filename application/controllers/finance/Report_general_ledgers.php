@@ -75,6 +75,7 @@ class Report_general_ledgers extends CI_Controller
                 a.journal_date, 
                 a.number, 
                 a.document_no, 
+                (CASE WHEN b.asset_code is not null THEN b.asset_code ELSE f.number END) as asset_code,
                 (CASE WHEN b.invoice_no is not null THEN b.invoice_no WHEN c.customer_po is not null THEN c.customer_po WHEN d.supplier_invoice is not null then d.supplier_invoice WHEN e.sales_invoice is not null THEN e.sales_invoice ELSE a.invoice_no END) as invoice_no,
                 (CASE WHEN b.invoice_date is not null THEN b.invoice_date WHEN c.trans_date is not null THEN c.trans_date WHEN d.payment_date is not null THEN d.payment_date WHEN e.receipt_date is not null THEN e.receipt_date ELSE a.trans_date END) as invoice_date, 
                 a.company_name, 
@@ -90,6 +91,7 @@ class Report_general_ledgers extends CI_Controller
             LEFT JOIN sales_invoices c ON a.document_no = c.number
             LEFT JOIN ap_payments d ON a.document_no = d.payment_no
             LEFT JOIN ar_receipts e ON a.document_no = e.receipt_no
+            LEFT JOIN asset_fixeds f ON a.number = f.voucher_no
             WHERE a.account_number = '$filter_account' and a.modul != 'BANK STATEMENT' $where_period
             GROUP BY a.id");
             $data_1 = $query_1->result_array();
@@ -97,7 +99,8 @@ class Report_general_ledgers extends CI_Controller
             $query_2 = $this->db->query("SELECT 
                 journal_date, 
                 `number`, 
-                document_no, 
+                document_no,
+                '-' as asset_code,
                 invoice_no, 
                 trans_date as invoice_date, 
                 company_name, 
@@ -167,6 +170,7 @@ class Report_general_ledgers extends CI_Controller
                                 <th rowspan="2">Account No</th>
                                 <th rowspan="2">Account Name</th>
                                 <th rowspan="2">Description</th>
+                                <th rowspan="2">Asset Code</th>
                                 <th rowspan="2">Currency</th>
                                 <th colspan="2">BANK STATEMENT</th>
                                 <th colspan="3">LOCAL CURRENCY</th>
@@ -222,6 +226,7 @@ class Report_general_ledgers extends CI_Controller
                                 <td></td>
                                 <td></td>
                                 <td>BALANCE</td>
+                                <td></td>
                                 <td style="text-align:center;">INR</td>
                                 <td></td>
                                 <td></td>
@@ -309,6 +314,7 @@ class Report_general_ledgers extends CI_Controller
                                             <td style="mso-number-format:\@;">' . $journal['account_number'] . '</td>
                                             <td>' . $journal['account_name'] . '</td>
                                             <td>' . $desciption . '</td>
+                                            <td>' . $journal['asset_code'] . '</td>
                                             <td style="text-align:center;">INR</td>
                                             <td>' . @$bank_statement->number . '</td>
                                             <td>' . @$bank_statement->trans_date . '</td>
@@ -336,6 +342,7 @@ class Report_general_ledgers extends CI_Controller
                                     <th style="text-align:right;"></th>
                                     <th style="text-align:left;"><b>ENDING BALANCE</b></th>
                                     <th style="text-align:right;"></th>
+                                    <th style="text-align:right;"></th>
                                     <td></td>
                                     <td></td>
                                     <th style="text-align:right;">-</th>
@@ -355,6 +362,7 @@ class Report_general_ledgers extends CI_Controller
                                     <th style="text-align:right;"></th>
                                     <th style="text-align:right;"></th>
                                     <th style="text-align:left;"><b>GRAND TOTAL</b></th>
+                                    <th style="text-align:right;"></th>
                                     <th style="text-align:right;"></th>
                                     <td></td>
                                     <td></td>

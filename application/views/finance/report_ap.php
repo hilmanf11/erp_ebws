@@ -52,7 +52,6 @@
                     <span style="width:35%; display:inline-block;">Display</span>
                     <select style="width:60%;" id="filter_display" class="easyui-combobox" panelHeight="auto">
                         <option value="Summary">Summary</option>
-                        <option value="Invoice">Invoice</option>
                         <option value="Detail">Detail</option>
                     </select>
                 </div>
@@ -93,13 +92,13 @@
         if (filter_from == "" && filter_to == "" && filter_supplier == "") {
             toastr.warning("Please select Trans Date or Supplier");
         } else {
-            // if(filter_display == "Summary"){
-            //     $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
-            //     $("#printout").attr('src', '<?= base_url('finance/report_ap2/print') ?>' + url);
-            // }else{
+            if(filter_display == "Summary"){
+                $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
+                $("#printout").attr('src', '<?= base_url('finance/report_ap2/print') ?>' + url);
+            }else{
                 $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
                 $("#printout").attr('src', '<?= base_url('finance/report_ap/print') ?>' + url);
-            // }
+            }
         }
     }
 
@@ -129,11 +128,11 @@
         if (filter_from == "" && filter_to == "" && filter_supplier == "") {
             toastr.warning("Please select Trans Date or Supplier");
         } else {
-            // if(filter_display == "Summary"){
-            //     window.location.assign('<?= base_url('finance/report_ap2/print/excel') ?>' + url);
-            // }else{
+            if(filter_display == "Summary"){
+                window.location.assign('<?= base_url('finance/report_ap2/print/excel') ?>' + url);
+            }else{
                 window.location.assign('<?= base_url('finance/report_ap/print/excel') ?>' + url);
-            // }
+            }
         }
     }
 

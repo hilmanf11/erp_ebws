@@ -1,5 +1,4 @@
 <?php
-date_default_timezone_set("Asia/Bangkok");
 defined('BASEPATH') or exit('No direct script access allowed');
 class Ap_payments extends CI_Controller
 {
@@ -539,10 +538,15 @@ class Ap_payments extends CI_Controller
                 $account_name = @$journal[0]->account_name;
             }
 
+            // $ap_payment = $this->crud->query("SELECT a.payment_no,
+            //     (CASE WHEN a.account_type = 'DEBIT' THEN (a.payment * a.rate) ELSE 0 END) AS local_debit,
+            //     (CASE WHEN a.account_type = 'CREDIT' THEN (a.payment * a.rate) ELSE 0 END) AS local_credit,
+            //     ABS((CASE WHEN a.account_type = 'DEBIT' THEN (a.payment * a.rate) ELSE 0 END) - (CASE WHEN a.account_type = 'CREDIT' THEN (a.payment * a.rate) ELSE 0 END)) as payment
+            //     FROM ap_payments a
+            //     WHERE a.purchase_invoice = '$number'
+            //     GROUP BY a.payment_no");
             $ap_payment = $this->crud->query("SELECT a.payment_no,
-                (CASE WHEN a.account_type = 'DEBIT' THEN (a.payment * a.rate) ELSE 0 END) AS local_debit,
-                (CASE WHEN a.account_type = 'CREDIT' THEN (a.payment * a.rate) ELSE 0 END) AS local_credit,
-                ABS((CASE WHEN a.account_type = 'DEBIT' THEN (a.payment * a.rate) ELSE 0 END) - (CASE WHEN a.account_type = 'CREDIT' THEN (a.payment * a.rate) ELSE 0 END)) as payment
+                ABS((CASE WHEN a.account_type = 'DEBIT' THEN SUM(a.payment) ELSE 0 END) - (CASE WHEN a.account_type = 'CREDIT' THEN SUM(a.payment) ELSE 0 END)) as payment
                 FROM ap_payments a
                 WHERE a.purchase_invoice = '$number'
                 GROUP BY a.payment_no");

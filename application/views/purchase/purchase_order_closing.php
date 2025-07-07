@@ -832,6 +832,7 @@
         var filter_from = $("#filter_from").datebox('getValue');
         var filter_to = $("#filter_to").datebox('getValue');
         var filter_po_no = $("#filter_po_no").combogrid('getValue');
+        var filter_suppliers = $("#filter_suppliers").combogrid('getValue');
         var filter_item_rm = $("#filter_item_rm").combogrid('getValue');
 
         url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_po_no=" + filter_po_no + "&filter_suppliers=" + filter_suppliers + "&filter_item_rm=" + filter_item_rm;

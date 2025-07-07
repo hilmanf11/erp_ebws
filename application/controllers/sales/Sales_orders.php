@@ -203,10 +203,10 @@ class Sales_orders extends CI_Controller
         if ($this->input->get()) {
             $sales_order_no = base64_decode($this->input->get('sales_order_no'));
 
-            $this->db->select('a.*, b.number_customer as item_fg_number, b.name as item_fg_name, SUM(a.qty) AS qty, COALESCE(SUM(c.qty), 0) AS delivery, (SUM(a.qty) - COALESCE(SUM(c.qty), 0)) as outstanding');
+            $this->db->select('a.*, b.number_customer as item_fg_number, b.name as item_fg_name, SUM(a.qty) AS qty, COALESCE(c.qty_delivery, 0) AS delivery, (SUM(a.qty) - COALESCE(c.qty_delivery, 0)) as outstanding');
             $this->db->from('sales_orders a');
             $this->db->join('item_fg b', 'a.item_fg_id = b.id');
-            $this->db->join('delivery_notes c', 'a.sales_order_no = c.sales_order_no AND a.item_fg_id = c.item_fg_id AND a.customer_id = c.customer_id AND a.plant = c.plant', 'left');
+            $this->db->join("(select sales_order_no, item_fg_id, customer_id, plant, SUM(qty) as qty_delivery from delivery_notes GROUP by sales_order_no, item_fg_id) c", 'a.sales_order_no = c.sales_order_no AND a.item_fg_id = c.item_fg_id AND a.customer_id = c.customer_id AND a.plant = c.plant', 'left');
             $this->db->where('a.sales_order_no', $sales_order_no);
             $this->db->group_by('a.sales_order_no');
             $this->db->group_by('a.item_fg_id');

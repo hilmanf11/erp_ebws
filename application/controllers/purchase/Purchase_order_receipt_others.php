@@ -154,8 +154,9 @@ class Purchase_order_receipt_others extends CI_Controller
     }
 
     public function checkInvoice(){
+        $supplier_id = $this->input->post('supplier_id');
         $bc_document = $this->input->post('bc_document');
-        $sqlLabel = $this->db->query("SELECT * FROM purchase_order_receipt_others WHERE bc_document ='$bc_document' and status != '2' and store = '1'");
+        $sqlLabel = $this->db->query("SELECT * FROM purchase_order_receipt_others WHERE bc_document ='$bc_document' and supplier_id = '$supplier_id' and status != '2' and store = '1'");
         $rowLabel = $sqlLabel->row();
         
         if(empty($rowLabel)){
@@ -463,9 +464,7 @@ class Purchase_order_receipt_others extends CI_Controller
         $this->db->join('supplier_items e', 'b.id = e.supplier_id and c.id = e.item_rm_id');
         $this->db->where('a.deleted', 0);
         $this->db->where('a.receipt_no', base64_decode($receipt_no));
-        $this->db->group_by('a.po_no');
-        $this->db->group_by('a.supplier_id');
-        $this->db->group_by('a.item_rm_id');
+        $this->db->group_by('a.id');
         $records = $this->db->get()->result_array();
         
         if ($records) {
@@ -524,9 +523,7 @@ class Purchase_order_receipt_others extends CI_Controller
                 $this->db->join('supplier_items e', 'b.id = e.supplier_id and c.id = e.item_rm_id');
                 $this->db->where('a.deleted', 0);
                 $this->db->where('a.receipt_no', base64_decode($receipt_no));
-                $this->db->group_by('a.po_no');
-                $this->db->group_by('a.supplier_id');
-                $this->db->group_by('a.item_rm_id');
+                $this->db->group_by('a.id');
                 $this->db->limit(8, ($i * 8));
                 $records = $this->db->get()->result_array();
 

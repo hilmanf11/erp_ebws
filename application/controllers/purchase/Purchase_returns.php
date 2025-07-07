@@ -38,7 +38,7 @@ class purchase_returns extends CI_Controller
         if($source == "QAS"){
             $datas = $this->crud->query("SELECT a.po_no 
                 FROM purchase_order_receipts a 
-                WHERE a.supplier_id = '$supplier_id' 
+                WHERE a.supplier_id = '$supplier_id' and a.status = 2
                 GROUP BY a.po_no 
                 ORDER BY a.po_no DESC");
             echo json_encode($datas);
@@ -70,7 +70,7 @@ class purchase_returns extends CI_Controller
                 FROM purchase_order_receipts a 
                 JOIN item_rm b ON a.item_rm_id = b.id
                 LEFT JOIN purchase_returns c ON a.receipt_id = c.receipt_id and a.item_rm_id = c.item_rm_id and a.supplier_id = c.supplier_id
-                WHERE a.po_no = '$po_no' and (b.number LIKE '%$post%' and b.id like '%$post%') and a.status = 0
+                WHERE a.po_no = '$po_no' and (b.number LIKE '%$post%' and b.id like '%$post%') and a.status = 2
                 GROUP BY a.item_rm_id
                 ORDER BY b.number asc");
             echo json_encode($data);

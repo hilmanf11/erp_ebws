@@ -1,5 +1,4 @@
 <?php
-date_default_timezone_set("Asia/Bangkok");
 defined('BASEPATH') or exit('No direct script access allowed');
 class Purchase_invoices extends CI_Controller
 {
@@ -207,7 +206,7 @@ class Purchase_invoices extends CI_Controller
 
         if($type == "purchase"){
             $records = $this->crud->query("SELECT a.receipt_no, a.receipt_id, a.taxes, a.total_dp, a.bc_document, a.awb_no FROM (SELECT a.receipt_no, a.receipt_id, d.taxes, d.total_dp, a.bc_document, a.awb_no, COALESCE(e.total_label, 0) AS total_label, a.qty_label AS qty_label
-                FROM purchase_order_receipts a
+                FROM (SELECT * FROM purchase_order_receipts WHERE status != '2') a
                 JOIN item_rm b ON a.item_rm_id = b.id
                 JOIN item_familys c ON b.item_family_id = c.id
                 JOIN purchase_orders d ON a.po_no = d.po_no

@@ -104,7 +104,7 @@ class Delivery_confirm extends CI_Controller
     public function checkInvoice(){
         $invoice_no = trim($this->input->post("invoice_no"));
         $supplier_id = trim($this->input->post("supplier_id"));
-        $read = $this->crud->reads("purchase_order_receipts", [], ["bc_document" => $invoice_no, "supplier_id" => $supplier_id]);
+        $read = $this->crud->query("SELECT id FROM purchase_order_receipts WHERE bc_document = '$invoice_no' and supplier_id = '$supplier_id' and `status` in ('0','1')");
         $read2 = $this->crud->reads("purchase_confirm", [], ["invoice_no" => $invoice_no, "supplier_id" => $supplier_id]);
         
         if(count($read) > 0){

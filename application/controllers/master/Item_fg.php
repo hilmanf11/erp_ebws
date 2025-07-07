@@ -28,15 +28,21 @@ class item_fg extends CI_Controller
         }
     }
     //GET DATA
-    public function reads()
+    public function reads($status = "")
     {
         //master/bom
         //master/wos
         //master/customers
         //master/customer_items
-        $post = isset($_POST['q']) ? $_POST['q'] : "";
-        $send = $this->crud->query("SELECT * FROM item_fg WHERE (`number` like '%$post%' or number_customer like '%$post%' or `name` like '%$post%') and approved_to = '' and status = 0");
-        echo json_encode($send);
+        if($status == ""){
+            $post = isset($_POST['q']) ? $_POST['q'] : "";
+            $send = $this->crud->query("SELECT * FROM item_fg WHERE (`number` like '%$post%' or number_customer like '%$post%' or `name` like '%$post%') and approved_to = '' and status = 0");
+            echo json_encode($send);
+        }else{
+            $post = isset($_POST['q']) ? $_POST['q'] : "";
+            $send = $this->crud->query("SELECT * FROM item_fg WHERE (`number` like '%$post%' or number_customer like '%$post%' or `name` like '%$post%')");
+            echo json_encode($send);
+        }
     }
 
     public function readSupplement()

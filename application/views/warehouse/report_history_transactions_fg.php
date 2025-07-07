@@ -75,7 +75,7 @@
         });
 
         $('#filter_items').combogrid({
-            url: '<?= base_url('master/item_fg/reads') ?>',
+            url: '<?= base_url('master/item_fg/reads/all') ?>',
             panelWidth: 550,
             idField: 'id',
             textField: 'number',
