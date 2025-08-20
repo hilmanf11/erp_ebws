@@ -332,7 +332,7 @@ class Rgp_in extends CI_Controller
             $this->db->join('item_fg c', 'a.item_id = c.id', 'left');
             $this->db->join('suppliers d', 'a.company_id = d.id', 'left');
             $this->db->join('customers e', 'a.company_id = e.id', 'left');
-            $this->db->join('customer_address f', 'a.plant = f.plant', 'left');
+            $this->db->join('customer_address f', 'a.plant = f.plant and a.company_id=f.customer_id', 'left');
             $this->db->join('item_categories g', 'a.item_category_id = g.id', 'left');
             $this->db->join('departements h', 'a.departement_id = h.id', 'left');
             $this->db->join('rgp_types i', 'a.rgp_type_id = i.id', 'left');
@@ -436,7 +436,7 @@ class Rgp_in extends CI_Controller
             $this->db->join('item_fg c', 'a.item_id = c.id', 'left');
             $this->db->join('suppliers d', 'a.company_id = d.id', 'left');
             $this->db->join('customers e', 'a.company_id = e.id', 'left');
-            $this->db->join('customer_address f', 'a.plant = f.plant', 'left');
+            $this->db->join('customer_address f', 'a.plant = f.plant and a.company_id=f.customer_id', 'left');
             $this->db->join('item_categories g', 'a.item_category_id = g.id', 'left');
             $this->db->join('departements h', 'a.departement_id = h.id', 'left');
             $this->db->join('rgp_types i', 'a.rgp_type_id = i.id', 'left');
@@ -544,7 +544,7 @@ class Rgp_in extends CI_Controller
                 $this->db->join('item_fg c', 'a.item_id = c.id', 'left');
                 $this->db->join('suppliers d', 'a.company_id = d.id', 'left');
                 $this->db->join('customers e', 'a.company_id = e.id', 'left');
-                $this->db->join('customer_address f', 'a.plant = f.plant', 'left');
+                $this->db->join('customer_address f', 'a.plant = f.plant and a.company_id=f.customer_id', 'left');
                 $this->db->join('item_categories g', 'a.item_category_id = g.id', 'left');
                 $this->db->join('departements h', 'a.departement_id = h.id', 'left');
                 $this->db->join('rgp_types i', 'a.rgp_type_id = i.id', 'left');
@@ -591,7 +591,7 @@ class Rgp_in extends CI_Controller
                 $this->db->join('item_fg c', 'a.item_id = c.id', 'left');
                 $this->db->join('suppliers d', 'a.company_id = d.id', 'left');
                 $this->db->join('customers e', 'a.company_id = e.id', 'left');
-                $this->db->join('customer_address f', 'a.plant = f.plant', 'left');
+                $this->db->join('customer_address f', 'a.plant = f.plant and a.company_id=f.customer_id', 'left');
                 $this->db->join('item_categories g', 'a.item_category_id = g.id', 'left');
                 $this->db->join('departements h', 'a.departement_id = h.id', 'left');
                 $this->db->join('rgp_types i', 'a.rgp_type_id = i.id', 'left');
@@ -637,7 +637,7 @@ class Rgp_in extends CI_Controller
                 $this->db->join('item_fg c', 'a.item_id = c.id', 'left');
                 $this->db->join('suppliers d', 'a.company_id = d.id', 'left');
                 $this->db->join('customers e', 'a.company_id = e.id', 'left');
-                $this->db->join('customer_address f', 'a.plant = f.plant', 'left');
+                $this->db->join('customer_address f', 'a.plant = f.plant and a.company_id=f.customer_id', 'left');
                 $this->db->join('item_categories g', 'a.item_category_id = g.id', 'left');
                 $this->db->join('departements h', 'a.departement_id = h.id', 'left');
                 $this->db->join('rgp_types i', 'a.rgp_type_id = i.id', 'left');
@@ -955,6 +955,14 @@ class Rgp_in extends CI_Controller
 
         $this->db->select("a.*,
             (CASE 
+                WHEN b.id is not null THEN b.id
+                ELSE c.number
+            END) as item_id,
+            (CASE 
+                WHEN b.id is not null THEN b.number
+                ELSE c.number_customer
+            END) as item_number,
+            (CASE 
                 WHEN b.id is not null THEN b.name
                 ELSE c.name
             END) as item_name,
@@ -975,7 +983,7 @@ class Rgp_in extends CI_Controller
         $this->db->join('item_fg c', 'a.item_id = c.id', 'left');
         $this->db->join('suppliers d', 'a.company_id = d.id', 'left');
         $this->db->join('customers e', 'a.company_id = e.id', 'left');
-        $this->db->join('customer_address f', 'a.plant = f.plant', 'left');
+        $this->db->join('customer_address f', 'a.plant = f.plant and a.company_id=f.customer_id', 'left');
         $this->db->join('item_categories g', 'a.item_category_id = g.id', 'left');
         $this->db->join('departements h', 'a.departement_id = h.id', 'left');
         $this->db->join('rgp_types i', 'a.rgp_type_id = i.id', 'left');
@@ -1009,7 +1017,7 @@ class Rgp_in extends CI_Controller
             $this->db->where('a.status', $filter_status);
         }
 
-        $this->db->group_by('a.number');
+        $this->db->group_by('a.id');
         $this->db->order_by('a.number', 'ASC');
         $records = $this->db->get()->result_array();
         $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#rgp_in {border-collapse: collapse;width: 100%;font-size: 12px;}#rgp_in td, #rgp_in th {border: 1px solid #ddd;padding: 2px;}#rgp_in tr:nth-child(even){background-color: #f2f2f2;}#rgp_in tr:hover {background-color: #ddd;}#rgp_in th {padding-top: 2px;padding-bottom: 2px;text-align: left;color: black;}</style><body>
@@ -1049,6 +1057,19 @@ class Rgp_in extends CI_Controller
                 <th>Departement</th>
                 <th>Reference</th>
                 <th>RGP Out No.</th>
+                <th>RGP ID</th>
+                <th>Part No EBWS</th>
+                <th>Part No Supplier</th>
+                <th>Description</th>
+                <th>Uom</th>
+                <th>Qty</th>
+                <th>Currency</th>
+                <th>Price</th>
+                <th>Value</th>
+                <th>IGST</th>
+                <th>SGST</th>
+                <th>CGST</th>
+                <th>Total Value</th>
             </tr>';
         $no = 1;
         foreach ($records as $data) {
@@ -1063,7 +1084,20 @@ class Rgp_in extends CI_Controller
                     <td>' . $data['item_category_name'] . '</td>
                     <td>' . $data['departement_name'] . '</td>
                     <td>' . $data['reference_number'] . '</td>
-                    <td>' . $data['rgp_number'] . '</td>';
+                    <td>' . $data['rgp_number'] . '</td>
+                    <td>' . $data['rgp_id'] . '</td>
+                    <td>' . $data['item_id'] . '</td>
+                    <td>' . $data['item_number'] . '</td>
+                    <td>' . $data['item_name'] . '</td>
+                    <td>' . $data['uom'] . '</td>
+                    <td>' . $data['qty'] . '</td>
+                    <td>' . $data['currency'] . '</td>
+                    <td>' . $data['price'] . '</td>
+                    <td>' . $data['value'] . '</td>
+                    <td>' . $data['igst_value'] . '</td>
+                    <td>' . $data['sgst_value'] . '</td>
+                    <td>' . $data['cgst_value'] . '</td>
+                    <td>' . $data['total'] . '</td>';
             $no++;
         }
         $html .= '</table></body></html>';
