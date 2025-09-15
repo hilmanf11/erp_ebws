@@ -574,11 +574,11 @@ class Purchase_invoices extends CI_Controller
                 $send = $this->crud->update('purchase_invoices', ["id" => $post['id']], $post);
                 echo $send;
             } else {
-                $purchase_invoices = $this->crud->reads('purchase_invoices', [], ["por_no" => $post['por_no'], "po_no" => $post['po_no'], "item_no" => $post['item_no'], "supplier_id" => $post['supplier_id'], "trans_date" => $post['trans_date']]);
+                // $purchase_invoices = $this->crud->reads('purchase_invoices', [], ["por_no" => $post['por_no'], "po_no" => $post['po_no'], "item_no" => $post['item_no'], "supplier_id" => $post['supplier_id'], "trans_date" => $post['trans_date']]);
                 
-                if(count($purchase_invoices) > 0){
-                    die(json_encode(array("title" => "Available", "message" => "Data Already Created", "theme" => "error")));
-                }
+                // if(count($purchase_invoices) > 0){
+                //     die(json_encode(array("title" => "Available", "message" => "Data Already Created", "theme" => "error")));
+                // }
 
                 $send = $this->crud->create('purchase_invoices', $post);
                 if ($send) {

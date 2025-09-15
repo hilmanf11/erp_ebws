@@ -274,6 +274,8 @@ class Production_schedules extends CI_Controller
 
             $filter_month = $this->input->get('filter_month');
             $filter_year = $this->input->get('filter_year');
+            $filter_month2 = $this->input->get('filter_month2');
+            $filter_year2 = $this->input->get('filter_year2');
             $filter_wp = $this->input->get('filter_wp');
             $filter_workorder = $this->input->get('filter_workorder');
             $filter_customers = $this->input->get('filter_customers');
@@ -281,6 +283,8 @@ class Production_schedules extends CI_Controller
             $filter_date_from = $this->input->get('filter_date_from');
             $filter_date_to = $this->input->get('filter_date_to');
             $filter_status = $this->input->get('filter_status');
+            $period = $filter_year.$filter_month;
+            $period2 = $filter_year2.$filter_month2;
 
             $page = $this->input->post('page');
             $rows = $this->input->post('rows');
@@ -295,10 +299,9 @@ class Production_schedules extends CI_Controller
             $this->db->from('production_schedules a');
             $this->db->join('customers b', 'a.customer_id = b.id');
             $this->db->join('item_fg c', 'a.item_fg_id = c.id');
-            $this->db->join("(SELECT workorder, item_fg_id, SUM(qty) as total_rfg FROM wip_receipts GROUP BY workorder, item_fg_id) d", 'a.item_fg_id = d.item_fg_id and a.workorder = d.workorder', 'left');
+            $this->db->join("(SELECT workorder, item_fg_id, SUM(qty) as total_rfg FROM wip_receipts GROUP BY workorder, item_fg_id) d", 'a.workorder = d.workorder and a.item_fg_id = d.item_fg_id', 'left');
             $this->db->where('a.deleted', 0);
-            $this->db->like('a.month', $filter_month);
-            $this->db->like('a.year', $filter_year);
+            $this->db->where("a.period between '$period' and '$period2'");
             if($filter_wp != ""){
                 $this->db->where('a.wp', $filter_wp);
             }
@@ -438,6 +441,8 @@ class Production_schedules extends CI_Controller
 
         $filter_month = $this->input->get('filter_month');
         $filter_year = $this->input->get('filter_year');
+        $filter_month2 = $this->input->get('filter_month2');
+        $filter_year2 = $this->input->get('filter_year2');
         $filter_wp = $this->input->get('filter_wp');
         $filter_workorder = $this->input->get('filter_workorder');
         $filter_customers = $this->input->get('filter_customers');
@@ -445,6 +450,9 @@ class Production_schedules extends CI_Controller
         $filter_date_from = $this->input->get('filter_date_from');
         $filter_date_to = $this->input->get('filter_date_to');
         $filter_status = $this->input->get('filter_status');
+
+        $period = $filter_year.$filter_month;
+        $period2 = $filter_year2.$filter_month2;
 
         //Config
         $this->db->select('*');
@@ -456,10 +464,9 @@ class Production_schedules extends CI_Controller
         $this->db->from('production_schedules a');
         $this->db->join('customers b', 'a.customer_id = b.id');
         $this->db->join('item_fg c', 'a.item_fg_id = c.id');
-        $this->db->join("(SELECT workorder, item_fg_id, SUM(qty) as total_rfg FROM wip_receipts GROUP BY workorder, item_fg_id) d", 'a.item_fg_id = d.item_fg_id and a.workorder = d.workorder', 'left');
+        $this->db->join("(SELECT workorder, SUM(qty) as total_rfg FROM wip_receipts GROUP BY workorder) d", 'a.workorder = d.workorder', 'left');
         $this->db->where('a.deleted', 0);
-        $this->db->like('a.month', $filter_month);
-        $this->db->like('a.year', $filter_year);
+        $this->db->where("a.period between '$period' and '$period2'");
         if($filter_wp != ""){
             $this->db->where('a.wp', $filter_wp);
         }

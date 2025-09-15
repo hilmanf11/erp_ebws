@@ -41,19 +41,21 @@
     <!-- <div style="width: 100%; display: grid; grid-template-columns: auto auto auto; grid-gap: 5px; display: flex;"> -->
     <fieldset style="width: 100%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
         <legend><b>Form Filter Data</b></legend>
-        <div style="width: 30%; float: left;">
+        <div style="width: 40%; float: left;">
             <div class="fitem">
-                <span style="width:35%; display:inline-block;">Period</span>
-                <input style="width:30%;" id="filter_month" class="easyui-combobox" value="<?= date("m") ?>" data-options="prompt:'Select Month'">
-                <input style="width:30%;" id="filter_year" value="<?= date("Y") ?>" class="easyui-combobox" data-options="prompt:'Select Year'" panelHeight="auto">
+                <span style="width:25%; display:inline-block;">Period</span>
+                <input style="width:20%;" id="filter_month" class="easyui-combobox" value="<?= date("m") ?>" data-options="prompt:'Select Month'">
+                <input style="width:15%;" id="filter_year" value="<?= date("Y") ?>" class="easyui-combobox" data-options="prompt:'Select Year'" panelHeight="auto">
+                <input style="width:20%;" id="filter_month2" class="easyui-combobox" value="<?= date("m") ?>" data-options="prompt:'Select Month'">
+                <input style="width:15%;" id="filter_year2" value="<?= date("Y") ?>" class="easyui-combobox" data-options="prompt:'Select Year'" panelHeight="auto">
             </div>
             <div class="fitem">
-                <span style="width:35%; display:inline-block;">Visual date</span>
-                <input style="width:30%;" name="filter_date_from" id="filter_date_from" value="<?= date("Y-m-01") ?>" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
-                <input style="width:30%;" name="filter_date_to" id="filter_date_to" value="<?= date("Y-m-t") ?>" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
+                <span style="width:25%; display:inline-block;">Visual date</span>
+                <input style="width:35%;" name="filter_date_from" id="filter_date_from" value="<?= date("Y-m-01") ?>" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
+                <input style="width:35%;" name="filter_date_to" id="filter_date_to" value="<?= date("Y-m-t") ?>" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
             </div>
             <div class="fitem">
-                <span style="width:35%; display:inline-block;"></span>
+                <span style="width:25%; display:inline-block;"></span>
                 <a href="javascript:;" class="easyui-linkbutton" onclick="filter()"><i class="fa fa-search"></i> Filter Data</a>
             </div>
         </div>
@@ -323,14 +325,16 @@
         var filter_date_from = $("#filter_date_from").datebox('getValue');
         var filter_date_to = $("#filter_date_to").datebox('getValue');
         var filter_month = $("#filter_month").combobox('getValue');
+        var filter_month2 = $("#filter_month2").combobox('getValue');
         var filter_year = $("#filter_year").combobox('getValue');
+        var filter_year2 = $("#filter_year2").combobox('getValue');
         var filter_wp = $("#filter_wp").combobox('getValue');
         var filter_workorder = $("#filter_workorder").combobox('getValue');
         var filter_customers = $("#filter_customers").combogrid('getValue');
         var filter_item_fg_id = $("#filter_item_fg_id").combogrid('getValue');
         var filter_status = $("#filter_status").combobox('getValue');
 
-        url = "?filter_month=" + filter_month + "&filter_year=" + filter_year + "&filter_wp=" + filter_wp + "&filter_workorder=" + filter_workorder +
+        url = "?filter_month=" + filter_month + "&filter_month2=" + filter_month2 + "&filter_year=" + filter_year + "&filter_year2=" + filter_year2 + "&filter_wp=" + filter_wp + "&filter_workorder=" + filter_workorder +
             "&filter_date_from=" + filter_date_from + "&filter_date_to=" + filter_date_to + 
             "&filter_customers=" + filter_customers + "&filter_item_fg_id=" + filter_item_fg_id + "&filter_status=" + filter_status;
 
@@ -356,14 +360,16 @@
         var filter_date_from = $("#filter_date_from").datebox('getValue');
         var filter_date_to = $("#filter_date_to").datebox('getValue');
         var filter_month = $("#filter_month").combobox('getValue');
+        var filter_month2 = $("#filter_month2").combobox('getValue');
         var filter_year = $("#filter_year").combobox('getValue');
+        var filter_year2 = $("#filter_year2").combobox('getValue');
         var filter_wp = $("#filter_wp").combobox('getValue');
         var filter_workorder = $("#filter_workorder").combobox('getValue');
         var filter_customers = $("#filter_customers").combogrid('getValue');
         var filter_item_fg_id = $("#filter_item_fg_id").combogrid('getValue');
         var filter_status = $("#filter_status").combobox('getValue');
 
-        url = "?filter_month=" + filter_month + "&filter_year=" + filter_year + "&filter_wp=" + filter_wp + "&filter_workorder=" + filter_workorder +
+        url = "?filter_month=" + filter_month + "&filter_month2=" + filter_month2 + "&filter_year=" + filter_year + "&filter_year2=" + filter_year2 + "&filter_wp=" + filter_wp + "&filter_workorder=" + filter_workorder +
             "&filter_date_from=" + filter_date_from + "&filter_date_to=" + filter_date_to + 
             "&filter_customers=" + filter_customers + "&filter_item_fg_id=" + filter_item_fg_id + "&filter_status=" + filter_status;
 
@@ -407,12 +413,6 @@
             url: '<?= base_url('planning/production_schedules/readMonth') ?>',
             valueField: 'number',
             textField: 'name',
-            icons: [{
-                iconCls: 'icon-clear',
-                handler: function(e) {
-                    $(e.data.target).combobox('clear').combobox('textbox').focus();
-                }
-            }],
             onSelect: function(month){
                 var year = $("#filter_year").combobox('getValue');
 
@@ -432,16 +432,22 @@
             }
         });
 
+        $("#filter_month2").combobox({
+            url: '<?= base_url('planning/production_schedules/readMonth') ?>',
+            valueField: 'number',
+            textField: 'name'
+        });
+
         $("#filter_year").combobox({
             url: '<?= base_url('planning/production_schedules/readYear') ?>',
             valueField: 'number',
             textField: 'number',
-            icons: [{
-                iconCls: 'icon-clear',
-                handler: function(e) {
-                    $(e.data.target).combobox('clear').combobox('textbox').focus();
-                }
-            }],
+        });
+
+        $("#filter_year2").combobox({
+            url: '<?= base_url('planning/production_schedules/readYear') ?>',
+            valueField: 'number',
+            textField: 'number',
         });
 
         $("#filter_wp").combobox({

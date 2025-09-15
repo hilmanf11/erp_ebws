@@ -793,7 +793,7 @@ class Ap_payments extends CI_Controller
             }
 
             $data[] = array(
-                "journal_date" => date("Y-m-d"),
+                "journal_date" => $journal['payment_date'],
                 "journal_type_id" => $journal['journal_type_id'],
                 "number" => $voucher_no,
                 "trans_date" => $journal['payment_date'],
