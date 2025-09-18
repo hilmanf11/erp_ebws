@@ -75,7 +75,7 @@ class Report_ap2 extends CI_Controller
             LEFT JOIN account_balance_suppliers b ON a.id = b.supplier_id
             LEFT JOIN (SELECT company_id, SUM(original_debit) AS original_debit, SUM(original_credit) AS original_credit, SUM(local_debit) AS local_debit, SUM(local_credit) AS local_credit 
                 FROM journal_postings 
-                WHERE account_number IN ('16000001','16000002','16000003','16000004','16000005','16000006','16000007','16000008') AND journal_date between '$filter_from' and '$filter_to' AND modul != 'CLEARING'
+                WHERE account_number IN ('16000001','16000002','16000003','16000004','16000005','16000006','16000007','16000008') AND journal_date <= '$filter_to' AND modul NOT IN ('CLEARING','BANK STATEMENT')
                 GROUP BY company_id) c ON a.id = c.company_id
             WHERE a.id like '%$filter_supplier%'
             GROUP BY a.id

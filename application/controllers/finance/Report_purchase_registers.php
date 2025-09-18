@@ -67,7 +67,8 @@ class Report_purchase_registers extends CI_Controller
         $this->db->from('config');
         $config = $this->db->get()->row();
 
-        $this->db->select('a.*, b.name as supplier_name, b.state, b.gst, i.section as tds, b.pen, c.name as journal_type_name, e.account_name, a.currency,
+        $this->db->select('a.*, SUM(a.qty) as qty, SUM(a.igst) as igst, SUM(a.sgst) as sgst, SUM(a.cgst) as cgst,
+            b.name as supplier_name, b.state, b.gst, i.section as tds, b.pen, c.name as journal_type_name, e.account_name, a.currency,
             f.number as item_rm_number, f.hsn_code, g.igst as igst_rate, g.sgst as sgst_rate, g.cgst as cgst_rate, h.name as product_family');
         $this->db->from('purchase_invoices a');
         $this->db->join('suppliers b', 'a.supplier_id = b.id');
@@ -119,7 +120,7 @@ class Report_purchase_registers extends CI_Controller
             COALESCE((c.local_debit - c.local_credit), 0) AS cgst,
             COALESCE((d.local_debit - d.local_credit), 0) AS sgst,
             abs(g.local_debit - g.local_credit) AS total_tcs,
-            abs(f.local_debit - f.local_credit) AS total_tds,
+            (f.local_credit - f.local_debit) AS total_tds,
             h.section AS tds,
             a.number,
             a.document_no,
@@ -132,7 +133,7 @@ class Report_purchase_registers extends CI_Controller
         $this->db->join("(SELECT number, account_number, SUM(local_debit) as local_debit, SUM(local_credit) as local_credit FROM journal_postings WHERE account_number IN ('20100003','17000010','17000013') GROUP BY number) b", "a.number = b.number", 'left');
         $this->db->join("(SELECT number, account_number, SUM(local_debit) as local_debit, SUM(local_credit) as local_credit FROM journal_postings WHERE account_number IN ('20100004','17000009','17000012') GROUP BY number) c", "a.number = c.number", 'left');
         $this->db->join("(SELECT number, account_number, SUM(local_debit) as local_debit, SUM(local_credit) as local_credit FROM journal_postings WHERE account_number IN ('20100005','17000008','17000011') GROUP BY number) d", "a.number = d.number", 'left');
-        $this->db->join("(SELECT number, account_number, SUM(original_debit) as original_debit, SUM(original_credit) as original_credit FROM journal_postings WHERE account_number NOT IN ('20100003','20100004','20100005','16000001','16000002','16000003','16000004','16000005','16000006','16000007','16000008','17000001','17000002','17000003','17000004','17000005','17000006','17000008','17000009','17000010','17000011','17000012','17000013','17000028','17000029','17000034') GROUP BY number, account_number) e", "a.number = e.number", 'left');
+        $this->db->join("(SELECT number, SUM(original_debit) as original_debit, SUM(original_credit) as original_credit FROM journal_postings WHERE account_number NOT IN ('20100003','20100004','20100005','16000001','16000002','16000003','16000004','16000005','16000006','16000007','16000008','17000001','17000002','17000003','17000004','17000005','17000006','17000008','17000009','17000010','17000011','17000012','17000013','17000028','17000029','17000034') GROUP BY number) e", "a.number = e.number", 'left');
         $this->db->join("(SELECT number, account_number, SUM(local_debit) as local_debit, SUM(local_credit) as local_credit FROM journal_postings WHERE account_number IN ('17000001','17000002','17000003','17000004','17000005','17000006','17000028','17000029','17000034') GROUP BY number) f", "a.number = f.number", 'left');
         $this->db->join("(SELECT number, account_number, SUM(local_debit) as local_debit, SUM(local_credit) as local_credit FROM journal_postings WHERE account_number IN ('17000007') GROUP BY number) g", "a.number = g.number", 'left');
         $this->db->join('tds h', 'f.account_number = h.account_number', 'left');
@@ -259,10 +260,16 @@ class Report_purchase_registers extends CI_Controller
                 $currency = $data['currency'];
             }
 
-            if($total < 0){
+            if($total2 < 0){
                 $style = "style='color:red;'";
             }else{
                 $style = "";
+            }
+
+            if($data['total_tds'] < 0){
+                $style_tds = "color:red;";
+            }else{
+                $style_tds = "";
             }
 
             $html .= '  <tr '.$style.'>
@@ -291,7 +298,7 @@ class Report_purchase_registers extends CI_Controller
                             <td style="text-align:right;">' . $sgst_rate . '</td>
                             <td style="text-align:right;">' . $data['sgst'] . '</td>
                             <td style="text-align:right;">' . $data['total_tcs'] . '</td>
-                            <td style="text-align:right;">' . $data['total_tds'] . '</td>
+                            <td style="text-align:right;'.$style_tds.'">' . $data['total_tds'] . '</td>
                             <td>' . $data['tds'] . '</td>
                             <td style="text-align:right;">' . ($total2) . '</td>
                             <td>' . $data['number'] . '</td>

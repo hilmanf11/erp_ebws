@@ -50,7 +50,7 @@ class Shipping_orders extends CI_Controller
             ) z ) d", 'a.item_fg_id = d.item_fg_id');
             $this->db->join('shipping_orders e', 'a.delivery_order_no = e.delivery_order_no AND d.checksheet_label = e.checksheet_label', 'left');
             $this->db->where('a.delivery_order_no', $delivery_order_no);
-            $this->db->where('a.status', 0);
+            // $this->db->where('a.status', 0);
             $this->db->group_by('b.number');
 
             $totalRows = $this->db->count_all_results('', false);

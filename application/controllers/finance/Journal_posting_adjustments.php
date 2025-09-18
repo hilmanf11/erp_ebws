@@ -79,28 +79,28 @@ class Journal_posting_adjustments extends CI_Controller
         if($category == "GL - GL"){
             $sql = $this->db->query("SELECT account_number, account_name, account_number as number, account_name as name, local_debit as debit, local_kredit as credit
                 FROM account_coa 
-                WHERE (account_number like '%$post%' or account_name like '%$post%') and account_number NOT IN (SELECT number FROM account_group_details) and account_number NOT IN ('16000001','16000002','16000003','16000004','16000005','16000006','16000007','16000008','27000001','28000004','28000007') ORDER BY account_number");
+                WHERE (account_number like '%$post%' or account_name like '%$post%') and account_number NOT IN (SELECT number FROM account_group_details) and account_number NOT IN ('16000001','16000002','16000003','16000004','16000005','16000006','16000007','16000008','27000001') ORDER BY account_number");
             $records = $sql->result_array();
         }elseif($category == "GL - SUPPLIER"){
             $sql = $this->db->query("SELECT a.* 
                 FROM (
-                    (SELECT account_number, account_name, account_number as number, account_name as name FROM account_coa WHERE account_number NOT IN (SELECT number FROM account_group_details) and account_number NOT IN ('16000001','16000002','16000003','16000004','16000005','16000006','16000007','16000008','27000001','28000004','28000007') ORDER BY account_number ASC)
+                    (SELECT account_number, account_name, account_number as number, account_name as name FROM account_coa WHERE account_number NOT IN (SELECT number FROM account_group_details) and account_number NOT IN ('16000001','16000002','16000003','16000004','16000005','16000006','16000007','16000008','27000001') ORDER BY account_number ASC)
                 UNION 
                     (SELECT b.account_number, b.account_name, c.id as number, c.name FROM account_balance_suppliers a JOIN account_coa b ON a.account_number = b.account_number JOIN suppliers c ON a.supplier_id = c.id ORDER BY c.name ASC)
-                ) a WHERE a.account_number like '%$post%' or a.account_name like '%$post%' or a.name like '%$post%' ORDER BY a.account_number");
+                ) a WHERE a.account_number like '%$post%' or a.account_name like '%$post%' or a.number like '%$post%' or a.name like '%$post%' ORDER BY a.account_number");
             $records = $sql->result_array();
         }elseif($category == "GL - CUSTOMER"){
             $sql = $this->db->query("SELECT a.* 
                 FROM (
-                    (SELECT account_number, account_name, account_number as number, account_name as name FROM account_coa WHERE account_number NOT IN (SELECT number FROM account_group_details) and account_number NOT IN ('16000001','16000002','16000003','16000004','16000005','16000006','16000007','16000008','27000001','28000004','28000007') ORDER BY account_number ASC)
+                    (SELECT account_number, account_name, account_number as number, account_name as name FROM account_coa WHERE account_number NOT IN (SELECT number FROM account_group_details) and account_number NOT IN ('16000001','16000002','16000003','16000004','16000005','16000006','16000007','16000008','27000001') ORDER BY account_number ASC)
                 UNION 
                     (SELECT b.account_number, b.account_name, c.id as number, CONCAT('(', a.plant, ') ', c.name) FROM account_balance_customers a JOIN account_coa b ON a.account_number = b.account_number JOIN customers c ON a.customer_id = c.id ORDER BY c.name ASC)
-                ) a WHERE a.account_number like '%$post%' or a.account_name like '%$post%' or a.name like '%$post%' ORDER BY a.account_number");
+                ) a WHERE a.account_number like '%$post%' or a.account_name like '%$post%' or a.number like '%$post%' or a.name like '%$post%' ORDER BY a.account_number");
             $records = $sql->result_array();
         }elseif($category == "GL - BANK"){
             $sql = $this->db->query("SELECT a.* 
                 FROM (
-                    (SELECT account_number, account_name, account_number as number, account_name as name FROM account_coa WHERE account_number NOT IN (SELECT number FROM account_group_details) and account_number NOT IN ('16000001','16000002','16000003','16000004','16000005','16000006','16000007','16000008','27000001','28000004','28000007') ORDER BY account_number ASC)
+                    (SELECT account_number, account_name, account_number as number, account_name as name FROM account_coa WHERE account_number NOT IN (SELECT number FROM account_group_details) and account_number NOT IN ('16000001','16000002','16000003','16000004','16000005','16000006','16000007','16000008','27000001') ORDER BY account_number ASC)
                 UNION 
                     (SELECT b.account_number, b.account_name, a.bank_account as number, a.bank_name as name FROM account_banks a JOIN account_coa b ON a.account_number = b.account_number ORDER BY a.bank_account ASC)
                 ) a WHERE a.account_number like '%$post%' or a.account_name like '%$post%' or a.name like '%$post%' ORDER BY a.account_number");
@@ -747,9 +747,13 @@ class Journal_posting_adjustments extends CI_Controller
         if(!empty($asset)){
             $item_family = $this->crud->read("item_familys", [], ["id" => $asset->item_family_id]);
             $estimate_year = $item_family->usefull;
-            $shift = $item_family->shift;
+            if(empty($item_family->shift)){
+                $shift = 1;
+            }else{
+                $shift = $item_family->shift;
+            }
             $estimate_month = ($estimate_year * 12);
-            $depreciation = ($price / $estimate_month);
+            // $depreciation = ($price / $estimate_month);
             $expired_date = date("Y-m-d", strtotime("+" . $estimate_year . " year", strtotime($trans_date)));
             $date_from  = date_create($trans_date);
             $date_to  = date_create($expired_date);
@@ -780,7 +784,7 @@ class Journal_posting_adjustments extends CI_Controller
                 "estimate_year" => $estimate_year,
                 "residual" => (($price * 5) / 100),
                 "expired_date" => $expired_date,
-                "depreciation" => $depreciation,
+                // "depreciation" => $depreciation,
                 "acq_closing" => $price,
                 "remarks" => $document_no,
                 "method" => "JOURNAL ADJUSTMENT",
@@ -788,7 +792,7 @@ class Journal_posting_adjustments extends CI_Controller
                 "total" => $price,
                 "uom" => @$asset->uom,
                 "posting_date" => date("Y-m-d"),
-                "addition" => ($price - (($price * 5) / 100) / $estimate_year / 365 * $estimate_day * $factor),
+                // "addition" => ($price - (($price * 5) / 100) / $estimate_year / 365 * $estimate_day * $factor),
                 "estimate_day" => $estimate_day,
             );
             
@@ -821,7 +825,7 @@ class Journal_posting_adjustments extends CI_Controller
                 $date_from  = date_create($trans_date);
                 $date_to  = date_create($expired_date);
                 $diff  = date_diff($date_from, $date_to); 
-                $depreciation = ((@$asset_fixeds->cost + $price) / $estimate_month);
+                // $depreciation = ((@$asset_fixeds->cost + $price) / $estimate_month);
                 $estimate_day = $diff->d;
                 if($shift == "1"){
                     $factor = 1;
@@ -840,9 +844,9 @@ class Journal_posting_adjustments extends CI_Controller
                     "cost" => (@$asset_fixeds->cost + $price),
                     "residual" => (((@$asset_fixeds->cost + $price) * 5) / 100),
                     "total" => (@$asset_fixeds->cost + $price),
-                    "depreciation" => $depreciation,
+                    // "depreciation" => $depreciation,
                     "acq_closing" => (@$asset_fixeds->cost + $price),
-                    "addition" => ((@$asset_fixeds->cost + $price) - (((@$asset_fixeds->cost + $price) * 5) / 100) / $estimate_year / 365 * $estimate_day * $factor),
+                    // "addition" => ((@$asset_fixeds->cost + $price) - (((@$asset_fixeds->cost + $price) * 5) / 100) / $estimate_year / 365 * $estimate_day * $factor),
                     "status" => $status
                 );
 

@@ -32,7 +32,6 @@ class Home extends CI_Controller
 
             $config = $this->crud->read('config');
             $profiles = $this->crud->read("users", [], ["username" => $username]);
-            $login = $this->crud->read("logins", [], ["username" => $username]);
 
             if ($profiles->avatar != "") {
                 $profile_img = $profiles->avatar;
@@ -41,7 +40,6 @@ class Home extends CI_Controller
             }
 
             $data['users'] = $logins;
-            $data['login'] = $login;
             $data['profile'] = $profiles;
             $data['profile_img'] = $profile_img;
             $data['config'] = $config;

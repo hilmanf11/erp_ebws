@@ -327,7 +327,7 @@ class Purchase_invoices extends CI_Controller
         $config = $this->db->get()->row();
 
         if($type == "purchase"){
-            $this->db->select("a.receipt_no as por_no, a.po_no, '' as asset_code, c.id as item_rm_id, c.number as item_rm_number, c.name as item_rm_name, c.uom, c.hsn_code, f.currency, 
+            $this->db->select("a.receipt_no as por_no, a.po_no, '' as asset_code, c.id as item_rm_id, c.number as item_rm_number, c.name as item_rm_name, c.uom, c.hsn_code, b.currency, 
                 a.qty_receipt as qty, f.price, f.discount, 'INR' as currency_local, h.account_number, i.account_name, h.id  as item_family_id, h.name as item_family_name,
                 b.tds, b.state, k.individual, b.type as supplier_type,
                 ((a.qty_receipt * f.price) * COALESCE(j.igst, 0) / 100) as igst,

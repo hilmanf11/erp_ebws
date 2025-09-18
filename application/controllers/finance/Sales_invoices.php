@@ -1017,8 +1017,10 @@ class Sales_invoices extends CI_Controller
 
         foreach ($sales_invoices as $sales_invoice) {
             $this->db->update('delivery_notes', ["status" => 2], ["delivery_note_no" => $sales_invoice->dn_number, "item_fg_id" => $sales_invoice->item_fg_id]);
+            $this->db->update('rgp_transactions', ["status_si" => 0], ["number" => $sales_invoice->dn_number, "item_id" => $sales_invoice->item_fg_id]);
 
             $delivery_notes = $this->crud->reads("delivery_notes", [], ["delivery_note_no" => $sales_invoice->dn_number, "item_fg_id" => $sales_invoice->item_fg_id]);
+            $rgp_transactions = $this->crud->reads("rgp_transactions", [], ["number" => $sales_invoice->dn_number, "item_id" => $sales_invoice->item_fg_id]);
             foreach ($delivery_notes as $delivery_note) {
                 $shipping_orders = $this->crud->reads("shipping_orders", [], ["delivery_order_no" => $delivery_note->delivery_order_no, "item_fg_id" => $delivery_note->item_fg_id]);
                 $delivery_orders = $this->crud->reads("delivery_orders", [], ["delivery_order_no" => $delivery_note->delivery_order_no, "item_fg_id" => $delivery_note->item_fg_id]);
@@ -1037,6 +1039,16 @@ class Sales_invoices extends CI_Controller
 
                 $this->db->delete("shipping_orders", ["delivery_order_no" => $delivery_note->delivery_order_no, "item_fg_id" => $delivery_note->item_fg_id]);
                 $this->db->update('delivery_orders', ["status" => 2], ["delivery_order_no" => $delivery_note->delivery_order_no, "item_fg_id" => $delivery_note->item_fg_id]);
+            }
+
+            foreach ($rgp_transactions as $rgp_transaction) {
+                $scan_item_rgp = $this->crud->reads("scan_item_rgp", [], ["rgp_number" => $rgp_transaction->number, "item_id" => $rgp_transaction->item_id]);
+
+                foreach ($scan_item_rgp as $scan_rgp) {
+                    $this->db->update('scan_item_receipts_fg', ["status" => 0], ["checksheet_label" => $scan_rgp->label_no]);
+                }
+
+                $this->db->delete("scan_item_rgp", ["rgp_number" => $rgp_transaction->number, "item_id" => $rgp_transaction->item_id]);
             }
         }
 

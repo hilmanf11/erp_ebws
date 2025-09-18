@@ -72,7 +72,7 @@ class Report_ap extends CI_Controller
                 (CASE WHEN '$currency' = 'INR' THEN SUM(local_debit) ELSE SUM(original_debit) END) as local_debit,
                 (CASE WHEN '$currency' = 'INR' THEN SUM(local_credit) ELSE SUM(original_credit) END) as local_credit
             FROM journal_postings
-            WHERE company_id = '$supplier_id' and modul != 'BANK STATEMENT' and journal_date < '$filter_from'
+            WHERE company_id = '$supplier_id' and modul NOT IN ('CLEARING','BANK STATEMENT') and journal_date < '$filter_from'
             AND account_number IN ('16000001','16000002','16000003','16000004','16000005','16000006','16000007','16000008')
             GROUP BY number, document_no, account_number");
         $purchase_invoices = $query->result_array();
@@ -301,40 +301,56 @@ class Report_ap extends CI_Controller
                 $invoice_date = $purchase_invoice['trans_date'];
                 $payment_due = "-";
                 $total_payment = 0;
-                if($purchase_invoice['source'] == "PI" && $purchase_invoice['cl_no'] == ""){
+                $cl_no_array = array();
+                $cl_date_array = array();
+                if($purchase_invoice['source'] == "PI"){
                     $payments = $this->db->query("SELECT payment_no, payment_date, payment, account_type FROM ap_payments WHERE purchase_invoice = '$document_no'")->result_array();
                     $purchase = $this->db->query("SELECT * FROM purchase_invoices WHERE number = '$document_no'")->row_array();
 
                     $invoice_date = $purchase['invoice_date'];
                     $payment_due = $purchase['due_date'];
 
-                    $cl_no_array = [];
-                    $cl_date_array = [];
+                    if($cl_no != ""){
+                        $cl_no_array[] = $cl_no;
+                        $cl_date_array[] = $cl_date;
+                    }
+                    
                     foreach ($payments as $payment) {
                         $cl_no_array[] = $payment['payment_no'];
                         $cl_date_array[] = $payment['payment_date'];
-                        if($payment['account_type'] == "DEBIT"){
-                            $total_payment += $payment['payment'];
-                        }else{
-                            $total_payment -= $payment['payment'];
+
+                        if($cl_no == ""){
+                            if($payment['account_type'] == "DEBIT"){
+                                $total_payment += $payment['payment'];
+                            }else{
+                                $total_payment -= $payment['payment'];
+                            }
                         }
                     }
                     
                     $cl_no = implode(", ", $cl_no_array);
                     $cl_date = implode(", ", $cl_date_array);
-                }elseif($purchase_invoice['source'] == "PI" && $purchase_invoice['cl_no'] != ""){
-                    $purchase = $this->db->query("SELECT * FROM purchase_invoices WHERE number = '$document_no'")->row_array();
-
-                    $invoice_date = $purchase['invoice_date'];
-                    $payment_due = $purchase['due_date'];
                 }elseif($purchase_invoice['source'] == "AP"){
-                    $qpayment = $this->db->query("SELECT * FROM ap_payments WHERE payment_no = '$document_no' and purchase_invoice IN (SELECT DISTINCT number FROM purchase_invoices)")->row_array();
+                    $qpayment = $this->db->query("SELECT * FROM ap_payments WHERE payment_no = '$document_no' and purchase_invoice IN (SELECT DISTINCT number FROM purchase_invoices)")->result_array();
 
-                    if(!empty($qpayment['id'])){
-                        $invoice_date = $qpayment['payment_date'];
-                        $cl_no = $qpayment['payment_no'];
-                        $cl_date = $qpayment['payment_date'];
+                    if($cl_no != ""){
+                        $cl_no_array[] = $cl_no;
+                        $cl_date_array[] = $cl_date;
                     }
+
+                    foreach ($qpayment as $payment) {
+                        $cl_no_array[] = $payment['payment_no'];
+                        $cl_date_array[] = $payment['payment_date'];
+
+                        if($payment['account_type'] == "DEBIT"){
+                            $total_payment -= $payment['payment'];
+                        }else{
+                            $total_payment += $payment['payment'];
+                        }
+                    }
+
+                    $cl_no = implode(", ", array_unique($cl_no_array));
+                    $cl_date = implode(", ", array_unique($cl_date_array));
                 }
 
                 if($currency != "INR"){
@@ -353,7 +369,7 @@ class Report_ap extends CI_Controller
                     $balance_local = 0;
                 }
 
-                if ($cl_no == "" || $balance_local > 0) {
+                if ($cl_no == "" || round($balance_local, 2) != 0) {
                     $status_purchase = "OPEN";
                     $style_status_purchase = "background-color:#C8FFCC;";
                 } else {

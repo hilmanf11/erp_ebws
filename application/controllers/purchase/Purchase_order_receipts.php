@@ -376,21 +376,24 @@ class Purchase_order_receipts extends CI_Controller
     {
         if ($this->input->post()) {
             if ($this->form_validation->run() == TRUE) {
-                $post   = $this->input->post();
-                $send   = $this->crud->create('purchase_order_receipts', array_merge($post, ["receipt_id" => $this->receipt_id($post['receipt_no'])]));
+                $post = $this->input->post();
+                $reads = $this->crud->reads("purchase_order_receipts", [], ["po_no" => $post['po_no'], "bc_document" => $post['bc_document'], "item_rm_id" => $post['item_rm_id']]);
+                if(count($reads) > 0){
+                    die(json_encode(array("title" => "Duplicate", "message" => "Part No EBWS ".$post['item_rm_id']." Duplicate Data", "theme" => "error")));
+                }else{
+                    $send = $this->crud->create('purchase_order_receipts', array_merge($post, ["receipt_id" => $this->receipt_id($post['receipt_no'])]));
+                    if ($post['qty_delivery'] > $post['qty_receipt']) {
+                        $status = 0;
+                    } else {
+                        $status = 1;
+                    }
 
-                if ($post['qty_delivery'] > $post['qty_receipt']) {
-                    $status = 0;
-                } else {
-                    $status = 1;
+                    $this->db->where('invoice_no', $post['bc_document']);
+                    // $this->db->where('po_no', $post['po_no']);
+                    $this->db->where('item_rm_id', $post['item_rm_id']);
+                    $this->db->update("purchase_confirm", ["status" => 1]);
+                    echo $send;
                 }
-
-                $this->db->where('invoice_no', $post['bc_document']);
-                // $this->db->where('po_no', $post['po_no']);
-                $this->db->where('item_rm_id', $post['item_rm_id']);
-                $this->db->update("purchase_confirm", ["status" => 1]);
-
-                echo $send;
             } else {
                 show_error(validation_errors());
             }

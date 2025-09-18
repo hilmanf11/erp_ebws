@@ -38,58 +38,68 @@ class Wip_balances extends CI_Controller
     public function datatables()
     {
         if ($this->input->post()) {
-            $filters = json_decode($this->input->post('filterRules'));
-            $page = $this->input->post('page');
-            $rows = $this->input->post('rows');
-            //Pagination 1-10
-            $page   = isset($page) ? intval($page) : 1;
-            $rows   = isset($rows) ? intval($rows) : 10;
-            $offset = ($page - 1) * $rows;
-            $result = array();
+            $type = $this->input->post('type');
+            $filter_from = $this->input->post('filter_from');
+            $filter_to = $this->input->post('filter_to');
+            
             //Select Query
             $this->db->select("a.*, 
                 c.number as item_rm_number, 
                 c.name as item_rm_name, 
-                c.uom,
-                coalesce(i.qty_issued, 0) as issued,
-                (coalesce(i.qty_issued, 0) - a.qty_act) as qty_issued_bal,
-                (CASE WHEN (coalesce(i.qty_issued, 0) - a.qty_act) < 0 THEN 'OPEN' ELSE 'CLOSED' END) as supply_type");
+                c.uom");
             $this->db->from('supply_sheets a');
             $this->db->join('item_rm c', 'a.item_rm_id = c.id');
-            $this->db->join("(SELECT request_no, item_rm_id, SUM(qty) as qty_issued FROM issued_material_details GROUP BY request_no, item_rm_id) i", "i.request_no = a.request_no and i.item_rm_id = c.id", "LEFT");
             $this->db->where('a.deleted', 0);
-            if (@count($filters) > 0) {
-                foreach ($filters as $filter) {
-                    if ($filter->field == "item_rm_number") {
-                        $this->db->like("c.number", $filter->value);
-                    } elseif ($filter->field == "item_rm_name") {
-                        $this->db->like("c.name", $filter->value);
-                    } elseif ($filter->field == "uom") {
-                        $this->db->like("c.uom", $filter->value);
-                    } elseif ($filter->field == "issued") {
-                        $this->db->like("i.qty_issued", $filter->value);
-                    } elseif ($filter->field == "supply_type") {
-                        $this->db->like("(CASE WHEN (coalesce(i.qty_issued, 0) - a.qty_act) < 0 THEN 'OPEN' ELSE 'CLOSED' END)", $filter->value);
-                    } else {
-                        $this->db->like("a.". $filter->field, $filter->value);
-                    }
-                }
-            }else{
-                $this->db->like("a.created_date", date("Y-m-d"));
-            }
+            $this->db->where('a.type', $type);
+            $this->db->where("a.created_date between '$filter_from' and '$filter_to'");
             $this->db->group_by('a.id');
             $this->db->order_by('a.created_date', 'DESC');
-            //$this->db->order_by('a.warehouse', 'DESC');
-            //Total Data
-            $totalRows = $this->db->count_all_results('', false);
-            //Limit 1 - 10
-            $this->db->limit($rows, $offset);
-            //Get Data Array
             $records = $this->db->get()->result_array();
-            //Mapping Data
-            $result['total'] = $totalRows;
-            $result = array_merge($result, ['rows' => $records]);
+            
+            $datas = [];
+            foreach ($records as $record) {
+                $request_no = $record['request_no'];
+                $item_rm_id = $record['item_rm_id'];
+                $query = $this->db->query("SELECT SUM(qty) as issued FROM issued_material_details WHERE request_no = '$request_no' and item_rm_id = '$item_rm_id'");
+                $row = $query->row();
+
+                if(@$row->issued <= 0){
+                    $issued = 0;
+                }else{
+                    $issued = $row->issued;
+                }
+
+                if(($record['qty_act'] - $issued) > 0){
+                    $status = "OPEN";
+                }else{
+                    $status = "CLOSED";
+                }
+
+                $balance = ($issued - $record['qty_act']);
+
+                $datas[] = array(
+                    "id" => $record['id'],
+                    "supply_type" => $status,
+                    "item_rm_id" => $record['item_rm_id'],
+                    "item_rm_number" => $record['item_rm_number'],
+                    "uom" => $record['uom'],
+                    "request_no" => $record['request_no'],
+                    "workorder" => $record['workorder'],
+                    "qty_act" => $record['qty_act'],
+                    "issued" => "$issued",
+                    "qty_issued_bal" => "$balance",
+                    "created_by" => $record['created_by'],
+                    "created_date" => $record['created_date'],
+                    "updated_by" => $record['updated_by'],
+                    "updated_date" => $record['updated_date'],
+                );
+            }
+
+            $result['total'] = count($datas);
+            $result = array_merge($result, ['rows' => $datas]);
             echo json_encode($result);
+
+            // die(json_encode($records));
         }
     }
     //CREATE DATA
@@ -125,7 +135,7 @@ class Wip_balances extends CI_Controller
     }
 
     public function deleteIssued(){
-        $querys = $this->crud->query("SELECT * FROM supply_sheets WHERE type = 'PP' ORDER BY created_date ASC");
+        $querys = $this->crud->query("SELECT * FROM supply_sheets WHERE type = 'HAV' ORDER BY created_date ASC");
         foreach ($querys as $query) {
             $id = $query->id;
             $request_no = $query->request_no;

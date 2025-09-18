@@ -762,7 +762,7 @@ class Purchase_order_closing extends CI_Controller
                             </td>
                             <td style="font-size: 14px; text-align: left; margin:2px;">
                                 <b>' . $config->name . '</b><br>
-                                <small>ONETIME PURCHASE ORDER</small>
+                                <small>PURCHASE ORDER OTHERS</small>
                             </td>
                         </tr>
                     </table>

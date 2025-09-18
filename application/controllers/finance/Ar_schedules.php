@@ -68,13 +68,14 @@ class Ar_schedules extends CI_Controller
         $this->db->from('config');
         $config = $this->db->get()->row();
 
-        $this->db->select('a.*, (COALESCE(b.balance_local, 0)) as balance_local, (COALESCE(b.balance, 0)) as balance');
+        $this->db->select('a.*, b.plant, (COALESCE(b.balance_local, 0)) as balance_local, (COALESCE(b.balance, 0)) as balance');
         $this->db->from('customers a');
         $this->db->join('account_balance_customers b', 'a.id = b.customer_id', 'left');
         if($filter_customer != ""){
             $this->db->where("a.id", $filter_customer);
         }
         $this->db->group_by('a.id');
+        $this->db->group_by('b.plant');
         $this->db->order_by('a.name', 'asc');
         $customers = $this->db->get()->result_array();
 
@@ -105,16 +106,20 @@ class Ar_schedules extends CI_Controller
             <tr>
                 <th rowspan="2" width="20">No</th>
                 <th rowspan="2">Customer Name</th>
+                <th rowspan="2">Plant</th>
                 <th rowspan="2">Currency</th>
                 <th rowspan="2">Current</th>
-                <th colspan="4">Amount Due</th>
+                <th colspan="7">Amount Due</th>
                 <th rowspan="2">Grand Total</th>
             </tr>
             <tr>
                 <th>1-30 Days</th>
                 <th>31-60 Days</th>
                 <th>61-90 Days</th>
-                <th>Over 90 Days</th>
+                <th>91-120 Days</th>
+                <th>121-180 Days</th>
+                <th>181-365 Days</th>
+                <th>Over 365 Days</th>
             </tr>';
 
         $no = 1;
@@ -123,12 +128,18 @@ class Ar_schedules extends CI_Controller
         $grand_total_week_2 = 0;
         $grand_total_week_3 = 0;
         $grand_total_week_4 = 0;
+        $grand_total_week_5 = 0;
+        $grand_total_week_6 = 0;
+        $grand_total_week_7 = 0;
         $grand_total_all = 0;
         $header = "";
 
         foreach ($customers as $customer) {
             $customer_id = $customer['id'];
             $customer_name = $customer['name'];
+            $plant = $customer['plant'];
+            $company_name = "(".$plant.") ".$customer_name;
+            $company_name2 = $customer_name . " | " . $plant;
 
             $query = $this->db->query("SELECT a.*
                 FROM (
@@ -136,27 +147,28 @@ class Ar_schedules extends CI_Controller
                     FROM sales_invoices a
                     JOIN (SELECT number, document_no, account_number, rates, SUM(local_debit) as local_debit, SUM(local_credit) as local_credit, SUM(original_debit) as original_debit, SUM(original_credit) as original_credit FROM 
                         journal_postings WHERE account_number IN ('27000001') GROUP BY number, document_no, account_number) c ON a.number = c.document_no
-                    WHERE a.trans_date between '$filter_from' and '$filter_to' and a.customer_id = '$customer_id'
+                    WHERE a.trans_date between '$filter_from' and '$filter_to' and a.customer_id = '$customer_id' and a.plant = '$plant'
                     ) 
                 UNION 
                     (SELECT '' as difference, 'AP' as `status`, a.receipt_date as trans_date, '-' as due_date, a.sales_invoice, a.receipt_no as document_no, c.account_number, c.number as voucher_no, a.currency, c.original_debit, c.original_credit, c.local_debit, c.local_credit, c.rates
                     FROM ar_receipts a
                     JOIN (SELECT number, document_no, account_number, rates, SUM(local_debit) as local_debit, SUM(local_credit) as local_credit, SUM(original_debit) as original_debit, SUM(original_credit) as original_credit FROM 
                         journal_postings WHERE account_number IN ('27000001') GROUP BY number, document_no, account_number) c ON a.receipt_no = c.document_no
-                    WHERE a.receipt_date between '$filter_from' and '$filter_to' and a.customer_id = '$customer_id' GROUP BY a.receipt_no
+                    WHERE a.receipt_date between '$filter_from' and '$filter_to' and a.customer_id = '$customer_id' and a.plant = '$plant' GROUP BY a.receipt_no
                     )
                 UNION 
                     (SELECT '' as difference, 'CR' as `status`, a.journal_date as trans_date, '-' as due_date, a.invoice_no as sales_invoice, a.document_no, a.account_number, a.number as voucher_no, a.currency, a.original_debit, a.original_credit, a.local_debit, a.local_credit, a.rates
                     FROM journal_postings a
-                    WHERE a.journal_date between '$filter_from' and '$filter_to' and a.description like '%$customer_name%' and a.modul in ('CURRENCY REVALUATION','ADJUSTMENT') and a.account_number IN ('27000001')
+                    WHERE a.journal_date between '$filter_from' and '$filter_to' and a.company_id = '$customer_id' and a.company_name like '%$company_name%' and a.modul in ('CURRENCY REVALUATION','ADJUSTMENT') and a.account_number IN ('27000001')
                     )
                 ) a GROUP BY a.voucher_no, a.document_no ORDER BY a.trans_date ASC");
             $sales_invoices = $query->result_array();
 
             $this->db->select('COALESCE(SUM(local_debit) + SUM(local_credit), 0) as local_pi, COALESCE(SUM(original_debit) + SUM(original_credit), 0) as original_pi');
-            $this->db->from('(SELECT DISTINCT customer_id, number, trans_date FROM sales_invoices) a');
+            $this->db->from('(SELECT DISTINCT customer_id, plant, number, trans_date FROM sales_invoices) a');
             $this->db->join("journal_postings b", "a.number = b.document_no and b.account_number IN ('27000001')");
             $this->db->where('a.customer_id', $customer_id);
+            $this->db->where('a.plant', $plant);
             $this->db->where('a.trans_date <', $filter_from);
             $pi_begin = $this->db->get()->row();
 
@@ -165,13 +177,15 @@ class Ar_schedules extends CI_Controller
             $this->db->where("a.journal_date <", $filter_from);
             $this->db->where_in("a.modul", array('CURRENCY REVALUATION'));
             $this->db->where_in("a.account_number", array('27000001'));
-            $this->db->like("a.description", $customer_name);
+            $this->db->where("a.company_id", $customer_id);
+            $this->db->like("a.company_name", $company_name);
             $revaluation_begin = $this->db->get()->row();
             
             $this->db->select('COALESCE(SUM(local_debit) + SUM(local_credit), 0) as local_ap, COALESCE(SUM(original_debit) + SUM(original_credit), 0) as original_ap');
-            $this->db->from('(SELECT DISTINCT customer_id, receipt_no, receipt_date FROM ar_receipts) a');
+            $this->db->from('(SELECT DISTINCT customer_id, plant, receipt_no, receipt_date FROM ar_receipts) a');
             $this->db->join("journal_postings b", "a.receipt_no = b.document_no and b.account_number IN ('27000001')");
             $this->db->where('a.customer_id', $customer_id);
+            $this->db->where('a.plant', $plant);
             $this->db->where('a.receipt_date <', $filter_from);
             $ap_begin = $this->db->get()->row();
 
@@ -182,11 +196,13 @@ class Ar_schedules extends CI_Controller
             }
 
             $current = @$begin_balance_local;
-            // $current = 0;
             $week_1 = 0;
             $week_2 = 0;
             $week_3 = 0;
             $week_4 = 0;
+            $week_5 = 0;
+            $week_6 = 0;
+            $week_7 = 0;
             $arr = [];
 
             $total_pi = 0;
@@ -200,6 +216,7 @@ class Ar_schedules extends CI_Controller
                 $this->db->where_in('a.account_number', ['27000001']);
                 $this->db->where('a.sales_invoice', $sales_invoice['document_no']);
                 $this->db->where('a.customer_id', $customer_id);
+                $this->db->where('a.plant', $plant);
                 $this->db->where("a.receipt_date BETWEEN '$filter_from' and '$filter_to'");
                 $ap = $this->db->get()->row();
 
@@ -226,41 +243,23 @@ class Ar_schedules extends CI_Controller
                 if(empty(@$ap->document_no)){
                     if(@$sales_invoice['difference'] <= 0){
                         $current += $total_pi_ap;
-                        $week_1 += 0;
-                        $week_2 += 0;
-                        $week_3 += 0;
-                        $week_4 += 0;
                     } elseif (@$sales_invoice['difference'] >= 1 && @$sales_invoice['difference'] <= 30) {
-                        $current += 0;
                         $week_1 += $total_pi_ap;
-                        $week_2 += 0;
-                        $week_3 += 0;
-                        $week_4 += 0;
                     } elseif (@$sales_invoice['difference'] >= 31 && @$sales_invoice['difference'] <= 60) {
-                        $current += 0;
-                        $week_1 += 0;
                         $week_2 += $total_pi_ap;
-                        $week_3 += 0;
-                        $week_4 += 0;
                     } elseif (@$sales_invoice['difference'] >= 61 && @$sales_invoice['difference'] <= 90) {
-                        $current += 0;
-                        $week_1 += 0;
-                        $week_2 += 0;
                         $week_3 += $total_pi_ap;
-                        $week_4 += 0;
-                    } else {
-                        $current += 0;
-                        $week_1 += 0;
-                        $week_2 += 0;
-                        $week_3 += 0;
+                    } elseif (@$sales_invoice['difference'] >= 91 && @$sales_invoice['difference'] <= 120) {
                         $week_4 += $total_pi_ap;
+                    } elseif (@$sales_invoice['difference'] >= 121 && @$sales_invoice['difference'] <= 180) {
+                        $week_5 += $total_pi_ap;
+                    } elseif (@$sales_invoice['difference'] >= 181 && @$sales_invoice['difference'] <= 365) {
+                        $week_6 += $total_pi_ap;  
+                    } else {
+                        $week_7 += $total_pi_ap;
                     }
                 }else{
                     $current += $total_pi_ap;
-                    $week_1 += 0;
-                    $week_2 += 0;
-                    $week_3 += 0;
-                    $week_4 += 0;
                 }
 
                 $arr[] = array(
@@ -304,17 +303,39 @@ class Ar_schedules extends CI_Controller
                 $t_week_4 = "<span style='color:red;'>(".number_format(abs($week_4), 2).")</span>";
             }
 
-            if(abs($current + $week_1 + $week_2 + $week_3 + $week_4) > 0){
+            if($week_5 >= 0){
+                $t_week_5 = number_format(abs($week_5), 2);
+            }else{
+                $t_week_5 = "<span style='color:red;'>(".number_format(abs($week_5), 2).")</span>";
+            }
+
+            if($week_6 >= 0){
+                $t_week_6 = number_format(abs($week_6), 2);
+            }else{
+                $t_week_6 = "<span style='color:red;'>(".number_format(abs($week_6), 2).")</span>";
+            }
+
+            if($week_7 >= 0){
+                $t_week_7 = number_format(abs($week_7), 2);
+            }else{
+                $t_week_7 = "<span style='color:red;'>(".number_format(abs($week_7), 2).")</span>";
+            }
+
+            if(abs($current + $week_1 + $week_2 + $week_3 + $week_4 + $week_5 + $week_6 + $week_7) > 0){
                 $header .= '  <tr>
                                 <td style="text-align:center">' . $no . '</td>
                                 <td>' . $customer['name'] . '</td>
+                                <td>' . $customer['plant'] . '</td>
                                 <td style="text-align:center;">INR</td>
                                 <td style="text-align:right;">' . $t_current . '</td>
                                 <td style="text-align:right;">' . $t_week_1 . '</td>
                                 <td style="text-align:right;">' . $t_week_2 . '</td>
                                 <td style="text-align:right;">' . $t_week_3 . '</td>
                                 <td style="text-align:right;">' . $t_week_4 . '</td>
-                                <td style="text-align:right;">' . number_format($current + $week_1 + $week_2 + $week_3 + $week_4, 2) . '</td>
+                                <td style="text-align:right;">' . $t_week_5 . '</td>
+                                <td style="text-align:right;">' . $t_week_6 . '</td>
+                                <td style="text-align:right;">' . $t_week_7 . '</td>
+                                <td style="text-align:right;">' . number_format(($current + $week_1 + $week_2 + $week_3 + $week_4 + $week_5 + $week_6 + $week_7), 2) . '</td>
                             </tr>';
                 $no++;
             }
@@ -324,47 +345,23 @@ class Ar_schedules extends CI_Controller
             $grand_total_week_2 += $week_2;
             $grand_total_week_3 += $week_3;
             $grand_total_week_4 += $week_4;
-            $grand_total_all += ($current + $week_1 + $week_2 + $week_3 + $week_4);
-        }
-
-        if($grand_total_current >= 0){
-            $tg_current = number_format(abs($grand_total_current), 2);
-        }else{
-            $tg_current = "<span style='color:red;'>(".number_format(abs($grand_total_current), 2).")</span>";
-        }
-
-        if($week_1 >= 0){
-            $t_week_1 = number_format(abs($week_1), 2);
-        }else{
-            $t_week_1 = "<span style='color:red;'>(".number_format(abs($week_1), 2).")</span>";
-        }
-
-        if($week_2 >= 0){
-            $t_week_2 = number_format(abs($week_2), 2);
-        }else{
-            $t_week_2 = "<span style='color:red;'>(".number_format(abs($week_2), 2).")</span>";
-        }
-
-        if($week_3 >= 0){
-            $t_week_3 = number_format(abs($week_3), 2);
-        }else{
-            $t_week_3 = "<span style='color:red;'>(".number_format(abs($week_3), 2).")</span>";
-        }
-
-        if($week_4 >= 0){
-            $t_week_4 = number_format(abs($week_4), 2);
-        }else{
-            $t_week_4 = "<span style='color:red;'>(".number_format(abs($week_4), 2).")</span>";
+            $grand_total_week_5 += $week_5;
+            $grand_total_week_6 += $week_6;
+            $grand_total_week_7 += $week_7;
+            $grand_total_all += ($current + $week_1 + $week_2 + $week_3 + $week_4 + $week_5 + $week_6 + $week_7);
         }
 
         $header .= '  <tr>
-                        <td style="text-align:right;" colspan="3"><b>GRAND TOTAL</b></td>
-                        <td style="text-align:right;">' . $tg_current . '</td>
+                        <td style="text-align:right;" colspan="4"><b>GRAND TOTAL</b></td>
+                        <td style="text-align:right;">' . number_format($grand_total_current, 2) . '</td>
                         <td style="text-align:right;">' . number_format($grand_total_week_1, 2) . '</td>
                         <td style="text-align:right;">' . number_format($grand_total_week_2, 2) . '</td>
                         <td style="text-align:right;">' . number_format($grand_total_week_3, 2) . '</td>
                         <td style="text-align:right;">' . number_format($grand_total_week_4, 2) . '</td>
-                        <td style="text-align:right;">' . number_format(($grand_total_all), 2) . '</td>
+                        <td style="text-align:right;">' . number_format($grand_total_week_5, 2) . '</td>
+                        <td style="text-align:right;">' . number_format($grand_total_week_6, 2) . '</td>
+                        <td style="text-align:right;">' . number_format($grand_total_week_7, 2) . '</td>
+                        <td style="text-align:right;">' . number_format($grand_total_all, 2) . '</td>
                     </tr>';
 
         $htmlend = '</table></body></html>';

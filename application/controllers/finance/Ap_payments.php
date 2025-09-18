@@ -156,6 +156,7 @@ class Ap_payments extends CI_Controller
         $total = 0;
         $grand_total = 0;
         $grand_total_INR = 0;
+        $grand_total_ORI = 0;
         $flag = 1;
         $mergedData = array();
         foreach ($jsonDatas as $jsonData) {
@@ -167,6 +168,12 @@ class Ap_payments extends CI_Controller
             $total = $jsonData["payment"];
             $currency = $jsonData['currency'];
             $rate = $jsonData['rate'];
+            $rate2 = $jsonData['rate2'];
+
+            if(empty($rate2)){
+                $rate2 = $rate;
+            }
+
             $payment_date = $jsonData['payment_date'];
             $trans_date = $jsonData['payment_date'];
 
@@ -187,12 +194,15 @@ class Ap_payments extends CI_Controller
 
             if ($currency != "INR") {
                 if ($exchangeBf) {
+                    $amount_pi = ($total * $exchangeBf->middle);
                     $amount = ($total * $exchangeBf->middle);
                 } else {
                     // $amount = 0;
-                    $amount = ($total * $rate);
+                    $amount_pi = ($total * $rate);
+                    $amount = ($total * $rate2);
                 }
             } else {
+                $amount_pi = $total;
                 $amount = $total;
             }
 
@@ -215,7 +225,7 @@ class Ap_payments extends CI_Controller
                         "description" => $purchase_invoice. " | ". $description,
                         "debit" => $total,
                         "credit" => 0,
-                        "rate" => $rate,
+                        "rate" => $rate2,
                         "local_debit" => round($amount, 2),
                         "local_credit" => 0,
                         "flag" => $flag,
@@ -228,7 +238,7 @@ class Ap_payments extends CI_Controller
                         "description" => $purchase_invoice. " | " .$description,
                         "debit" => 0,
                         "credit" => $total,
-                        "rate" => $rate,
+                        "rate" => $rate2,
                         "local_debit" => 0,
                         "local_credit" => round($amount, 2),
                         "flag" => $flag,
@@ -240,10 +250,12 @@ class Ap_payments extends CI_Controller
             
             if ($jsonData['account_type'] == "DEBIT") {
                 $grand_total += round($total, 2);
-                $grand_total_INR += round($amount, 2);
+                $grand_total_ORI += round($amount, 2);
+                $grand_total_INR += round($amount_pi, 2);
             }else{
                 $grand_total -= round($total, 2);
-                $grand_total_INR -= round($amount, 2);
+                $grand_total_ORI -= round($amount, 2);
+                $grand_total_INR -= round($amount_pi, 2);
             }
         }
 
@@ -273,14 +285,14 @@ class Ap_payments extends CI_Controller
             );
 
             if ($currency != "INR") {
-                if ($amount2 > $grand_total_INR) {
+                if ($grand_total_ORI < $grand_total_INR) {
                     $arr[] = array(
                         "account_number" => "31000002",
                         "account_name" => "Currency Fluction Gain A/c",
                         "debit" => "0.00",
                         "credit" => "0.00",
                         "rate" => 1,
-                        "local_debit" => abs($amount2 - $grand_total_INR),
+                        "local_debit" => abs($grand_total_ORI - $grand_total_INR),
                         "local_credit" => 0,
                         "flag" => $flag + 1,
                     );
@@ -292,7 +304,7 @@ class Ap_payments extends CI_Controller
                         "credit" => "0.00",
                         "rate" => 1,
                         "local_debit" => 0,
-                        "local_credit" => abs($amount2 - $grand_total_INR),
+                        "local_credit" => abs($grand_total_ORI - $grand_total_INR),
                         "flag" => $flag + 1,
                     );
                 }
@@ -557,6 +569,7 @@ class Ap_payments extends CI_Controller
                 "supplier_invoice" => $record['invoice_no'],
                 "currency" => $record['currency'],
                 "rate" => $record['rate'],
+                "rate2" => $record['rate'],
                 "amount" => $record['total'],
                 // "balance" => ($record['total']),
                 "balance" => ($record['total'] - @$ap_payment[0]->payment),
@@ -782,7 +795,11 @@ class Ap_payments extends CI_Controller
                 $local_debit = $journal['local_debit'];
                 $local_credit = $journal['local_credit'];
 
-                $rates = $journal['rate'];
+                if(($original_debit + $original_credit) == 0){
+                    $rates = 1;
+                }else{
+                    $rates = (($journal['local_debit'] + $journal['local_credit']) / ($original_debit + $original_credit));
+                }
             } else {
                 $original_debit = $debit;
                 $original_credit = $credit;

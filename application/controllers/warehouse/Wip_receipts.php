@@ -346,29 +346,17 @@ class Wip_receipts extends CI_Controller
             if ($this->form_validation->run() == TRUE) {
                 $post = $this->input->post();
                 $read = $this->crud->reads("wip_receipts", [], ["checksheet_number" => $post['checksheet_number']]);
-                // $item_fg_id = $post['item_fg_id'];
-                // $trans_date_from = $post['trans_date_from'];
-                // $trans_date_to = $post['trans_date_to'];
-                // $period = $post['period'];
-                // $wp = $post['wp'];
-                // $qty = $post['qty'];
+                $workorder = $post['workorder'];
+                $qProses = $this->db->query("SELECT a.workorder, a.qty, SUM(b.qty) AS receipt FROM production_schedules a 
+                    JOIN wip_receipts b ON a.item_fg_id = b.item_fg_id AND a.workorder = b.workorder
+                    WHERE a.workorder = '$workorder'");
+                $dProses = $qProses->row();
 
-                // $item_fg = $this->crud->read("item_fg", [], ["id" => $item_fg_id]);
-                // $item_fg_number = @$item_fg->number_customer;
-
-                // $this->dummy = $this->load->database('dummy', TRUE);
-                // $qProses = $this->dummy->query("SELECT a.serial_number, a.assy_number, a.mpp, a.wp, a.customer, COUNT(a.qty) as qty, c.temp_woc_id
-                //     from mst_scan_proses a
-                //     left join wip_trx_mpp c ON a.assy_number = c.assy_no and a.wp = c.wp and a.mpp = c.periode
-                //     where a.kode_proses = '5' and status_before = 'false' and status_next = 'true' and sts_rfg is null
-                //     and a.mpp = '$period' and a.wp = '$wp' and a.assy_number = '$item_fg_number'
-                //     GROUP BY a.serial_number, a.assy_number, a.mpp, a.wp, a.customer, c.temp_woc_id
-                //     ORDER BY mpp, wp asc");
-                // $dProses = $qProses->result();
-                
-                // for ($i=0; $i < $qty; $i++) {
-                //     $this->dummy->update("mst_scan_proses", ["sts_rfg" => true], ["serial_number" => $dProses[$i]->serial_number, "kode_proses" => '5']);
-                // }
+                if(!empty($dProses->workorder)){
+                    if($dProses->qty < ($dProses->receipt + $post['qty'])){
+                        die(json_encode(array("title" => "Error", "message" => "Qty Production < Qty RFG", "theme" => "error")));
+                    }
+                }
                 
                 if (count($read) > 0) {
                     echo json_encode(array("title" => "Error", "message" => "Duplicate Checksheet Number, Please try again", "theme" => "error"));

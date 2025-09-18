@@ -74,7 +74,7 @@ class Report_general_ledgers extends CI_Controller
             $query_1 = $this->db->query("SELECT 
                 a.journal_date, 
                 a.number, 
-                a.document_no, 
+                (CASE WHEN a.modul = 'ADJUSTMENT' THEN a.number ELSE a.document_no END) as document_no,  
                 (CASE WHEN b.asset_code is not null THEN b.asset_code ELSE f.number END) as asset_code,
                 (CASE WHEN b.invoice_no is not null THEN b.invoice_no WHEN c.customer_po is not null THEN c.customer_po WHEN d.supplier_invoice is not null then d.supplier_invoice WHEN e.sales_invoice is not null THEN e.sales_invoice ELSE a.invoice_no END) as invoice_no,
                 (CASE WHEN b.invoice_date is not null THEN b.invoice_date WHEN c.trans_date is not null THEN c.trans_date WHEN d.payment_date is not null THEN d.payment_date WHEN e.receipt_date is not null THEN e.receipt_date ELSE a.trans_date END) as invoice_date, 
@@ -87,7 +87,7 @@ class Report_general_ledgers extends CI_Controller
                 a.local_debit, 
                 a.local_credit
             FROM journal_postings a
-            LEFT JOIN purchase_invoices b ON a.document_no = b.number
+            LEFT JOIN purchase_invoices b ON (a.document_no = b.number and (trim(b.item_no) = TRIM(SUBSTRING_INDEX(SUBSTRING_INDEX(a.description, '|', 4), '|', -1)) or trim(b.item_no) = TRIM(SUBSTRING_INDEX(SUBSTRING_INDEX(a.description, '|', 3), '|', -1))))
             LEFT JOIN sales_invoices c ON a.document_no = c.number
             LEFT JOIN ap_payments d ON a.document_no = d.payment_no
             LEFT JOIN ar_receipts e ON a.document_no = e.receipt_no

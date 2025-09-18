@@ -160,13 +160,21 @@ class Journal_posting_clearing extends CI_Controller
                 b.number AS voucher_no,
                 b.account_number,
                 'INR' as currency,
-                (b.local_credit - b.local_debit) as amount
+                ((b.local_credit - b.local_debit) + coalesce(c.payment_2, 0)) as amount
             FROM ap_payments a
-            LEFT JOIN (SELECT journal_date, number, document_no, account_number, SUM(local_debit) AS local_debit, SUM(local_credit) AS local_credit 
+            LEFT JOIN (SELECT journal_date, number, document_no, account_number, 
+                SUM(original_debit) AS original_debit, 
+                SUM(original_credit) AS original_credit,
+                SUM(local_debit) AS local_debit, 
+                SUM(local_credit) AS local_credit 
                 FROM journal_postings 
                 WHERE account_number IN ('16000001','16000002','16000003','16000004','16000005','16000006','16000007','16000008') 
                 GROUP BY document_no, account_number) b ON a.payment_no = b.document_no
-            WHERE a.supplier_id = '$company_id' AND a.status_cl = '0' AND a.purchase_invoice NOT IN (SELECT DISTINCT number FROM purchase_invoices WHERE `status` = 1)
+            LEFT JOIN (SELECT payment_no, SUM(payment) as payment, SUM(payment * rate) as payment_2 FROM ap_payments WHERE purchase_invoice IN (SELECT DISTINCT number FROM purchase_invoices) GROUP BY payment_no) c ON a.payment_no = c.payment_no
+            WHERE a.supplier_id = '$company_id' 
+            AND a.status_cl = '0' 
+            AND a.purchase_invoice NOT IN (SELECT DISTINCT number FROM purchase_invoices WHERE `status` = 1)
+            AND ((b.original_credit - b.original_debit) + coalesce(c.payment, 0)) != 0
             GROUP BY a.payment_no");
         $ap_payments = $sql_2->result_array();
 
@@ -222,13 +230,22 @@ class Journal_posting_clearing extends CI_Controller
             b.number AS voucher_no,
             b.account_number,
             'INR' as currency,
-            (b.local_credit - b.local_debit) as amount
+            ((b.local_credit - b.local_debit) - (COALESCE(c.payment, 0) - COALESCE(d.payment, 0))) as amount
         FROM purchase_invoices a
-        JOIN (SELECT journal_date, number, document_no, account_number, description, SUM(local_debit) AS local_debit, SUM(local_credit) AS local_credit 
+        JOIN (SELECT journal_date, number, company_id, document_no, account_number, description, 
+                SUM(original_debit) AS original_debit, 
+                SUM(original_credit) AS original_credit,
+                SUM(local_debit) AS local_debit, 
+                SUM(local_credit) AS local_credit 
             FROM journal_postings 
             WHERE account_number IN ('16000001','16000002','16000003','16000004','16000005','16000006','16000007','16000008') 
             GROUP BY document_no, account_number) b ON a.number = b.document_no
-        WHERE a.supplier_id = '$company_id' AND a.status = '0'
+        LEFT JOIN (SELECT purchase_invoice, SUM(payment) as payment FROM ap_payments WHERE account_type = 'DEBIT' GROUP BY purchase_invoice) c ON a.number = c.purchase_invoice
+        LEFT JOIN (SELECT purchase_invoice, SUM(payment) as payment FROM ap_payments WHERE account_type = 'CREDIT' GROUP BY purchase_invoice) d ON a.number = d.purchase_invoice
+        LEFT JOIN journal_clearings e ON b.document_no = e.document_no AND b.company_id = e.company_id AND b.description = e.description
+        WHERE a.supplier_id = '$company_id' 
+        AND ((b.original_credit - b.original_debit) - (COALESCE(c.payment, 0) - COALESCE(d.payment, 0))) != 0
+        AND e.number is null
         GROUP BY a.number
         ORDER BY b.journal_date asc");
         $purchase_invoices = $sql_4->result_array();
@@ -414,14 +431,20 @@ class Journal_posting_clearing extends CI_Controller
                 b.account_number,
                 b.account_name,
                 'INR' as currency,
-                (b.local_credit - b.local_debit) as amount
+                ((b.local_credit - b.local_debit) + coalesce(d.payment_2, 0)) as amount
             FROM ap_payments a
-            JOIN (SELECT trans_date, journal_type_id, number, description, document_no, account_number, account_name, SUM(local_debit) AS local_debit, SUM(local_credit) AS local_credit 
+            JOIN (SELECT trans_date, journal_type_id, number, description, document_no, account_number, account_name,
+                SUM(original_debit) AS original_debit, 
+                SUM(original_credit) AS original_credit,
+                SUM(local_debit) AS local_debit, 
+                SUM(local_credit) AS local_credit 
                 FROM journal_postings 
                 WHERE account_number IN ('16000001','16000002','16000003','16000004','16000005','16000006','16000007','16000008') 
                 GROUP BY document_no, account_number) b ON a.payment_no = b.document_no
             JOIN suppliers c ON a.supplier_id = c.id
-            WHERE a.payment_no IN ($document_no_str) and a.supplier_id = '$company_id' AND a.status_cl = '0' AND a.purchase_invoice NOT IN (SELECT DISTINCT number FROM purchase_invoices WHERE `status` = 1)
+            LEFT JOIN (SELECT payment_no, SUM(payment) as payment, SUM(payment * rate) as payment_2 FROM ap_payments WHERE purchase_invoice IN (SELECT DISTINCT number FROM purchase_invoices) GROUP BY payment_no) d ON a.payment_no = d.payment_no
+            WHERE a.payment_no IN ($document_no_str) and a.supplier_id = '$company_id' AND a.status_cl = '0' 
+            AND a.purchase_invoice NOT IN (SELECT DISTINCT number FROM purchase_invoices WHERE `status` = 1)
             GROUP BY a.payment_no");
         $ap_payments = $sql_2->result_array();
 
@@ -491,14 +514,21 @@ class Journal_posting_clearing extends CI_Controller
             b.account_number,
             b.account_name,
             'INR' as currency,
-            (b.local_credit - b.local_debit) as amount
+            ((b.local_credit - b.local_debit) - (COALESCE(d.payment, 0) - COALESCE(e.payment, 0))) as amount
         FROM purchase_invoices a
-        JOIN (SELECT journal_date, number, document_no, account_number, account_name, description, SUM(local_debit) AS local_debit, SUM(local_credit) AS local_credit 
+        JOIN (SELECT journal_date, number, document_no, account_number, account_name, description, 
+            SUM(original_debit) AS original_debit, 
+            SUM(original_credit) AS original_credit, 
+            SUM(local_debit) AS local_debit, 
+            SUM(local_credit) AS local_credit 
             FROM journal_postings 
             WHERE account_number IN ('16000001','16000002','16000003','16000004','16000005','16000006','16000007','16000008') 
             GROUP BY document_no, account_number) b ON a.number = b.document_no
         JOIN suppliers c ON a.supplier_id = c.id
-        WHERE a.number IN ($document_no_str) and a.supplier_id = '$company_id' AND a.status = '0'
+        LEFT JOIN (SELECT purchase_invoice, SUM(payment) as payment FROM ap_payments WHERE account_type = 'DEBIT' GROUP BY purchase_invoice) d ON a.number = d.purchase_invoice
+        LEFT JOIN (SELECT purchase_invoice, SUM(payment) as payment FROM ap_payments WHERE account_type = 'CREDIT' GROUP BY purchase_invoice) e ON a.number = e.purchase_invoice
+        WHERE a.number IN ($document_no_str) and a.supplier_id = '$company_id' 
+        AND ((b.original_credit - b.original_debit) - (COALESCE(d.payment, 0) - COALESCE(e.payment, 0))) != 0
         GROUP BY a.number
         ORDER BY b.journal_date asc");
         $purchase_invoices = $sql_4->result_array();

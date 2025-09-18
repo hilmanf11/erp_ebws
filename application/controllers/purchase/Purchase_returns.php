@@ -314,6 +314,12 @@ class purchase_returns extends CI_Controller
         $this->db->order_by('b.number', 'asc');
         $records = $this->db->get()->result_array();
 
+        if(@$records[0]['source'] == "QAS"){
+            $note = "Discrepancy Note";
+        }else{
+            $note = "Debit Advice";
+        }
+
         $html = '<html>
                     <head>
                         <title>' . $return_no . '</title>
@@ -356,7 +362,7 @@ class purchase_returns extends CI_Controller
                     <div class="print">';
         $html .= '  <table id="customers">
                         <tr>
-                            <td colspan="14" style="font-size:15px;" align="center"><b>Delivery Challan cum Debit Advice</b><br><i><u>Under Rule-55 </u><b>(2)</b> of CGST Act 2017</i></td>
+                            <td colspan="14" style="font-size:15px;" align="center"><b>Delivery Challan cum '.$note.'</b><br><i><u>Under Rule-55 </u><b>(2)</b> of CGST Act 2017</i></td>
                         </tr>
                         <tr>
                             <td colspan="14" align="center"><b>' . @$config->name . ' PVT. LTD.</b><br> ' . @$config->address2 . '<br>GSTIN : ' . @$config->gst_no . '</td>

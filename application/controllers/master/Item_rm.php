@@ -61,7 +61,7 @@ class Item_rm extends CI_Controller
     public function readItemCategory($item_category = "")
     {
         // if($item_category == "ASSET"){
-        //     $where_category = "and c.type IN ('OTHER','ASSET','SERVICE')";
+        //     $where_category = "and c.type IN ('ASSET','SERVICE')";
         // }else{
         //     $where_category = "and c.type = '$item_category'";
         // }

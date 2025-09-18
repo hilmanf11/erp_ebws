@@ -28,7 +28,7 @@ class Item_receipts extends CI_Controller
     public function getPoReceipt()
     {
         if ($this->input->post()) {
-            $label_no = $this->input->post('label_no');
+            $label_no = strtoupper($this->input->post('label_no'));
             $this->db->select('b.po_no, b.receipt_no, b.receipt_id, a.label_no, a.qty');
             $this->db->from('purchase_order_labels a');
             $this->db->join('purchase_order_receipts b', 'a.receipt_id = b.receipt_id');
@@ -110,8 +110,8 @@ class Item_receipts extends CI_Controller
         if ($this->input->post()) {
             if ($this->form_validation->run() == TRUE) {
                 $post = $this->input->post();
-                $item_receipts = $this->crud->read("scan_item_receipts", [], ["label_no" => $post['label_no']]);
-                $purchase_order_label = $this->crud->read("purchase_order_labels", [], ["label_no" => $post['label_no']]);
+                $item_receipts = $this->crud->read("scan_item_receipts", [], ["label_no" => strtoupper($post['label_no'])]);
+                $purchase_order_label = $this->crud->read("purchase_order_labels", [], ["label_no" => strtoupper($post['label_no'])]);
 
                 $sql = $this->db->query("SELECT a.receipt_id, a.qty_label, COUNT(b.id) as jumlah 
                     FROM purchase_order_receipts a 
@@ -123,10 +123,10 @@ class Item_receipts extends CI_Controller
 
                 if(@$row->qty_label == @$row->jumlah){
                     if (!$item_receipts) {
-                        $send   = $this->crud->create('scan_item_receipts', $post);
+                        $send   = $this->crud->create('scan_item_receipts', array_merge($post, array("label_no" => strtoupper($post['label_no']))));
                         if ($send) {
-                            $this->crud->update('purchase_order_labels', ["label_no" => $post['label_no']], ["status" => 1]);
-                            $this->crud->update('return_material_labels', ["label_no" => $post['label_no']], ["status" => 1]);
+                            $this->crud->update('purchase_order_labels', ["label_no" => strtoupper($post['label_no'])], ["status" => 1]);
+                            $this->crud->update('return_material_labels', ["label_no" => strtoupper($post['label_no'])], ["status" => 1]);
                             echo $send;
                         }
                     } else {

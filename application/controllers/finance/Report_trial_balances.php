@@ -82,7 +82,7 @@ class Report_trial_balances extends CI_Controller
                     FROM (
                         (SELECT journal_date, `number`, account_number, account_name, modul, `description`, currency, SUM(local_debit) as local_debit, SUM(local_credit) as local_credit
                         FROM journal_postings
-                        WHERE journal_date between '$filter_from' and '$filter_to' and account_number = '$account_number' and modul != 'BANK STATEMENT'
+                        WHERE journal_date between '$filter_from' and '$filter_to' and account_number = '$account_number' and modul NOT IN ('BANK STATEMENT','CLEARING')
                         GROUP BY `number`) 
                     UNION 
                         (SELECT journal_date, `number`, account_number, account_name, modul, `description`, currency, 

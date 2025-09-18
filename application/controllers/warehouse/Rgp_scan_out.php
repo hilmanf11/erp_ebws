@@ -192,10 +192,20 @@ class Rgp_scan_out extends CI_Controller
             if ($this->form_validation->run() == TRUE) {
                 $post   = $this->input->post();
                 $scan_item_rgp = $this->crud->read("scan_item_rgp", [], ["label_no" => $post['label_no'], "type" => "OUT"]);
+                $issued_materials = $this->crud->read("issued_material_details", [], ["label_no" => $post['label_no']]);
+
+                if(!empty($issued_materials)){
+                    die(json_encode(array("title" => "Exist Issued", "message" => "This Label No already Scan Issued", "theme" => "error")));
+                }
 
                 if (!$scan_item_rgp) { // yg belum di scan
                     $rgp_transactions = $this->crud->read("rgp_transactions", [], ["number" => $post['rgp_number'], "item_id" => $post['item_id']]);
                     if (!empty(@$rgp_transactions->item_id)) {
+
+                        if($rgp_transactions->process_type == "NRGP"){
+                            die(json_encode(array("title" => "Error", "message" => "This Process is NRGP, only allow RGP and FOC", "theme" => "error")));
+                        }
+
                         if (@$rgp_transactions->approved_to == '' || @$rgp_transactions->approved_to == null) { // cek document RGP sudah di approve
                             $cek_qty = $this->crud->query("
                             select a.number, a.item_id, COALESCE(sum(a.qty),0) as total_qty, COALESCE(b.total_scan,0) as total_scan, COALESCE(sum(a.qty),0)-COALESCE(b.total_scan,0) as balance

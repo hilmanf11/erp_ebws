@@ -68,15 +68,15 @@ class Wos extends CI_Controller
     //GET DATATABLES
     public function datatables()
     {
-        // if ($this->input->post()) {
-            // $filters = json_decode($this->input->post('filterRules'));
-            // $page = $this->input->post('page');
-            // $rows = $this->input->post('rows');
-            //Pagination 1-10
-            // $page   = isset($page) ? intval($page) : 1;
-            // $rows   = isset($rows) ? intval($rows) : 10;
-            // $offset = ($page - 1) * $rows;
-            // $result = array();
+        if ($this->input->post()) {
+            $filters = json_decode($this->input->post('filterRules'));
+            $page = $this->input->post('page');
+            $rows = $this->input->post('rows');
+            // Pagination 1-10
+            $page   = isset($page) ? intval($page) : 1;
+            $rows   = isset($rows) ? intval($rows) : 10;
+            $offset = ($page - 1) * $rows;
+            $result = array();
             //Select Query
             $this->db->select('a.*, 
                 b.number as item_fg_number,
@@ -86,32 +86,32 @@ class Wos extends CI_Controller
             $this->db->from('wos a');
             $this->db->join('item_fg b', 'a.item_fg_id = b.id');
             $this->db->where('a.deleted', 0);
-            // if (@count($filters) > 0) {
-            //     foreach ($filters as $filter) {
-            //         if($filter->field == "item_fg_number"){
-            //             $this->db->like("b.number", $filter->value);
-            //         }elseif($filter->field == "item_fg_name"){
-            //             $this->db->like("b.name", $filter->value);
-            //         }elseif($filter->field == "number_customer"){
-            //             $this->db->like("b.number_customer", $filter->value);
-            //         }else{
-            //             $this->db->like("a.".$filter->field, $filter->value);
-            //         }
-            //     }
-            // }
+            if (@count($filters) > 0) {
+                foreach ($filters as $filter) {
+                    if($filter->field == "item_fg_number"){
+                        $this->db->like("b.number", $filter->value);
+                    }elseif($filter->field == "item_fg_name"){
+                        $this->db->like("b.name", $filter->value);
+                    }elseif($filter->field == "number_customer"){
+                        $this->db->like("b.number_customer", $filter->value);
+                    }else{
+                        $this->db->like("a.".$filter->field, $filter->value);
+                    }
+                }
+            }
             $this->db->order_by('a.item_fg_id', 'asc');
             $this->db->order_by('CAST(a.circuit_no AS UNSIGNED)', 'asc');
             //Total Data
             $totalRows = $this->db->count_all_results('', false);
             //Limit 1 - 10
-            // $this->db->limit($rows, $offset);
+            $this->db->limit($rows, $offset);
             //Get Data Array
             $records = $this->db->get()->result_array();
             //Mapping Data
             $result['total'] = $totalRows;
             $result = array_merge($result, ['rows' => $records]);
             echo json_encode($result);
-        // }
+        }
     }
 
     //CREATE DATA

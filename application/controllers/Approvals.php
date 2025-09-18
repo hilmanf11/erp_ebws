@@ -64,6 +64,11 @@ class Approvals extends CI_Controller
         $id = $this->input->post('id');
         $tablename = $this->input->post('tablename');
         $message = $this->input->post('message');
+        $module = $tablename;
+
+        if($tablename == "supplier_item_others"){
+            $tablename = "supplier_items";
+        }
 
         if($tablename == "bom"){
             $data = $this->crud->read($tablename, [], ["item_fg_id" => $id]);
@@ -71,7 +76,7 @@ class Approvals extends CI_Controller
             $data = $this->crud->read($tablename, [], ["id" => $id]);
         }
 
-        $approval = $this->crud->read('approvals', [], ["table_name" => $tablename]);
+        $approval = $this->crud->read('approvals', [], ["table_name" => $module]);
 
         $remarks1 = "";
         $remarks2 = "";
@@ -240,20 +245,14 @@ class Approvals extends CI_Controller
         $purchase_order_others = $this->crud->reads('purchase_order_others', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
         $bom = $this->crud->reads('bom', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
         $customer_items = $this->crud->reads('customer_items', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
-        $supplier_items = $this->crud->reads('supplier_items', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
         $supplier_item_prices = $this->crud->reads('supplier_item_prices', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
         $item_rm = $this->crud->reads('item_rm', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
         $item_fg = $this->crud->reads('item_fg', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
-        // $stock_fg = $this->crud->reads('stock_fg', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
         $stock_wip = $this->crud->reads('stock_wip', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
-        // $stock_so = $this->crud->reads('stock_so', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
-        // $os_so = $this->crud->reads('os_so', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
-        // $os_mpp = $this->crud->reads('os_mpp', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
         $forecasts = $this->crud->reads('forecasts', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
-
-        // $generate_mrp_finals = $this->crud->reads('generate_mrp_finals', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
         $generate_mrp_finals = $this->crud->query("SELECT * FROM generate_mrp_finals WHERE purchase_order > 0 and approved_to = '$username' GROUP BY approved_to, approved_by");
-
+        $supplier_items = $this->crud->query("SELECT a.* FROM supplier_items a JOIN item_rm b ON a.item_rm_id = b.id WHERE a.approved_to = '$username' and b.item_category_id = 'C01' GROUP BY a.approved_to, a.approved_by");
+        $supplier_item_others = $this->crud->query("SELECT a.* FROM supplier_items a JOIN item_rm b ON a.item_rm_id = b.id WHERE a.approved_to = '$username' and b.item_category_id != 'C01' GROUP BY a.approved_to, a.approved_by");
         $purchase_requests = $this->crud->reads('purchase_requests', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
         $purchase_request_others = $this->crud->reads('purchase_request_others', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
         $supply_materials = $this->crud->reads('supply_materials', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
@@ -276,6 +275,7 @@ class Approvals extends CI_Controller
             count($bom) + 
             count($customer_items) + 
             count($supplier_items) + 
+            count($supplier_item_others) + 
             count($supplier_item_prices) + 
             count($item_rm) + 
             count($item_fg) +
@@ -314,16 +314,12 @@ class Approvals extends CI_Controller
         $purchase_order_others = $this->crud->reads('purchase_order_others', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
         $boms = $this->crud->reads('bom', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
         $customer_items = $this->crud->reads('customer_items', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
-        $supplier_items = $this->crud->reads('supplier_items', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
         $supplier_item_prices = $this->crud->reads('supplier_item_prices', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
         $item_rm = $this->crud->reads('item_rm', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
         $item_fg = $this->crud->reads('item_fg', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
-        // $stock_fg = $this->crud->reads('stock_fg', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
         $stock_wip = $this->crud->reads('stock_wip', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
-        // $stock_so = $this->crud->reads('stock_so', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
-        // $os_so = $this->crud->reads('os_so', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
-        // $os_mpp = $this->crud->reads('os_mpp', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
-
+        $supplier_items = $this->crud->query("SELECT a.* FROM supplier_items a JOIN item_rm b ON a.item_rm_id = b.id WHERE a.approved_to = '$username' and b.item_category_id = 'C01' GROUP BY a.approved_to, a.approved_by");
+        $supplier_item_others = $this->crud->query("SELECT a.* FROM supplier_items a JOIN item_rm b ON a.item_rm_id = b.id WHERE a.approved_to = '$username' and b.item_category_id != 'C01' GROUP BY a.approved_to, a.approved_by");
         $generate_mrp_finals = $this->crud->query("SELECT * FROM generate_mrp_finals WHERE purchase_order > 0 and approved_to = '$username' GROUP BY approved_to, approved_by");
 
         $forecasts = $this->crud->reads('forecasts', [], ["approved_to" => $this->session->username], "", "", "", ["approved_to", "approved_by"]);
@@ -360,6 +356,10 @@ class Approvals extends CI_Controller
 
         foreach ($supplier_items as $supplier_item) {
             $this->approvalMessage($supplier_item->approved_by, $supplier_item->approved_to, $supplier_item->created_by, "supplier_items");
+        }
+
+        foreach ($supplier_item_others as $supplier_item_other) {
+            $this->approvalMessage($supplier_item_other->approved_by, $supplier_item_other->approved_to, $supplier_item_other->created_by, "supplier_item_others");
         }
 
         foreach ($supplier_item_prices as $supplier_item_price) {
@@ -459,6 +459,8 @@ class Approvals extends CI_Controller
 
         if($table == "supplier_items"){
             $tablename = "supplier_contracts";
+        }elseif($table == "supplier_item_others"){
+            $tablename = "supplier_contract_others";
         }elseif($table == "item_rm"){
             $tablename = "master_items";
         }elseif($table == "supply_materials"){
@@ -504,18 +506,6 @@ class Approvals extends CI_Controller
         }
     }
 
-    // public function stock_fg($approved_to, $approved_by){
-    //     if (empty($this->session->username)) {
-    //         redirect('error_session');
-    //     } else {
-    //         $data['approved_to'] = base64_decode($approved_to);
-    //         $data['approved_by'] = base64_decode($approved_by);
-    //         $data['table'] = "stock_fg";
-    //         $this->load->view('template/header', $data);
-    //         $this->load->view('approval/stock_fg');
-    //     }
-    // }
-
     public function stock_wip($approved_to, $approved_by){
         if (empty($this->session->username)) {
             redirect('error_session');
@@ -527,30 +517,6 @@ class Approvals extends CI_Controller
             $this->load->view('approval/stock_wip');
         }
     }
-
-    // public function stock_so($approved_to, $approved_by){
-    //     if (empty($this->session->username)) {
-    //         redirect('error_session');
-    //     } else {
-    //         $data['approved_to'] = base64_decode($approved_to);
-    //         $data['approved_by'] = base64_decode($approved_by);
-    //         $data['table'] = "stock_so";
-    //         $this->load->view('template/header', $data);
-    //         $this->load->view('approval/stock_so');
-    //     }
-    // }
-
-    // public function os_so($approved_to, $approved_by){
-    //     if (empty($this->session->username)) {
-    //         redirect('error_session');
-    //     } else {
-    //         $data['approved_to'] = base64_decode($approved_to);
-    //         $data['approved_by'] = base64_decode($approved_by);
-    //         $data['table'] = "os_so";
-    //         $this->load->view('template/header', $data);
-    //         $this->load->view('approval/os_so');
-    //     }
-    // }
 
     public function sales_orders($approved_to, $approved_by){
         if (empty($this->session->username)) {
@@ -674,6 +640,18 @@ class Approvals extends CI_Controller
             $data['table'] = "supplier_items";
             $this->load->view('template/header', $data);
             $this->load->view('approval/supplier_items');
+        }
+    }
+
+    public function supplier_item_others($approved_to, $approved_by){
+        if (empty($this->session->username)) {
+            redirect('error_session');
+        } else {
+            $data['approved_to'] = base64_decode($approved_to);
+            $data['approved_by'] = base64_decode($approved_by);
+            $data['table'] = "supplier_items";
+            $this->load->view('template/header', $data);
+            $this->load->view('approval/supplier_item_others');
         }
     }
 
@@ -1328,8 +1306,29 @@ class Approvals extends CI_Controller
         $this->db->select('a.supplier_id, b.supplier_po, b.number as supplier_number, b.name as supplier_name, b.type, b.state, b.currency, a.remarks1, a.remarks2, a.remarks3, a.remarks4, COUNT(a.id) as total_item');
         $this->db->from('supplier_items a');
         $this->db->join('suppliers b', 'a.supplier_id = b.id');
+        $this->db->join('item_rm c', 'a.item_rm_id = c.id');
         $this->db->where('a.approved_to', $approved_to);
         $this->db->where('a.approved_by', $approved_by);
+        $this->db->where('c.item_category_id', 'C01');
+        $this->db->group_by('b.id');
+        $this->db->order_by('b.name', 'ASC');
+        $records = $this->db->get()->result_array();
+
+        die(json_encode($records));
+    }
+
+    public function approvalSupplierItemOthers($approved_to, $approved_by)
+    {
+        $approved_to = base64_decode($approved_to);
+        $approved_by = base64_decode($approved_by);
+
+        $this->db->select('a.supplier_id, b.supplier_po, b.number as supplier_number, b.name as supplier_name, b.type, b.state, b.currency, a.remarks1, a.remarks2, a.remarks3, a.remarks4, COUNT(a.id) as total_item');
+        $this->db->from('supplier_items a');
+        $this->db->join('suppliers b', 'a.supplier_id = b.id');
+        $this->db->join('item_rm c', 'a.item_rm_id = c.id');
+        $this->db->where('a.approved_to', $approved_to);
+        $this->db->where('a.approved_by', $approved_by);
+        $this->db->where("c.item_category_id != 'C01'");
         $this->db->group_by('b.id');
         $this->db->order_by('b.name', 'ASC');
         $records = $this->db->get()->result_array();
@@ -1348,11 +1347,12 @@ class Approvals extends CI_Controller
         $this->db->join('suppliers b', 'a.supplier_id = b.id');
         $this->db->join('item_rm c', 'a.item_rm_id = c.id');
         $this->db->join('item_familys d', 'c.item_family_id = d.id');
-        $this->db->join("(SELECT * FROM supplier_item_histories ORDER BY id DESC LIMIT 1) e", "a.supplier_id = e.supplier_id and a.item_rm_id = e.item_rm_id", "left");
+        $this->db->join("(SELECT * FROM supplier_item_histories ORDER BY id DESC) e", "a.supplier_id = e.supplier_id and a.item_rm_id = e.item_rm_id and a.price != e.price", "left");
         $this->db->where('a.approved_to', $approved_to);
         $this->db->where('a.approved_by', $approved_by);
         $this->db->where('a.supplier_id', $supplier_id);
         $this->db->order_by('a.id', 'ASC');
+        $this->db->group_by('a.id');
         $records = $this->db->get()->result_array();
 
         die(json_encode($records));

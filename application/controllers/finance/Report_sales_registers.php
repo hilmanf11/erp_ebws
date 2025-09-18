@@ -90,7 +90,7 @@ class Report_sales_registers extends CI_Controller
         $this->db->join('account_coa e', 'a.account_number = e.account_number', 'left');
         $this->db->join('hsn f', 'c.hsn_code = f.number', 'left');
         $this->db->join('journal_postings g', "a.number = g.document_no and g.modul = 'SALES INVOICING'");
-        if ($filter_from != "") {
+        if ($filter_from != "" && $filter_to == "") {
             $this->db->where("a.trans_date between '$filter_from' and '$filter_to'");
         }
         if($filter_invoice_no != ""){

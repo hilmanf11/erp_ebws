@@ -653,12 +653,12 @@ class Journal_postings extends CI_Controller
 
                                 if ($purchase_invoice['account_type'] == "DEBIT") {
                                     // $local_debit = round($purchase_invoice['total'] * @$exchange->middle, 2);
-                                    $local_debit = ($purchase_invoice['total'] * @$purchase_invoice['rate']);
+                                    $local_debit = round($purchase_invoice['total'] * @$purchase_invoice['rate'], 2);
                                     $local_credit = 0;
                                 } else {
                                     $local_debit = 0;
                                     // $local_credit = round($purchase_invoice['total'] * @$exchange->middle, 2);
-                                    $local_credit = ($purchase_invoice['total'] * @$purchase_invoice['rate']);
+                                    $local_credit = round($purchase_invoice['total'] * @$purchase_invoice['rate'], 2);
                                 }
 
                                 // $rates = @$exchange->middle;
@@ -695,8 +695,8 @@ class Journal_postings extends CI_Controller
                                 "original_debit" => $original_debit,
                                 "original_credit" => $original_credit,
                                 "rates" => $rates,
-                                "local_debit" => round($local_debit, 2),
-                                "local_credit" => round($local_credit, 2),
+                                "local_debit" => $local_debit,
+                                "local_credit" => $local_credit,
                             );
 
                             $bal_original_debit += $original_debit;
@@ -980,7 +980,11 @@ class Journal_postings extends CI_Controller
                     $local_debit = $journal['local_debit'];
                     $local_credit = $journal['local_credit'];
 
-                    $rates = $journal['rate'];
+                    if(($original_debit + $original_credit) == 0){
+                        $rates = 1;
+                    }else{
+                        $rates = (($journal['local_debit'] + $journal['local_credit']) / ($original_debit + $original_credit));
+                    }
                 } else {
                     $original_debit = $debit;
                     $original_credit = $credit;

@@ -204,8 +204,8 @@ class Costing_products extends CI_Controller
             $this->db->join('production_schedules c', "a.id = c.item_fg_id and c.month = '$month' and c.year = '$year'");
             $this->db->like('a.id', $item_fg_id);
             $this->db->group_by('c.item_fg_id');
-            $this->db->order_by('a.number', 'desc');
-            $this->db->limit(1);
+            $this->db->order_by('a.number', 'asc');
+            // $this->db->limit(1);
             $items = $this->db->get()->result_array();
 
             $result['total'] = count($items);

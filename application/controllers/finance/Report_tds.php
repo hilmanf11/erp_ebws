@@ -59,6 +59,10 @@ class Report_tds extends CI_Controller
         $filter_supplier = base64_decode($this->input->get('filter_supplier'));
         $filter_invoice_no = base64_decode($this->input->get('filter_invoice_no'));
 
+        // function compare_trans_date($a, $b) {
+        //     return strtotime($a['posting_date']) - strtotime($b['posting_date']);
+        // }
+
         //Config
         $this->db->select('*');
         $this->db->from('config');
@@ -74,15 +78,15 @@ class Report_tds extends CI_Controller
         $this->db->join("(SELECT number, account_number, SUM(debit) as debit, SUM(credit) as credit FROM purchase_invoice_journals WHERE account_number IN ('17000001','17000002','17000003','17000004','17000005','17000006','17000028','17000029','17000034') GROUP BY number) d", 'a.number = d.number');
         $this->db->join('tds c', 'd.account_number = c.account_number', 'left');
         $this->db->join('(SELECT DISTINCT document_no, number, journal_date FROM journal_postings) e', 'a.number = e.document_no', 'left');
-        $this->db->where("a.trans_date between '$filter_from' and '$filter_to'");
+        if($filter_from != "" && $filter_to != ""){
+            $this->db->where("a.trans_date between '$filter_from' and '$filter_to'");
+        }
         $this->db->where('ABS(d.debit - d.credit) > 0');
         $this->db->like('a.supplier_id', $filter_supplier);
         $this->db->like('a.invoice_no', $filter_invoice_no);
         $this->db->group_by('a.number');
         $this->db->order_by('a.invoice_date', 'ASC');
         $data1 = $this->db->get()->result_array();
-
-        // die(json_encode($data1));
 
         $this->db->select("a.company_id AS supplier_id, 
             a.supplier_name,
@@ -94,8 +98,8 @@ class Report_tds extends CI_Controller
             b.account_name,
             b.invoice_no,
             b.trans_date AS invoice_date,
-            b.currency,
-            COALESCE((d.local_credit - d.local_debit), 0) AS total,
+            a.currency,
+            COALESCE(d.local_debit, 0) AS total,
             a.number AS posting_no,
             a.journal_date AS posting_date,
             (b.credit - b.debit) AS tds_amount");
@@ -103,7 +107,9 @@ class Report_tds extends CI_Controller
         $this->db->join("(SELECT number, account_number, account_name, invoice_no, trans_date, currency, SUM(local_debit) as debit, SUM(local_credit) as credit FROM journal_postings WHERE account_number IN ('17000001','17000002','17000003','17000004','17000005','17000006','17000028','17000029','17000034') GROUP BY number) b", "a.number = b.number");
         $this->db->join('tds c', "b.account_number = c.account_number", 'left');
         $this->db->join("(SELECT number, SUM(local_debit) as local_debit, SUM(local_credit) as local_credit FROM journal_postings WHERE account_number NOT IN ('20100003','20100004','20100005','16000001','16000002','16000003','16000004','16000005','16000006','16000007','16000008','17000001','17000002','17000003','17000004','17000005','17000006','17000028','17000029','17000034') GROUP BY number) d", "a.number = d.number", 'left');
-        $this->db->where("a.journal_date between '$filter_from' and '$filter_to'");
+        if($filter_from != "" && $filter_to != ""){
+            $this->db->where("a.journal_date between '$filter_from' and '$filter_to'");
+        }
         $this->db->where('a.modul', "ADJUSTMENT");
         $this->db->like('a.company_id', $filter_supplier);
         $this->db->like('a.invoice_no', $filter_invoice_no);
@@ -112,7 +118,39 @@ class Report_tds extends CI_Controller
         $this->db->order_by('a.number', 'ASC');
         $data2 = $this->db->get()->result_array();
 
-        $records = array_merge($data1, $data2);
+        $this->db->select("a.modul,
+            a.company_id AS supplier_id,
+            b.name AS supplier_name,
+            b.pen,
+            c.section AS tds,
+            (CASE WHEN SUBSTRING(b.pen, 4, 1) = 'P' THEN 'Non Company' ELSE 'Company' END) AS tds_status,
+            c.individual,
+            a.account_number,
+            a.account_name,
+            a.invoice_no,
+            a.trans_date AS invoice_date,
+            a.currency,
+            COALESCE(d.local_debit, 0) AS total,
+            a.number AS posting_no,
+            a.journal_date AS posting_date,
+            (SUM(a.local_credit) - SUM(a.local_debit)) AS tds_amount");
+        $this->db->from("journal_postings a");
+        $this->db->join("suppliers b", "a.company_id = b.id");
+        $this->db->join('tds c', "a.account_number = c.account_number");
+        $this->db->join("(SELECT number, document_no, SUM(local_debit) AS local_debit, SUM(local_credit) AS local_credit FROM journal_postings WHERE account_number NOT IN ('20100003','20100004','20100005') GROUP BY number, document_no) d", "a.number = d.number and a.document_no = d.document_no", 'left');
+        if($filter_from != "" && $filter_to != ""){
+            $this->db->where("a.journal_date between '$filter_from' and '$filter_to'");
+        }
+        $this->db->where('a.modul', "AP PAYMENT");
+        $this->db->like('a.company_id', $filter_supplier);
+        $this->db->like('a.invoice_no', $filter_invoice_no);
+        $this->db->group_by('a.id');
+        $this->db->order_by('a.company_id', 'ASC');
+        $this->db->order_by('a.number', 'ASC');
+        $data3 = $this->db->get()->result_array();
+
+        $records = array_merge($data1, $data2, $data3);
+        // usort($records, 'compare_trans_date');
 
         $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#customers {border-collapse: collapse;width: 100%;font-size: 12px;}#customers td, #customers th {border: 1px solid #ddd;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: #ddd;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: center;color: black;}</style><body>
             <center>
@@ -154,16 +192,6 @@ class Report_tds extends CI_Controller
                 </tr>';
         $no = 1;
         foreach ($records as $data) {
-            if($data['tds_amount'] < 0){
-                $style = "color:red;";
-                $tds_amount = (abs($data['tds_amount']) * -1);
-                $total = (abs($data['total']) * -1);
-            }else{
-                $style = "";
-                $tds_amount = abs($data['tds_amount']);
-                $total = abs($data['total']);
-            }
-
             $html .= '  <tr>
                             <td style="text-align:center">' . $no . '</td>
                             <td>' . $data['supplier_id'] . '</td>
@@ -178,8 +206,8 @@ class Report_tds extends CI_Controller
                             <td>' . $data['posting_no'] . '</td>
                             <td>' . $data['posting_date'] . '</td>
                             <td>' . $data['currency'] . '</td>
-                            <td style="text-align:right;'.$style.'">' . $total . '</td>
-                            <td style="text-align:right;'.$style.'">' . $tds_amount . '</td>
+                            <td style="text-align:right;">' . $data['total'] . '</td>
+                            <td style="text-align:right;">' . $data['tds_amount'] . '</td>
                         </tr>';
             $no++;
         }

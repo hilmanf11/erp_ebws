@@ -220,8 +220,34 @@ class Generate_mrp extends CI_Controller
         // }
     }
 
-    public function checkBom(){
-        $query = $this->db->query("SELECT a.id, a.number as item_rm_number, a.name as item_rm_name, b.item_rm_id as item_bom, c.item_rm_id as item_supplier FROM item_rm a JOIN (select b.item_rm_id from generate_mps a JOIN bom b ON a.item_fg_id = b.item_fg_id GROUP BY b.item_rm_id) b ON a.id = b.item_rm_id LEFT JOIN supplier_items c ON a.id = c.item_rm_id WHERE a.item_category_id = 'C01' and (c.item_rm_id is null) GROUP BY a.id");
+    public function checkPurchaseOrder(){
+        $filter_month = base64_decode($this->input->get('filter_month'));
+        $filter_year = base64_decode($this->input->get('filter_year'));
+        $revision = base64_decode($this->input->get('filter_revision'));
+        $filter_part_no = base64_decode($this->input->get('filter_part_no'));
+
+        if($filter_part_no != ""){
+            $where_part_no = "and item_rm_id = '$filter_part_no'";
+        }
+
+        $this->db->select('max(revision) as revision');
+        $this->db->from('generate_mrp_finals');
+        $this->db->where('p_month', $filter_month);
+        $this->db->where('p_year', $filter_year);
+        $rev = $this->db->get()->row();
+
+        if($revision == ""){
+            if(@$rev->revision == ""){
+                $filter_revision = 0;
+            }else{
+                $filter_revision = ($rev->revision + 1);
+            }
+        }else{
+            $filter_revision = $revision;
+        }
+
+
+        $query = $this->db->query("SELECT * FROM purchase_orders WHERE p_month='$filter_month' and p_year='$filter_year' and revision='$filter_revision' $where_part_no");
         $records = $query->result_array();
 
         if(count($records) > 0){
