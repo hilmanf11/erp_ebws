@@ -1,6 +1,6 @@
 <!-- TABLE DATAGRID -->
 <table id="dg" class="easyui-datagrid" style="width:99.5%;" toolbar="#toolbar" data-options="
-    url: '<?= base_url('approvals/approvalPOServices/'.base64_encode($approved_to).'/'.base64_encode($approved_by)) ?>',
+    url: '<?= base_url('approvals/approvalPORfq/'.base64_encode($approved_to).'/'.base64_encode($approved_by)) ?>',
     pagination: false,
     clientPaging: false,
     rownumbers: true,
@@ -248,7 +248,7 @@
         $('#dlg_details').window('setTitle', 'Detail of ' + supplier_name);
 
         $('#dg_details').datagrid({
-            url: '<?= base_url('approvals/approvalPOServiceDetails/'.base64_encode($approved_to).'/'.base64_encode($approved_by)) ?>?po_no=' + btoa(po_no),
+            url: '<?= base_url('approvals/approvalPORfqDetails/'.base64_encode($approved_to).'/'.base64_encode($approved_by)) ?>?po_no=' + btoa(po_no),
             clientPaging: false,
             remoteFilter: true,
             rownumbers: true,
@@ -261,7 +261,7 @@
         var attachment = row.attachment;
         
         if (attachment != null && attachment != "") {
-            return '<a class="btn btn-primary w-100" target="_blank" href="<?= base_url('assets/documents/purchase_orders/') ?>'+row.attachment+'" style="pointer-events: visible; opacity:1;"><i class="fa fa-eye"></i> View</a>';
+            return '<a class="btn btn-primary w-100" target="_blank" href="<?= base_url('assets/documents/purchase_order_rfq/') ?>'+row.attachment+'" style="pointer-events: visible; opacity:1;"><i class="fa fa-eye"></i> View</a>';
         } else {
             return '-';
         }

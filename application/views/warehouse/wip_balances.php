@@ -28,46 +28,18 @@
 <!-- TOOLBAR DATAGRID -->
 <div id="toolbar" style="height: 35px;">
     <?= $button ?>
-</div>
-<!-- DIALOG SAVE AND UPDATE -->
-<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 400px; padding:10px; top: 20px;">
-    <form id="frm_insert" method="post" novalidate>
-        <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
-            <legend><b>Form Data</b></legend>
-            <div class="fitem">
-                <span style="width:35%; display:inline-block;">Item ID</span>
-                <input style="width:60%;" name="item_rm_id" id="item_rm_id" required="" class="easyui-combogrid">
-            </div>
-            <div class="fitem">
-                <span style="width:35%; display:inline-block;">Supply Sheet</span>
-                <input style="width:60%;" name="request_no" id="request_no" required="" class="easyui-combobox">
-            </div>
-            <div class="fitem">
-                <span style="width:35%; display:inline-block;">Uom</span>
-                <input style="width:60%;" name="uom" id="uom" disabled class="easyui-textbox">
-            </div>
-            <div class="fitem">
-                <span style="width:35%; display:inline-block;">Begin</span>
-                <input style="width:30%;" name="begin" class="easyui-numberbox" required data-options="precision:2">
-            </div>
-            <div class="fitem">
-                <span style="width:35%; display:inline-block;">Need</span>
-                <input style="width:30%;" name="need" class="easyui-numberbox" required data-options="precision:2">
-            </div>
-            <div class="fitem">
-                <span style="width:35%; display:inline-block;">Issued</span>
-                <input style="width:30%;" name="issued" class="easyui-numberbox" required data-options="precision:2">
-            </div>
-            <div class="fitem">
-                <span style="width:35%; display:inline-block;">Balance</span>
-                <input style="width:30%;" name="balance" class="easyui-numberbox" required data-options="precision:2">
-            </div>
-            <div class="fitem">
-                <span style="width:35%; display:inline-block;">Warehouse</span>
-                <input style="width:30%;" name="warehouse" class="easyui-numberbox" required data-options="precision:2">
-            </div>
-        </fieldset>
-    </form>
+    <div style="float: right; text-align: right; width: 50%;">
+        <div class="fitem">
+            <span style="width:10%; display:inline-block;">Filter Data &nbsp;</span>
+            <input style="width:20%;" id="filter_from" class="easyui-datebox" value="<?= date("Y-m-01") ?>" data-options="formatter:myformatter,parser:myparser, editable:false"> To
+            <input style="width:20%;" id="filter_to" class="easyui-datebox" value="<?= date('Y-m-t'); ?>" data-options="formatter:myformatter,parser:myparser, editable:false">
+            <select style="width:10%;" id="type" class="easyui-combobox" panelHeight="auto">
+                <option value="PP">PP</option>
+                <option value="HAV">HAV</option>
+            </select>
+            <a href="javascript:;" class="easyui-linkbutton" onclick="filter()"><i class="fa fa-search"></i></a>
+        </div>
+    </div>
 </div>
 
 <!-- PDF -->
@@ -93,38 +65,59 @@
     }
 
     //DELETE DATA
-    // function deleted() {
-    //     var rows = $('#dg').datagrid('getSelections');
-    //     if (rows.length > 0) {
-    //         $.messager.confirm('Warning', 'Are you sure you want to delete this data?', function(r) {
-    //             if (r) {
-    //                 for (var i = 0; i < rows.length; i++) {
-    //                     var row = rows[i];
-    //                     $.ajax({
-    //                         method: 'post',
-    //                         url: '<?= base_url('warehouse/wip_balances/delete') ?>',
-    //                         data: {
-    //                             id: row.id,
-    //                             workorder: row.workorder,
-    //                         },
-    //                         success: function(result) {
-    //                             var result = eval('(' + result + ')');
-    //                         },
-    //                         error: function(jqXHR, textStatus, errorThrown) {
-    //                             toastr.error("This data is already used in other modules, You must delete it First", "Error");
+    function deleted() {
+        var rows = $('#dg').datagrid('getSelections');
+        if (rows.length > 0) {
+            $.messager.confirm('Warning', 'Are you sure you want to delete this data?', function(r) {
+                if (r) {
+                    for (var i = 0; i < rows.length; i++) {
+                        var row = rows[i];
+                        $.ajax({
+                            method: 'post',
+                            url: '<?= base_url('warehouse/wip_balances/delete') ?>',
+                            data: {
+                                id: row.id,
+                                workorder: row.workorder,
+                            },
+                            success: function(result) {
+                                var result = eval('(' + result + ')');
+                            },
+                            error: function(jqXHR, textStatus, errorThrown) {
+                                toastr.error("This data is already used in other modules, You must delete it First", "Error");
                                 
-    //                         },
-    //                         complete: function(data) {
-    //                             $('#dg').datagrid('reload');
-    //                         }
-    //                     });
-    //                 }
-    //             }
-    //         });
-    //     } else {
-    //         toastr.warning("Please select one of the data in the table first!", "Information");
-    //     }
-    // }
+                            },
+                            complete: function(data) {
+                                $('#dg').datagrid('reload');
+                            }
+                        });
+                    }
+                }
+            });
+        } else {
+            toastr.warning("Please select one of the data in the table first!", "Information");
+        }
+    }
+
+    function filter() {
+        var type = $("#type").combobox('getValue');
+        var filter_from = $("#filter_from").datebox('getValue');
+        var filter_to = $("#filter_to").datebox('getValue');
+
+        $('#dg').datagrid('loading');
+        $.ajax({
+            url: '<?= base_url('warehouse/wip_balances/datatables') ?>',
+            type: 'POST',
+            data: {
+                type: type,
+                filter_from: filter_from,
+                filter_to: filter_to
+            },
+            dataType: 'json',
+            success: function(result) {
+                $('#dg').datagrid('loadData', result).datagrid('loaded');
+            }
+        });
+    }
 
     //PRINT PDF
     function pdf() {
@@ -171,10 +164,10 @@
     $(function() {
         //SETTING DATAGRID EASYUI
         $('#dg').datagrid({
-            url: '<?= base_url('warehouse/wip_balances/datatables') ?>',
+            // url: '<?= base_url('warehouse/wip_balances/datatables') ?>',
             pagination: true,
-            clientPaging: false,
-            remoteFilter: true,
+            clientPaging: true,
+            // remoteFilter: true,
             rownumbers: true,
             fit: true,
             pageList: [20, 50, 100, 500, 1000],
@@ -215,36 +208,38 @@
             }]
         });
 
-        $('#item_rm_id').combogrid({
-            url: '<?= base_url('master/item_rm/reads') ?>',
-            panelWidth: 400,
-            idField: 'id',
-            textField: 'number',
-            mode: 'remote',
-            fitColumns: true,
-            prompt: "Choose Product",
-            columns: [
-                [{
-                    field: 'number',
-                    title: 'Product No',
-                    width: 200
-                }, {
-                    field: 'name',
-                    title: 'Product Name',
-                    width: 200
-                }]
-            ],
-            onSelect: function(valItem, rowItem) {
-                $("#uom").textbox('setValue', rowItem.uom);
-            }
-        });
-        $("#request_no").combobox({
-            url: '<?= base_url('planning/supply_sheets/readRequestNo') ?>',
-            valueField: 'request_no',
-            textField: 'request_no',
-            prompt: "Choose Supply Sheet"
-        });
+        // $('#item_rm_id').combogrid({
+        //     url: '<?= base_url('master/item_rm/reads') ?>',
+        //     panelWidth: 400,
+        //     idField: 'id',
+        //     textField: 'number',
+        //     mode: 'remote',
+        //     fitColumns: true,
+        //     prompt: "Choose Product",
+        //     columns: [
+        //         [{
+        //             field: 'number',
+        //             title: 'Product No',
+        //             width: 200
+        //         }, {
+        //             field: 'name',
+        //             title: 'Product Name',
+        //             width: 200
+        //         }]
+        //     ],
+        //     onSelect: function(valItem, rowItem) {
+        //         $("#uom").textbox('setValue', rowItem.uom);
+        //     }
+        // });
+
+        // $("#request_no").combobox({
+        //     url: '<?= base_url('planning/supply_sheets/readRequestNo') ?>',
+        //     valueField: 'request_no',
+        //     textField: 'request_no',
+        //     prompt: "Choose Supply Sheet"
+        // });
     });
+    
     function numberformat(value, row) {
         if (value) {
             const formatter = new Intl.NumberFormat('ja-JP', {
@@ -275,6 +270,28 @@
             return "<b style='color:green;'>OPEN</b>";
         } else {
             return "<b style='color:red;'>CLOSED</b>";
+        }
+    }
+
+    //Format Datepicker
+    function myformatter(date) {
+        var y = date.getFullYear();
+        var m = date.getMonth() + 1;
+        var d = date.getDate();
+        return y + '-' + (m < 10 ? ('0' + m) : m) + '-' + (d < 10 ? ('0' + d) : d);
+    }
+
+    //Format Datepicker
+    function myparser(s) {
+        if (!s) return new Date();
+        var ss = (s.split('-'));
+        var y = parseInt(ss[0], 10);
+        var m = parseInt(ss[1], 10);
+        var d = parseInt(ss[2], 10);
+        if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+            return new Date(y, m - 1, d);
+        } else {
+            return new Date();
         }
     }
 </script>

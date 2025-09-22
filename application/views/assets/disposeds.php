@@ -71,11 +71,11 @@
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Asset Date</span>
-                <input style="width:60%;" id="asset_date" class="easyui-datebox" disabled>
+                <input style="width:60%;" id="asset_date" class="easyui-datebox" disabled data-options="formatter:myformatter,parser:myparser, editable:false">
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Asset Cost</span>
-                <input style="width:30%;" id="asset_cost" class="easyui-numberbox" disabled data-options="groupSeparator:'.',decimalSeparator:','">
+                <input style="width:30%;" id="asset_cost" class="easyui-numberbox" disabled data-options="precision:2">
                 <input style="width:30%;" id="currency" class="easyui-textbox" disabled data-options="prompt:'Currency'">
             </div>
             <div class="fitem">
@@ -85,21 +85,21 @@
             </div>
             <!--<div class="fitem">-->
             <!--    <span style="width:35%; display:inline-block;">Residual Value</span>-->
-            <!--    <input style="width:30%;" id="residual_value" class="easyui-numberbox" disabled data-options="groupSeparator:'.',decimalSeparator:','">-->
+            <!--    <input style="width:30%;" id="residual_value" class="easyui-numberbox" disabled data-options="precision:2">-->
             <!--    <input style="width:30%;" id="currency2" class="easyui-textbox" disabled data-options="prompt:'Currency'">-->
             <!--</div>-->
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Accumulated Depreciation</span>
-                <input style="width:30%;" id="depreciation" class="easyui-numberbox" disabled data-options="groupSeparator:'.',decimalSeparator:','">
+                <input style="width:30%;" id="depreciation" class="easyui-numberbox" disabled data-options="precision:2">
                 <input style="width:30%;" id="currency3" class="easyui-textbox" disabled data-options="prompt:'Currency'">
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Disposal Value</span>
-                <input style="width:40%;" name="disposal" id="disposal" required class="easyui-numberbox" data-options="groupSeparator:'.',decimalSeparator:','">
+                <input style="width:40%;" name="disposal" id="disposal" required class="easyui-numberbox" data-options="precision:2">
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Net Book Value</span>
-                <input style="width:40%;" name="book_value" id="book_value" readonly class="easyui-numberbox" data-options="groupSeparator:'.',decimalSeparator:','">
+                <input style="width:40%;" name="book_value" id="book_value" readonly class="easyui-numberbox" data-options="precision:2">
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Gain/Loss</span>
@@ -107,11 +107,17 @@
                     <option value="GAIN">GAIN</option>
                     <option value="LOSS">LOSS</option>
                 </select>
-                <input style="width:30%;" name="gainloss_value" id="gainloss_value" readonly required class="easyui-numberbox" data-options="groupSeparator:'.',decimalSeparator:','">
+                <input style="width:30%;" name="gainloss_value" id="gainloss_value" readonly required class="easyui-numberbox" data-options="precision:2">
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Remarks</span>
                 <input style="width:60%; height: 80px;" name="remarks" id="remarks" class="easyui-textbox" multiline="true">
+            </div>
+
+            <div style="width: 95%; float: left; margin-top:20px;">
+                <a style="width: 50%;" class="easyui-linkbutton c2" onclick="addJournal()">Add to Journal</a>
+                <br><br>
+                <table id="dg3" class="easyui-datagrid" title="Journal Lists" style="width: 100%;" data-options="singleSelect: true"></table>
             </div>
         </fieldset>
     </form>
@@ -126,10 +132,93 @@
         $('#dlg_insert').dialog('open');
         url_save = '<?= base_url('assets/disposeds/create') ?>';
         $('#frm_insert').form('clear');
+        $('#dg3').datagrid('loadData', []);
+
         $('#selling').radiobutton({
             checked: true
         });
         $("#disposal_date").datebox('setValue', "<?= date("Y-m-d") ?>");
+    }
+
+    function addJournal() {
+        var asset_cost = $("#asset_cost").numberbox('getValue');
+        var disposal = $("#disposal").numberbox('getValue');
+        var book_value = $("#book_value").numberbox('getValue');
+        var gainloss_value = $("#gainloss_value").numberbox('getValue');
+
+        addTable2('<?= base_url('assets/disposeds/calculateJournal') ?>');
+    }
+
+    function addTable2(link = "") {
+        var lastIndex;
+        $('#dg3').datagrid({
+            url: link,
+            singleSelect: true,
+            columns: [
+                [{
+                    field: 'account_number',
+                    width: 100,
+                    halign: 'center',
+                    title: "Account No",
+                    editor: {
+                        type: 'textbox',
+                        options: {
+                            readonly: true
+                        }
+                    }
+                }, {
+                    field: 'account_name',
+                    width: 200,
+                    halign: 'center',
+                    title: "Account Name",
+                    editor: {
+                        type: 'textbox',
+                        options: {
+                            readonly: true
+                        }
+                    }
+                }, {
+                    field: 'debit',
+                    width: 110,
+                    halign: 'center',
+                    title: "Debit",
+                    formatter: priceformat,
+                    editor: {
+                        type: 'numberbox',
+                        options: {
+                            precision: 4
+                        }
+                    }
+                }, {
+                    field: 'credit',
+                    width: 110,
+                    halign: 'center',
+                    title: "Credit",
+                    formatter: priceformat,
+                    editor: {
+                        type: 'numberbox',
+                        options: {
+                            precision: 4
+                        }
+                    }
+                }, {
+                    field: 'flag',
+                    width: 50,
+                    halign: 'center',
+                    title: "Order",
+                    editor: {
+                        type: 'numberbox',
+                        options: {
+                            required: true
+                        }
+                    }
+                }, ],
+            ],
+            // onClickCell: onClickCell2,
+            onBeginEdit: function(rowIndex, row) {
+                // balance_journal();
+            }
+        });
     }
 
     //Edit Data

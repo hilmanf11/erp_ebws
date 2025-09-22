@@ -201,6 +201,7 @@
                             required: true,
                         }}">Currency</th>
                     <th data-options="field:'rate',width:100, formatter:numberformat, align:'right', editor: {type: 'numberbox',options: {precision:4}}">Rate</th>
+                    <th hidden data-options="field:'rate2',width:100, formatter:numberformat, align:'right', editor: {type: 'numberbox',options: {precision:4}}">Rate 2</th>
                     <th data-options="field:'amount',width:100, formatter:numberformat, align:'right', editor: {type: 'numberbox',options: {precision:2, readonly:true}}">Amount</th>
                     <th data-options="field:'balance',width:100, formatter:numberformat, align:'right', editor: {type: 'numberbox',options: {precision:2, readonly:true}}">Balance</th>
                     <th data-options="field:'payment',width:100, formatter:numberformat, align:'right', editor: {type: 'numberbox',options: {precision:2}}">Payment</th>
@@ -529,7 +530,8 @@
                         payment_date: payment_date,
                         trans_date: rows[i].trans_date,
                         payment: rows[i].payment,
-                        rate: rows[i].rate
+                        rate: rows[i].rate,
+                        rate2: rows[i].rate2
                     }
                     if (currency == rows[i].currency) {
                         total_currency += 1;

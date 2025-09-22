@@ -76,6 +76,7 @@
         // $('#password').textbox('enable');
         url_save = '<?= base_url('admin/users/create') ?>';
         $('#frm_insert').form('clear');
+        $('#password').passwordbox("enable");
     }
     //EDIT DATA
     function update() {
@@ -87,6 +88,13 @@
             $('#username').textbox('disable');
             // $('#password').textbox('disable');
             url_save = '<?= base_url('admin/users/update') ?>?id=' + btoa(row.id);
+
+            if(row.username == "admin"){
+                $('#password').passwordbox("disable");
+                $('#password').passwordbox("setValue", "");
+            }else{
+                $('#password').passwordbox("enable");
+            }
         } else {
             toastr.info("Please select one of the data in the table first");
         }
@@ -147,6 +155,7 @@
             pageList: [20, 50, 100, 500, 1000],
             pageSize: 20,
         }).datagrid('enableFilter');
+
         //SAVE DATA
         $('#dlg_insert').dialog({
             buttons: [{

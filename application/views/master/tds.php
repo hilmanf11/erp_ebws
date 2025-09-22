@@ -39,11 +39,11 @@
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">On Payment Exceed</span>
-                <input style="width:60%;" name="exceed" id="exceed" class="easyui-numberbox" data-options="precision:2">
+                <input style="width:60%;" name="exceed" id="exceed" class="easyui-numberbox">
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Individual %</span>
-                <input style="width:60%;" name="individual" id="individual" class="easyui-numberbox" data-options="precision:2">
+                <input style="width:60%;" name="individual" id="individual" class="easyui-numberbox">
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Account No</span>

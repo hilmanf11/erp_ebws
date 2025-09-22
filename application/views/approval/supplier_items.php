@@ -192,14 +192,14 @@
                                                 $('#dg').datagrid('reload');
                                                 Swal.close();
                                                 Swal.fire(
-                                                    result.title,
-                                                    result.message,
-                                                    result.theme
+                                                    'Dispprove Completed',
+                                                    'Dispprove Data has been completed, You cannot restore data that has been Dispproved',
+                                                    'success'
                                                 );
                                             }
                                         },
                                         error: function(jqXHR, textStatus, errorThrown) {
-                                            toastr.error("Data Already Use in Another Module");
+                                            toastr.error(jqXHR.statusText);
                                         },
                                     });
                                 }

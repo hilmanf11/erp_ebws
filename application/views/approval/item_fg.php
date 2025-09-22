@@ -184,8 +184,7 @@
                                             }
                                         },
                                         error: function(jqXHR, textStatus, errorThrown) {
-                                            Swal.close();
-                                            toastr.error("Cannot Disapprove, Because Data already Relation for another module");
+                                            toastr.error(jqXHR.statusText);
                                         },
                                     });
                                 }

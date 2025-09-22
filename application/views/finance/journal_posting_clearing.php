@@ -68,8 +68,9 @@
 </div>
 
 <div id="toolbarDocumentNo">
-    &nbsp; Total Amount : &nbsp;
+    &nbsp; Total Amount/Data : &nbsp;
     <input style="width:15%;" id="total_amount" readonly class="easyui-numberbox" data-options="precision:2,groupSeparator:',',decimalSeparator:'.'">
+    <input style="width:5%;" id="total_data" readonly class="easyui-numberbox">
 </div>
 
 <!-- Insert -->
@@ -721,6 +722,7 @@
             total += parseFloat(rows[i].amount);
         }
         $('#total_amount').numberbox('setValue', total.toFixed(2));
+        $('#total_data').numberbox('setValue', rows.length);
     }
 
     $(function() {

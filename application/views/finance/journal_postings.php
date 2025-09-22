@@ -269,7 +269,7 @@
                                 }
                             }
                         }}">Currency</th>
-                    <th data-options="field:'rates',width:100,halign:'center',align:'right',formatter:numberformatDefault,editor: {type: 'numberbox', options: {required: true, precision:4}}">Rates</th>
+                    <th data-options="field:'rates',width:100,halign:'center',align:'right',formatter:numberformatDefault,editor: {type: 'numberbox', options: {required: true, precision:2}}">Rates</th>
                     <th data-options="field:'local_debit',width:120,halign:'center',align:'right',formatter:numberformatDefaultIdr,editor: {type: 'numberbox', options: {required: true, precision:2}}">Debit</th>
                     <th data-options="field:'local_credit',width:120,halign:'center',align:'right',formatter:numberformatDefaultIdr,editor: {type: 'numberbox', options: {required: true, precision:2}}">Credit</th>
                 </tr>
@@ -422,6 +422,8 @@
                                 "&company_id=" + window.btoa(company_id) +
                                 "&document_no=" + window.btoa(document_no),
                             onLoadSuccess: function(data){
+                                $("#journal_date").datebox({readonly:true});
+                                $("#journal_date").datebox('setValue', journal_date);
                                 $("#local_debit").numberbox('setValue', data['footer'][0].local_debit);
                                 $("#local_credit").numberbox('setValue', data['footer'][0].local_credit);
                             }

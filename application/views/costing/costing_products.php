@@ -191,7 +191,7 @@
                                             $.ajax({
                                                 type: "post",
                                                 url: "<?= base_url('costing/costing_products/getData2') ?>",
-                                                data: "item_fg_id=" + json[i].item_fg_id + "&period=" + json[i].period + "&qty=" + json[i].qty + "&month=" + filter_month + "&year=" + filter_year,
+                                                data: "item_fg_id=" + json[i].item_fg_id + "&workorder=" + json[i].workorder + "&period=" + json[i].period + "&qty=" + json[i].qty + "&month=" + filter_month + "&year=" + filter_year,
                                                 dataType: "json",
                                                 success: function(get2) {
                                                     Swal.close();
@@ -222,12 +222,12 @@
 
                                                                         if (value2 == 100) {
                                                                             requestData(total, json, number + 1, value, success + 1, failed + 0);
-                                                                        }
 
-                                                                        if (value == 100) {
-                                                                            // calculateProducts();
-                                                                            Swal.fire('Good job!', 'Generate Costing Products Completed!', 'success');
-                                                                            $("#dg").datagrid('reload');
+                                                                            if (value == 100) {
+                                                                                calculateProducts();
+                                                                                // Swal.fire('Good job!', 'Generate Costing Products Completed!', 'success');
+                                                                                // $("#dg").datagrid('reload');
+                                                                            }
                                                                         }
                                                                     }
                                                                 });

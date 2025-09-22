@@ -1276,6 +1276,29 @@
                                     var totalrows2 = rows2.length;
                                     endEditing2();
 
+                                    for (let z = 0; z < totalrows; z++) {
+                                        var dataz = rows[z];
+
+                                        if(dataz.account_number == "" || dataz.account_number == null){
+                                            toastr.error("Account No Not valid, Please Check your data input and save again!!");
+                                            return false;
+                                        }
+                                    }
+
+                                    if (totalrows2 <= 0) {
+                                        toastr.error("Please calculate journal first!");
+                                        return false;
+                                    }
+
+                                    for (let c = 0; c < totalrows2; c++) {
+                                        var datac = rows2[c];
+
+                                        if(datac.account_number == "" || datac.account_number == null){
+                                            toastr.error("Account No Not valid, Please Check your data input and save again!!");
+                                            return false;
+                                        }
+                                    }
+
                                     $.ajax({
                                         type: "post",
                                         url: "<?= base_url('finance/ar_receipts/deleteJournal') ?>",

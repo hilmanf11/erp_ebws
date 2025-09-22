@@ -10,6 +10,7 @@
             <th colspan="2" data-options="field:'',width:200,halign:'center'">Period</th>
             <th rowspan="2" data-options="field:'revision',width:80,align:'center'">Revision</th>
             <th rowspan="2" data-options="field:'reason',width:200,halign:'center'">Reason</th>
+            <th rowspan="2" data-options="field:'attachment',width:80,align:'center',formatter: btnDetails">Attachment</th>
             <th colspan="4" data-options="field:'',width:100,align:'center'">Approved</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
@@ -112,11 +113,9 @@
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Issued Date</span>
-                    <input style="width:30%;" name="issued_date" id="issued_date" required="" data-options="formatter:myformatter,parser:myparser" class="easyui-datebox">
-                </div>
-                <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Revision</span>
-                    <select style="width:30%;" name="revision" id="revision" class="easyui-combobox" panelHeight="auto">
+                    <input style="width:30%;" name="issued_date" id="issued_date" required="" ediTable="false" data-options="formatter:myformatter,parser:myparser" class="easyui-datebox">
+                    <span style="width:10%; display:inline-block;">Revision</span>
+                    <select style="width:10%;" name="revision" id="revision" class="easyui-combobox" panelHeight="auto">
                         <option value="0">0</option>
                         <option value="1">1</option>
                         <option value="2">2</option>
@@ -124,6 +123,14 @@
                         <option value="4">4</option>
                         <option value="5">5</option>
                     </select>
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Attachment</span>
+                    <input style="width:60%;" name="attachment_upload" id="attachment_upload" class="easyui-filebox">
+                </div>
+                <div class="fitem" hidden>
+                    <span style="width:35%; display:inline-block;">Attachment</span>
+                    <input style="width:60%;" name="attachment" id="attachment" class="easyui-textbox">
                 </div>
             </div>
         </fieldset>
@@ -547,6 +554,16 @@
         editIndex = undefined;
     }
 
+    function btnDetails(val, row, index) {
+        var attachment = row.attachment;
+        
+        if (attachment != null && attachment != "") {
+            return '<a class="btn btn-primary w-100" target="_blank" href="<?= base_url('assets/image/forecasts/') ?>'+row.attachment+'" style="pointer-events: visible; opacity:1;"><i class="fa fa-eye"></i> View</a>';
+        } else {
+            return '-';
+        }
+    }
+
     //EDIT DATA
     function update() {
         var row = $('#dg').datagrid('getSelected');
@@ -876,6 +893,7 @@
                     var document_no = $("#document_no").textbox('getValue');
                     var issued_date = $("#issued_date").datebox('getValue');
                     var revision = $("#revision").textbox('getValue');
+                    var attachment = $("#attachment").textbox('getValue');
                     // var remark = $("#remark").textbox('getValue');
 
                     $('#dg2').datagrid('acceptChanges');
@@ -924,6 +942,7 @@
                                     issued_date: issued_date,
                                     revision: revision,
                                     reason: reason,
+                                    attachment: attachment,
                                     item_fg_id: rows[i].item_fg_id,
                                     month_1: rows[i].month_1,
                                     month_2: rows[i].month_2,
@@ -1410,5 +1429,36 @@
                 });
             }
         }]
+    });
+
+    $('#attachment_upload').filebox({
+        buttonText: 'Browse File',
+        accept: '.jpg, .png, .pdf',
+        onChange: function () {
+            var files = $(this).filebox('files');
+            var formData = new FormData();
+
+            for (var i = 0; i < files.length; i++) {
+                var file = files[i];
+                formData.append('file', file, file.name);
+            }
+
+            $.ajax({
+                url: '<?= base_url('planning/forecasts/uploadatt') ?>',
+                type: 'post',
+                data: formData,
+                contentType: false,
+                processData: false,
+                dataType: 'json',
+                success: function (data) {
+                    if (data.success == true) {
+                        toastr.success(data.message);
+                        $('#attachment').textbox('setValue', data.filename); // Mengatur nilai pada textbox
+                    } else {
+                        toastr.error(data.message);
+                    }
+                }
+            });
+        }
     });
 </script>

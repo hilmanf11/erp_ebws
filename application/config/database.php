@@ -76,10 +76,10 @@ $query_builder = TRUE;
 
 $db['default'] = array(
 	'dsn' => '',
-	'hostname' => 'localhost',
-	'username' => 'erp',
-	'password' => 'SNLfb7EDpDtrAejy',
-	'database' => 'erp',
+	'hostname' => '192.168.11.4',
+	'username' => 'dummy',
+	'password' => 'dKjHjD8zP64MYphk',
+	'database' => 'dummy',
 	'dbdriver' => 'mysqli',
 	'dbprefix' => '',
 	'pconnect' => FALSE,

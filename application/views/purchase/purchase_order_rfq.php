@@ -1,0 +1,1343 @@
+<table id="dg" class="easyui-treegrid" style="width:99.5%;" toolbar="#toolbar">
+    <thead>
+        <tr>
+            <th rowspan="2" field="ck" checkbox="true"></th>
+            <th rowspan="2" data-options="field:'po_no',width:180,halign:'center'">RFQ No</th>
+            <!-- <th rowspan="2" data-options="field:'status_pi',width:80,align:'center',formatter:statusformat,styler:statusStyle">Status</th> -->
+            <th rowspan="2" data-options="field:'request_no',width:150,halign:'center'">QR No</th>
+            <th rowspan="2" data-options="field:'po_date',width:100,align:'center'">RFQ Date</th>
+            <th rowspan="2" data-options="field:'supplier',width:250,halign:'center'">Supplier</th>
+            <th rowspan="2" data-options="field:'item_number',width:200,halign:'center'">Part No Supplier</th>
+            <th rowspan="2" data-options="field:'item_name',width:200,halign:'center'">Description</th>
+            <!-- <th rowspan="2" data-options="field:'mpq',width:100,halign:'center',align:'right',formatter:numberformatDefault">Qty</th>
+            <th rowspan="2" data-options="field:'uom',width:80,align:'center'">UoM</th>
+            <th rowspan="2" data-options="field:'volume',width:80,align:'center'">An. Volume</th>
+            <th rowspan="2" data-options="field:'sop_date',width:100,align:'center'">SOP Date</th>
+            <th rowspan="2" data-options="field:'eop_date',width:100,align:'center'">EOP Date</th>
+            <th rowspan="2" data-options="field:'oem',width:120,align:'center'">Customer</th>
+            <th rowspan="2" data-options="field:'project',width:150,align:'center'">Project</th> -->
+            <th rowspan="2" data-options="field:'mpq',width:100,halign:'center',align:'right',formatter:numberformatDefault">MPQ</th>
+            <th rowspan="2" data-options="field:'moq',width:100,halign:'center',align:'right',formatter:numberformatDefault">MOQ</th>
+            <th rowspan="2" data-options="field:'leadtime',width:100,halign:'center',align:'right',formatter:numberformatDefault">Leadtime</th>
+            <th rowspan="2" data-options="field:'price',width:100,halign:'center',align:'right',formatter:numberformat">Price</th>
+            <th rowspan="2" data-options="field:'currency',width:80,align:'center'">Currency</th>
+            <th rowspan="2" data-options="field:'revision',width:80,align:'center'">Revision</th>
+            <th rowspan="2" data-options="field:'remarks',width:100,halign:'center'">Remarks</th>
+            <!-- <th rowspan="2" data-options="field:'terms',width:100,halign:'center',formatter:btnTerms">Terms<br>Condition</th> -->
+            <th rowspan="2" data-options="field:'attachment_1',width:80,align:'center',formatter: btnDetails">Attachment<br>(1)</th>
+            <th rowspan="2" data-options="field:'attachment_2',width:80,align:'center',formatter: btnDetails">Attachment<br>(2)</th>
+            <th rowspan="2" data-options="field:'attachment_3',width:80,align:'center',formatter: btnDetails">Attachment<br>(3)</th>
+            <th colspan="4" data-options="field:'',width:100,halign:'center'">Approved</th>
+            <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
+            <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
+        </tr>
+        <tr>
+            <th data-options="field:'status_approved',width:80,align:'center', styler:cellStylerApproval, formatter:cellFormatterApproval">Status</th>
+            <th data-options="field:'approved_by',width:120,align:'center'">By</th>
+            <th data-options="field:'approved_to',width:120,align:'center'">Next</th>
+            <th data-options="field:'approved_date',width:120,align:'center'">Date</th>
+            <th data-options="field:'created_by',width:100,align:'center'"> By</th>
+            <th data-options="field:'created_date',width:150,align:'center'"> Date</th>
+            <th data-options="field:'updated_by',width:100,align:'center'"> By</th>
+            <th data-options="field:'updated_date',width:150,align:'center'"> Date</th>
+        </tr>
+    </thead>
+</table>
+<div id="toolbar" style="height: 195px; padding:10px;">
+    <!-- <div style="width: 100%; display: grid; grid-template-columns: auto auto auto; grid-gap: 5px; display: flex;"> -->
+    <div style="width: 100%;">
+        <fieldset style="width: 100%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
+            <legend><b>Form Filter Data</b></legend>
+            <div style="width: 35%; float: left;">
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Period</span>
+                    <input style="width:28%;" id="filter_from" class="easyui-datebox" value="<?= date("Y-m-01") ?>" data-options="formatter:myformatter,parser:myparser, editable:false"> To
+                    <input style="width:28%;" id="filter_to" class="easyui-datebox" value="<?= date("Y-m-t") ?>" data-options="formatter:myformatter,parser:myparser, editable:false">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Part No</span>
+                    <input style="width:60%;" id="filter_item_no" class="easyui-combogrid">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;"></span>
+                    <a href="javascript:;" class="easyui-linkbutton" onclick="filter()"><i class="fa fa-search"></i> Filter Data</a>
+                    <a href="javascript:;" class="easyui-linkbutton" onclick="print_po()"><i class="fa fa-print"></i> Print RFQ</a>
+                </div>
+            </div>
+            <div style="width: 30%; float: left;">
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">QR No</span>
+                    <input style="width:60%;" id="filter_pr_no" class="easyui-combobox">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">RFQ No</span>
+                    <input style="width:60%;" id="filter_po_no" class="easyui-combobox">
+                </div>
+            </div>
+        </fieldset>
+        <?= $button ?>
+        <!-- <a href="javascript:;" class="easyui-linkbutton" data-options="plain:true" onclick="signatures()"><i class="fa fa-check"></i> Signature</a> -->
+    </div>
+</div>
+
+<div id="toolbar2">
+    <!-- <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="append()"><i class="fa fa-plus"></i> Add</a> -->
+</div>
+
+<!-- Insert -->
+<div id="dlg_insert" class="easyui-dialog" title="Convert Purchase Request to Purchase Order" data-options="closed: true,modal:true" style="width: 90%; height: 550px; padding:10px; top: 10px; left:10px;">
+    <form id="frm_insert" method="post" novalidate>
+        <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
+            <legend><b>Form Data</b></legend>
+            <div style="width: 40%; float: left;">
+                <div class="fitem">
+                    <span style="width:25%; display:inline-block;">RFQ Date</span>
+                    <input style="width:60%;" name="po_date" id="po_date" value="<?= date("Y-m-d") ?>" required="" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
+                </div>
+                <div class="fitem">
+                    <span style="width:25%; display:inline-block;">RFQ No</span>
+                    <input style="width:60%;" name="po_no" id="po_no" readonly class="easyui-textbox" data-options="prompt: 'Automatic'" required>
+                </div>
+                <div class="fitem">
+                    <span style="width:25%; display:inline-block;"></span>
+                    <a href="javascript:;" class="easyui-linkbutton" onclick="preview()"><i class="fa fa-search"></i> Preview Data</a>
+                </div>
+            </div>
+            <div style="width: 30%; float: left;">
+                <div class="fitem">
+                    <span style="width:25%; display:inline-block;">QR No</span>
+                    <input style="width:60%;" name="request_no" id="request_no" class="easyui-combobox" required>
+                </div>
+            </div>
+        </fieldset>
+
+        <table id="dg_request" class="easyui-datagrid" style="width:100%;" title="Purchase Request Data" toolbar="#toolbar2" data-options="rownumbers: true">
+        </table>
+    </form>
+</div>
+
+<!-- Update -->
+<div id="dlg_update" class="easyui-dialog" title="Update Purchase Order Others" data-options="closed: true, modal:true" style="width: 500px; height: 550px; padding:10px;">
+    <form id="frm_update" method="post" novalidate>
+        <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px;">
+            <legend><b>Form Data</b></legend>
+            <div class="fitem" hidden>
+                <span style="width:35%; display:inline-block;">ID</span>
+                <input style="width:60%;" name="id" id="id" readonly class="easyui-textbox">
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">RFQ No</span>
+                <input style="width:60%;" name="po_no" readonly class="easyui-textbox">
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">QR No</span>
+                <input style="width:60%;" name="request_no" readonly class="easyui-textbox">
+            </div>
+            <!-- <div class="fitem">
+                <span style="width:35%; display:inline-block;">Attachment</span>
+                <input style="width:60%;" id="attachment_upload2" class="easyui-filebox">
+            </div>
+            <div class="fitem" hidden>
+                <span style="width:35%; display:inline-block;">Attachment</span>
+                <input style="width:60%;" name="attachment" id="attachment2" class="easyui-textbox">
+            </div> -->
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Part No Supplier</span>
+                <input style="width:60%;" name="item_number" readonly class="easyui-textbox">
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Description</span>
+                <input style="width:60%;" name="item_number" readonly class="easyui-textbox">
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">MPQ</span>
+                <input style="width:40%;" name="mpq" id="mpq" class="easyui-numberbox">
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">MOQ</span>
+                <input style="width:40%;" name="moq" id="moq" class="easyui-numberbox">
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Leadtime</span>
+                <input style="width:40%;" name="leadtime" id="leadtime" class="easyui-numberbox">
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Currency</span>
+                <input style="width:40%;" name="currency" id="currency" class="easyui-combobox">
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Price</span>
+                <input style="width:40%;" name="price" id="price" class="easyui-numberbox" data-options="precision: 4">
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Remarks</span>
+                <input style="width:60%;" name="remarks" class="easyui-textbox">
+            </div>
+        </fieldset>
+    </form>
+
+    <div class="alert alert-info" role="alert">
+        If you change the qty then the qty in the <b>PURCHASE REQUESTS</b> Will change
+    </div>
+</div>
+
+<div id="dlg_terms" class="easyui-dialog" title="Update Terms & Conditions" data-options="closed: true,modal:true" style="width: 40%; height: 500px; top: 0px; padding:10px;">
+    <form id="frm_terms" method="post" enctype="multipart/form-data" novalidate>
+        <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; padding: 10px; float: left;">
+            <legend><b>Setting Terms & Conditions</b></legend>
+            <div class="fitem" hidden>
+                <span style="width:35%; display:inline-block;">Del. Sch NO</span>
+                <input style="width:60%;" id="po_no_terms" name="po_no" class="easyui-textbox">
+            </div>
+
+            <div style="width:100%;">
+                <textarea class="summernote" name="terms" id="terms"></textarea>
+            </div>
+
+            <div style="float: left; width: 100%;">
+                <br><br>
+                <center>
+                    <a class="easyui-linkbutton c6" style="width: 200px;" onclick="saved()"><i class="fa fa-save"></i> Save Changes</a>
+                </center>
+            </div>
+        </fieldset>
+        
+    </form>
+</div>
+
+<!-- UPDATE SIGNATURE -->
+<div id="dlg_approval" class="easyui-dialog" title="Edit Signature" data-options="closed: true,modal:true" style="width: 400px; padding:10px; top: 20px;">
+    <form id="frm_approval" method="post" novalidate>
+        <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
+            <legend><b>Form Data</b></legend>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Prepared By</span>
+                <input style="width:60%;" name="po_prepared" id="po_prepared" value="<?= $approval->po_prepared ?>" class="easyui-textbox">
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Checked By</span>
+                <input style="width:60%;" name="po_checked" id="po_checked" value="<?= $approval->po_checked ?>" class="easyui-textbox">
+            </div>
+            <div class="fitem">
+                <span style="width:35%; display:inline-block;">Approved By</span>
+                <input style="width:60%;" name="po_approved" id="po_approved" value="<?= $approval->po_approved ?>" class="easyui-textbox">
+            </div>
+        </fieldset>
+    </form>
+</div>
+
+<!-- PDF -->
+<iframe id="printout" src="<?= base_url('purchase/purchase_order_rfq/print') ?>" style="width: 100%;" hidden></iframe>
+<script>
+    //Add Data
+    function add() {
+        $('#dlg_insert').dialog('open');
+        $('#dg_request').datagrid('loadData', []);
+        $('#request_no').combobox('clear');
+        $('#po_no').textbox('clear');
+
+        $.ajax({
+            type: "post",
+            url: "<?= base_url("purchase/purchase_order_rfq/request_no/" . $id_menu . "/add") ?>",
+            dataType: "json",
+            success: function (response) {
+                $("#po_no").textbox('setValue', response.code);
+            }
+        });
+
+        $("#request_no").combobox({
+            url: '<?= base_url('purchase/purchase_request_rfq/readRequestno') ?>',
+            valueField: 'request_no',
+            textField: 'request_no',
+            prompt: "Select Purchase Request No"
+        });
+    }
+
+    //EDIT DATA
+    function update() {
+        var row = $('#dg').treegrid('getSelected');
+        if (row) {
+            if (row.datatable == "1") {
+                toastr.error("Please Select Details of Del. Sch <br>" + row.po_no);
+            } else {
+                if (row.status == "0") {
+                    $('#dlg_update').dialog('open');
+                    $('#frm_update').form('load', row);
+                } else {
+                    toastr.error("You cannot update this data, because status Del. Sch is closed");
+                }
+            }
+        } else {
+            toastr.warning("Please select one of the data in the table first!", "Information");
+        }
+    }
+
+    //Add Signature
+    function signatures() {
+        $('#dlg_approval').dialog('open');
+    }
+
+    function readPo() {
+        $("#filter_po_no").combobox({
+            url: '<?= base_url('purchase/purchase_order_rfq/readPono') ?>',
+            valueField: 'po_no',
+            textField: 'po_no',
+            prompt: "Select Purchase Order No",
+            icons: [{
+                iconCls: 'icon-clear',
+                handler: function(e) {
+                    $(e.data.target).combobox('clear').combobox('textbox').focus();
+                }
+            }],
+        });
+
+        $("#filter_pr_no").combobox({
+            url: '<?= base_url('purchase/purchase_order_rfq/readPrno') ?>',
+            valueField: 'request_no',
+            textField: 'request_no',
+            prompt: "Select Request No",
+            icons: [{
+                iconCls: 'icon-clear',
+                handler: function(e) {
+                    $(e.data.target).combobox('clear').combobox('textbox').focus();
+                }
+            }],
+        });
+
+        $("#filter_item_no").combogrid({
+            url: '<?= base_url('purchase/purchase_order_rfq/readItem') ?>',
+            panelWidth: 450,
+            idField: 'item_number',
+            textField: 'item_number',
+            mode: 'remote',
+            fitColumns: true,
+            prompt: "Choose Part No",
+            columns: [
+                [{
+                    field: 'item_number',
+                    title: 'Part No Supplier',
+                    width: 200
+                }, {
+                    field: 'item_name',
+                    title: 'Description',
+                    width: 200
+                }]
+            ],
+        });
+    }
+
+    function saved() {
+        $('#frm_terms').form('submit', {
+            url: '<?= base_url('purchase/purchase_order_rfq/updateTerms') ?>',
+            method: 'POST',
+            onSubmit: function() {
+                return $(this).form('validate');
+            },
+            success: function(result) {
+                var result = eval('(' + result + ')');
+                if (result.theme == "success") {
+                    toastr.success(result.message, result.title);
+                } else {
+                    toastr.error(result.message, result.title);
+                }
+            }
+        });
+    }
+
+    function preview() {
+        // var supplier_id = $("#supplier_id").combobox('getValue');
+        var request_no = $("#request_no").combobox('getValue');
+        
+        if (request_no == "") {
+            toastr.warning('Please select Request No', 'Required');
+        } else {
+            addTable();
+
+            function addTable(link = "") {
+                var lastIndex;
+                $('#dg_request').datagrid({
+                    singleSelect: true,
+                    url: '<?= base_url('purchase/purchase_request_rfq/reads?request_no=') ?>' + btoa(request_no),
+                    columns: [
+                        [{
+                            field: 'delete',
+                            width: 120,
+                            readonly: true,
+                            halign: 'center',
+                            title: "Action",
+                            formatter: removebtn
+                        },{
+                            field: 'request_no',
+                            width: 150,
+                            readonly: true,
+                            halign: 'center',
+                            title: "Request No",
+                            editor: {
+                                type: 'textbox',
+                                options: {
+                                    readonly: true
+                                }
+                            }
+                        },{
+                            field: 'item_number',
+                            width: 200,
+                            halign: 'center',
+                            title: "Part No Supplier",
+                            editor: {
+                                type: 'textbox',
+                                options: {
+                                    readonly: true
+                                }
+                            }
+                        },{
+                            field: 'item_name',
+                            width: 200,
+                            halign: 'center',
+                            title: "Description",
+                            editor: {
+                                type: 'textbox',
+                                options: {
+                                    readonly: true
+                                }
+                            }
+                        },{
+                            field: 'item_family_name',
+                            width: 120,
+                            halign: 'center',
+                            title: "Product Family",
+                            editor: {
+                                type: 'textbox',
+                                options: {
+                                    readonly: true
+                                }
+                            }
+                        }, {
+                            field: 'supplier',
+                            width: 200,
+                            halign: 'center',
+                            title: "Supplier",
+                            editor: {
+                                type: 'textbox',
+                                options: {
+                                    readonly: true
+                                }
+                            }
+                        }, {
+                            field: 'qty',
+                            width: 80,
+                            halign: 'center',
+                            title: "Qty",
+                            editor: {
+                                type: 'numberbox',
+                                options: {
+                                    readonly: true
+                                }
+                            }
+                        }, {
+                            field: 'uom',
+                            width: 80,
+                            halign: 'center',
+                            title: "UoM",
+                            editor: {
+                                type: 'textbox',
+                                options: {
+                                    readonly: true
+                                }
+                            }
+                        }, {
+                            field: 'volume',
+                            width: 100,
+                            halign: 'center',
+                            title: "An. Volume",
+                            editor: {
+                                type: 'numberbox',
+                                options: {
+                                    readonly: true
+                                }
+                            }
+                        }, {
+                            field: 'sop_date',
+                            width: 100,
+                            halign: 'center',
+                            title: "SOP Date",
+                            editor: {
+                                type: 'datebox',
+                                options: {
+                                    readonly: true
+                                }
+                            }
+                        }, {
+                            field: 'eop_date',
+                            width: 100,
+                            halign: 'center',
+                            title: "SOP Date",
+                            editor: {
+                                type: 'datebox',
+                                options: {
+                                    readonly: true
+                                }
+                            }
+                        }, {
+                            field: 'oem',
+                            width: 200,
+                            halign: 'center',
+                            title: "Customer/OEM",
+                            editor: {
+                                type: 'textbox',
+                                options: {
+                                    readonly: true
+                                }
+                            }
+                        }, {
+                            field: 'project',
+                            width: 150,
+                            halign: 'center',
+                            title: "Project",
+                            editor: {
+                                type: 'textbox',
+                                options: {
+                                    readonly: true
+                                }
+                            }
+                        }, {
+                            field: 'mpq',
+                            width: 80,
+                            halign: 'center',
+                            title: "MPQ",
+                            editor: {
+                                type: 'numberbox',
+                                options: {
+                                    required: true,
+                                    precision: 0,
+                                }
+                            }
+                        },{
+                            field: 'moq',
+                            width: 80,
+                            halign: 'center',
+                            title: "MOQ",
+                            editor: {
+                                type: 'numberbox',
+                                options: {
+                                    required: true,
+                                    precision: 0,
+                                }
+                            }
+                        },{
+                            field: 'leadtime',
+                            width: 80,
+                            halign: 'center',
+                            title: "Leadtime",
+                            editor: {
+                                type: 'numberbox',
+                                options: {
+                                    required: true,
+                                    precision: 0,
+                                }
+                            }
+                        },{
+                            field: 'currency',
+                            width: 80,
+                            readonly: true,
+                            halign: 'center',
+                            title: "Currency",
+                            editor: {
+                                type: 'combobox',
+                                options: {
+                                    url: '<?php echo base_url('master/currencies/reads'); ?>',
+                                    valueField: 'number',
+                                    textField: 'number',
+                                    prompt: 'Select Currency',
+                                    required: true,
+                                }
+                            }
+                        },{
+                            field: 'price',
+                            width: 100,
+                            halign: 'center',
+                            title: "Price",
+                            editor: {
+                                type: 'numberbox',
+                                options: {
+                                    required: true,
+                                    precision: 4
+                                }
+                            },
+                            formatter: numberformat
+                        }, {
+                            field: 'remarks',
+                            width: 150,
+                            halign: 'center',
+                            title: "Remarks",
+                            editor: {
+                                type: 'textbox'
+                            }
+                        }, {
+                            field: 'attachment_upload1',
+                            width: 150,
+                            halign: 'center',
+                            title: 'Attachment 1',
+                            editor: {
+                                type: 'filebox',
+                                options: {
+                                    buttonText: 'Browse File',
+                                    accept: '.jpg, .png, .pdf',
+                                    onChange: function () {
+                                        var files = $(this).filebox('files');
+                                        var formData = new FormData();
+
+                                        for (var i = 0; i < files.length; i++) {
+                                            var file = files[i];
+                                            formData.append('file', file, file.name);
+                                        }
+
+                                        var dg = $('#dg_request');
+                                        var row = dg.datagrid('getSelected');
+                                        var rowIndex = dg.datagrid('getRowIndex', row);
+
+                                        var ed = dg.datagrid('getEditor', {
+                                            index: rowIndex,
+                                            field: 'attachment_1'
+                                        });
+
+                                        $.ajax({
+                                            url: '<?= base_url('purchase/purchase_order_rfq/uploadatt') ?>',
+                                            type: 'post',
+                                            data: formData,
+                                            contentType: false,
+                                            processData: false,
+                                            dataType: 'json',
+                                            success: function (data) {
+                                                if (data.success == true) {
+                                                    toastr.success(data.message);
+                                                    $(ed.target).textbox('setValue', data.filename); // Mengatur nilai pada textbox
+                                                } else {
+                                                    toastr.error(data.message);
+                                                }
+                                            }
+                                        });
+                                    }
+                                }
+                            }
+                        }, {
+                            field: 'attachment_1',
+                            width: 150,
+                            halign: 'center',
+                            title: "Attachment 1",
+                            hidden: true,
+                            editor: {
+                                type: 'textbox'
+                            }
+                        },{
+                            field: 'attachment_upload2',
+                            width: 150,
+                            halign: 'center',
+                            title: 'Attachment 2',
+                            editor: {
+                                type: 'filebox',
+                                options: {
+                                    buttonText: 'Browse File',
+                                    accept: '.jpg, .png, .pdf',
+                                    onChange: function () {
+                                        var files = $(this).filebox('files');
+                                        var formData = new FormData();
+
+                                        for (var i = 0; i < files.length; i++) {
+                                            var file = files[i];
+                                            formData.append('file', file, file.name);
+                                        }
+
+                                        var dg = $('#dg_request');
+                                        var row = dg.datagrid('getSelected');
+                                        var rowIndex = dg.datagrid('getRowIndex', row);
+
+                                        var ed = dg.datagrid('getEditor', {
+                                            index: rowIndex,
+                                            field: 'attachment_2'
+                                        });
+
+                                        $.ajax({
+                                            url: '<?= base_url('purchase/purchase_order_rfq/uploadatt') ?>',
+                                            type: 'post',
+                                            data: formData,
+                                            contentType: false,
+                                            processData: false,
+                                            dataType: 'json',
+                                            success: function (data) {
+                                                if (data.success == true) {
+                                                    toastr.success(data.message);
+                                                    $(ed.target).textbox('setValue', data.filename); // Mengatur nilai pada textbox
+                                                } else {
+                                                    toastr.error(data.message);
+                                                }
+                                            }
+                                        });
+                                    }
+                                }
+                            }
+                        }, {
+                            field: 'attachment_2',
+                            width: 150,
+                            halign: 'center',
+                            title: "Attachment 2",
+                            hidden: true,
+                            editor: {
+                                type: 'textbox'
+                            }
+                        },{
+                            field: 'attachment_upload3',
+                            width: 150,
+                            halign: 'center',
+                            title: 'Attachment 3',
+                            editor: {
+                                type: 'filebox',
+                                options: {
+                                    buttonText: 'Browse File',
+                                    accept: '.jpg, .png, .pdf',
+                                    onChange: function () {
+                                        var files = $(this).filebox('files');
+                                        var formData = new FormData();
+
+                                        for (var i = 0; i < files.length; i++) {
+                                            var file = files[i];
+                                            formData.append('file', file, file.name);
+                                        }
+
+                                        var dg = $('#dg_request');
+                                        var row = dg.datagrid('getSelected');
+                                        var rowIndex = dg.datagrid('getRowIndex', row);
+
+                                        var ed = dg.datagrid('getEditor', {
+                                            index: rowIndex,
+                                            field: 'attachment_1'
+                                        });
+
+                                        $.ajax({
+                                            url: '<?= base_url('purchase/purchase_order_rfq/uploadatt') ?>',
+                                            type: 'post',
+                                            data: formData,
+                                            contentType: false,
+                                            processData: false,
+                                            dataType: 'json',
+                                            success: function (data) {
+                                                if (data.success == true) {
+                                                    toastr.success(data.message);
+                                                    $(ed.target).textbox('setValue', data.filename); // Mengatur nilai pada textbox
+                                                } else {
+                                                    toastr.error(data.message);
+                                                }
+                                            }
+                                        });
+                                    }
+                                }
+                            }
+                        }, {
+                            field: 'attachment_3',
+                            width: 150,
+                            halign: 'center',
+                            title: "Attachment 3",
+                            hidden: true,
+                            editor: {
+                                type: 'textbox'
+                            }
+                        }]
+                    ],
+                    onLoadSuccess: function(row){
+                        // console.log(rowIndex);
+                        if(row.total == 0){
+                            toastr.error("Data Purchase Request Not Found");
+                        }
+                    },
+                    onBeforeEdit: function(index, row) {
+                        row.editing = true;
+                        $(this).datagrid('refreshRow', index);
+                    },
+                    onAfterEdit: function(index, row) {
+                        row.editing = false;
+                        $(this).datagrid('refreshRow', index);
+                    },
+                    onCancelEdit: function(index, row) {
+                        row.editing = false;
+                        $(this).datagrid('refreshRow', index);
+                    },
+                });
+            }
+        }
+    }
+
+    function removebtn(value, row, index) {
+        if (row.editing) {
+            var s = '<a href="javascript:void(0)" class="btn btn-success btn-sm" style="pointer-events:auto; opacity:1;" onclick="saverow(this)">Save</a> ';
+            var c = '<a href="javascript:void(0)" class="btn btn-danger btn-sm" style="pointer-events:auto; opacity:1;" onclick="cancelrow(this)">Cancel</a>';
+            return s + c;
+        } else {
+            var e = '<a href="javascript:void(0)" class="btn btn-primary btn-sm" style="pointer-events:auto; opacity:1;" onclick="editrow(this)">Edit</a> ';
+            var d = '<a href="javascript:void(0)" class="btn btn-danger btn-sm" style="pointer-events:auto; opacity:1;" onclick="deleterow(this)">Delete</a>';
+            return e + d;
+        }
+    }
+
+    var editIndex = undefined;
+    function endEditing() {
+        if (editIndex == undefined) {
+            return true
+        }
+        if ($('#dg_request').datagrid('validateRow', editIndex)) {
+            $('#dg_request').datagrid('endEdit', editIndex);
+            editIndex = undefined;
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    function append() {
+        if (endEditing()) {
+            var request_no = $("#request_no").combobox('getValue');
+
+            if(request_no != ""){
+                $('#dg_request').datagrid('appendRow', {
+                    "action": 0,
+                    "qty": 0,
+                    "price": 0,
+                    "total": 0,
+                });
+
+                editIndex = $('#dg_request').datagrid('getRows').length - 1;
+                $('#dg_request').datagrid('selectRow', editIndex).datagrid('beginEdit', editIndex);
+            }else{
+                toastr.error("Please Choose Purchase Request No");
+            }
+        }
+    }
+
+    function getRowIndex(target) {
+        var tr = $(target).closest('tr.datagrid-row');
+        return parseInt(tr.attr('datagrid-row-index'));
+    }
+
+    function editrow(target) {
+        $('#dg_request').datagrid('selectRow', getRowIndex(target));
+        $('#dg_request').datagrid('beginEdit', getRowIndex(target));
+    }
+
+    function deleterow(target) {
+        $.messager.confirm('Confirm', 'Are you sure?', function(r) {
+            if (r) {
+                $('#dg_request').datagrid('deleteRow', getRowIndex(target));
+            }
+        });
+    }
+
+    function saverow(target) {
+        $('#dg_request').datagrid('endEdit', getRowIndex(target));
+    }
+
+    function cancelrow(target) {
+        $('#dg_request').datagrid('cancelEdit', getRowIndex(target));
+    }
+
+    function btnTerms(val, row) {
+        if(row.datatable == 1){
+            var details = "terms('"+row.po_no+"')";
+            return '<a class="btn btn-primary w-100" style="pointer-events: visible; opacity:1;" onClick="'+details+'"><i class="fa fa-edit"></i> Edit</a>';
+        }
+    }
+
+    function terms(po_no) {
+        $("#dlg_terms").dialog('open');
+        $("#po_no_terms").textbox('setValue', po_no);
+
+        $.ajax({
+            type: "post",
+            url: "<?= base_url('purchase/purchase_order_rfq/readTerm') ?>",
+            data: "po_no=" + po_no,
+            dataType: "json",
+            success: function (json) {
+                if(json.terms == null){
+                    $(".summernote").summernote("code", 
+                        "<table>" + 
+                            "<tr>" +
+                                "<td width='100'>Delivery</td>" +
+                                "<td width='200'></td>" +
+                            "</tr>" + 
+                            "<tr>" +
+                                "<td>Warranty</td>" +
+                                "<td></td>" +
+                            "</tr>" + 
+                            "<tr>" +
+                                "<td>Payment Term</td>" +
+                                "<td></td>" +
+                            "</tr>" + 
+                            "<tr>" +
+                                "<td>Note</td>" +
+                                "<td></td>" +
+                            "</tr>" + 
+                            "<tr>" +
+                                "<td>P & F</td>" +
+                                "<td></td>" +
+                            "</tr>" + 
+                            "<tr>" +
+                                "<td>Installation</td>" +
+                                "<td></td>" +
+                            "</tr>" + 
+                            "<tr>" +
+                                "<td>Machine Training</td>" +
+                                "<td></td>" +
+                            "</tr>" + 
+                            "<tr>" +
+                                "<td>Spare Part</td>" +
+                                "<td></td>" +
+                            "</tr>" + 
+                        "</table>"
+                    );
+                }else{
+                    $(".summernote").summernote("code", json.terms);
+                }
+            }
+        });
+    }
+
+    //Delete Data
+    function deleted() {
+        var rows = $('#dg').treegrid('getSelections');
+        if (rows.length > 0) {
+            $.messager.confirm('Warning', 'Are you sure you want to delete this data?', function(r) {
+                if (r) {
+                    for (var i = 0; i < rows.length; i++) {
+                        var row = rows[i];
+                        if (row.state == "closed") {
+                            toastr.error("Please Select Detail of Del. Sch <br>" + row.po_no);
+                        } else {
+                            if (row.status_pi == "0") {
+                                $.ajax({
+                                    method: 'post',
+                                    url: '<?= base_url('purchase/purchase_order_rfq/delete') ?>',
+                                    data: {
+                                        id: row.id,
+                                        request_no: row.request_no,
+                                        item_name: row.item_name
+                                    },
+                                    success: function(result) {
+                                        var result = eval('(' + result + ')');
+                                    },
+                                    error: function(jqXHR, textStatus, errorThrown) {
+                                        toastr.error(jqXHR.statusText);
+                                        $.messager.alert("Error", jqXHR.statusText, 'error');
+                                    },
+                                    complete: function(data) {
+                                        $('#dg').treegrid('reload');
+                                    }
+                                });
+                            } else {
+                                toastr.error("You cannot update this data, because status Del. Sch is closed");
+                            }
+                        }
+                    }
+                }
+            });
+        } else {
+            toastr.warning("Please select one of the data in the table first!", "Information");
+        }
+    }
+
+    function filter() {
+        var filter_from = $("#filter_from").datebox('getValue');
+        var filter_to = $("#filter_to").datebox('getValue');
+        var filter_po_no = $("#filter_po_no").combobox('getValue');
+        var filter_pr_no = $("#filter_pr_no").combobox('getValue');
+        var filter_item_no = $("#filter_item_no").combogrid('getValue');
+
+        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_po_no=" + filter_po_no  + "&filter_pr_no=" + filter_pr_no + "&filter_item_no=" + filter_item_no;
+
+        $('#dg').treegrid({
+            url: '<?= base_url('purchase/purchase_order_rfq/datatables') ?>' + url,
+            pagination: true,
+            rownumbers: true,
+            idField: 'id',
+            treeField: 'po_no',
+            singleSelect: false,
+            fit: true,
+            pageList: [20, 50, 100, 500, 1000],
+            pageSize: 20,
+            onBeforeLoad: function(row, param) {
+                if (!row) {
+                    param.id = 0;
+                }
+            },
+        });
+
+        $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
+        $("#printout").attr('src', '<?= base_url('purchase/purchase_order_rfq/print') ?>' + url);
+    }
+
+    function pdf() {
+        $("#printout").get(0).contentWindow.print();
+    }
+
+    function excel() {
+        var filter_from = $("#filter_from").datebox('getValue');
+        var filter_to = $("#filter_to").datebox('getValue');
+        var filter_po_no = $("#filter_po_no").combobox('getValue');
+        var filter_pr_no = $("#filter_pr_no").combobox('getValue');
+        var filter_item_no = $("#filter_item_no").combogrid('getValue');
+
+        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_po_no=" + filter_po_no + "&filter_pr_no=" + filter_pr_no + "&filter_item_no=" + filter_item_no;
+        
+        window.location.assign('<?= base_url('purchase/purchase_order_rfq/print/excel') ?>' + url);
+    }
+
+    function print_po() {
+        var rows = $('#dg').treegrid('getSelected');
+        if (rows) {
+            // if(rows.approved_to == ""){
+                window.open("<?= base_url('purchase/purchase_order_rfq/print_po/') ?>" + window.btoa(rows.po_no), "_blank");
+            // }else{
+            //     toastr.error("Approval Still Checking!!");
+            // }
+        } else {
+            toastr.warning("Please select data in the table first!");
+        }
+    }
+
+    function reload() {
+        window.location.reload();
+    }
+    
+    $(function() {
+        readPo();
+        filter();
+
+        $("#add").html("Convert QR to RFQ");
+        $("#delivery_date").datebox({
+            onChange: function() {
+                var po_date = $("#po_date_update").datebox('getValue');
+                var delivery_date = $("#delivery_date").datebox('getValue');
+                if (delivery_date < po_date) {
+                    $("#delivery_date").datebox('clear');
+                    toastr.warning("Po Date > Delivery Date");
+                }
+            }
+        });
+
+        $('.summernote').summernote({
+            height: 280,
+            hintMode: 'words',
+            hintSelect: 'next',
+            toolbar: [
+                // [groupName, [list of button]]
+                ['style', ['bold', 'italic', 'underline', 'clear']],
+                ['font', ['strikethrough', 'superscript', 'subscript']],
+                ['fontname', ['fontname']],
+                ['fontsize', ['fontsize']],
+                ['color', ['color']],
+                ['para', ['ul', 'ol', 'paragraph']],
+                ['height', ['height']],
+                ['table', ['table']]
+            ]
+        });
+
+        //Save Data
+        $('#dlg_insert').dialog({
+            buttons: [{
+                text: 'Save & Send to Approval',
+                iconCls: 'icon-ok',
+                handler: function() {
+                    var po_date = $("#po_date").datebox('getValue');
+                    // var request_no = $("#request_no").combobox('getValue');
+                    var po_no = $("#po_no").textbox('getValue');
+
+                    if (po_date == "") {
+                        toastr.warning('Please select Po Date', 'Required');
+                    } else {
+                        $('#dg_request').datagrid('acceptChanges');
+                        var rows = $('#dg_request').datagrid('getRows');
+                        var totalrows = rows.length;
+                        endEditing();
+
+                        if (totalrows > 0) {
+                            for (var i = 0; i < totalrows; i++) {
+                                var row = rows[i];
+                                if(row.price <= 0){
+                                    toastr.error("Price still 0!!");
+                                    return false;
+                                }
+
+                                if(row.mpq == "" || row.mpq == null){
+                                    toastr.error("MPQ still Empty!!");
+                                    return false;
+                                }
+
+                                if(row.moq == "" || row.moq == null){
+                                    toastr.error("MOQ still Empty!!");
+                                    return false;
+                                }
+
+                                if(row.leadtime == "" || row.leadtime == null){
+                                    toastr.error("Leadtime still Empty!!");
+                                    return false;
+                                }
+
+                                if(row.attachment_1 == "" || row.attachment_1 == null){
+                                    toastr.error("Attachment 1 still Empty!!");
+                                    return false;
+                                }
+                            }
+
+                            $.messager.confirm('Warning', 'Are you sure you want to Convert and Save QR to RFQ?', function(r) {
+                                if (r) {
+                                    for (var i = 0; i < totalrows; i++) {
+                                        var row = rows[i];
+                                        $.ajax({
+                                            type: "post",
+                                            url: '<?= base_url('purchase/purchase_order_rfq/create') ?>',
+                                            data: {
+                                                po_no: po_no,
+                                                po_date: po_date,
+                                                request_no: row.request_no,
+                                                item_number: row.item_number,
+                                                mpq: row.mpq,
+                                                moq: row.moq,
+                                                leadtime: row.leadtime,
+                                                price: row.price,
+                                                remarks: row.remarks,
+                                                attachment_1: row.attachment_1,
+                                                attachment_2: row.attachment_2,
+                                                attachment_3: row.attachment_3
+                                            },
+                                            dataType: "json",
+                                            success: function(result) {
+                                                Swal.fire({
+                                                    title: result.message,
+                                                    icon: result.theme,
+                                                    confirmButtonText: 'Ok',
+                                                    allowOutsideClick: false,
+                                                }).then((result) => {
+                                                    if (result.isConfirmed) {
+                                                        window.location.reload();
+                                                    }
+                                                });
+                                            }
+                                        });
+                                    }
+
+                                    // readPo();
+                                    $('#dg').treegrid('reload');
+                                    $('#dlg_insert').dialog('close');
+                                }
+                            });
+                        } else {
+                            toastr.warning("Please select one of the data in the table first!", "Information");
+                        }
+                    }
+                }
+            }]
+        });
+
+        //Update Data
+        $('#dlg_update').dialog({
+            buttons: [{
+                text: 'Send to Approval',
+                iconCls: 'icon-ok',
+                handler: function() {
+                    $('#frm_update').form('submit', {
+                        url: '<?= base_url('purchase/purchase_order_rfq/update') ?>',
+                        onSubmit: function() {
+                            return $(this).form('validate');
+                        },
+                        success: function(result) {
+                            var result = eval('(' + result + ')');
+                            if (result.theme == "success") {
+                                toastr.success(result.message, result.title);
+                            } else {
+                                toastr.error(result.message, result.title);
+                            }
+                            $('#dlg_approval').dialog('close');
+                        }
+                    });
+                }
+            }]
+        });
+
+        $('#dlg_approval').dialog({
+            buttons: [{
+                text: 'Update Data',
+                iconCls: 'icon-ok',
+                handler: function() {
+                    $('#frm_approval').form('submit', {
+                        url: '<?= base_url('purchase/purchase_order_rfq/update_approval') ?>',
+                        onSubmit: function() {
+                            return $(this).form('validate');
+                        },
+                        success: function(result) {
+                            var result = eval('(' + result + ')');
+                            if (result.theme == "success") {
+                                toastr.success(result.message, result.title);
+                            } else {
+                                toastr.error(result.message, result.title);
+                            }
+                            $('#dlg_approval').dialog('close');
+                        }
+                    });
+                }
+            }]
+        });
+
+        $('#attachment_upload2').filebox({
+            buttonText: 'Browse File',
+            accept: '.jpg, .png, .pdf',
+            onChange: function () {
+                var files = $(this).filebox('files');
+                var formData = new FormData();
+
+                for (var i = 0; i < files.length; i++) {
+                    var file = files[i];
+                    formData.append('file', file, file.name);
+                }
+
+                $.messager.progress({
+                    title:'Please waiting',
+                    msg:'Uploading data...'
+                });
+
+                $.ajax({
+                    url: '<?= base_url('purchase/purchase_order_rfq/uploadatt') ?>',
+                    type: 'post',
+                    data: formData,
+                    contentType: false,
+                    processData: false,
+                    dataType: 'json',
+                    success: function (data) {
+                        if (data.success == true) {
+                            toastr.success(data.message);
+                            $('#attachment2').textbox('setValue', data.filename); // Mengatur nilai pada textbox
+                        } else {
+                            toastr.error(data.message);
+                        }
+
+                        $.messager.progress('close');
+                    }
+                });
+            }
+        });
+
+        $("#currency").combobox({
+            url: '<?php echo base_url('master/currencies/reads'); ?>',
+            valueField: 'number',
+            textField: 'number',
+            prompt: 'Select Currency',
+            required: true,
+        });
+    });
+
+    //Format Datepicker
+    function myformatter(date) {
+        var y = date.getFullYear();
+        var m = date.getMonth() + 1;
+        var d = date.getDate();
+        return y + '-' + (m < 10 ? ('0' + m) : m) + '-' + (d < 10 ? ('0' + d) : d);
+    }
+    //Format Datepicker
+    function myparser(s) {
+        if (!s) return new Date();
+        var ss = (s.split('-'));
+        var y = parseInt(ss[0], 10);
+        var m = parseInt(ss[1], 10);
+        var d = parseInt(ss[2], 10);
+        if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+            return new Date(y, m - 1, d);
+        } else {
+            return new Date();
+        }
+    }
+    var editIndex = undefined;
+
+    function endEditing() {
+        if (editIndex == undefined) {
+            return true
+        }
+        if ($('#dg_request').datagrid('validateRow', editIndex)) {
+            $('#dg_request').datagrid('endEdit', editIndex);
+            editIndex = undefined;
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    function numberformatPrice2(value, row){
+        if(row.supplier_type == "LOCAL"){
+            var decimal = 2;
+        }else{
+            var decimal = 4;
+        }
+        
+        const formatter = new Intl.NumberFormat('ja-JP', {
+            minimumFractionDigits: decimal
+        });
+
+        return "<b>" + formatter.format(value) + "</b>";
+    }
+
+    function numberformatDefault(value, row) {
+        const formatter = new Intl.NumberFormat('ja-JP', {
+            minimumFractionDigits: 2
+        });
+        return "<b>" + formatter.format(value) + "</b>";
+    }
+
+    function numberformat(value, row) {
+        const formatter = new Intl.NumberFormat("ja-JP", {
+            minimumFractionDigits: 4
+        });
+        return "<b>" + formatter.format(value) + "</b>";
+    }
+
+    function statusformat(value, row) {
+        if (value == 0) {
+            return "<b style='color:green;'>OPEN</b>";
+        } else if (value == 1) {
+            return "<b style='color:red;'>CLOSED</b>";
+        }
+    }
+
+    function statusStyle(value, row, index) {
+        if (value == 0) {
+            return 'background-color:#C8FFCC;';
+        } else if (value == 1) {
+            return 'background-color:#FFC8C8;';
+        }
+    }
+
+    function cellStylerApproval(value, row, index) {
+        if (row.approved_to == null) {
+            return '';
+        } else if(row.approved_to == ""){
+            return 'background: #53D636; color:white;';
+        } else {
+            return 'background: #FF5F5F; color:white;';
+        }
+    }
+
+    function cellFormatterApproval(val, row) {
+        if (row.approved_to == null) {
+            return '';
+        } else if(row.approved_to == ""){
+            return 'Approved';
+        } else {
+            return 'Checking';
+        }
+    };
+
+    function btnDetails(val, row, index) {
+        if(row.datatable == 1){
+            return '-';
+        }else{
+            if (val != null && val != "") {
+                return '<a class="btn btn-primary w-100" target="_blank" href="<?= base_url('assets/documents/purchase_order_rfq/') ?>'+val+'" style="pointer-events: visible; opacity:1;"><i class="fa fa-eye"></i> View</a>';
+            } else {
+                return '-';
+            }
+        }
+    }
+</script>

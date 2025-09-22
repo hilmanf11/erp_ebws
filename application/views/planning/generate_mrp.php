@@ -293,17 +293,17 @@
 
             $.messager.prompt('Generate MRP', 'Please input Password Generate', function(r){
                 if (r == "GENERATEMRP"){
-                    // $.ajax({
-                    //     type: "get",
-                    //     url: "<?= base_url('planning/generate_mrp/checkBom') ?>",
-                    //     data: "filter_month=" + window.btoa(filter_month) +
-                    //         "&filter_year=" + window.btoa(filter_year) +
-                    //         "&filter_revision=" + window.btoa(filter_revision) +
-                    //         "&filter_product_family=" + window.btoa(filter_product_family) +
-                    //         "&filter_part_no=" + window.btoa(filter_part_no),
-                    //     dataType: "json",
-                    //     success: function(check) {
-                    //         if(check.status == "OK"){
+                    $.ajax({
+                        type: "get",
+                        url: "<?= base_url('planning/generate_mrp/checkPurchaseOrder') ?>",
+                        data: "filter_month=" + window.btoa(filter_month) +
+                            "&filter_year=" + window.btoa(filter_year) +
+                            "&filter_revision=" + window.btoa(filter_revision) +
+                            "&filter_product_family=" + window.btoa(filter_product_family) +
+                            "&filter_part_no=" + window.btoa(filter_part_no),
+                        dataType: "json",
+                        success: function(check) {
+                            if(check.status == "OK"){
                                 if(check_bypass.checked == false){
                                     Swal.fire({
                                         title: 'Please Wait for Generating Data',
@@ -315,7 +315,6 @@
                                         },
                                     });
 
-                                    
                                     $.ajax({
                                         type: "get",
                                         url: "<?= base_url('planning/generate_mrp/getDataMps') ?>",
@@ -369,22 +368,12 @@
                                 }else{
                                     generateDataMrp(filter_month, filter_year, filter_revision, filter_product_family, filter_part_no, filter_cutoff);
                                 }
-                    //         }else{
-                    //             Swal.close();
-                    //             Swal.fire({
-                    //                 title: "Data in Bill of Material not ready in Supplier Items",
-                    //                 icon: "error",
-                    //                 confirmButtonText: 'Download',
-                    //                 showCancelButton: true,
-                    //                 allowOutsideClick: false,
-                    //             }).then((result) => {
-                    //                 if (result.isConfirmed) {
-                    //                     window.location.assign('<?= base_url('planning/generate_mrp/downloadBom') ?>');
-                    //                 }
-                    //             });
-                    //         }
-                    //     }
-                    // });
+                            }else{
+                                Swal.close();
+                                Swal.fire('Failed!', 'Purchase order already Created, please change the revision!', 'error');
+                            }
+                        }
+                    });
                 }
             });
         } else {

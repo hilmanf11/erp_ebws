@@ -442,11 +442,11 @@
         $('#dg').datagrid({
             url: '<?= base_url('master/wos/datatables') ?>',
             pagination: true,
-            // clientPaging: false,
-            // remoteFilter: true,
+            clientPaging: false,
+            remoteFilter: true,
             rownumbers: true,
             fit: true,
-            pageList: [20, 50, 100, 500, 1000],
+            pageList: [20, 50, 100, 500, 1000, 10000],
             pageSize: 20,
         }).datagrid('enableFilter');
 

@@ -331,7 +331,7 @@
                     if (s){
                         var sales_order_no = $("#sales_order_no").textbox('getValue');
                         $('#dlg_insert').dialog('close');
-                        
+
                         Swal.fire({
                             title: 'Please Wait...',
                             showConfirmButton: false,
@@ -691,6 +691,37 @@
         if (editIndex == undefined) {
             return true;
         }
+
+        var dg = $('#dg2');
+        var row = dg.datagrid('getSelected');
+        var rowIndex = dg.datagrid('getRowIndex', row);
+
+        var ed = dg.datagrid('getEditor', {
+            index: editIndex,
+            field: 'item_fg_id'
+        });
+
+        var sales_order_no = $("#sales_order_no").textbox('getValue');
+        var item_fg_id = $(ed.target).textbox('getValue');
+
+        $.ajax({
+            method: 'post',
+            url: '<?= base_url('sales/sales_orders/delete') ?>',
+            data: {
+                sales_order_no: sales_order_no,
+                item_fg_id: item_fg_id
+            },
+            success: function(result) {
+                var result = eval('(' + result + ')');
+                toastr.success(result.message);
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                toastr.error("This data is already used in other modules, You must delete it First", "Error");
+            },
+            complete: function(data) {
+                $('#dg').datagrid('reload');
+            }
+        });
 
         $('#dg2').datagrid('cancelEdit', editIndex).datagrid('deleteRow', editIndex);
         editIndex = undefined;

@@ -19,9 +19,12 @@
             <th rowspan="2" data-options="field:'mpq',width:80,halign:'center',align:'right',formatter:numberformatQpa" sortable="true">MPQ</th>
             <th rowspan="2" data-options="field:'qty',width:80,halign:'center',align:'right',formatter:numberformatQpa" sortable="true">WO Qty</th>
             <!-- <th rowspan="2" data-options="field:'qty_req',width:80,halign:'center',align:'right',formatter:numberformatQpa" sortable="true">Req Qty</th> -->
-            <th rowspan="2" data-options="field:'qty_act',width:80,halign:'center',align:'right',formatter:numberformatQpa" sortable="true">Req Qty</th>
-            <th rowspan="2" data-options="field:'qty_issued',width:80,halign:'center',align:'right',formatter:numberformatQpa" sortable="true">Issued</th>
-            <th rowspan="2" data-options="field:'qty_issued_bal',width:80,halign:'center',align:'right',formatter:numberformatQpa" sortable="true">O/S Qty</th>
+            <th rowspan="2" data-options="field:'qty_begin',width:80,halign:'center',align:'right',formatter:numberformatQpa" sortable="true">Qty Begin</th>
+            <th rowspan="2" data-options="field:'qty_req',width:80,halign:'center',align:'right',formatter:numberformatQpa" sortable="true">Qty Req</th>
+            <th rowspan="2" data-options="field:'qty_act',width:80,halign:'center',align:'right',formatter:numberformatQpa" sortable="true">Qty Actual</th>
+            <th rowspan="2" data-options="field:'qty_bal',width:80,halign:'center',align:'right',formatter:numberformatQpa" sortable="true">Qty Balance</th>
+            <th rowspan="2" data-options="field:'qty_issued',width:80,halign:'center',align:'right',formatter:numberformatQpa" sortable="true">Qty Issued</th>
+            <th rowspan="2" data-options="field:'qty_balance',width:80,halign:'center',align:'right',formatter:numberformatQpa" sortable="true">O/S Qty</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
         </tr>
@@ -79,9 +82,9 @@
 </div>
 
 <!-- Insert & Update -->
-<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 1250px; height: 550px; padding:10px; top: 20px;">
+<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 100%; padding:10px; top: 0; left: 0;">
     <form id="frm_insert" method="post" novalidate>
-        <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
+        <fieldset style="width:80%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
             <legend><b>Form Data</b></legend>
             <div style="width: 50%; float: left;">
                 <div class="fitem">
@@ -361,6 +364,11 @@
                         halign: 'center',
                         title: "WO Qty",
                     }, {
+                        field: 'qty_begin',
+                        width: 100,
+                        halign: 'center',
+                        title: "Begin",
+                    },{
                         field: 'qty_req2',
                         width: 80,
                         halign: 'center',
@@ -385,6 +393,18 @@
                             type: 'numberbox',
                             options: {
                                 required: true,
+                                precision: 2
+                            }
+                        }
+                    }, {
+                        field: 'qty_bal',
+                        width: 100,
+                        halign: 'center',
+                        title: "Balance",
+                        editor: {
+                            type: 'numberbox',
+                            options: {
+                                readonly: true,
                                 precision: 2
                             }
                         }
@@ -431,6 +451,15 @@
                                 if(val > parseInt(row.qty_req)){
                                     toastr.error("Qty Issued Cannot >  Qty Need, please Change the qty");
                                     $(editors[2].target).numberbox('clear');
+                                }else{
+                                    var qty_bal = (Math.abs(parseFloat(Math.abs(row.qty_begin)) - parseFloat(row.qty_req2)) - parseFloat(val));
+                                    if(qty_bal < 0){
+                                        toastr.error("Qty Balance Cannot Minus");
+                                        $(editors[2].target).numberbox('clear');
+                                        $(editors[3].target).numberbox('setValue', 0);
+                                    }else{
+                                        $(editors[3].target).numberbox('setValue', qty_bal);
+                                    }
                                 }
                             }
                         }
@@ -727,10 +756,11 @@
                                                     request_date: request_date,
                                                     request_no: request_no,
                                                     request_name: request_name,
-                                                    qty_req: rows[i].qty_req,
+                                                    qty_begin: rows[i].qty_begin,
+                                                    qty_req: rows[i].qty_req2,
                                                     qty_act: rows[i].qty_act,
                                                     mpq: rows[i].mpq,
-                                                    qty_bal: (parseInt(rows[i].qty_req) - parseInt(rows[i].qty_act)),
+                                                    qty_bal: rows[i].qty_bal,
                                                     type: "PP",
                                                     status: status
                                                 },

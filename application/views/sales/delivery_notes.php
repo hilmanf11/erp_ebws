@@ -553,106 +553,120 @@
                     var note = $("#note").textbox('getValue');
                     var status = $("#status").combobox('getValue');
 
-                    $('#dg_request').datagrid('acceptChanges');
-                    var rows = $('#dg_request').datagrid('getSelections');
-                    var totalrows = rows.length;
-                    if(totalrows){
-                        if (customer_id != "" && delivery_note_date !="" && delivery_note_no !="" && plant !="" && sailing !="" && incoterm !="" && vehicle_no != "") {
-                            $.ajax({
-                                type: "post",
-                                url: "<?= base_url('closing/locks/checkLock') ?>",
-                                data: "period=" + delivery_note_date + "&menus_id=<?= $id_menu ?>",
-                                dataType: "json",
-                                success: function (lock) {
-                                    if(lock.total > 0){
-                                        toastr.error("This period is not active by Accounting");
-                                        return false;
-                                    }
+                    $.ajax({
+                        type: "post",
+                        url: "<?= base_url('sales/delivery_notes/number/'.$id_menu) ?>/" + btoa(delivery_note_date),
+                        dataType: "html",
+                        success: function(result) {
+                            if(result == ""){
+                                toastr.info("Please Check Configuration in Serial No First");
+                                return false;
+                            }else{
+                                var delivery_note_no = result;
+                            
+                                $('#dg_request').datagrid('acceptChanges');
+                                var rows = $('#dg_request').datagrid('getSelections');
+                                var totalrows = rows.length;
+                                if(totalrows){
+                                    if (customer_id != "" && delivery_note_date != "" && delivery_note_no != "" && plant != "" && sailing != "" && incoterm != "" && vehicle_no != "") {
+                                        $.ajax({
+                                            type: "post",
+                                            url: "<?= base_url('closing/locks/checkLock') ?>",
+                                            data: "period=" + delivery_note_date + "&menus_id=<?= $id_menu ?>",
+                                            dataType: "json",
+                                            success: function (lock) {
+                                                if(lock.total > 0){
+                                                    toastr.error("This period is not active by Accounting");
+                                                    return false;
+                                                }
 
-                                    $('#dlg_insert').dialog('close');
+                                                $('#dlg_insert').dialog('close');
 
-                                    Swal.fire({
-                                        title: 'Please Wait. . .',
-                                        showConfirmButton: false,
-                                        allowOutsideClick: false,
-                                        allowEscapeKey: false,
-                                        didOpen: () => {
-                                            Swal.showLoading();
-                                        },
-                                    });
+                                                Swal.fire({
+                                                    title: 'Please Wait. . .',
+                                                    showConfirmButton: false,
+                                                    allowOutsideClick: false,
+                                                    allowEscapeKey: false,
+                                                    didOpen: () => {
+                                                        Swal.showLoading();
+                                                    },
+                                                });
 
-                                    requestData(totalrows, rows);
-                                    function requestData(total, json, number = 1, value = 0, success = 1, failed = 1) {
-                                        var i = (number - 1);
-                                        if (value < 100) {
-                                            value = Math.floor((number / total) * 100);
+                                                requestData(totalrows, rows);
+                                                function requestData(total, json, number = 1, value = 0, success = 1, failed = 1) {
+                                                    var i = (number - 1);
+                                                    if (value < 100) {
+                                                        value = Math.floor((number / total) * 100);
 
-                                            $.ajax({
-                                                type: "post",
-                                                url: '<?= base_url('sales/delivery_notes/create') ?>',
-                                                data: {
-                                                    customer_id: customer_id,
-                                                    delivery_note_date: delivery_note_date,
-                                                    delivery_note_no: delivery_note_no,
-                                                    plant: plant,
-                                                    ship_address: ship_address,
-                                                    origin: ship_country,
-                                                    sailing: sailing,
-                                                    ship_by: ship_by,
-                                                    vehicle_no: vehicle_no,
-                                                    incoterm: incoterm,
-                                                    note: note,
-                                                    status: status,
-                                                    delivery_order_no: json[i].delivery_order_no,
-                                                    customer_order_no: json[i].customer_order_no,
-                                                    item_fg_id: json[i].item_fg_id,
-                                                    sales_order_no: json[i].sales_order_no,
-                                                    uom: json[i].uom,
-                                                    status_delivery: json[i].status_delivery,
-                                                    qty: json[i].qty,
-                                                },
-                                                dataType: "json",
-                                                success: function(result) {
-                                                    if (result.theme == "success") {
-                                                        if (value >= 100) {
-                                                            Swal.close();
-                                                            Swal.fire({
-                                                                title: result.message,
-                                                                icon: result.theme,
-                                                                confirmButtonText: 'Ok',
-                                                                allowOutsideClick: false,
-                                                            }).then((result) => {
-                                                                if (result.isConfirmed) {
-                                                                    window.location.reload();
+                                                        $.ajax({
+                                                            type: "post",
+                                                            url: '<?= base_url('sales/delivery_notes/create') ?>',
+                                                            data: {
+                                                                customer_id: customer_id,
+                                                                delivery_note_date: delivery_note_date,
+                                                                delivery_note_no: delivery_note_no,
+                                                                plant: plant,
+                                                                ship_address: ship_address,
+                                                                origin: ship_country,
+                                                                sailing: sailing,
+                                                                ship_by: ship_by,
+                                                                vehicle_no: vehicle_no,
+                                                                incoterm: incoterm,
+                                                                note: note,
+                                                                status: status,
+                                                                delivery_order_no: json[i].delivery_order_no,
+                                                                customer_order_no: json[i].customer_order_no,
+                                                                item_fg_id: json[i].item_fg_id,
+                                                                sales_order_no: json[i].sales_order_no,
+                                                                uom: json[i].uom,
+                                                                status_delivery: json[i].status_delivery,
+                                                                qty: json[i].qty,
+                                                            },
+                                                            dataType: "json",
+                                                            success: function(result) {
+                                                                if (result.theme == "success") {
+                                                                    if (value >= 100) {
+                                                                        Swal.close();
+                                                                        Swal.fire({
+                                                                            title: result.message,
+                                                                            icon: result.theme,
+                                                                            confirmButtonText: 'Ok',
+                                                                            allowOutsideClick: false,
+                                                                        }).then((result) => {
+                                                                            if (result.isConfirmed) {
+                                                                                window.location.reload();
+                                                                            }
+                                                                        });
+                                                                    }else{
+                                                                        requestData(total, json, number + 1, value, success + 1, failed + 0);
+                                                                    }
+                                                                } else {
+                                                                    if (value >= 100) {
+                                                                        Swal.close();
+                                                                        toastr.error(result.message, result.title);
+                                                                    }else{
+                                                                        toastr.error(result.message, result.title);
+                                                                        requestData(total, json, number + 1, value, success + 1, failed + 0);
+                                                                    }
                                                                 }
-                                                            });
-                                                        }else{
-                                                            requestData(total, json, number + 1, value, success + 1, failed + 0);
-                                                        }
-                                                    } else {
-                                                        if (value >= 100) {
-                                                            Swal.close();
-                                                            toastr.error(result.message, result.title);
-                                                        }else{
-                                                            toastr.error(result.message, result.title);
-                                                            requestData(total, json, number + 1, value, success + 1, failed + 0);
-                                                        }
+                                                            }
+                                                        });
                                                     }
                                                 }
-                                            });
-                                        }
-                                    }
 
-                                    $('#dg').datagrid('reload');
-                                    $('#dlg_insert').dialog('close');
+                                                $('#dg').datagrid('reload');
+                                                $('#dlg_insert').dialog('close');
+                                            }
+                                        });
+                                    } else {
+                                        toastr.error("Please Completed your input");
+                                    }
+                                } else{
+                                    toastr.error("Please Check all Checkbox First!");
                                 }
-                            });
-                        } else {
-                            toastr.error("Please Completed your input");
+                            }
                         }
-                    } else{
-                        toastr.error("Please Check all Checkbox First!");
-                    }
+                    });
                 }
             }]
         });

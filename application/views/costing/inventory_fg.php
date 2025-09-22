@@ -48,113 +48,6 @@
 </div>
 
 <script>
-    function add(){
-        var filter_from = $("#filter_from").datebox('getValue');
-        var filter_to = $("#filter_to").datebox('getValue');
-        var filter_items = $("#filter_items").combogrid('getValue');
-        var filter_display = $("#filter_display").combobox('getValue');
-
-        $.ajax({
-            type: "post",
-            url: "<?= base_url('closing/locks/checkLock') ?>",
-            data: "period=" + filter_from + "&menus_id=<?= $menus_id ?>",
-            dataType: "json",
-            success: function (lock) {
-                if(lock.total > 0){
-                    toastr.error("This period is not active by Accounting");
-                    return false;
-                }
-
-                if(filter_from != "" && filter_to != ""){
-                    $.messager.confirm('Warning', 'Are you sure you want to save this data?', function(r) {
-                        if (r) {
-                            Swal.fire({
-                                title: 'Please Wait for Save Inventory Data',
-                                showConfirmButton: false,
-                                allowOutsideClick: false,
-                                allowEscapeKey: false,
-                                didOpen: () => {
-                                    Swal.showLoading();
-                                },
-                            });
-
-                            $("#p_remarks").html("");
-
-                            $.ajax({
-                                type: "post",
-                                url: '<?= base_url('costing/inventory_fg/getData') ?>',
-                                data: {
-                                    filter_from: filter_from,
-                                    filter_to: filter_to,
-                                    filter_items: filter_items,
-                                },
-                                dataType: "json",
-                                success: function(data) {
-                                    Swal.close();
-
-                                    if(data.total > 0){
-                                        requestData(data.total, data.rows);
-                                        $('#dlg_generate').dialog('open');
-
-                                        function requestData(total, json, jml = 1, value = 0) {
-                                            if (value < 100) {
-                                                value = Math.floor((jml / total) * 100);
-                                                var i = (jml - 1);
-
-                                                $('#p_upload').progressbar('setValue', value);
-                                                $('#p_start').html(jml);
-                                                $('#p_finish').html(data.total);
-
-                                                $.ajax({
-                                                    type: "post",
-                                                    url: '<?= base_url('costing/inventory_fg/create') ?>',
-                                                    data: {
-                                                        data: json[i]
-                                                    },
-                                                    dataType: "json",
-                                                    success: function(result) {
-                                                        requestData(total, json, jml + 1, value);
-
-                                                        if (result.theme == "success") {
-                                                            var title = "<b style='color: green;'>" + result.title + "</b> | " + result.message;
-                                                        } else {
-                                                            var title = "<b style='color: red;'>" + result.title + "</b> | " + result.message;
-                                                        }
-
-                                                        $("#p_remarks").append(title + "<br>");
-
-                                                        if (i == (data.total - 1)) {
-                                                            $('#dlg_generate').dialog('close');
-
-                                                            Swal.fire({
-                                                                title: result.message,
-                                                                icon: result.theme,
-                                                                confirmButtonText: 'Ok',
-                                                                allowOutsideClick: false,
-                                                            }).then((result) => {
-                                                                // if (result.isConfirmed) {
-                                                                //     window.location.reload();
-                                                                // }
-                                                            });
-                                                        }
-                                                    }
-                                                });
-                                            }
-                                        }
-                                    }else{
-                                        toastr.warning("Data not Found!");
-                                    }
-                                }
-                            });
-                        }
-                    });
-                }else{
-                    toastr.warning("Please select Trans Date!");
-                }
-            }
-        });
-    }
-
     function reload() {
         window.location.reload();
     }
@@ -169,9 +62,39 @@
         var filter_items = $("#filter_items").combogrid('getValue');
         var filter_display = $("#filter_display").combobox('getValue');
 
-        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_items=" + filter_items + "&filter_display=" + filter_display;
-        $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
-        $("#printout").attr('src', '<?= base_url('costing/inventory_fg/print') ?>' + url);
+        Swal.fire({
+            title: 'Please Wait for Calculate Data',
+            showConfirmButton: false,
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            didOpen: () => {
+                Swal.showLoading();
+            },
+        });
+
+        $.ajax({
+            type: "post",
+            url: '<?= base_url('costing/inventory_fg/getData') ?>',
+            data: {
+                filter_from: filter_from,
+                filter_to: filter_to,
+                filter_items: filter_items,
+            },
+            dataType: "json",
+            success: function(data) {
+                Swal.close();
+                if(data.total > 0){
+                    url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_items=" + filter_items + "&filter_display=" + filter_display;
+                    $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
+                    $("#printout").attr('src', '<?= base_url('costing/inventory_fg/print') ?>' + url);
+                }else{
+                    toastr.warning("Data Not Found");
+                }
+            }, error: function(){
+                Swal.close();
+                toastr.error("Something Error in get Data");
+            }
+        });
     }
 
     function excel() {

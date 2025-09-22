@@ -5,8 +5,8 @@
             <div style="width: 50%; float: left;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Trans Date</span>
-                    <input style="width:30%;" id="filter_from" value="<?= "2024-11-01" ?>" class="easyui-datebox" data-options="prompt:'Start Date',formatter:myformatter,parser:myparser, editable:false">
-                    <input style="width:30%;" id="filter_to" value="<?= date("Y-m-t") ?>" class="easyui-datebox" data-options="prompt:'Finish Date',formatter:myformatter,parser:myparser, editable:false">
+                    <input style="width:30%;" id="filter_from" class="easyui-datebox" data-options="prompt:'Start Date',formatter:myformatter,parser:myparser, editable:false">
+                    <input style="width:30%;" id="filter_to" class="easyui-datebox" data-options="prompt:'Finish Date',formatter:myformatter,parser:myparser, editable:false">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Supplier</span>
@@ -44,12 +44,12 @@
             "&filter_supplier=" + btoa(filter_supplier) +
             "&filter_invoice_no=" + btoa(filter_invoice_no);
 
-        if (filter_from == "" || filter_to == "") {
-            toastr.warning("Please select Trans Date!");
-        } else {
+        // if (filter_from == "" || filter_to == "") {
+        //     toastr.warning("Please select Trans Date!");
+        // } else {
             $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
             $("#printout").attr('src', '<?= base_url('finance/report_tds/print') ?>' + url);
-        }
+        // }
     }
 
     function excel() {
@@ -63,11 +63,11 @@
             "&filter_supplier=" + btoa(filter_supplier) +
             "&filter_invoice_no=" + btoa(filter_invoice_no);
 
-        if (filter_from == "" || filter_to == "") {
-            toastr.warning("Please select Trans Date!");
-        } else {
+        // if (filter_from == "" || filter_to == "") {
+        //     toastr.warning("Please select Trans Date!");
+        // } else {
             window.location.assign('<?= base_url('finance/report_tds/print/excel') ?>' + url);
-        }
+        // }
     }
 
     function pdf() {

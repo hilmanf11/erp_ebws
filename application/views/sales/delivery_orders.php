@@ -562,104 +562,117 @@
                     var delivery_order_date = $("#delivery_order_date").datebox('getValue');
                     var delivery_date = $("#delivery_date").combobox('getValue');
                     var plant = $("#plant").combobox('getValue');
-                    var delivery_order_no = $("#delivery_order_no").textbox('getValue');
                     var remarks = $("#remarks").textbox('getValue');
 
-                    $('#dg_request').datagrid('acceptChanges');
-                    var rows = $('#dg_request').datagrid('getSelections');
-                    var totalrows = rows.length;
+                    $.ajax({
+                        type: "post",
+                        url: "<?= base_url('sales/delivery_orders/number/'. $id_menu) ?>/" + btoa(delivery_order_date),
+                        dataType: "html",
+                        success: function(result) {
+                            if(result == ""){
+                                toastr.info("Please Check Configuration in Serial No First");
+                                return false;
+                            }else{
+                                var delivery_order_no = result;
 
-                    for (let d = 0; d < totalrows; d++) {
-                        if(rows[d].sales_order_no == ""){
-                            toastr.error("Sales Order Cannot Empty!");
-                            return false;
-                        }
-                    }
+                                $('#dg_request').datagrid('acceptChanges');
+                                var rows = $('#dg_request').datagrid('getSelections');
+                                var totalrows = rows.length;
 
-                    if(totalrows > 0){
-                        if (customer_id != "" && delivery_order_date != "" && delivery_date != "") {
-                            $('#dlg_insert').dialog('close');
-
-                            Swal.fire({
-                                title: 'Please Wait. . .',
-                                showConfirmButton: false,
-                                allowOutsideClick: false,
-                                allowEscapeKey: false,
-                                didOpen: () => {
-                                    Swal.showLoading();
-                                },
-                            });
-
-                            requestData(totalrows, rows);
-                            function requestData(total, json, number = 1, value = 0, success = 1, failed = 1) {
-                                var i = (number - 1);
-                                if (value < 100) {
-                                    if(parseInt(json[i].qty_remain) >= parseInt(json[i].qty_do)){
-                                        value = Math.floor((number / total) * 100);
-                                        $.ajax({
-                                            type: "post",
-                                            url: '<?= base_url('sales/delivery_orders/create') ?>',
-                                            data: {
-                                                customer_id: customer_id,
-                                                delivery_order_date: delivery_order_date,
-                                                delivery_order_no: delivery_order_no,
-                                                delivery_date: delivery_date,
-                                                plant: plant,
-                                                remarks: remarks,
-                                                item_fg_id: json[i].item_fg_id,
-                                                sales_order_no: json[i].sales_order_no,
-                                                customer_order_no: json[i].customer_order_no,
-                                                uom: json[i].uom,
-                                                qty_so: json[i].qty_so,
-                                                qty_remain: json[i].qty_remain,
-                                                qty_do: json[i].qty_do,
-                                                qty_del: json[i].qty_del,
-                                                stock: json[i].stock_fg,
-                                                stock_bal: json[i].balance,
-                                            },
-                                            dataType: "json",
-                                            success: function(result) {
-                                                if (result.theme == "success") {
-                                                    if (value >= 100) {
-                                                        Swal.close();
-                                                        Swal.fire({
-                                                            title: result.message,
-                                                            icon: result.theme,
-                                                            confirmButtonText: 'Ok',
-                                                            allowOutsideClick: false,
-                                                        }).then((result) => {
-                                                            if (result.isConfirmed) {
-                                                                window.location.reload();
-                                                            }
-                                                        });
-                                                    }else{
-                                                        requestData(total, json, number + 1, value, success + 1, failed + 0);
-                                                    }
-                                                } else {
-                                                    if (value >= 100) {
-                                                        Swal.close();
-                                                        toastr.error(result.message, result.title);
-                                                    }else{
-                                                        toastr.error(result.message, result.title);
-                                                        requestData(total, json, number + 1, value, success + 1, failed + 0);
-                                                    }
-                                                }
-                                            }
-                                        });
-                                    }else{
-                                        toastr.error("Cannot Create Data because Remain <= qty DO");
+                                for (let d = 0; d < totalrows; d++) {
+                                    if(rows[d].sales_order_no == ""){
+                                        toastr.error("Sales Order Cannot Empty!");
+                                        return false;
                                     }
                                 }
-                            }
 
-                            $('#dg').datagrid('reload');
-                            $('#dlg_insert').dialog('close');
-                        } else {
-                            toastr.error("Please Completed your input");
+                                if(totalrows > 0){
+                                    if (customer_id != "" && delivery_order_date != "" && delivery_date != "") {
+                                        $('#dlg_insert').dialog('close');
+
+                                        Swal.fire({
+                                            title: 'Please Wait. . .',
+                                            showConfirmButton: false,
+                                            allowOutsideClick: false,
+                                            allowEscapeKey: false,
+                                            didOpen: () => {
+                                                Swal.showLoading();
+                                            },
+                                        });
+
+                                        requestData(totalrows, rows);
+                                        function requestData(total, json, number = 1, value = 0, success = 1, failed = 1) {
+                                            var i = (number - 1);
+                                            if (value < 100) {
+                                                if(parseInt(json[i].qty_remain) >= parseInt(json[i].qty_do)){
+                                                    value = Math.floor((number / total) * 100);
+                                                    $.ajax({
+                                                        type: "post",
+                                                        url: '<?= base_url('sales/delivery_orders/create') ?>',
+                                                        data: {
+                                                            customer_id: customer_id,
+                                                            delivery_order_date: delivery_order_date,
+                                                            delivery_order_no: delivery_order_no,
+                                                            delivery_date: delivery_date,
+                                                            plant: plant,
+                                                            remarks: remarks,
+                                                            item_fg_id: json[i].item_fg_id,
+                                                            sales_order_no: json[i].sales_order_no,
+                                                            customer_order_no: json[i].customer_order_no,
+                                                            uom: json[i].uom,
+                                                            qty_so: json[i].qty_so,
+                                                            qty_remain: json[i].qty_remain,
+                                                            qty_do: json[i].qty_do,
+                                                            qty_del: json[i].qty_del,
+                                                            stock: json[i].stock_fg,
+                                                            stock_bal: json[i].balance,
+                                                        },
+                                                        dataType: "json",
+                                                        success: function(result) {
+                                                            if (result.theme == "success") {
+                                                                if (value >= 100) {
+                                                                    Swal.close();
+                                                                    Swal.fire({
+                                                                        title: result.message,
+                                                                        icon: result.theme,
+                                                                        confirmButtonText: 'Ok',
+                                                                        allowOutsideClick: false,
+                                                                    }).then((result) => {
+                                                                        if (result.isConfirmed) {
+                                                                            window.location.reload();
+                                                                        }
+                                                                    });
+                                                                }else{
+                                                                    requestData(total, json, number + 1, value, success + 1, failed + 0);
+                                                                }
+                                                            } else {
+                                                                if (value >= 100) {
+                                                                    Swal.close();
+                                                                    toastr.error(result.message, result.title);
+                                                                }else{
+                                                                    toastr.error(result.message, result.title);
+                                                                    requestData(total, json, number + 1, value, success + 1, failed + 0);
+                                                                }
+                                                            }
+                                                        }
+                                                    });
+                                                }else{
+                                                    toastr.error("Cannot Create Data because Remain <= qty DO");
+                                                }
+                                            }
+                                        }
+
+                                        $('#dg').datagrid('reload');
+                                        $('#dlg_insert').dialog('close');
+                                    } else {
+                                        toastr.error("Please Completed your input");
+                                    }
+                                }else{
+                                    toastr.warning("Please Selection in the table first");
+                                }
+                            }
                         }
-                    }else{
-                        toastr.warning("Please Selection in the table first");
-                    }
+                    });
                 }
             }]
         });
