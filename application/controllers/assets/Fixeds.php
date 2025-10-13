@@ -10,6 +10,7 @@ class Fixeds extends CI_Controller
         $this->load->helper(array('form', 'url'));
         $this->load->library('form_validation');
         $this->load->library('session');
+        $this->load->library('Ciqrcode');
         $this->load->model('crud');
     }
 
@@ -510,6 +511,85 @@ class Fixeds extends CI_Controller
                 echo $send;
             }
         }
+    }
+
+    public function print_label($number)
+    {
+        //Config
+        $this->db->select('*');
+        $this->db->from('config');
+        $config = $this->db->get()->row();
+        $number = base64_decode($number);
+        //Cek Label
+
+        $this->db->select('*');
+        $this->db->from('asset_fixeds');
+        $this->db->where('number', $number);
+        $records = $this->db->get()->result_object();
+
+        $html = '<html>
+                    <head>
+                        <title>' . $number . '</title>
+                        <link rel="icon" href="' . $config->favicon . '" type="image/png" sizes="16x16">
+                    </head>
+                    <style>body {font-family: Arial, Helvetica, sans-serif; margin:5px;}#customers {border-collapse: collapse; width: 100%; font-size: 9px;}#customers td, #customers th {border: 1px solid black;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: #ddd;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: center;color: black;}</style><body>';
+        if ($records) {
+            $html .= '<div style="width: 44mm;">';
+            $no = 1;
+            foreach ($records as $record) {
+                if ($no == 3) {
+                    $no = 1;
+                }
+                if ($no == 1) {
+                    $padding = "padding:2mm 3mm 3mm 2mm;";
+                } else {
+                    $padding = "padding:2mm 3mm 3mm 2mm;";
+                }
+                //Generate QRcode
+                $this->createQrcode($record->number, "assets/image/qrcode/");
+                $html .= '  <div style="width: 44mm; max-height:40mm; float:left; ' . $padding . '">
+                                <table id="customers" border="1" style="margin-bottom:20px;">
+                                    <tr>
+                                        <th colspan="3" style="font-size:7px; text-align:center;"><b>' . $config->name . '</b></th>
+                                    </tr>
+                                    <tr>
+                                        <th style="text-align:center;">
+                                            <img src="' . base_url('assets/image/qrcode/' . $record->number . '.png') . '" width="50"/>
+                                        </th>
+                                        <th style="text-align:left">
+                                            <small style="font-size:7px;">Asset Code</small><br>
+                                            <small style="font-size:12px;"><b>' . $record->number . '</b></small><br>
+                                            <small style="font-size:7px;">Invoice No</small><br>
+                                            <small style="font-size:10px;">' . $record->purchase_invoice_no . '</small>
+                                        </th>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="3" style="height:35px;">
+                                            <small style="font-size:7px;">Asset Name</small><br>
+                                            <small style="font-size:12px;"><b>' . $record->name . '</b></small>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="text-align:left" width="150">
+                                            <small>Quantity</small><br>
+                                            <center>
+                                                <b style="font-size:20px;">' . number_format($record->qty, 0) . '</b></small><br>
+                                                <small style="font-size:10px;"><b>'. $record->uom . '</b></small>
+                                            </center>
+                                        </td>
+                                        <td style="text-align:left" width="200">
+                                            <small>Trans Date</small><br><b style="font-size:10px;">'.$record->trans_date.'</b><br>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>';
+                $no++;
+            }
+            $html .= '</div><script>window.print()</script>';
+        } else {
+            $html .= "<br><br><br><center><h3>Data not found or data has been scanned</h3></center>";
+        }
+        die($html);
     }
 
     public function print($option = "")

@@ -32,19 +32,29 @@ class Item_receipts_fg extends CI_Controller
     {
         if ($this->input->get()) {
             $checksheet_number = $this->input->get('checksheet_number');
+
             $this->db->select('f.checksheet_number, a.workorder, d.number as item_fg_number, g.checksheet_label, d.number_customer, d.name as item_fg_name, d.uom, COALESCE(g.qty, 0) as qty, g.created_by, g.created_date');
             $this->db->from('wip_receipts a');
-            // $this->db->join('production_schedules c', 'a.workorder = c.workorder');
             $this->db->join('item_fg d', 'a.item_fg_id = d.id');
-            // $this->db->join('uom e', 'd.uom_id = e.id');
             $this->db->join('wip_receipt_boxs f', 'a.checksheet_number = f.checksheet_number');
             $this->db->join('scan_item_receipts_fg g', 'a.checksheet_number = g.checksheet_number and f.checksheet_label = g.checksheet_label and a.workorder = g.workorder', 'left');
             $this->db->where('a.checksheet_number', $checksheet_number);
             $this->db->group_by('f.checksheet_label');
-
             $totalRows = $this->db->count_all_results('', false);
-            //Get Data Array
             $records = $this->db->get()->result_array();
+
+            if(!$records){
+                $this->db->select('f.return_id as checksheet_number, a.sales_invoice_no as workorder, d.number as item_fg_number, g.checksheet_label, d.number_customer, d.name as item_fg_name, d.uom, COALESCE(g.qty, 0) as qty, g.created_by, g.created_date');
+                $this->db->from('sales_returns a');
+                $this->db->join('item_fg d', 'a.item_fg_id = d.id');
+                $this->db->join('sales_return_labels f', 'a.return_id = f.return_id');
+                $this->db->join('scan_item_receipts_fg g', 'a.return_id = g.checksheet_number and f.label_no = g.checksheet_label and a.sales_invoice_no = g.workorder', 'left');
+                $this->db->where('a.return_id', $checksheet_number);
+                $this->db->group_by('f.label_no');
+                $totalRows = $this->db->count_all_results('', false);
+                $records = $this->db->get()->result_array();
+            }
+
             //Mapping Data
             $result['total'] = $totalRows;
             $result = array_merge($result, ['rows' => $records]);
@@ -56,21 +66,29 @@ class Item_receipts_fg extends CI_Controller
     {
         if ($this->input->post()) {
             $checksheet_label = $this->input->post('checksheet_label');
-            // $checksheet_number = $this->input->post('checksheet_number');
 
             $this->db->select('f.checksheet_number, f.checksheet_label, a.workorder, COALESCE(f.qty, 0) as qty');
             $this->db->from('wip_receipts a');
-            // $this->db->join('checksheets b', 'a.checksheet_number = b.number');
-            // $this->db->join('production_schedules c', 'a.workorder = c.workorder');
             $this->db->join('item_fg d', 'a.item_fg_id = d.id');
-            // $this->db->join('uom e', 'd.uom = e.name');
             $this->db->join('wip_receipt_boxs f', 'a.checksheet_number = f.checksheet_number');
-            // $this->db->where('f.checksheet_number', $checksheet_number);
             $this->db->where('f.checksheet_label', $checksheet_label);
             $this->db->group_by('f.checksheet_label');
 
             $totalRows = $this->db->count_all_results('', false);
             $records = $this->db->get()->result_array();
+
+            if(!$records){
+                $this->db->select('a.return_id as checksheet_number, b.label_no as checksheet_label, a.sales_invoice_no as workorder, COALESCE(b.qty, 0) as qty');
+                $this->db->from('sales_returns a');
+                $this->db->join('sales_return_labels b', 'a.return_id = b.return_id');
+                $this->db->where('b.label_no', $checksheet_label);
+                $this->db->where('a.status', 1);
+                $this->db->group_by('b.label_no');
+
+                $totalRows = $this->db->count_all_results('', false);
+                $records = $this->db->get()->result_array();
+            }
+
             //Mapping Data
             $result['total'] = $totalRows;
             $result = array_merge($result, ['rows' => $records]);
@@ -93,16 +111,8 @@ class Item_receipts_fg extends CI_Controller
                         "workorder" => $post['workorder'],
                         "qty" => $post['qty']
                     ]);
-                    
-                    // $this->dummy->update('serial_barcode_packing', [
-                    //     "sts_in" => "true",
-                    // ], [
-                    //     "mpp_periode" => date("Ym", strtotime(@$wip_receipts->trans_date)),
-                    //     "wp" => @$wip_receipts->wp,
-                    //     "item_id" => @$item_fg->number_customer,
-                    //     "sts_in" => "false",
-                    // ]);
-                    
+
+                    $this->db->update('sales_return_labels', ["status" => 1], ["label_no" => $post['checksheet_label']]);
                     echo $send;
                 } else {
                     echo json_encode(array("title" => "Available", "message" => "Data Receipt FG has been Scanning", "theme" => "error"));

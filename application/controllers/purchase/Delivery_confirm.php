@@ -41,9 +41,10 @@ class Delivery_confirm extends CI_Controller
     function readInvoice(){
         $post = isset($_POST['q']) ? $_POST['q'] : "";
         $supplier_id = base64_decode($this->input->get('supplier_id'));
-        $datas = $this->crud->query("SELECT invoice_no, invoice_date, awb_no, awb_date FROM purchase_confirm a WHERE a.status = 0 and a.supplier_id = '$supplier_id' and (po_date like '%$post%' or po_no like '%$post%') GROUP BY a.invoice_no");
+        $datas = $this->crud->query("SELECT invoice_no, invoice_date, awb_no, awb_date FROM purchase_confirm WHERE status = 0 and supplier_id = '$supplier_id' and (invoice_date like '%$post%' or invoice_no like '%$post%') GROUP BY invoice_no, invoice_date");
         echo json_encode($datas);
     }
+
 
     function readPono(){
         $post = isset($_POST['q']) ? $_POST['q'] : "";
@@ -59,11 +60,14 @@ class Delivery_confirm extends CI_Controller
 
         $data = $this->crud->query("SELECT b.id, b.number, b.name, a.qty as qty_po, 
                 (a.qty - COALESCE(SUM(c.delivery), 0)) as qty, 
-                a.uom, 
+                a.uom,
+                a.price,
+                a.currency,
                 a.delivery_date, 
                 DATE_FORMAT(now(), '%Y-%m-%d') as today, 
                 (a.qty - COALESCE(SUM(c.delivery), 0)) as delivery, 
-                COALESCE(SUM(c.delivery), 0) as actual
+                COALESCE(SUM(c.delivery), 0) as actual,
+                (a.price * (a.qty - COALESCE(SUM(c.delivery), 0))) as total
             FROM purchase_orders a 
             JOIN item_rm b ON a.item_rm_id = b.id
             LEFT JOIN purchase_confirm c ON a.po_no = c.po_no and a.item_rm_id = c.item_rm_id and a.supplier_id = c.supplier_id
@@ -104,15 +108,22 @@ class Delivery_confirm extends CI_Controller
     public function checkInvoice(){
         $invoice_no = trim($this->input->post("invoice_no"));
         $supplier_id = trim($this->input->post("supplier_id"));
-        $read = $this->crud->query("SELECT id FROM purchase_order_receipts WHERE bc_document = '$invoice_no' and supplier_id = '$supplier_id' and `status` in ('0','1')");
+        $invoice_date = trim($this->input->post("invoice_date"));
+
+        // $read = $this->crud->query("SELECT id FROM purchase_order_receipts WHERE bc_document = '$invoice_no' and supplier_id = '$supplier_id' and `status` in ('0','1')");
         $read2 = $this->crud->reads("purchase_confirm", [], ["invoice_no" => $invoice_no, "supplier_id" => $supplier_id]);
+        $read3 = $this->crud->query("SELECT DISTINCT start_date, end_date FROM menus_no WHERE menus_id = '20240111000001' AND start_date <= '$invoice_date' AND end_date >= '$invoice_date'");
         
-        if(count($read) > 0){
-            die("NG");
-        }elseif(count($read2) > 0){
-            die("NG");
+        if(count($read3) > 0){
+            $invoice_date_bf = @$read2[0]->invoice_date;
+            $read4 = $this->crud->query("SELECT DISTINCT start_date, end_date FROM menus_no WHERE menus_id = '20240111000001' AND start_date <= '$invoice_date_bf' AND end_date >= '$invoice_date_bf'");
+            if(@$read3[0]->start_date == @$read4[0]->start_date){
+                die("NG");
+            }else{
+                die("OK");
+            }
         }else{
-            die("OK");
+            die("NG");
         }
     }
 
@@ -138,7 +149,7 @@ class Delivery_confirm extends CI_Controller
             $result = array();
             //Select Query
             // $this->db->select("a.*, b.name as supplier_name, c.number as item_rm_number, c.name as item_rm_name, d.name as item_family_name, e.receipt");
-            $this->db->select("a.*, (CASE WHEN a.uom = '' THEN c.uom ELSE a.uom END) as uom, b.name as supplier_name, c.number as item_rm_number, c.name as item_rm_name, d.name as item_family_name, f.qty_confirm, (e.qty + (f.qty_confirm - a.delivery)) as qty_remain, e.qty as qty_po, (e.qty + (f.qty_confirm - a.delivery) - a.delivery) as balance");
+            $this->db->select("a.*, (CASE WHEN a.uom = '' THEN c.uom ELSE a.uom END) as uom, b.name as supplier_name, c.number as item_rm_number, c.name as item_rm_name, d.name as item_family_name, f.qty_confirm, (e.qty + (f.qty_confirm - a.delivery)) as qty_remain, e.qty as qty_po, b.currency, (e.qty + (f.qty_confirm - a.delivery) - a.delivery) as balance");
             $this->db->from('purchase_confirm a');
             $this->db->join('suppliers b', 'a.supplier_id = b.id');
             $this->db->join('item_rm c', 'a.item_rm_id = c.id');
@@ -239,6 +250,8 @@ class Delivery_confirm extends CI_Controller
                 "eta" => $post['eta'],
                 "etd" => $post['etd'],
                 "qty" => $post['qty'],
+                "price" => $post['price'],
+                "total" => $post['total'],
                 "delivery" => $post['delivery'],
             );
  

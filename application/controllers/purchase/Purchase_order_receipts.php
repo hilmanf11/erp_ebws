@@ -309,7 +309,8 @@ class Purchase_order_receipts extends CI_Controller
                     c.number as item_rm_number, 
                     c.name as item_rm_name, 
                     d.name as item_family_name, 
-                    b.currency, 
+                    b.currency,
+                    e.price, 
                     c.uom,
                     f.mpq,
                     g.total_scan');
@@ -318,6 +319,7 @@ class Purchase_order_receipts extends CI_Controller
                 $this->db->join('item_rm c', 'a.item_rm_id = c.id');
                 $this->db->join('item_familys d', 'c.item_family_id = d.id');
                 // $this->db->join('supplier_items e', 'b.id = e.supplier_id and c.id = e.item_rm_id');
+                $this->db->join('purchase_orders e', 'a.po_no = e.po_no and a.item_rm_id = e.item_rm_id', 'left');
                 $this->db->join('item_mpq f', 'b.id = f.supplier_id and c.id = f.item_rm_id', 'left');
                 $this->db->join('(SELECT receipt_id, COUNT(id) AS total_scan FROM scan_item_receipts GROUP BY receipt_id) g', 'g.receipt_id = a.receipt_id', 'left');
                 $this->db->where('a.deleted', 0);
@@ -344,6 +346,7 @@ class Purchase_order_receipts extends CI_Controller
     {
         $po_no = $this->input->get('po_no');
         $bc_document = base64_decode($this->input->get('bc_document'));
+        $bc_date = base64_decode($this->input->get('bc_date'));
         
         //Select Query
         $this->db->select("a.po_no, 
@@ -356,6 +359,8 @@ class Purchase_order_receipts extends CI_Controller
             (CASE WHEN a.uom = '' THEN b.uom ELSE a.uom END) as uom,
             round(a.delivery - COALESCE(d.qty_os, 0)) as qty_delivery,
             round(a.delivery - COALESCE(d.qty_os, 0)) as qty_receipt,
+            a.price,
+            a.total,
             CEIL(((a.delivery - COALESCE(d.qty_os, 0)) / f.mpq)) as qty_label");
         $this->db->from('purchase_confirm a');
         $this->db->join('item_rm b', 'a.item_rm_id = b.id');
@@ -365,6 +370,7 @@ class Purchase_order_receipts extends CI_Controller
         $this->db->where('a.deleted', 0);
         $this->db->where('a.status', 0);
         $this->db->where('a.invoice_no', $bc_document);
+        $this->db->where('a.invoice_date', $bc_date);
         $this->db->like('a.po_no', $po_no);
         $this->db->group_by('a.po_no');
         $this->db->group_by('a.item_rm_id');
@@ -376,24 +382,21 @@ class Purchase_order_receipts extends CI_Controller
     {
         if ($this->input->post()) {
             if ($this->form_validation->run() == TRUE) {
-                $post = $this->input->post();
-                $reads = $this->crud->reads("purchase_order_receipts", [], ["po_no" => $post['po_no'], "bc_document" => $post['bc_document'], "item_rm_id" => $post['item_rm_id']]);
-                if(count($reads) > 0){
-                    die(json_encode(array("title" => "Duplicate", "message" => "Part No EBWS ".$post['item_rm_id']." Duplicate Data", "theme" => "error")));
-                }else{
-                    $send = $this->crud->create('purchase_order_receipts', array_merge($post, ["receipt_id" => $this->receipt_id($post['receipt_no'])]));
-                    if ($post['qty_delivery'] > $post['qty_receipt']) {
-                        $status = 0;
-                    } else {
-                        $status = 1;
-                    }
+                $post   = $this->input->post();
+                $send   = $this->crud->create('purchase_order_receipts', array_merge($post, ["receipt_id" => $this->receipt_id($post['receipt_no'])]));
 
-                    $this->db->where('invoice_no', $post['bc_document']);
-                    // $this->db->where('po_no', $post['po_no']);
-                    $this->db->where('item_rm_id', $post['item_rm_id']);
-                    $this->db->update("purchase_confirm", ["status" => 1]);
-                    echo $send;
+                if ($post['qty_delivery'] > $post['qty_receipt']) {
+                    $status = 0;
+                } else {
+                    $status = 1;
                 }
+
+                $this->db->where('invoice_no', $post['bc_document']);
+                $this->db->where('invoice_date', $post['bc_date']);
+                $this->db->where('item_rm_id', $post['item_rm_id']);
+                $this->db->update("purchase_confirm", ["status" => 1]);
+
+                echo $send;
             } else {
                 show_error(validation_errors());
             }
@@ -485,7 +488,7 @@ class Purchase_order_receipts extends CI_Controller
         $data = $this->input->post();
         $deletePurchaseOrderReceipts = $this->crud->delete('purchase_order_receipts', ["receipt_id" => $data['id']]);
         $deleteScanItemReceipts = $this->crud->delete('scan_item_receipts', ["receipt_id" => $data['receipt_id']]);
-        $updatePurchaseOrders = $this->crud->update('purchase_confirm', ["po_no" => $data['po_no'], "invoice_no" => $data['bc_document'], "item_rm_id" => $data['item_rm_id']], ["status" => 0]);
+        $updatePurchaseOrders = $this->crud->update('purchase_confirm', ["po_no" => $data['po_no'], "invoice_no" => $data['bc_document'], "invoice_date" => $data['bc_date'], "item_rm_id" => $data['item_rm_id']], ["status" => 0]);
         echo $deletePurchaseOrderReceipts;
     }
 

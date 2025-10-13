@@ -1089,6 +1089,7 @@ class Sales_invoices extends CI_Controller
         $no = 1;
         $grand_qty = 0;
         $grand_total = 0;
+        $total_tcs = $sales_invoice->tcs;
         for ($i = 0; $i < $page; $i++) {
             $this->db->select('a.*, g.ship_by, d.name as customer_name, f.number as hsn_code, c.number_customer, (CASE WHEN c.alias IS NULL THEN a.item_no ELSE c.alias END) as alias, a.item_name as item_fg_name, b.bill_address, b.ship_address, b.vendor_code, b.pan_no, b.gst_no, b.vendor_code, f.igst as p_igst, f.sgst as p_sgst, f.cgst as p_cgst');
             $this->db->from('sales_invoices a');
@@ -1355,7 +1356,7 @@ class Sales_invoices extends CI_Controller
                     </tr>
                     <tr>
                         <td colspan="9" style="height:50px; padding: 10px;">
-                            <b>Total Invoice value in (Words) </b><small>' . ucwords($this->convertcurrency->convertCurrencyToWords(($sub_total + ($cgst + $sgst + $igst)), $records[0]['currency'])) . '</small><br><br>
+                            <b>Total Invoice value in (Words) </b><small>' . ucwords($this->convertcurrency->convertCurrencyToWords(($sub_total + ($cgst + $sgst + $igst) + $total_tcs), $records[0]['currency'])) . '</small><br><br>
                             <div style="float:left; width:50%;">
                                 <b>No of Boxes</b><br>
                                 <b>Net Weight (KG)</b> : 0.00
@@ -1384,12 +1385,14 @@ class Sales_invoices extends CI_Controller
                             <div style="float:left; width:50%;">
                                 <b>Sub Total</b><br>
                                 <b>Total Tax</b><br>
+                                <b>Total TCS</b><br>
                                 <b>Total Invoice Value</b>
                             </div>
                             <div style="float:left; width:50%; text-align:right;">
                                 <span>' . number_format($sub_total, 2) . '</span><br> 
                                 <span>' . number_format($cgst + $sgst + $igst, 2) . '</span><br>
-                                <span>' . number_format($sub_total + ($cgst + $sgst + $igst), 2) . '</span>
+                                <span>' . number_format($total_tcs, 2) . '</span><br>
+                                <span>' . number_format($sub_total + ($cgst + $sgst + $igst) + $total_tcs, 2) . '</span>
                             </div>
                         </td>
                     </tr>

@@ -210,18 +210,18 @@ class Rgp_scan_out extends CI_Controller
                             $cek_qty = $this->crud->query("
                             select a.number, a.item_id, COALESCE(sum(a.qty),0) as total_qty, COALESCE(b.total_scan,0) as total_scan, COALESCE(sum(a.qty),0)-COALESCE(b.total_scan,0) as balance
                             from rgp_transactions a 
-                            left join (select rgp_number, item_id, COALESCE(sum(qty),0) as total_scan from scan_item_rgp where type = 'OUT' group by rgp_number) b on a.number=b.rgp_number and a.item_id=b.item_id
+                            left join (select rgp_number, item_id, COALESCE(sum(qty),0) as total_scan from scan_item_rgp where type = 'OUT' group by rgp_number, item_id) b on a.number=b.rgp_number and a.item_id=b.item_id
                             where a.type='OUT' and a.number = '" . $post['rgp_number'] . "' and a.item_id='" . $post['item_id'] . "' group by a.number, a.item_id
                             ");
 
                             $item_rm = $this->crud->read("item_rm", [], ["id" => $post['item_id']]);
                             if (!empty(@$item_rm->id)) { // jika RM
-                                $item_receipts = $this->crud->read("scan_item_receipts", [], ["label_no" => $post['label_no']]);
-                                if (!$item_receipts) {
-                                    $item_receipts = $this->crud->read("barcode_divides", [], ["label_divided" => $post['label_no']]);
-                                }
+                                // $item_receipts = $this->crud->read("scan_item_receipts", [], ["label_no" => $post['label_no']]);
+                                // if (!$item_receipts) {
+                                //     $item_receipts = $this->crud->read("barcode_divides", [], ["label_divided" => $post['label_no']]);
+                                // }
 
-                                if (@$item_receipts->qty > @$cek_qty[0]->balance) {
+                                if (@$cek_qty[0]->balance <= 0) {
                                     echo json_encode(array("title" => "Qty Label is Over", "message" => "Qty in Barcode more than with required Qty Item", "theme" => "error"));
                                 } else {
                                     $send = $this->crud->create('scan_item_rgp', array_merge($post, ["type" => "OUT"]));
@@ -233,12 +233,12 @@ class Rgp_scan_out extends CI_Controller
                                     }
                                 }
                             } else { // jika FG
-                                $item_receipts_fg = $this->crud->read("scan_item_receipts_fg", [], ["checksheet_label" => $post['label_no']]);
-                                if (!$item_receipts_fg) {
-                                    $item_receipts_fg = $this->crud->read("barcode_divides_fg", [], ["label_divided" => $post['label_no']]);
-                                }
+                                // $item_receipts_fg = $this->crud->read("scan_item_receipts_fg", [], ["checksheet_label" => $post['label_no']]);
+                                // if (!$item_receipts_fg) {
+                                //     $item_receipts_fg = $this->crud->read("barcode_divides_fg", [], ["label_divided" => $post['label_no']]);
+                                // }
 
-                                if (@$item_receipts_fg->qty > @$cek_qty[0]->balance) {
+                                if (@$cek_qty[0]->balance <= 0) {
                                     echo json_encode(array("title" => "Qty Label is Over", "message" => "Qty in Barcode more than with required Qty Item", "theme" => "error"));
                                 } else {
                                     $send = $this->crud->create('scan_item_rgp', array_merge($post, ["type" => "OUT"]));

@@ -17,7 +17,9 @@
             <th rowspan="2" data-options="field:'uom',width:80,halign:'center'">UoM</th>
             <th rowspan="2" data-options="field:'qty',width:100,halign:'center',align:'right',formatter:numberformat">Qty PO</th>
             <th rowspan="2" data-options="field:'delivery',width:100,halign:'center',align:'right',formatter:numberformat">Plan Delivery</th>
-            <!-- <th rowspan="2" data-options="field:'receipt',width:100,halign:'center',align:'right',formatter:numberformat">Receipt</th> -->
+            <th rowspan="2" data-options="field:'price',width:100,halign:'center',align:'right',formatter:numberformatprice">Price</th>
+            <th rowspan="2" data-options="field:'total',width:100,halign:'center',align:'right',formatter:numberformat">Total</th>
+            <th rowspan="2" data-options="field:'currency',width:80,align:'center'">Currency</th>
             <th rowspan="2" data-options="field:'etd',width:100,align:'center'">ETD</th>
             <th rowspan="2" data-options="field:'eta',width:100,align:'center'">ETA</th>
             <th rowspan="2" data-options="field:'attachment',width:100,halign:'center', formatter:btnAttachment">Attahment</th>
@@ -291,6 +293,8 @@
                                 var ed10 = dg.datagrid('getEditor', {index: rowIndex, field: 'actual'});
                                 var ed11 = dg.datagrid('getEditor', {index: rowIndex, field: 'balance'});
                                 var ed12 = dg.datagrid('getEditor', {index: rowIndex, field: 'qty_po'});
+                                var ed13 = dg.datagrid('getEditor', {index: rowIndex, field: 'price'});
+                                var ed14 = dg.datagrid('getEditor', {index: rowIndex, field: 'total'});
 
                                 $(ed4.target).textbox('setValue', po.po_date);
                                 $(ed.target).combogrid({
@@ -332,6 +336,9 @@
                                         $(ed10.target).numberbox('setValue', item.actual);
                                         $(ed11.target).numberbox('setValue', (parseInt(item.qty) - parseInt(item.delivery)));
                                         $(ed12.target).numberbox('setValue', item.qty_po);
+                                        $(ed13.target).numberbox('setValue', item.price);
+                                        $(ed14.target).numberbox('setValue', item.total);
+
                                         $(ed9.target).numberbox({
                                             onChange: function(val){
                                                 if((parseInt(item.qty) - val) <= 0){
@@ -494,6 +501,32 @@
                                     $(ed2.target).numberbox('setValue', (parseInt(item) - val));
                                 }
                             }
+                        }
+                    }
+                },{
+                    field: 'price',
+                    width: 80,
+                    halign: 'center',
+                    align: 'right',
+                    title: "Price",
+                    editor: {
+                        type: 'numberbox',
+                        options: {
+                            precision: 5,
+                            readonly: true,
+                        }
+                    }
+                },{
+                    field: 'total',
+                    width: 80,
+                    halign: 'center',
+                    align: 'right',
+                    title: "Total",
+                    editor: {
+                        type: 'numberbox',
+                        options: {
+                            precision: 2,
+                            readonly: true,
                         }
                     }
                 },{
@@ -788,7 +821,7 @@
                         $.ajax({
                             type: "post",
                             url: "<?= base_url('purchase/delivery_confirm/checkInvoice') ?>",
-                            data: "invoice_no=" + invoice_no + "&supplier_id=" + supplier_id,
+                            data: "invoice_no=" + invoice_no + "&supplier_id=" + supplier_id + "&invoice_date=" + invoice_date,
                             dataType: "html",
                             success: function (data) {
                                 if(data == "NG"){
@@ -853,6 +886,8 @@
                                                     qty: json[i].qty,
                                                     delivery: json[i].delivery,
                                                     balance: json[i].balance,
+                                                    price: json[i].price,
+                                                    total: json[i].total,
                                                     id: json[i].id,
                                                 },
                                                 dataType: "json",
@@ -1183,6 +1218,20 @@
     function numberformat(value, row) {
         const formatter = new Intl.NumberFormat('ja-JP', {
             minimumFractionDigits: 0
+        });
+
+        return "<b>" + formatter.format(value) + "</b>";
+    }
+
+    function numberformatprice(value, row) {
+        if(row.currency = "INR"){
+            var digit = 2;
+        }else{
+            var digit = 5;
+        }
+
+        const formatter = new Intl.NumberFormat('ja-JP', {
+            minimumFractionDigits: digit
         });
 
         return "<b>" + formatter.format(value) + "</b>";

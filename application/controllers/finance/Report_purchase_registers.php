@@ -260,7 +260,7 @@ class Report_purchase_registers extends CI_Controller
                 $currency = $data['currency'];
             }
 
-            if($total2 < 0){
+            if($total2 < 0 || $data['flag'] == "RETURN"){
                 $style = "style='color:red;'";
             }else{
                 $style = "";

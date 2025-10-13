@@ -19,6 +19,8 @@
             <th rowspan="2" data-options="field:'item_rm_name',width:200,halign:'center'">Description</th>
             <th rowspan="2" data-options="field:'qty_receipt',width:80,halign:'center',align:'right',formatter:numberformat">Qty</th>
             <th rowspan="2" data-options="field:'uom',width:80,halign:'center',align:'center'">UoM</th>
+            <th rowspan="2" data-options="field:'price',width:80,halign:'center',align:'right',formatter:numberformatprice">Price</th>
+            <th rowspan="2" data-options="field:'total',width:80,halign:'center',align:'right',formatter:numberformat">Total</th>
             <th rowspan="2" data-options="field:'currency',width:80,halign:'center',align:'center'">Currency</th>
             <th rowspan="2" data-options="field:'mpq',width:80,halign:'center',align:'right'">MPQ</th>
             <th rowspan="2" data-options="field:'qty_label',width:80,halign:'center',align:'right'">Qty <br> Label</th>
@@ -160,7 +162,7 @@
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Invoice Date</span>
-                    <input style="width:60%;" name="bc_date" id="bc_date" required="" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
+                    <input style="width:60%;" name="bc_date" id="bc_date" required="" readonly class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
                 </div>
             </div>
             <div style="width: 25%; float: left;">
@@ -186,6 +188,8 @@
                     <th data-options="field:'qty_po',width:80,editor:{type:'numberbox', options:{readonly:true}}">PO</th>
                     <th data-options="field:'qty_delivery',width:80,editor:{type:'numberbox', options:{readonly:true}}">Delivery</th>
                     <th data-options="field:'qty_receipt',width:80,editor:{type:'numberbox', options:{readonly:true}}">Receipt</th>
+                    <th data-options="field:'price',width:80,editor:{type:'numberbox', options:{readonly:true, precision:5}}">Price</th>
+                    <th data-options="field:'total',width:80,editor:{type:'numberbox', options:{readonly:true, precision:2}}">Total</th>
                     <th data-options="field:'mpq',width:80,editor:{type:'numberbox', options:{readonly:true}}">MPQ</th>
                     <th data-options="field:'qty_label',width:80,editor:{type:'numberbox', options:{readonly:true}}">Label</th>
                     <!-- <th colspan="3" data-options="field:'t',width:80,halign:'center'">Warehouse</th> -->
@@ -379,13 +383,14 @@
     function preview() {
         var po_no = $("#po_no").combobox('getValue');
         var bc_document = $("#bc_document").combogrid('getValue');
+        var bc_date = $("#bc_date").datebox('getValue');
 
         if (bc_document == "") {
             toastr.warning('Please select Invoice No', 'Required');
         } else {
             var lastIndex;
             var dg = $('#dg_request').datagrid({
-                url: '<?= base_url('purchase/purchase_order_receipts/datatablesTemp') ?>?po_no=' + po_no + "&bc_document=" + btoa(bc_document),
+                url: '<?= base_url('purchase/purchase_order_receipts/datatablesTemp') ?>?po_no=' + po_no + "&bc_document=" + btoa(bc_document) + "&bc_date=" + btoa(bc_date),
                 fitColumns: true,
                 singleSelect: true,
                 onLoadSuccess: function(data, rows){
@@ -539,6 +544,7 @@
                                                 receipt_id: row.receipt_id,
                                                 po_no: row.po_no,
                                                 bc_document: row.bc_document,
+                                                bc_date: row.bc_date,
                                                 item_rm_id: row.item_rm_id,
                                             },
                                             success: function(result) {
@@ -774,6 +780,8 @@
                                                     '&qty_po=' + json[i].qty_po +
                                                     '&qty_delivery=' + json[i].qty_delivery +
                                                     '&qty_receipt=' + json[i].qty_receipt +
+                                                    '&price=' + json[i].price +
+                                                    '&total=' + json[i].total +
                                                     '&qty_mpq=' + json[i].mpq +
                                                     '&qty_label=' + json[i].qty_label,
                                                 dataType: "json",
@@ -980,6 +988,22 @@
             const formatter = new Intl.NumberFormat('ja-JP', {
                 minimumFractionDigits: 0
             });
+            return "<b>" + formatter.format(value) + "</b>";
+        }
+    }
+
+    function numberformatprice(value, row) {
+        if (value != null) {
+            if(row.currency == "INR"){
+                var digit = 2;
+            }else{
+                var digit = 5;
+            }
+            
+            const formatter = new Intl.NumberFormat('ja-JP', {
+                minimumFractionDigits: digit
+            });
+
             return "<b>" + formatter.format(value) + "</b>";
         }
     }

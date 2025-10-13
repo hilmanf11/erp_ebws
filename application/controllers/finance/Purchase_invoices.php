@@ -518,7 +518,7 @@ class Purchase_invoices extends CI_Controller
             $this->db->from("(SELECT *, SUM(total) as total_sub2, SUM(total2) as total_grand2 FROM purchase_invoices GROUP BY number) a");
             $this->db->join('suppliers b', 'a.supplier_id = b.id');
             $this->db->join('journal_types d', 'a.journal_type_id = d.id', 'left');
-            $this->db->join("journal_postings e", 'a.number = e.document_no', 'left');
+            $this->db->join("(select distinct number, document_no from journal_postings) e", 'a.number = e.document_no', 'left');
             if ($filter_type == "PID") {
                 $this->db->where("a.trans_date between '$filter_trans_date_from' and '$filter_trans_date_to'");
             } elseif ($filter_type == "PAY") {
@@ -568,102 +568,116 @@ class Purchase_invoices extends CI_Controller
     public function create()
     {
         if ($this->input->post()) {
-            $post = $this->input->post();
-            
-            if (@$post['id'] != "") {
-                $send = $this->crud->update('purchase_invoices', ["id" => $post['id']], $post);
-                echo $send;
-            } else {
-                // $purchase_invoices = $this->crud->reads('purchase_invoices', [], ["por_no" => $post['por_no'], "po_no" => $post['po_no'], "item_no" => $post['item_no'], "supplier_id" => $post['supplier_id'], "trans_date" => $post['trans_date']]);
-                
-                // if(count($purchase_invoices) > 0){
-                //     die(json_encode(array("title" => "Available", "message" => "Data Already Created", "theme" => "error")));
-                // }
+            $jsonData = file_get_contents("php://input");
+            $post = json_decode($jsonData, true);
+            $dataPurchaseInvoices = $post['dataPurchaseInvoices'];
+            $combinedJournals = $post['combinedJournals'];
 
-                $send = $this->crud->create('purchase_invoices', $post);
-                if ($send) {
-                    if ($post['por_no'] != "-") {
-                        if ($post['type'] != "dp") {
-                            if($post['type'] == "purchase"){
-                                $update = $this->crud->update('purchase_order_receipts', ["receipt_no" => $post['por_no'], "po_no" => $post['po_no'], "item_rm_id" => $post['item_rm_id'], "supplier_id" => $post['supplier_id']], ["status" => 1]);
-                            }else{
-                                // $supplier = $this->crud->read("suppliers", [], ["id" => $post['supplier_id']]);
-                                // $item_rm = $this->crud->read("item_rm", [], ["id" => $post['item_rm_id']]);
-                                // $item_family = $this->crud->read("item_familys", [], ["id" => $post['item_family_id']]);
+            foreach ($dataPurchaseInvoices as $purchase_invoice) {
+                if (!empty(@$purchase_invoice['id'])) {
+                    $send = $this->crud->update('purchase_invoices', ["id" => $purchase_invoice['id']], $purchase_invoice);
+                } else {
+                    // $purchase_invoices = $this->crud->reads('purchase_invoices', [], ["por_no" => $post['por_no'], "po_no" => $post['po_no'], "item_no" => $post['item_no'], "supplier_id" => $post['supplier_id'], "trans_date" => $post['trans_date']]);
+                    
+                    // if(count($purchase_invoices) > 0){
+                    //     die(json_encode(array("title" => "Available", "message" => "Data Already Created", "theme" => "error")));
+                    // }
 
-                                // $estimate_year = $item_family->usefull;
-                                // $shift = $item_family->shift;
-                                // $estimate_month = ($estimate_year * 12);
-                                // $depreciation = ($estimate_year / $estimate_month);
-                                // $expired_date = date("Y-m-d", strtotime("+" . $estimate_year . " year", strtotime($post['trans_date'])));
-                                // $date_from  = date_create($post['trans_date']);
-                                // $date_to  = date_create($expired_date);
-                                // $diff  = date_diff($date_from, $date_to); 
-                                // $estimate_day = $diff->d;
+                    $send = $this->crud->create('purchase_invoices', $purchase_invoice, "logs");
+                    if ($send) {
+                        if ($purchase_invoice['por_no'] != "-") {
+                            if ($purchase_invoice['type'] != "dp") {
+                                if($purchase_invoice['type'] == "purchase"){
+                                    $this->db->update('purchase_order_receipts', ["status" => 1], ["receipt_no" => $purchase_invoice['por_no'], "po_no" => $purchase_invoice['po_no'], "item_rm_id" => $purchase_invoice['item_rm_id'], "supplier_id" => $purchase_invoice['supplier_id']]);
+                                }else{
+                                    // $supplier = $this->crud->read("suppliers", [], ["id" => $post['supplier_id']]);
+                                    // $item_rm = $this->crud->read("item_rm", [], ["id" => $post['item_rm_id']]);
+                                    // $item_family = $this->crud->read("item_familys", [], ["id" => $post['item_family_id']]);
 
-                                // if($shift == "1"){
-                                //     $factor = 1;
-                                // }else{
-                                //     $factor = 2;
-                                // }
+                                    // $estimate_year = $item_family->usefull;
+                                    // $shift = $item_family->shift;
+                                    // $estimate_month = ($estimate_year * 12);
+                                    // $depreciation = ($estimate_year / $estimate_month);
+                                    // $expired_date = date("Y-m-d", strtotime("+" . $estimate_year . " year", strtotime($post['trans_date'])));
+                                    // $date_from  = date_create($post['trans_date']);
+                                    // $date_to  = date_create($expired_date);
+                                    // $diff  = date_diff($date_from, $date_to); 
+                                    // $estimate_day = $diff->d;
 
-                                // //Fixed Asset
-                                // if($item_rm->item_category_id = 'C06'){
-                                //     if(@$post['asset_code'] != "" && @$post['asset_code'] != "-"){
+                                    // if($shift == "1"){
+                                    //     $factor = 1;
+                                    // }else{
+                                    //     $factor = 2;
+                                    // }
 
-                                //         $asset_code = $post['asset_code'];
-                                //         $asset = $this->crud->read("assets", [], ["number" => $asset_code]);
-                                //         $asset_fixeds = $this->crud->read("asset_fixeds", [], ["number" => $asset_code]);
-                                //         // $sql_asset_fixed = $this->db->query("SELECT max(numbers) as numbers FROM asset_fixeds WHERE number = '$asset_code'");
-                                //         // $row_asset_fixed = $sql_asset_fixed->row();
+                                    // //Fixed Asset
+                                    // if($item_rm->item_category_id = 'C06'){
+                                    //     if(@$post['asset_code'] != "" && @$post['asset_code'] != "-"){
 
-                                //         $dataAsset = array(
-                                //             "item_family_id" => $post['item_family_id'],
-                                //             "purchase_invoice_no" => $post['number'],
-                                //             "supplier_id" => $post['supplier_id'],
-                                //             "supplier_name" => @$supplier->name,
-                                //             "item_rm_id" => $post['item_rm_id'],
-                                //             "number" => @$asset_code,
-                                //             // "numbers" => @$row_asset_fixed->numbers + 1,
-                                //             "name" => @$asset->name,
-                                //             "shift" => $shift,
-                                //             "trans_date" => $post['trans_date'],
-                                //             "qty" => (@$asset->qty),
-                                //             "currency" => $post['currency'],
-                                //             "cost" => $post['price'],
-                                //             "estimate_month" => $estimate_month,
-                                //             "estimate_year" => $estimate_year,
-                                //             "residual" => (($post['total2'] * 5) / 100),
-                                //             "expired_date" => $expired_date,
-                                //             "depreciation" => $depreciation,
-                                //             "remarks" => $post['remarks'],
-                                //             "method" => "PURCHASE INVOICING",
-                                //             "departement" => @$item_rm->departement,
-                                //             "total" => $post['total2'],
-                                //             //Field Baru
-                                //             "total_period" => 0,
-                                //             "uom" => @$item_rm->uom,
-                                //             // "addition" => ($post['total2'] - (($post['total2'] * 5) / 100) / $estimate_year / 365 * $estimate_day * $factor),
-                                //             "addition" => 0,
-                                //             "estimate_day" => $estimate_day,
-                                //         );
-                                        
-                                //         if(empty($asset_fixeds)){
-                                //             $this->crud->create('asset_fixeds', $dataAsset);
-                                //         }
-                                //     }
-                                // }
+                                    //         $asset_code = $post['asset_code'];
+                                    //         $asset = $this->crud->read("assets", [], ["number" => $asset_code]);
+                                    //         $asset_fixeds = $this->crud->read("asset_fixeds", [], ["number" => $asset_code]);
+                                    //         // $sql_asset_fixed = $this->db->query("SELECT max(numbers) as numbers FROM asset_fixeds WHERE number = '$asset_code'");
+                                    //         // $row_asset_fixed = $sql_asset_fixed->row();
 
-                                $update = $this->crud->update('purchase_order_receipt_others', ["receipt_no" => $post['por_no'], "po_no" => $post['po_no'], "item_rm_id" => $post['item_rm_id'], "supplier_id" => $post['supplier_id']], ["status" => 1]);
+                                    //         $dataAsset = array(
+                                    //             "item_family_id" => $post['item_family_id'],
+                                    //             "purchase_invoice_no" => $post['number'],
+                                    //             "supplier_id" => $post['supplier_id'],
+                                    //             "supplier_name" => @$supplier->name,
+                                    //             "item_rm_id" => $post['item_rm_id'],
+                                    //             "number" => @$asset_code,
+                                    //             // "numbers" => @$row_asset_fixed->numbers + 1,
+                                    //             "name" => @$asset->name,
+                                    //             "shift" => $shift,
+                                    //             "trans_date" => $post['trans_date'],
+                                    //             "qty" => (@$asset->qty),
+                                    //             "currency" => $post['currency'],
+                                    //             "cost" => $post['price'],
+                                    //             "estimate_month" => $estimate_month,
+                                    //             "estimate_year" => $estimate_year,
+                                    //             "residual" => (($post['total2'] * 5) / 100),
+                                    //             "expired_date" => $expired_date,
+                                    //             "depreciation" => $depreciation,
+                                    //             "remarks" => $post['remarks'],
+                                    //             "method" => "PURCHASE INVOICING",
+                                    //             "departement" => @$item_rm->departement,
+                                    //             "total" => $post['total2'],
+                                    //             //Field Baru
+                                    //             "total_period" => 0,
+                                    //             "uom" => @$item_rm->uom,
+                                    //             // "addition" => ($post['total2'] - (($post['total2'] * 5) / 100) / $estimate_year / 365 * $estimate_day * $factor),
+                                    //             "addition" => 0,
+                                    //             "estimate_day" => $estimate_day,
+                                    //         );
+                                            
+                                    //         if(empty($asset_fixeds)){
+                                    //             $this->crud->create('asset_fixeds', $dataAsset);
+                                    //         }
+                                    //     }
+                                    // }
+
+                                    $this->db->update('purchase_order_receipt_others', ["status" => 1], ["receipt_no" => $purchase_invoice['por_no'], "po_no" => $purchase_invoice['po_no'], "item_rm_id" => $purchase_invoice['item_rm_id'], "supplier_id" => $purchase_invoice['supplier_id']]);
+                                }
                             }
+                        } else {
+                            $this->db->update('purchase_order_others', ["status" => 1], ["po_no" => $purchase_invoice['po_no'], "item_rm_id" => $purchase_invoice['item_rm_id'], "supplier_id" => $purchase_invoice['supplier_id']]);
                         }
-                    } else {
-                        $update = $this->crud->update('purchase_order_others', ["po_no" => $post['po_no'], "item_rm_id" => $post['item_rm_id'], "supplier_id" => $post['supplier_id']], ["status" => 1]);
                     }
                 }
-
-                echo $send;
             }
+
+            foreach ($combinedJournals as $journal) {
+                $purchase_invoice_journals = $this->crud->read('purchase_invoice_journals', [], ["number" => $journal['number'], "account_number" => $journal['account_number'], "flag" => $journal['flag']]);
+
+                if (@$purchase_invoice_journals->id != "") {
+                    $send = $this->crud->update('purchase_invoice_journals', ["number" => $journal['number'], "account_number" => $journal['account_number'], "flag" => $journal['flag']], $journal);
+                } else {
+                    $send = $this->crud->create('purchase_invoice_journals', $journal, "logs");
+                }
+            }
+
+            die(json_encode(array("title" => "Good Job", "message" => "Data Save Successfully", "theme" => "success")));
         } else {
             show_error("Cannot Process your request");
         }
@@ -679,22 +693,246 @@ class Purchase_invoices extends CI_Controller
         file_put_contents('json/purchase_invoice_journals.json', $jsonData2);
     }
 
-    public function createJournals()
-    {
-        if ($this->input->post()) {
-            $post = $this->input->post();
-            $purchase_invoice_journals = $this->crud->read('purchase_invoice_journals', [], ["number" => $post['number'], "account_number" => $post['account_number'], "flag" => $post['flag']]);
+    // public function createJournals()
+    // {
+    //     if ($this->input->post()) {
+    //         $post = $this->input->post();
+    //         $purchase_invoice_journals = $this->crud->read('purchase_invoice_journals', [], ["number" => $post['number'], "account_number" => $post['account_number'], "flag" => $post['flag']]);
 
-            if (@$purchase_invoice_journals->id != "") {
-                $send = $this->crud->update('purchase_invoice_journals', ["number" => $post['number'], "account_number" => $post['account_number'], "flag" => $post['flag']], $post);
-                echo $send;
-            } else {
-                $send = $this->crud->create('purchase_invoice_journals', $post);
-                echo $send;
-            }
+    //         if (@$purchase_invoice_journals->id != "") {
+    //             $send = $this->crud->update('purchase_invoice_journals', ["number" => $post['number'], "account_number" => $post['account_number'], "flag" => $post['flag']], $post);
+    //             echo $send;
+    //         } else {
+    //             $send = $this->crud->create('purchase_invoice_journals', $post);
+    //             echo $send;
+    //         }
+    //     } else {
+    //         show_error("Cannot Process your request");
+    //     }
+    // }
+
+    public function createPosting()
+    {
+        $document_no = $this->input->post('number');
+
+        $datenow = date("Y-m-d");
+        $sql_menu = $this->db->query("SELECT * FROM menus_no WHERE menus_id = '20240227000005' and `status` = '0' and `start_date` <= '$datenow' and end_date >= '$datenow'");
+        $row_menu = $sql_menu->row();
+
+        if (@$row_menu->number == "") {
+            $voucher_no = "";
         } else {
-            show_error("Cannot Process your request");
+            $number = @$row_menu->number;
+            $yearnow = date("y", strtotime($row_menu->start_date));
+            $yearend = date("y", strtotime($row_menu->end_date));
+
+            $whereDate = $number . $yearnow . $yearend . "1";
+
+            $sqlGetID    = $this->db->query("SELECT max(`number`) as kode FROM journal_postings WHERE `number` like '%$whereDate%'");
+            $rowID = $sqlGetID->row();
+            $kode = $rowID->kode;
+
+            if ($kode == NULL) {
+                $autoID = sprintf("%0" . $row_menu->sequence . "s", $kode + 1);
+                $autoNo = $whereDate . $autoID;
+            } else {
+                $urutan = (int) substr($kode, -6);
+                $urutan++;
+                $autoID    = sprintf("%0" . $row_menu->sequence . "s", $urutan);
+                $autoNo = $whereDate . $autoID;
+            }
+
+            $voucher_no = $autoNo;
         }
+
+        $this->db->select('a.number, b.trans_date, b.invoice_no, c.id as supplier_id, c.name as supplier_name, b.currency, b.item_no, b.item_name, a.account_number, a.account_name, a.debit, a.credit, b.rate, a.flag');
+        $this->db->from('purchase_invoice_journals a');
+        $this->db->join("(SELECT * FROM purchase_invoices GROUP BY number) b", "b.number = a.number");
+        $this->db->join("suppliers c", "b.supplier_id = c.id");
+        $this->db->where_in('a.number', $document_no);
+        $this->db->order_by('a.number', 'asc');
+        $this->db->order_by('a.flag', 'asc');
+        $journals = $this->db->get()->result_array();
+
+        $trans_date = "";
+        $customer_name = "";
+        $currency = "";
+
+        $original_debit = 0;
+        $original_credit = 0;
+        $local_debit = 0;
+        $local_credit = 0;
+
+        $grand_original_debit = 0;
+        $grand_original_credit = 0;
+        $grand_local_debit = 0;
+        $grand_local_credit = 0;
+
+        $data = array();
+        foreach ($journals as $journal) {
+            $number = $journal['number'];
+            $account_number = $journal['account_number'];
+            $account_name = $journal['account_name'];
+            $debit = $journal['debit'];
+            $credit = $journal['credit'];
+            $rate = $journal['rate'];
+
+            $this->db->select('a.trans_date, a.journal_type_id, a.invoice_no, b.id as supplier_id, b.name as supplier_name, a.po_no, a.item_no, a.item_name, a.currency, a.account_number, c.account_name, a.account_type, a.rate, a.total');
+            $this->db->from('purchase_invoices a');
+            $this->db->join('suppliers b', 'a.supplier_id = b.id');
+            $this->db->join('account_coa c', 'a.account_number = c.account_number');
+            $this->db->where('a.number', $number);
+            $this->db->where('a.account_number', $account_number);
+            $this->db->order_by('a.trans_date', 'asc');
+            $purchase_invoices = $this->db->get()->result_array();
+
+            if ($debit > 0 || $credit > 0) {
+                if (count($purchase_invoices) > 0) {
+
+                    $bal_original_debit = 0;
+                    $bal_original_credit = 0;
+                    $bal_local_debit = 0;
+                    $bal_local_credit = 0;
+
+                    foreach ($purchase_invoices as $purchase_invoice) {
+                        $currency = $purchase_invoice['currency'];
+                        $supplier_id = $purchase_invoice['supplier_id'];
+                        $supplier_name = $purchase_invoice['supplier_name'];
+                        $trans_date = $purchase_invoice['trans_date'];
+
+                        // $transmonth = date('Y-m-01', strtotime($purchase_invoice['trans_date']));
+                        // $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $transmonth, "currency_from" => $currency, "currency_to" => "INR"]);
+
+                        if ($currency != "INR") {
+                            if ($purchase_invoice['account_type'] == "DEBIT") {
+                                $original_debit = round($purchase_invoice['total'], 2);
+                                $original_credit = 0;
+                            } else {
+                                $original_debit = 0;
+                                $original_credit = round($purchase_invoice['total'], 2);
+                            }
+
+                            if ($purchase_invoice['account_type'] == "DEBIT") {
+                                // $local_debit = round($purchase_invoice['total'] * @$exchange->middle, 2);
+                                $local_debit = round($purchase_invoice['total'] * @$purchase_invoice['rate'], 2);
+                                $local_credit = 0;
+                            } else {
+                                $local_debit = 0;
+                                // $local_credit = round($purchase_invoice['total'] * @$exchange->middle, 2);
+                                $local_credit = round($purchase_invoice['total'] * @$purchase_invoice['rate'], 2);
+                            }
+
+                            // $rates = @$exchange->middle;
+                            $rates = @$purchase_invoice['rate'];
+                        } else {
+                            if ($purchase_invoice['account_type'] == "DEBIT") {
+                                $original_debit = $purchase_invoice['total'];
+                                $original_credit = 0;
+                                $local_debit = $purchase_invoice['total'];
+                                $local_credit = 0;
+                            } else {
+                                $original_debit = 0;
+                                $original_credit = $purchase_invoice['total'];
+                                $local_debit = 0;
+                                $local_credit = $purchase_invoice['total'];
+                            }
+
+                            $rates = 1;
+                        }
+
+                        $data[] = array(
+                            "journal_date" => date("Y-m-d"),
+                            "journal_type_id" => $purchase_invoice['journal_type_id'],
+                            "number" => $voucher_no,
+                            "trans_date" => $purchase_invoice['trans_date'],
+                            "document_no" => $number,
+                            "invoice_no" => $purchase_invoice['invoice_no'],
+                            "company_id" => $supplier_id,
+                            "company_name" => $supplier_name,
+                            "modul" => "PURCHASE INVOICING",
+                            "account_number" => $purchase_invoice['account_number'],
+                            "account_name" => $purchase_invoice['account_name'],
+                            "description" => $purchase_invoice['po_no'] . " | " . $purchase_invoice['invoice_no'] . " | " . $purchase_invoice['item_no'] . " | " . $purchase_invoice['item_name'],
+                            "currency" => $purchase_invoice['currency'],
+                            "original_debit" => $original_debit,
+                            "original_credit" => $original_credit,
+                            "rates" => $rates,
+                            "local_debit" => $local_debit,
+                            "local_credit" => $local_credit,
+                        );
+
+                        $bal_original_debit += $original_debit;
+                        $bal_original_credit += $original_credit;
+                        $bal_local_debit += $local_debit;
+                        $bal_local_credit += $local_credit;
+
+                        $grand_original_debit += $original_debit;
+                        $grand_original_credit += $original_credit;
+                        $grand_local_debit += $local_debit;
+                        $grand_local_credit += $local_credit;
+                    }
+                } else {
+                    // $transmonth = date('Y-m-01', strtotime($trans_date));
+                    // $exchange = $this->crud->read('exchange_rates', [], ["start_date" => $transmonth, "currency_from" => $currency, "currency_to" => "INR"]);
+
+                    if ($currency != "INR") {
+                        $original_debit = $debit;
+                        $original_credit = $credit;
+                        $local_debit = round($debit * @$rate, 2);
+                        $local_credit = round($credit * @$rate, 2);
+
+                        $rates = @$rate;
+                    } else {
+                        $original_debit = $debit;
+                        $original_credit = $credit;
+                        $local_debit = $debit;
+                        $local_credit = $credit;
+
+                        $rates = 1;
+                    }
+
+                    $data[] = array(
+                        "journal_date" => date("Y-m-d"),
+                        "journal_type_id" => $purchase_invoice['journal_type_id'],
+                        "number" => $voucher_no,
+                        "trans_date" => $journal['trans_date'],
+                        "document_no" => $number,
+                        "invoice_no" => $journal['invoice_no'],
+                        "company_id" => $journal['supplier_id'],
+                        "company_name" => $journal['supplier_name'],
+                        "modul" => "PURCHASE INVOICING",
+                        "account_number" => $account_number,
+                        "account_name" => $account_name,
+                        "description" => $number . " | " . $journal['invoice_no'] . " | " . $journal['item_no'] . " | " . $journal['item_name'],
+                        "currency" => $journal['currency'],
+                        "original_debit" => $original_debit,
+                        "original_credit" => $original_credit,
+                        "rates" => $rates,
+                        "local_debit" => $local_debit,
+                        "local_credit" => $local_credit,
+                    );
+
+                    $grand_original_debit += $original_debit;
+                    $grand_original_credit += $original_credit;
+                    $grand_local_debit += $local_debit;
+                    $grand_local_credit += $local_credit;
+                }
+            }
+        }
+
+        if ($voucher_no == "") {
+            die(json_encode(array("title" => "Configuration", "message" => "Please Check Configuration in Serial No (Journal Posting) First", "theme" => "error")));
+        }
+
+        if (round($grand_local_debit, 2) != round($grand_local_credit, 2)) {
+            die(json_encode(array("title" => "Failed", "message" => "Balance Debit (" . $grand_local_debit . ") Cannot match on Balance Credit (" . $grand_local_credit . ")", "theme" => "error")));
+        }
+
+        foreach ($data as $dt) {
+            $this->crud->create('journal_postings', $dt, "logs");
+        }
+
+        die(json_encode(array("title" => "Good Job", "message" => "Data Successfully Created to Journal Posting with Code GL No " . $voucher_no, "theme" => "success")));
     }
 
     public function update()
@@ -729,12 +967,12 @@ class Purchase_invoices extends CI_Controller
         $purchase_invoices = $this->crud->reads("purchase_invoices", [], ["number" => $data['number']]);
         foreach ($purchase_invoices as $purchase_invoice) {
             if ($purchase_invoice->por_no != "-") {
-                $this->crud->update("purchase_order_receipts", [
+                $this->db->update("purchase_order_receipts", ["status" => 0], [
                     "receipt_no" => $purchase_invoice->por_no,
                     "po_no" => $purchase_invoice->po_no,
                     "item_rm_id" => $purchase_invoice->item_rm_id,
                     "supplier_id" => $purchase_invoice->supplier_id
-                ], ["status" => 0]);
+                ]);
 
                 $this->db->update("purchase_order_receipt_others", ["status" => 0], ["receipt_no" => $purchase_invoice->por_no]);
             }

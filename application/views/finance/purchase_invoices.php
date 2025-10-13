@@ -1289,6 +1289,16 @@
         if (rows.length > 0) {
             $.messager.confirm('Warning', 'Are you sure you want to delete this data?', function(r) {
                 if (r) {
+                    Swal.fire({
+                        title: 'Please Wait for Delete Data',
+                        showConfirmButton: false,
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        },
+                    });
+
                     for (var i = 0; i < rows.length; i++) {
                         var row = rows[i];
 
@@ -1304,7 +1314,7 @@
                         //         }
 
                                 if(row.status == 0){
-                                    if(row.gl_no == null){
+                                    // if(row.gl_no == null){
                                         $.ajax({
                                             method: 'post',
                                             url: '<?= base_url('finance/purchase_invoices/delete') ?>',
@@ -1314,19 +1324,24 @@
                                             success: function(result) {
                                                 var result = eval('(' + result + ')');
                                                 toastr.success(result.message);
+                                                swal.close();
                                             },
                                             error: function(jqXHR, textStatus, errorThrown) {
                                                 toastr.error("This data is already used in other modules, You must delete it First", "Error");
+                                                swal.close();
                                                 
                                             },
                                             complete: function(data) {
                                                 $('#dg').datagrid('reload');
+                                                swal.close();
                                             }
                                         });
-                                    }else{
-                                        toastr.error("Cannot Delete because this Purchase Invoice has been created in Posting Journal");
-                                    }
+                                    // }else{
+                                    //     swal.close();
+                                    //     toastr.error("Cannot Delete because this Purchase Invoice has been created in Posting Journal");
+                                    // }
                                 } else {
+                                    swal.close();
                                     toastr.error("AP Payment Status is closed");
                                 }
                         //     }
@@ -1730,6 +1745,69 @@
                                     var totalrows2 = rows2.length;
                                     endEditing2();
 
+                                    combinedPurchaseInvoice = [];
+                                    for (let i = 0; i < totalrows; i++) {
+                                        var json = rows[i];
+
+                                        combinedPurchaseInvoice.push({
+                                            type: type,
+                                            trans_date: trans_date,
+                                            invoice_date: invoice_date,
+                                            number: number,
+                                            supplier_id: supplier_id,
+                                            journal_type_id: journal_type_id,
+                                            invoice_no: invoice_no,
+                                            boe_no: boe_no,
+                                            boe_date: boe_date,
+                                            taxes: taxes,
+                                            payment_term: payment_term,
+                                            due_date: due_date,
+                                            voucher: voucher,
+                                            remarks: remarks,
+                                            tcs: tcs,
+                                            total_tds: total_tds,
+                                            total_tcs: total_tcs,
+                                            total_freight: total_freight,
+                                            total_dp: total_dp,
+                                            id: json.id,
+                                            asset_code: json.asset_code,
+                                            item_family_id: json.item_family_id,
+                                            por_no: json.por_no,
+                                            po_no: json.po_no,
+                                            item_rm_id: json.item_rm_id,
+                                            item_no: json.item_rm_number,
+                                            item_name: json.item_rm_name,
+                                            uom: json.uom,
+                                            currency: json.currency,
+                                            igst: json.igst,
+                                            sgst: json.sgst,
+                                            cgst: json.cgst,
+                                            rate: json.rate,
+                                            qty: json.qty,
+                                            price: json.price,
+                                            discount: json.discount,
+                                            total: json.total,
+                                            total2: json.total2,
+                                            total_idr: json.total_local,
+                                            account_number: json.account_number,
+                                            account_type: json.account_type,
+                                        });
+                                    }
+
+                                    combinedJournals = [];
+                                    for (let z = 0; z < totalrows2; z++) {
+                                        var json2 = rows2[z];
+
+                                        combinedJournals.push({
+                                            number: number,
+                                            account_number: json2.account_number,
+                                            account_name: json2.account_name,
+                                            debit: json2.debit,
+                                            credit: json2.credit,
+                                            flag: json2.flag,
+                                        });
+                                    }
+
                                     var total_debit  = 0;
                                     var total_credit = 0;
                                     for (let jo = 0; jo < totalrows2; jo++) {
@@ -1749,134 +1827,99 @@
                                         return false;
                                     }
 
+                                    $("#dlg_insert").dialog('close');
+
+                                    Swal.fire({
+                                        title: 'Please Wait for Saving Data',
+                                        showConfirmButton: false,
+                                        allowOutsideClick: false,
+                                        allowEscapeKey: false,
+                                        didOpen: () => {
+                                            Swal.showLoading();
+                                        },
+                                    });
+
                                     $.ajax({
                                         type: "post",
                                         url: "<?= base_url('finance/purchase_invoices/deleteJournal') ?>",
                                         data: "number=" + number,
                                         dataType: "json",
                                         success: function(response) {
-                                            Swal.fire({
-                                                title: 'Please Wait for Saving Data',
-                                                showConfirmButton: false,
-                                                allowOutsideClick: false,
-                                                allowEscapeKey: false,
-                                                didOpen: () => {
-                                                    Swal.showLoading();
-                                                },
-                                            });
+                                            $.ajax({
+                                                type: "post",
+                                                url: '<?= base_url('finance/purchase_invoices/create') ?>',
+                                                data: JSON.stringify({ dataPurchaseInvoices: combinedPurchaseInvoice, combinedJournals: combinedJournals}),
+                                                dataType: "json",
+                                                success: function (result) {
+                                                    Swal.close();
 
-                                            if (totalrows > 0) {
-                                                requestData(totalrows, rows);
-                                                $('#dlg_insert').dialog('close');
+                                                    Swal.fire({
+                                                        title: 'Posting Journal',
+                                                        text: result.message + ", Do you want to save journal posting to ?",
+                                                        icon: result.theme,
+                                                        showCancelButton: true,
+                                                        allowOutsideClick: false,
+                                                        allowEscapeKey: false,
+                                                        confirmButtonText: 'Yes, Add to Journal!'
+                                                    }).then((msg) => {
+                                                        if (msg.isConfirmed) {
+                                                            Swal.fire({
+                                                                title: 'Please Wait...',
+                                                                showConfirmButton: false,
+                                                                allowOutsideClick: false,
+                                                                allowEscapeKey: false,
+                                                                didOpen: () => {
+                                                                    Swal.showLoading();
+                                                                },
+                                                            });
 
-                                                function requestData(total, json, jml = 1, value = 0) {
-                                                    if (value < 100) {
-                                                        value = Math.floor((jml / total) * 100);
-                                                        var i = (jml - 1);
-                                                        
-                                                        $.ajax({
-                                                            type: "post",
-                                                            url: '<?= base_url('finance/purchase_invoices/create') ?>',
-                                                            data: {
-                                                                type: type,
-                                                                trans_date: trans_date,
-                                                                invoice_date: invoice_date,
-                                                                number: number,
-                                                                supplier_id: supplier_id,
-                                                                journal_type_id: journal_type_id,
-                                                                invoice_no: invoice_no,
-                                                                boe_no: boe_no,
-                                                                boe_date: boe_date,
-                                                                taxes: taxes,
-                                                                payment_term: payment_term,
-                                                                due_date: due_date,
-                                                                voucher: voucher,
-                                                                remarks: remarks,
-                                                                tcs: tcs,
-                                                                //total_sub: total_sub,
-                                                                //total_vat: total_vat,
-                                                                //total_pph: total_pph,
-                                                                total_tds: total_tds,
-                                                                total_tcs: total_tcs,
-                                                                total_freight: total_freight,
-                                                                //total_grand: total_grand,
-                                                                total_dp: total_dp,
-                                                                id: json[i].id,
-                                                                asset_code: json[i].asset_code,
-                                                                item_family_id: json[i].item_family_id,
-                                                                por_no: json[i].por_no,
-                                                                po_no: json[i].po_no,
-                                                                item_rm_id: json[i].item_rm_id,
-                                                                item_no: json[i].item_rm_number,
-                                                                item_name: json[i].item_rm_name,
-                                                                uom: json[i].uom,
-                                                                currency: json[i].currency,
-                                                                igst: json[i].igst,
-                                                                sgst: json[i].sgst,
-                                                                cgst: json[i].cgst,
-                                                                rate: json[i].rate,
-                                                                qty: json[i].qty,
-                                                                price: json[i].price,
-                                                                discount: json[i].discount,
-                                                                total: json[i].total,
-                                                                total2: json[i].total2,
-                                                                total_idr: json[i].total_local,
-                                                                account_number: json[i].account_number,
-                                                                account_type: json[i].account_type,
-                                                            },
-                                                            dataType: "json",
-                                                            success: function(result) {
-                                                                requestData(total, json, jml + 1, value);
-                                                                if (jml == total) {
+                                                            $.ajax({
+                                                                type: "post",
+                                                                url: '<?= base_url('finance/purchase_invoices/createPosting') ?>',
+                                                                data: {
+                                                                    number: number
+                                                                },
+                                                                dataType: "json",
+                                                                success: function(result3) {
                                                                     Swal.close();
+
                                                                     Swal.fire({
-                                                                        title: result.message,
-                                                                        icon: result.theme,
+                                                                        title: result3.message,
+                                                                        icon: result3.theme,
                                                                         confirmButtonText: 'Ok',
                                                                         allowOutsideClick: false,
-                                                                    }).then((result) => {
-                                                                        if (result.isConfirmed) {
+                                                                    }).then((result3) => {
+                                                                        if (result3.isConfirmed) {
                                                                             window.location.reload();
                                                                         }
                                                                     });
 
-                                                                    $('#dg').datagrid('reload');
                                                                 }
-                                                            }
-                                                        });
-                                                    }
+                                                            });
+                                                        }
+                                                    });
+                                                },
+                                                error: function(msg){
+                                                    Swal.fire({
+                                                        title: "Failed to Save Data, Please Try Again",
+                                                        icon: "error",
+                                                        confirmButtonText: 'Ok',
+                                                        allowOutsideClick: false,
+                                                    }).then((result3) => {
+                                                        if (result3.isConfirmed) {
+                                                            $.ajax({
+                                                                type: "post",
+                                                                url: "<?= base_url('finance/purchase_invoices/delete') ?>",
+                                                                data: "number=" + number,
+                                                                dataType: "json",
+                                                                success: function(response) {
+                                                                    window.location.reload();
+                                                                }
+                                                            });
+                                                        }
+                                                    });
                                                 }
-
-                                                if (totalrows2 > 0) {
-                                                    for (let z = 0; z < totalrows2; z++) {
-                                                        $.ajax({
-                                                            type: "post",
-                                                            url: '<?= base_url('finance/purchase_invoices/createJournals') ?>',
-                                                            data: {
-                                                                number: number,
-                                                                account_number: rows2[z].account_number,
-                                                                account_name: rows2[z].account_name,
-                                                                debit: rows2[z].debit,
-                                                                credit: rows2[z].credit,
-                                                                flag: rows2[z].flag,
-                                                            },
-                                                            dataType: "json",
-                                                            success: function(result2) {
-                                                                // if (result2.theme == "success") {
-                                                                //     toastr.success(result2.message, result2.title);
-                                                                // } else {
-                                                                //     toastr.error(result2.message, result2.title);
-                                                                // }
-                                                            }
-                                                        });
-                                                    }
-                                                }
-
-                                                $('#dg').datagrid('reload');
-                                                $('#dlg_insert').dialog('close');
-                                            } else {
-                                                toastr.warning("please selections your data in table first");
-                                            }
+                                            });
                                         }
                                     });
                                 }

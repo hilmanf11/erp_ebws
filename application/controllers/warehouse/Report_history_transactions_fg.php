@@ -59,14 +59,15 @@ class Report_history_transactions_fg extends CI_Controller
             a.name, 
             a.uom, 
             COALESCE(i.begin_stock, 0) as begin_stock,
-            (COALESCE(b.qty_sto, 0) + COALESCE(d.sto_qty_in,0) + COALESCE(c.qty_wip, 0) + COALESCE(e.qty_rgp_in, 0)) as qty_in,
+            (COALESCE(b.qty_sto, 0) + COALESCE(d.sto_qty_in,0) + COALESCE(c.qty_wip, 0) + COALESCE(j.qty_return, 0) + COALESCE(e.qty_rgp_in, 0)) as qty_in,
             (COALESCE(g.qty, 0) + COALESCE(h.sto_qty_out, 0) + COALESCE(f.qty_rgp_out, 0)) as qty_out,
-            (COALESCE((b.qty_sto + d.sto_qty_in + c.qty_wip),0) + COALESCE(e.qty_rgp_in, 0) - COALESCE(g.qty, 0) - COALESCE(h.sto_qty_out, 0) - COALESCE(f.qty_rgp_out, 0)) as end_stock
+            (COALESCE((b.qty_sto + d.sto_qty_in + c.qty_wip + COALESCE(j.qty_return, 0)),0) + COALESCE(e.qty_rgp_in, 0) - COALESCE(g.qty, 0) - COALESCE(h.sto_qty_out, 0) - COALESCE(f.qty_rgp_out, 0)) as end_stock
         FROM item_fg a 
         LEFT JOIN (select a.item_fg_id, COALESCE(SUM(b.qty), 0) as qty_sto FROM os_fg a JOIN scan_item_receipts_fg b ON a.id = b.workorder WHERE a.trans_date between '$filter_from' and '$filter_to' GROUP BY a.item_fg_id) b ON a.id = b.item_fg_id
         LEFT JOIN (SELECT a.item_fg_id, COALESCE(SUM(a.qty), 0) as sto_qty_in FROM sto_fg a WHERE a.trans_date between '$filter_from' and '$filter_to' and a.type = 'IN' and (a.approved_to = '' or a.approved_to is null) GROUP BY item_fg_id) d ON a.id = d.item_fg_id
         LEFT JOIN (SELECT a.item_fg_id, COALESCE(SUM(a.qty), 0) as sto_qty_out FROM sto_fg a WHERE a.trans_date between '$filter_from' and '$filter_to' and a.type = 'OUT' and (a.approved_to = '' or a.approved_to is null) GROUP BY item_fg_id) h ON a.id = h.item_fg_id
         LEFT JOIN (select a.item_fg_id, COALESCE(SUM(b.qty), 0) as qty_wip FROM wip_receipts a JOIN scan_item_receipts_fg b ON a.workorder = b.workorder and a.checksheet_number = b.checksheet_number WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') between '$filter_from' and '$filter_to' GROUP BY a.item_fg_id) c ON a.id = c.item_fg_id
+        LEFT JOIN (select a.item_fg_id, COALESCE(SUM(b.qty), 0) as qty_return FROM sales_returns a JOIN scan_item_receipts_fg b ON a.sales_invoice_no = b.workorder and a.return_id = b.checksheet_number WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') between '$filter_from' and '$filter_to' GROUP BY a.item_fg_id) j ON a.id = j.item_fg_id
         LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) as qty_rgp_in FROM rgp_transactions a JOIN scan_item_rgp b ON a.number = b.rgp_number and a.item_id= b.item_id WHERE a.type = 'IN' and a.transaction_date between '$filter_from' and '$filter_to' GROUP BY a.item_id) e ON a.id = e.item_id
         LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) as qty_rgp_out FROM rgp_transactions a JOIN scan_item_rgp b ON a.number = b.rgp_number and a.item_id = b.item_id WHERE a.type = 'OUT' and a.transaction_date between '$filter_from' and '$filter_to' GROUP BY a.item_id) f ON a.id = f.item_id
         LEFT JOIN (SELECT item_fg_id, delivery_note_date, COALESCE(SUM(qty), 0) as qty FROM delivery_notes WHERE DATE_FORMAT(created_date, '%Y-%m-%d') between '$filter_from' and '$filter_to' and `status` != '2' GROUP BY item_fg_id) g ON a.id = g.item_fg_id
@@ -76,6 +77,7 @@ class Report_history_transactions_fg extends CI_Controller
                     FROM item_fg a 
                     LEFT JOIN (select a.item_fg_id, COALESCE(SUM(b.qty), 0) as qty_sto FROM os_fg a JOIN scan_item_receipts_fg b ON a.id = b.workorder WHERE a.trans_date < '$filter_from' GROUP BY a.item_fg_id) b ON a.id = b.item_fg_id
                     LEFT JOIN (select a.item_fg_id, COALESCE(SUM(b.qty), 0) as qty_wip FROM wip_receipts a JOIN scan_item_receipts_fg b ON a.workorder = b.workorder and a.checksheet_number = b.checksheet_number WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') < '$filter_from' GROUP BY a.item_fg_id) c ON a.id = c.item_fg_id
+                    LEFT JOIN (select a.item_fg_id, COALESCE(SUM(b.qty), 0) as qty_wip FROM sales_returns a JOIN scan_item_receipts_fg b ON a.sales_invoice_no = b.workorder and a.return_id = b.checksheet_number WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') < '$filter_from' GROUP BY a.item_fg_id) i ON a.id = i.item_fg_id
                     LEFT JOIN (SELECT a.item_fg_id, COALESCE(SUM(a.qty), 0) as sto_qty_in FROM sto_fg a WHERE a.trans_date < '$filter_from' and a.type = 'IN' and (a.approved_to = '' or a.approved_to is null) GROUP BY item_fg_id) d ON a.id = d.item_fg_id
                     LEFT JOIN (SELECT a.item_fg_id, COALESCE(SUM(a.qty), 0) as sto_qty_out FROM sto_fg a WHERE a.trans_date < '$filter_from' and a.type = 'OUT' and (a.approved_to = '' or a.approved_to is null) GROUP BY item_fg_id) h ON a.id = h.item_fg_id
                     LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) as qty_rgp_in FROM rgp_transactions a JOIN scan_item_rgp b ON a.number = b.rgp_number and a.item_id = b.item_id WHERE a.type = 'IN' and a.transaction_date < '$filter_from' GROUP BY a.item_id) e ON a.id = e.item_id
@@ -220,6 +222,21 @@ class Report_history_transactions_fg extends CI_Controller
                 and DATE_FORMAT(f.created_date, '%Y-%m-%d') BETWEEN '$filter_from' and '$filter_to'");
                 $d_receipt = $q_receipt->result_array();
 
+                //RETURN
+                $q_return = $this->db->query("SELECT
+                    'RETURN FG' as trans_type,
+                    f.created_by,
+                    f.created_date,
+                    f.workorder as document_no_1,
+                    f.checksheet_label as document_no_2,
+                    f.qty as qty_in,
+                    '0' as qty_out
+                FROM sales_returns e
+                JOIN scan_item_receipts_fg f ON e.return_id = f.checksheet_number and e.sales_invoice_no = f.workorder
+                WHERE e.item_fg_id = '$item_fg_id' 
+                and DATE_FORMAT(f.created_date, '%Y-%m-%d') BETWEEN '$filter_from' and '$filter_to'");
+                $d_return = $q_return->result_array();
+
                 //DELIVERY
                 $q_delivery = $this->db->query("SELECT
                     'DELIVERY NOTE' as trans_type,
@@ -263,7 +280,7 @@ class Report_history_transactions_fg extends CI_Controller
                 GROUP BY b.id");
                 $d_rgp_out = $q_rgp_out->result_array();
 
-                $records = array_merge($d_os_fg, $d_adj_in, $d_adj_out, $d_receipt, $d_delivery, $d_rgp_in, $d_rgp_out);
+                $records = array_merge($d_os_fg, $d_adj_in, $d_adj_out, $d_receipt, $d_return, $d_delivery, $d_rgp_in, $d_rgp_out);
                 usort($records, 'compare_trans_date');
 
                 foreach ($records as $record) {
