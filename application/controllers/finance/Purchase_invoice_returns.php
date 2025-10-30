@@ -190,11 +190,10 @@ class Purchase_invoice_returns extends CI_Controller
 
     public function readReturn()
     {
-        $records = $this->crud->query("SELECT DISTINCT a.return_no, b.bc_document, b.bc_date, c.journal_type_id, a.supplier_id
+        $records = $this->crud->query("SELECT DISTINCT a.return_no, a.invoice_no as bc_document, a.return_date as bc_date, c.journal_type_id, a.supplier_id
             FROM purchase_returns a
-            JOIN purchase_order_receipts b ON a.receipt_id = b.receipt_id
-            JOIN purchase_invoices c ON a.po_no = c.po_no and a.item_rm_id = c.item_rm_id
-            WHERE a.status = '0' and a.source != 'SCRAP'
+            LEFT JOIN purchase_invoices c ON a.po_no = c.po_no and a.item_rm_id = c.item_rm_id
+            WHERE a.status = '0'
             ORDER BY a.return_no desc");
         
         echo json_encode($records);

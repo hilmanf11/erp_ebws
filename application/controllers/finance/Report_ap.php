@@ -206,7 +206,9 @@ class Report_ap extends CI_Controller
                             <th rowspan="2">Supplier Name</th>
                             <th rowspan="2">Source</th>
                             <th rowspan="2">Invoice Date</th>
+                            <th rowspan="2">Receipt Date</th>
                             <th rowspan="2">Payment Due</th>
+                            <th rowspan="2">Aging Due</th>
                             <th rowspan="2">Document No</th>
                             <th rowspan="2">Invoice No</th>
                             <th rowspan="2">Posting Date</th>
@@ -286,7 +288,7 @@ class Report_ap extends CI_Controller
 
             // if (count($purchase_invoices) > 0) {
                 $detail .= '  <tr style="background: #DEE2FF; font-weight:bold;">
-                                    <td colspan="15">BEGINING BALANCE - '.$supplier['name'].'</td>
+                                    <td colspan="17">BEGINING BALANCE - '.$supplier['name'].'</td>
                                     <td colspan="3"></td>
                                     <td style="text-align:right;">' . number_format(@$begin_balance_local, 2) . '</td>
                                 </tr>';
@@ -295,20 +297,30 @@ class Report_ap extends CI_Controller
             $accumulated = $begin_balance_local;
             foreach ($purchase_invoices as $purchase_invoice) {
                 $document_no = $purchase_invoice['document_no'];
+                $invoice_no = $purchase_invoice['invoice_no'];
 
                 $cl_no = $purchase_invoice['cl_no'];
                 $cl_date = $purchase_invoice['cl_date'];
                 $invoice_date = $purchase_invoice['trans_date'];
-                $payment_due = "-";
+                $receipt_date = $purchase_invoice['posting_date'];
+                $payment_due = $purchase_invoice['trans_date'];
                 $total_payment = 0;
                 $cl_no_array = array();
                 $cl_date_array = array();
                 if($purchase_invoice['source'] == "PI"){
                     $payments = $this->db->query("SELECT payment_no, payment_date, payment, account_type FROM ap_payments WHERE purchase_invoice = '$document_no'")->result_array();
                     $purchase = $this->db->query("SELECT * FROM purchase_invoices WHERE number = '$document_no'")->row_array();
-
+                    $por = $this->db->query("SELECT DISTINCT receipt_date FROM purchase_order_receipts WHERE bc_document = '$invoice_no'")->row_array();
+                    $poro = $this->db->query("SELECT DISTINCT receipt_date FROM purchase_order_receipt_others WHERE bc_document = '$invoice_no'")->row_array();
+                    
                     $invoice_date = $purchase['invoice_date'];
-                    $payment_due = $purchase['due_date'];
+                    $due_date = $purchase['due_date'];
+                    $receipt_date = empty($por['receipt_date']) ? @$poro['receipt_date'] : $por['receipt_date'];
+
+                    $tanggal1 = new DateTime($invoice_date);
+                    $tanggal2 = new DateTime($due_date);
+                    $selisih = $tanggal1->diff($tanggal2);
+                    $payment_due = date('Y-m-d', strtotime('+' . $selisih->days . ' days', strtotime($receipt_date)));
 
                     if($cl_no != ""){
                         $cl_no_array[] = $cl_no;
@@ -353,6 +365,10 @@ class Report_ap extends CI_Controller
                     $cl_date = implode(", ", array_unique($cl_date_array));
                 }
 
+                $date1 = new DateTime($payment_due);
+                $date2 = new DateTime($filter_to);
+                $aging = $date1->diff($date2);
+
                 if($currency != "INR"){
                     $ex_local_debit = $this->exchangeRates($purchase_invoice['trans_date'], $purchase_invoice['currency'], $currency, $purchase_invoice['original_debit']);
                     $ex_local_credit = $this->exchangeRates($purchase_invoice['trans_date'], $purchase_invoice['currency'], $currency, $purchase_invoice['original_credit']);
@@ -386,7 +402,9 @@ class Report_ap extends CI_Controller
                                 <td>' . $supplier['name'] . '</td>
                                 <td>' . $purchase_invoice['source'] . '</td>
                                 <td>' . $invoice_date . '</td>
+                                <td>' . $receipt_date . '</td>
                                 <td>' . $payment_due . '</td>
+                                <td>' . $aging->days . '</td>
                                 <td>' . $purchase_invoice['document_no'] . '</td>
                                 <td>' . $purchase_invoice['invoice_no'] . '</td>
                                 <td>' . $purchase_invoice['posting_date'] . '</td>
@@ -411,6 +429,8 @@ class Report_ap extends CI_Controller
                 $detail .= '    <tr style="background: #E5E5E5; font-weight:bold;">
                                     <td></td>
                                     <td>SUB TOTAL</td>
+                                    <td></td>
+                                    <td></td>
                                     <td></td>
                                     <td></td>
                                     <td></td>
@@ -449,6 +469,8 @@ class Report_ap extends CI_Controller
                                     <td></td>
                                     <td></td>
                                     <td></td>
+                                    <td></td>
+                                    <td></td>
                                 </tr>';
             }
 
@@ -462,6 +484,8 @@ class Report_ap extends CI_Controller
         $detail .= '    <tr style="background: #C3FFB4; font-weight:bold;">
                             <td></td>
                             <td>GRAND TOTAL</td>
+                            <td></td>
+                            <td></td>
                             <td></td>
                             <td></td>
                             <td></td>

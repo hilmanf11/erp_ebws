@@ -1643,7 +1643,7 @@
 
     function numberformatPrice(value, row){
         const formatter = new Intl.NumberFormat('ja-JP', {
-            minimumFractionDigits: 4
+            minimumFractionDigits: 5
         });
 
         return "<b>" + formatter.format(value) + "</b>";
@@ -1653,7 +1653,7 @@
         if(row.supplier_type == "LOCAL"){
             var decimal = 2;
         }else{
-            var decimal = 4;
+            var decimal = 5;
         }
         
         const formatter = new Intl.NumberFormat('ja-JP', {

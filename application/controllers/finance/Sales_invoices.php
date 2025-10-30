@@ -125,15 +125,15 @@ class Sales_invoices extends CI_Controller
             GROUP BY a.number 
             ORDER BY a.number ASC");
 
-        // $records2 = $this->crud->query("SELECT DISTINCT a.number 
-        //     FROM rgp_transactions a 
-        //     JOIN item_rm b ON a.item_id = b.id 
-        //     JOIN item_categories c ON b.item_category_id = c.id
-        //     WHERE a.status_si = '0' and a.type = 'OUT' and c.number != 'RM' and a.process_type = 'FOC'
-        //     GROUP BY a.number 
-        //     ORDER BY a.number ASC");
+        $records2 = $this->crud->query("SELECT DISTINCT a.number 
+            FROM rgp_transactions a 
+            JOIN item_rm b ON a.item_id = b.id 
+            JOIN item_categories c ON b.item_category_id = c.id
+            WHERE a.status_si = '0' and a.type = 'OUT' and c.number != 'RM' and a.process_type = 'FOC'
+            GROUP BY a.number 
+            ORDER BY a.number ASC");
 
-        $records2 = $this->crud->query("
+        $records3 = $this->crud->query("
             SELECT DISTINCT a.number 
             FROM rgp_transactions a 
             JOIN item_fg b ON a.item_id = b.id 
@@ -141,7 +141,7 @@ class Sales_invoices extends CI_Controller
             GROUP BY a.number 
             ORDER BY a.number ASC");
 
-        $explode = array_merge($records1, $records2);
+        $explode = array_merge($records1, $records2, $records3);
         echo json_encode($explode);
     }
 
@@ -157,22 +157,22 @@ class Sales_invoices extends CI_Controller
             GROUP BY a.id
             ORDER BY b.number ASC");
 
-        // $records2 = $this->crud->query("SELECT DISTINCT b.id, b.id as number, b.number as number_customer, b.name, b.hsn_code, b.uom, a.qty, a.price 
-        //     FROM rgp_transactions a 
-        //     JOIN item_rm b ON a.item_id = b.id 
-        //     JOIN item_categories c ON b.item_category_id = c.id 
-        //     WHERE a.status_si = '0' and a.type = 'OUT' and a.number = '$number' and c.number != 'RM' and a.process_type = 'FOC'
-        //     GROUP BY a.id
-        //     ORDER BY b.number ASC");
-
         $records2 = $this->crud->query("SELECT DISTINCT b.id, b.id as number, b.number as number_customer, b.name, b.hsn_code, b.uom, a.qty, a.price 
-        FROM rgp_transactions a 
-        JOIN item_fg b ON a.item_id = b.id 
-        WHERE a.status_si = '0' and a.type = 'OUT' and a.number = '$number' and a.process_type = 'FOC'
-        GROUP BY a.id
-        ORDER BY b.number ASC");
+            FROM rgp_transactions a 
+            JOIN item_rm b ON a.item_id = b.id 
+            JOIN item_categories c ON b.item_category_id = c.id 
+            WHERE a.status_si = '0' and a.type = 'OUT' and a.number = '$number' and c.number != 'RM' and a.process_type = 'FOC'
+            GROUP BY a.id
+            ORDER BY b.number ASC");
 
-        $explode = array_merge($records1, $records2);
+        $records3 = $this->crud->query("SELECT DISTINCT b.id, b.id as number, b.number as number_customer, b.name, b.hsn_code, b.uom, a.qty, a.price 
+            FROM rgp_transactions a 
+            JOIN item_fg b ON a.item_id = b.id 
+            WHERE a.status_si = '0' and a.type = 'OUT' and a.number = '$number' and a.process_type = 'FOC'
+            GROUP BY a.id
+            ORDER BY b.number ASC");
+
+        $explode = array_merge($records1, $records2, $records3);
         echo json_encode($explode);
     }
 
@@ -597,6 +597,7 @@ class Sales_invoices extends CI_Controller
             } else {
                 $this->db->where("a.trans_date between '$date_from' and '$date_to'");
             }
+            $this->db->where("a.type != 'RETURN'");
             $this->db->like('a.number', $filter_sales_invoice);
             $this->db->like('a.dn_number', $filter_dn_number);
             $this->db->like('a.customer_id', $filter_customer);
@@ -1426,7 +1427,7 @@ class Sales_invoices extends CI_Controller
         die($html);
     }
 
-    public function print_dn($invoice)
+    public function print_dn($invoice, $tb = "")
     {
         $invoice_no = base64_decode($invoice);
         $this->db->select('a.*, b.name as customer_name');
@@ -1445,6 +1446,34 @@ class Sales_invoices extends CI_Controller
         $page = ceil(count($total_invoice) / $rows);
         //Generate QRcode
         $this->createQrcode(@$invoice_no, "assets/image/qrcode/");
+
+        if($tb == ""){
+            $media = "  @media screen {
+                            .print {
+                                display: none !important;
+                            }
+                        }
+            
+                        @media print {
+                            .noprint {
+                                display: none !important;
+                            }
+                        }";
+            $noprint = '<div style="margin:20%;" class="noprint">
+                            <center>
+                                <h1>Press CTRL + P for Print</h1>
+                                <p>Display pages for 8 rows</p>
+                                <p>Paper Size A5, Layout Landscape</p>
+                                <p>Margin Default, Scale 80</p>
+                            </center>
+                        </div>';
+            $script = "<script>window.print()</script>";
+        }else{
+            $media = "";
+            $noprint = "";
+            $script = "";
+        }
+
         $html = '<html>
                     <head>
                         <title>' . $invoice_no . '</title>
@@ -1466,27 +1495,10 @@ class Sales_invoices extends CI_Controller
                             padding-bottom: 2px;
                             text-align: center;color: black;
                         }
-                        @media screen {
-                            .print {
-                                display: none !important;
-                            }
-                        }
-            
-                        @media print {
-                            .noprint {
-                                display: none !important;
-                            }
-                        }
+                        '.$media.'
                     </style>
                     <body>
-                    <div style="margin:20%;" class="noprint">
-                        <center>
-                            <h1>Press CTRL + P for Print</h1>
-                            <p>Display pages for 10 rows</p>
-                            <p>Paper Size A5, Layout Landscape</p>
-                            <p>Margin Default, Scale 80</p>
-                        </center>
-                    </div>
+                    '.$noprint.'
                     <div class="print">';
         $no = 1;
         $hal = 1;
@@ -1771,7 +1783,7 @@ class Sales_invoices extends CI_Controller
                 </table>
                 </div>
             </div>';
-        $html .= "</div></div><script>window.print()</script></body>";
+        $html .= "</div></div>".$script."</body>";
         die($html);
     }
 
@@ -1807,6 +1819,7 @@ class Sales_invoices extends CI_Controller
         } elseif ($filter_type == "PAY") {
             $this->db->where("a.due_date between '$filter_due_date_from' and '$filter_due_date_to'");
         }
+        $this->db->where("a.type != 'RETURN'");
         $this->db->like('a.number', $filter_sales_invoice);
         $this->db->like('a.dn_number', $filter_dn_number);
         $this->db->like('a.customer_id', $filter_customer);

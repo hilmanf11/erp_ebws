@@ -17,9 +17,9 @@
             <th rowspan="2" data-options="field:'uom',width:80,halign:'center'">UoM</th>
             <th rowspan="2" data-options="field:'qty',width:100,halign:'center',align:'right',formatter:numberformat">Qty PO</th>
             <th rowspan="2" data-options="field:'delivery',width:100,halign:'center',align:'right',formatter:numberformat">Plan Delivery</th>
+            <th rowspan="2" data-options="field:'currency',width:80,align:'center'">Currency</th>
             <th rowspan="2" data-options="field:'price',width:100,halign:'center',align:'right',formatter:numberformatprice">Price</th>
             <th rowspan="2" data-options="field:'total',width:100,halign:'center',align:'right',formatter:numberformat">Total</th>
-            <th rowspan="2" data-options="field:'currency',width:80,align:'center'">Currency</th>
             <th rowspan="2" data-options="field:'etd',width:100,align:'center'">ETD</th>
             <th rowspan="2" data-options="field:'eta',width:100,align:'center'">ETA</th>
             <th rowspan="2" data-options="field:'attachment',width:100,halign:'center', formatter:btnAttachment">Attahment</th>
@@ -295,6 +295,7 @@
                                 var ed12 = dg.datagrid('getEditor', {index: rowIndex, field: 'qty_po'});
                                 var ed13 = dg.datagrid('getEditor', {index: rowIndex, field: 'price'});
                                 var ed14 = dg.datagrid('getEditor', {index: rowIndex, field: 'total'});
+                                var ed15 = dg.datagrid('getEditor', {index: rowIndex, field: 'currency'});
 
                                 $(ed4.target).textbox('setValue', po.po_date);
                                 $(ed.target).combogrid({
@@ -338,6 +339,7 @@
                                         $(ed12.target).numberbox('setValue', item.qty_po);
                                         $(ed13.target).numberbox('setValue', item.price);
                                         $(ed14.target).numberbox('setValue', item.total);
+                                        $(ed15.target).textbox('setValue', item.currency);
 
                                         $(ed9.target).numberbox({
                                             onChange: function(val){
@@ -501,6 +503,17 @@
                                     $(ed2.target).numberbox('setValue', (parseInt(item) - val));
                                 }
                             }
+                        }
+                    }
+                },{
+                    field: 'currency',
+                    width: 80,
+                    align: 'center',
+                    title: "Currency",
+                    editor: {
+                        type: 'textbox',
+                        options: {
+                            readonly: true,
                         }
                     }
                 },{
@@ -1224,7 +1237,7 @@
     }
 
     function numberformatprice(value, row) {
-        if(row.currency = "INR"){
+        if(row.currency == "INR"){
             var digit = 2;
         }else{
             var digit = 5;

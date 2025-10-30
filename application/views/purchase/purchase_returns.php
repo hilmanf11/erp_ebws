@@ -3,11 +3,13 @@
         <tr>
             <th rowspan="2" field="ck" checkbox="true"></th>
             <th rowspan="2" data-options="field:'print_po',width:80,halign:'center',formatter:BtnPrint">Print</th>
+            <th rowspan="2" data-options="field:'status',width:80,align:'center', styler:cellStylerStatus, formatter:cellFormatterStatus">Status</th>
             <th rowspan="2" data-options="field:'return_no',width:200,halign:'center'">Return No</th>
             <th rowspan="2" data-options="field:'return_date',width:100,halign:'center'">Return Date</th>
             <th rowspan="2" data-options="field:'return_name',width:150,halign:'center'">Return Name</th>
             <th rowspan="2" data-options="field:'supplier_name',width:200,halign:'center'">Supplier</th>
             <th rowspan="2" data-options="field:'po_no',width:120,halign:'center'">Purchase Order</th>
+            <th rowspan="2" data-options="field:'invoice_no',width:120,halign:'center'">Invoice No</th>
             <th rowspan="2" data-options="field:'receipt_id',width:150,halign:'center'">Receipt ID</th>
             <th rowspan="2" data-options="field:'item_rm_id',width:120,halign:'center'">Part No EBWS</th>
             <th rowspan="2" data-options="field:'item_rm_number',width:200,halign:'center'">Part No Supplier</th>
@@ -126,6 +128,10 @@
                 <input style="width:60%;" name="po_no" id="po_no" required="" class="easyui-textbox">
             </div>
             <div class="fitem">
+                <span style="width:35%; display:inline-block;">Invoice No</span>
+                <input style="width:60%;" name="invoice_no" id="invoice_no" required="" class="easyui-textbox">
+            </div>
+            <div class="fitem">
                 <span style="width:35%; display:inline-block;">Remarks</span>
                 <input style="width:60%;" name="remarks" id="remarks" class="easyui-textbox">
             </div>
@@ -200,6 +206,7 @@
                                 var ed3 = dg.datagrid('getEditor', {index: rowIndex, field: 'receipt_id'});
                                 var ed4 = dg.datagrid('getEditor', {index: rowIndex, field: 'qty_receipt'});
                                 var ed5 = dg.datagrid('getEditor', {index: rowIndex, field: 'qty'});
+                                var ed6 = dg.datagrid('getEditor', {index: rowIndex, field: 'invoice_no'});
 
                                 $(edpo.target).combobox({
                                     url: '<?= base_url('purchase/purchase_returns/readPono?supplier_id='); ?>' + btoa(supplier_id) + "&source=" + source.id,
@@ -244,6 +251,7 @@
                                                 $(ed2.target).textbox('setValue', item.number);
                                                 $(ed3.target).textbox('setValue', item.receipt_id);
                                                 $(ed4.target).textbox('setValue', item.qty_receipt);
+                                                $(ed6.target).textbox('setValue', item.bc_document);
                                                 $(ed5.target).numberbox({
                                                     onChange: function(val){
                                                         if((parseInt(item.qty_receipt) - val) < 0){
@@ -301,6 +309,17 @@
                         type: 'textbox',
                         options: {
                             readonly: true
+                        }
+                    }
+                }, {
+                    field: 'invoice_no',
+                    width: 150,
+                    halign: 'center',
+                    title: "Invoice No",
+                    editor: {
+                        type: 'textbox',
+                        options: {
+                            required: true
                         }
                     }
                 }, {
@@ -427,17 +446,21 @@
 
     function BtnPrint(val, row) {
         if(row.datatable == 1){
-            var detail = "printReturn('"+row.return_no+"')";
+            var detail = "printReturn('"+row.return_no+"','"+row.status+"')";
             return '<a class="btn btn-primary w-100" onClick="'+detail+'" style="pointer-events: visible; opacity:1;"><i class="fa fa-print"></i> Print</a>';
         }
     }
 
-    function printReturn(return_no){
-        $.messager.prompt('Print', 'Please input the Password', function(r){
-            if (r == "FNC"){
-                window.open('<?= base_url('purchase/purchase_returns/print_return/') ?>'+btoa(return_no));
-            }
-        });
+    function printReturn(return_no, status){
+        if(status == "1"){
+            $.messager.prompt('Print', 'Please input the Password', function(r){
+                if (r == "FNC"){
+                    window.open('<?= base_url('purchase/purchase_returns/print_return/') ?>'+btoa(return_no));
+                }
+            });
+        }else{
+            toastr.info("Please Create Purchase Invoice Return First.");
+        }
     }
 
     function filter() {
@@ -517,6 +540,7 @@
                                     supplier_id: supplier_id,
                                     source: rows[i].source,
                                     po_no: rows[i].po_no,
+                                    invoice_no: rows[i].invoice_no,
                                     receipt_id: rows[i].receipt_id,
                                     item_rm_id: rows[i].item_rm_id,
                                     qty: rows[i].qty,
@@ -708,4 +732,20 @@
             return '<a style="text-decoration: none; font-weight:bold;" target="_blank" href="<?= base_url('purchase/purchase_returns/print_label/') ?>' + window.btoa(row.return_no) + '"><i class="fa fa-print"></i> Print</a>';
         }
     }
+
+    function cellStylerStatus(value, row, index) {
+        if (value == 0) {
+            return 'background: #53D636; color:white;';
+        } else {
+            return 'background: #FF5F5F; color:white;';
+        }
+    }
+
+    function cellFormatterStatus(value, row) {
+        if (value == 0) {
+            return 'OPEN';
+        } else {
+            return 'CLOSE';
+        }
+    };
 </script>

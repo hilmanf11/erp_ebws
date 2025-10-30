@@ -214,6 +214,10 @@ class Report_trial_balances extends CI_Controller
         }
     }
 
+    function linked($filter_from, $filter_to, $account_number, $amount){
+        return '<a onclick="window.open(\'' . base_url('finance/report_general_ledgers/print?filter_from=' . base64_encode($filter_from) . '&filter_to=' . base64_encode($filter_to) . '&filter_account=' . base64_encode($account_number)) . '\', \'_blank\', \'location=yes,height=650,width=1500,scrollbars=yes,status=yes\');" style="color: inherit;text-decoration: none;cursor: pointer;">' . number_format($amount, 2) . '</a>';
+    }
+
     public function print($option = "")
     {
         if ($option == "excel") {
@@ -321,13 +325,13 @@ class Report_trial_balances extends CI_Controller
                             <td style="'.$font.'">' . $no . '</td>
                             <td style="'.$font.'mso-number-format:\@;">' . $trial_balance['account_number'] . '</td>
                             <td style="'.$font.'">' . $trial_balance['account_name'] . '</td>
-                            <td style="text-align:right;'.$font.'">' . number_format($trial_balance['begin_debit'], 2) . '</td>
-                            <td style="text-align:right;'.$font.'">' . number_format($trial_balance['begin_credit'], 2) . '</td>
-                            <td style="text-align:right;'.$font.'">' . number_format($trial_balance['local_debit'], 2) . '</td>
-                            <td style="text-align:right;'.$font.'">' . number_format($trial_balance['local_credit'], 2) . '</td>
-                            <td style="text-align:right;'.$font.'">' . number_format($ending_debit, 2) . '</td>
-                            <td style="text-align:right;'.$font.'">' . number_format($ending_credit, 2) . '</td>
-                            <td style="text-align:right;'.$font.'">' . number_format($final_balance, 2) . '</td>
+                            <td style="text-align:right;'.$font.'">' . $this->linked($filter_from, $filter_to, $trial_balance['account_number'], $trial_balance['begin_debit']) . '</td>
+                            <td style="text-align:right;'.$font.'">' . $this->linked($filter_from, $filter_to, $trial_balance['account_number'], $trial_balance['begin_credit']) . '</td>
+                            <td style="text-align:right;'.$font.'">' . $this->linked($filter_from, $filter_to, $trial_balance['account_number'], $trial_balance['local_debit']) . '</td>
+                            <td style="text-align:right;'.$font.'">' . $this->linked($filter_from, $filter_to, $trial_balance['account_number'], $trial_balance['local_credit']) . '</td>
+                            <td style="text-align:right;'.$font.'">' . $this->linked($filter_from, $filter_to, $trial_balance['account_number'], $ending_debit) . '</td>
+                            <td style="text-align:right;'.$font.'">' . $this->linked($filter_from, $filter_to, $trial_balance['account_number'], $ending_credit) . '</td>
+                            <td style="text-align:right;'.$font.'">' . $this->linked($filter_from, $filter_to, $trial_balance['account_number'], $final_balance) . '</td>
                         </tr>';
 
             if($trial_balance['header'] != 0){

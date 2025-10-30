@@ -2,8 +2,9 @@
     <thead frozen="true">
         <th field="ck" checkbox="true"></th>
         <th data-options="field:'id',width:230,halign:'center'">Receipt No</th>
-        <th data-options="field:'total_scan',width:80,align:'center',formatter:statusformat,styler:statusStyle">Status<br>GRN</th>
+        <th data-options="field:'total_scan',width:80,align:'center',formatter:statusformat,styler:statusStyle">Status GRN<br>(Scan In)</th>
         <th data-options="field:'status',width:80,align:'center',formatter:statusformatFinance,styler:statusStyleFinance">Status<br>Invoice</th>
+        <th data-options="field:'qas',width:80,align:'center',styler:statusStyleQas">QAS<br>Status</th>
     </thead>
     <thead>
         <tr>
@@ -19,9 +20,9 @@
             <th rowspan="2" data-options="field:'item_rm_name',width:200,halign:'center'">Description</th>
             <th rowspan="2" data-options="field:'qty_receipt',width:80,halign:'center',align:'right',formatter:numberformat">Qty</th>
             <th rowspan="2" data-options="field:'uom',width:80,halign:'center',align:'center'">UoM</th>
+            <th rowspan="2" data-options="field:'currency',width:80,halign:'center',align:'center'">Currency</th>
             <th rowspan="2" data-options="field:'price',width:80,halign:'center',align:'right',formatter:numberformatprice">Price</th>
             <th rowspan="2" data-options="field:'total',width:80,halign:'center',align:'right',formatter:numberformat">Total</th>
-            <th rowspan="2" data-options="field:'currency',width:80,halign:'center',align:'center'">Currency</th>
             <th rowspan="2" data-options="field:'mpq',width:80,halign:'center',align:'right'">MPQ</th>
             <th rowspan="2" data-options="field:'qty_label',width:80,halign:'center',align:'right'">Qty <br> Label</th>
             <th rowspan="2" data-options="field:'state',width:80,align:'center',formatter:BtnPrintLabel">Label</th>
@@ -111,7 +112,7 @@
 </div>
 
 <!-- Insert -->
-<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 90%; height: 550px; padding:10px; top: 20px;">
+<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true,fit:true" style="width: 100%; padding:10px; top: 0;">
     <form id="frm_insert" method="post" novalidate>
         <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
             <legend><b>Form Data</b></legend>
@@ -187,9 +188,12 @@
                     <th data-options="field:'uom',width:80">UoM</th>
                     <th data-options="field:'qty_po',width:80,editor:{type:'numberbox', options:{readonly:true}}">PO</th>
                     <th data-options="field:'qty_delivery',width:80,editor:{type:'numberbox', options:{readonly:true}}">Delivery</th>
-                    <th data-options="field:'qty_receipt',width:80,editor:{type:'numberbox', options:{readonly:true}}">Receipt</th>
+                    <th data-options="field:'qty_receipt',width:80,editor:{type:'numberbox', options:{readonly:true}}">Gate Entry</th>
+                    <th data-options="field:'qty_receipt2',width:80,editor:{type:'numberbox', options:{required:true}}">Receipt</th>
+                    <th data-options="field:'qty_balance',width:80,editor:{type:'numberbox', options:{readonly:true}}">Balance</th>
+                    <th data-options="field:'currency',width:80,editor:{type:'textbox', options:{readonly:true}}">Currency</th>
                     <th data-options="field:'price',width:80,editor:{type:'numberbox', options:{readonly:true, precision:5}}">Price</th>
-                    <th data-options="field:'total',width:80,editor:{type:'numberbox', options:{readonly:true, precision:2}}">Total</th>
+                    <th data-options="field:'total',width:80,editor:{type:'numberbox', options:{readonly:true, precision:2}}">Total Price</th>
                     <th data-options="field:'mpq',width:80,editor:{type:'numberbox', options:{readonly:true}}">MPQ</th>
                     <th data-options="field:'qty_label',width:80,editor:{type:'numberbox', options:{readonly:true}}">Label</th>
                     <!-- <th colspan="3" data-options="field:'t',width:80,halign:'center'">Warehouse</th> -->
@@ -410,11 +414,10 @@
                     var qty_po = $(editors[0].target);
                     var qty_delivery = $(editors[1].target);
                     var qty_receipt = $(editors[2].target);
-                    var qty_mpq = $(editors[3].target);
-                    var qty_label = $(editors[4].target);
-                    // var location = $(editors[5].target);
-                    // var capacity = $(editors[6].target);
-                    // var warehouse = $(editors[7].target);
+                    var qty_receipt2 = $(editors[3].target);
+                    var qty_balance = $(editors[4].target);
+                    var qty_mpq = $(editors[8].target);
+                    var qty_label = $(editors[9].target);
 
                     qty_whs = 0;
 
@@ -458,36 +461,38 @@
                     //     }
                     // });
 
-                    qty_receipt.add(qty_mpq).numberbox({
-                        onChange: function() {
+                    qty_receipt2.add(qty_mpq).numberbox({
+                        onChange: function(value) {
                             var f_qty_po = qty_po.numberbox('getValue');
                             var f_qty_delivery = qty_delivery.numberbox('getValue');
                             var f_qty_receipt = qty_receipt.numberbox('getValue');
                             var f_qty_mpq = qty_mpq.numberbox('getValue');
 
-                            if (parseInt(f_qty_delivery) == 0) {
-                                if (parseInt(f_qty_po) >= parseInt(f_qty_receipt)) {
-                                    var cost = Math.ceil(f_qty_receipt / f_qty_mpq);
-                                    qty_label.numberbox('setValue', cost);
-                                    // warehouse.numberbox('setValue', (qty_whs - f_qty_receipt));
-                                } else {
-                                    qty_receipt.numberbox('setValue', 0);
-                                    toastr.warning("Qty Receipt > Qty PO", "Information");
-                                    // warehouse.numberbox('setValue', (qty_whs - 0));
-                                }
-                            } else {
-                                if (parseInt(f_qty_delivery) >= parseInt(f_qty_receipt)) {
-                                    var cost = Math.ceil(f_qty_receipt / f_qty_mpq);
-                                    qty_label.numberbox('setValue', cost);
-                                    // warehouse.numberbox('setValue', (qty_whs - f_qty_receipt));
-                                } else {
-                                    qty_receipt.numberbox('setValue', 0);
-                                    toastr.warning("Qty Receipt > Qty OS PO", "Information");
-                                    // warehouse.numberbox('setValue', (qty_whs - 0));
-                                }
-                            }
+                            qty_balance.numberbox('setValue', (f_qty_receipt - value));
+
+                            // if (parseInt(f_qty_delivery) == 0) {
+                            //     if (parseInt(f_qty_po) >= parseInt(f_qty_receipt)) {
+                            //         var cost = Math.ceil(f_qty_receipt / f_qty_mpq);
+                            //         qty_label.numberbox('setValue', cost);
+                            //         // warehouse.numberbox('setValue', (qty_whs - f_qty_receipt));
+                            //     } else {
+                            //         qty_receipt.numberbox('setValue', 0);
+                            //         toastr.warning("Qty Receipt > Qty PO", "Information");
+                            //         // warehouse.numberbox('setValue', (qty_whs - 0));
+                            //     }
+                            // } else {
+                            //     if (parseInt(f_qty_delivery) >= parseInt(f_qty_receipt)) {
+                            //         var cost = Math.ceil(f_qty_receipt / f_qty_mpq);
+                            //         qty_label.numberbox('setValue', cost);
+                            //         // warehouse.numberbox('setValue', (qty_whs - f_qty_receipt));
+                            //     } else {
+                            //         qty_receipt.numberbox('setValue', 0);
+                            //         toastr.warning("Qty Receipt > Qty OS PO", "Information");
+                            //         // warehouse.numberbox('setValue', (qty_whs - 0));
+                            //     }
+                            // }
                         }
-                    })
+                    });
                 }
             });
         }
@@ -1065,6 +1070,14 @@
             return 'background-color:#b2c2ff;';
         } else {
             return 'background-color:#C8FFCC;';
+        }
+    }
+
+    function statusStyleQas(value, row, index) {
+        if (value == "OPEN") {
+            return 'background-color:#C8FFCC; font-weight:bold; color:green;';
+        } else {
+            return 'background-color:#FFC8C8; font-weight:bold; color:red;';
         }
     }
 

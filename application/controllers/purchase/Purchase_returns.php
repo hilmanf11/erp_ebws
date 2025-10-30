@@ -66,22 +66,22 @@ class purchase_returns extends CI_Controller
         $supplier_id = base64_decode($supplier_id);
 
         if($source == "QAS"){
-            $data = $this->crud->query("SELECT b.id, b.number, b.name, a.receipt_id, round(a.qty_receipt - COALESCE(SUM(c.qty), 0)) as qty_receipt, b.uom
+            $data = $this->crud->query("SELECT b.id, b.number, b.name, a.receipt_id, round(a.qty_receipt - COALESCE(SUM(c.qty), 0)) as qty_receipt, b.uom, a.bc_document
                 FROM purchase_order_receipts a 
                 JOIN item_rm b ON a.item_rm_id = b.id
                 LEFT JOIN purchase_returns c ON a.receipt_id = c.receipt_id and a.item_rm_id = c.item_rm_id and a.supplier_id = c.supplier_id
                 WHERE a.po_no = '$po_no' and (b.number LIKE '%$post%' and b.id like '%$post%') and a.status = 2
-                GROUP BY a.item_rm_id
+                GROUP BY a.item_rm_id, a.receipt_id
                 ORDER BY b.number asc");
             echo json_encode($data);
         }elseif($source == "REJECT"){
-            $data = $this->crud->query("SELECT b.id, b.number, b.name, a.receipt_id, round(SUM(a.qty) - COALESCE(SUM(c.qty), 0)) as qty_receipt, b.uom
+            $data = $this->crud->query("SELECT b.id, b.number, b.name, a.receipt_id, round(SUM(a.qty) - COALESCE(SUM(c.qty), 0)) as qty_receipt, b.uom, d.bc_document
                 FROM scan_item_rejections a 
                 JOIN purchase_order_receipts d ON a.receipt_id = d.receipt_id
                 JOIN item_rm b ON d.item_rm_id = b.id
                 LEFT JOIN purchase_returns c ON a.receipt_id = c.receipt_id and b.id = c.item_rm_id and d.supplier_id = c.supplier_id
                 WHERE a.po_no = '$po_no' and (b.number LIKE '%$post%' and b.id like '%$post%') and a.status = 0
-                GROUP BY b.id
+                GROUP BY d.id
                 ORDER BY b.number asc");
             echo json_encode($data);
         }elseif($source == "SCRAP"){
@@ -211,6 +211,7 @@ class purchase_returns extends CI_Controller
                     "item_rm_number" => $record['item_rm_number'],
                     "item_rm_name" => $record['item_rm_name'],
                     "po_no" => $record['po_no'],
+                    "invoice_no" => $record['invoice_no'],
                     "supplier_name" => $record['supplier_name'],
                     "remarks" => $record['remarks'],
                     "uom" => $record['uom'],
@@ -295,7 +296,6 @@ class purchase_returns extends CI_Controller
             d.address,
             d.state,
             (CASE WHEN e.price is null THEN g.price ELSE e.price END) as price,
-            f.invoice_no,
             (a.qty * (CASE WHEN e.price is null THEN g.price ELSE e.price END)) as value,
             (((a.qty * (CASE WHEN e.price is null THEN g.price ELSE e.price END)) * c.igst) / 100) as igst,
             (((a.qty * (CASE WHEN e.price is null THEN g.price ELSE e.price END)) * c.sgst) / 100) as sgst,
@@ -306,19 +306,12 @@ class purchase_returns extends CI_Controller
         $this->db->join('hsn c', 'b.hsn_code = c.number', 'left');
         $this->db->join('suppliers d', 'a.supplier_id = d.id');
         $this->db->join('purchase_orders e', 'a.item_rm_id = e.item_rm_id and a.supplier_id = e.supplier_id and a.po_no = e.po_no', 'left');
-        $this->db->join('purchase_confirm f', 'a.item_rm_id = f.item_rm_id and a.supplier_id = f.supplier_id and a.po_no = f.po_no', 'left');
         $this->db->join('supplier_items g', 'a.item_rm_id = g.item_rm_id and a.supplier_id = g.supplier_id', 'left');
         $this->db->where('a.deleted', 0);
         $this->db->where('a.return_no', $return_no);
         $this->db->group_by('a.id');
         $this->db->order_by('b.number', 'asc');
         $records = $this->db->get()->result_array();
-
-        if(@$records[0]['source'] == "QAS"){
-            $note = "Discrepancy Note";
-        }else{
-            $note = "Debit Advice";
-        }
 
         $html = '<html>
                     <head>
@@ -362,7 +355,7 @@ class purchase_returns extends CI_Controller
                     <div class="print">';
         $html .= '  <table id="customers">
                         <tr>
-                            <td colspan="14" style="font-size:15px;" align="center"><b>Delivery Challan cum '.$note.'</b><br><i><u>Under Rule-55 </u><b>(2)</b> of CGST Act 2017</i></td>
+                            <td colspan="14" style="font-size:15px;" align="center"><b>Delivery Challan cum Debit Advice</b><br><i><u>Under Rule-55 </u><b>(2)</b> of CGST Act 2017</i></td>
                         </tr>
                         <tr>
                             <td colspan="14" align="center"><b>' . @$config->name . ' PVT. LTD.</b><br> ' . @$config->address2 . '<br>GSTIN : ' . @$config->gst_no . '</td>
@@ -524,6 +517,8 @@ class purchase_returns extends CI_Controller
                 <th>Return Date</th>
                 <th>Return Name</th>
                 <th>Supplier Name</th>
+                <th>Purchase Order</th>
+                <th>Invoice No</th>
                 <th>Product No</th>
                 <th>Product Name</th>
                 <th>Qty</th>
@@ -544,6 +539,8 @@ class purchase_returns extends CI_Controller
                         <td>' . $data['return_date'] . '</td>
                         <td>' . $data['return_name'] . '</td>
                         <td>' . $data['supplier_name'] . '</td>
+                        <td>' . $data['po_no'] . '</td>
+                        <td>' . $data['invoice_no'] . '</td>
                         <td>' . $data['item_rm_id'] . '</td>
                         <td>' . $data['item_name'] . '</td>
                         <td>' . number_format($data['qty'], 2) . '</td>

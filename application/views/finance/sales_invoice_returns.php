@@ -114,7 +114,8 @@
                 <tr>
                     <!-- <th rowspan="2" data-options="field:'delete',width:120,formatter:removebtn">Action</th> -->
                     <th hidden rowspan="2" data-options="field:'id',width:150,editor: {type: 'textbox'}">ID</th>
-                    <th rowspan="2" data-options="field:'dn_number',width:150,editor: {type: 'textbox', options: {required: true}}">Sales Return No</th>
+                    <th rowspan="2" data-options="field:'rtn_number',width:150,editor: {type: 'textbox', options: {required: true}}">Sales Return No</th>
+                    <th rowspan="2" data-options="field:'dn_number',width:150,editor: {type: 'textbox', options: {required: true}}">Invoice No</th>
                     <th rowspan="2" data-options="field:'so_number',width:160,editor: {type: 'textbox', options: {required: true}}">SO. No</th>
                     <th rowspan="2" data-options="field:'customer_po',width:120, editor: {type: 'textbox', options: {required: true}}">Customer PO</th>
                     <th rowspan="2" data-options="field:'item_fg_id',width:150, editor: {type: 'textbox', options: {required: true}}" hidden>Product Id</th>
@@ -849,7 +850,7 @@
                                     url: '<?= base_url('finance/sales_invoice_returns/delete') ?>',
                                     data: {
                                         number: row.number,
-                                        dn_number: row.dn_number,
+                                        rtn_number: row.rtn_number,
                                     },
                                     success: function(result) {
                                         var result = eval('(' + result + ')');
@@ -1004,8 +1005,13 @@
                     rownumbers: true,
                     columns: [
                         [{
+                            field: 'rtn_number',
+                            title: 'Return No',
+                            halign: 'center',
+                            width: 150
+                        }, {
                             field: 'dn_number',
-                            title: 'Document No',
+                            title: 'Invoice No',
                             halign: 'center',
                             width: 150
                         }, {
@@ -1027,12 +1033,12 @@
                             field: 'number_customer',
                             title: 'Product No Customer',
                             halign: 'center',
-                            width: 200
+                            width: 150
                         }, {
                             field: 'item_fg_name',
                             title: 'Product Name',
                             halign: 'center',
-                            width: 300
+                            width: 120
                         }, {
                             field: 'qty',
                             title: 'Qty',
@@ -1193,6 +1199,7 @@
                                                                     total_grand_local: total_grand_local,
                                                                     id: json[i].id,
                                                                     dn_number: json[i].dn_number,
+                                                                    rtn_number: json[i].rtn_number,
                                                                     so_number: json[i].so_number,
                                                                     customer_po: json[i].customer_po,
                                                                     item_fg_id: json[i].item_fg_id,

@@ -108,40 +108,9 @@ class Purchase_invoices extends CI_Controller
     public function calculateJournal()
     {
         $journals = json_decode(file_get_contents("json/purchase_invoice_journals.json"), true);
+        $jsonDatas = json_decode(file_get_contents("json/purchase_invoices.json"), true);
+        
         if (count($journals) > 0) {
-            foreach ($journals as $journal) {
-                $jsonDatas = json_decode(file_get_contents("json/purchase_invoices.json"), true);
-
-                $total_debit = 0;
-                $total_credit = 0;
-
-                foreach ($jsonDatas as $jsonData) {
-                    if ($jsonData['account_number'] == $journal['account_number'] && $jsonData['account_type'] == "DEBIT") {
-                        $total_debit += $jsonData['total'];
-                    } elseif ($jsonData['account_number'] == $journal['account_number'] && $jsonData['account_type'] == "CREDIT") {
-                        $total_credit += $jsonData['total'];
-                    }
-                }
-
-                if (@$journal['debit'] > 0) {
-                    $total_debit = $journal['debit'];
-                }
-
-                if (@$journal['credit'] > 0) {
-                    $total_credit = $journal['credit'];
-                }
-
-                $arr[] = array(
-                    "account_number" => $journal['account_number'],
-                    "account_name" => $journal['account_name'],
-                    "debit" => round($total_debit, 2),
-                    "credit" => round($total_credit, 2),
-                    "flag" => $journal['flag'],
-                );
-            }
-        } else {
-            $jsonDatas = json_decode(file_get_contents("json/purchase_invoices.json"), true);
-            $total = 0;
             $flag = 1;
             $mergedData = array();
             foreach ($jsonDatas as $jsonData) {
@@ -165,6 +134,7 @@ class Purchase_invoices extends CI_Controller
                             "account_name" => $account_name,
                             "account_type" => $account_type,
                             "debit" => $total,
+                            "credit" => 0,
                             "flag" => $flag,
                         );
                     } elseif ($jsonData['account_type'] == "CREDIT") {
@@ -172,6 +142,7 @@ class Purchase_invoices extends CI_Controller
                             "account_number" => $account_number,
                             "account_name" => $account_name,
                             "account_type" => $account_type,
+                            "debit" => 0,
                             "credit" => $total,
                             "flag" => $flag,
                         );
@@ -181,11 +152,42 @@ class Purchase_invoices extends CI_Controller
                 $flag++;
             }
 
-            // Ubah hasil penggabungan menjadi indeks numerik jika diperlukan
-            $arr = array_values($mergedData);
+            $array1 = array_values($mergedData);
+
+            foreach ($journals as $journal) {
+                $array2[] = array(
+                    "account_number" => $journal['account_number'],
+                    "account_name" => $journal['account_name'],
+                    "debit" => round(@$journal['debit'], 2),
+                    "credit" => round(@$journal['credit'], 2),
+                    "flag" => $flag,
+                );
+
+                $flag++;
+            }
+
+            $existingAccountNumbers = array_values(array_unique(array_column($array2, 'account_number')));
+            foreach ($array1 as $item1) {
+                if (!in_array($item1['account_number'], $existingAccountNumbers)) {
+                    $array2[] = $item1;
+                }
+            }
+
+            foreach ($array2 as $i => $item2) {
+                foreach ($array1 as $item1) {
+                    if ($item2['account_number'] === $item1['account_number']) {
+                        $array2[$i] = array_merge($item2, $item1);
+                        break;
+                    }
+                }
+            }
+
+            usort($array2, function($a, $b) {
+                return $a['flag'] <=> $b['flag']; // ascending
+            });
         }
 
-        echo json_encode($arr);
+        echo json_encode($array2);
     }
 
     public function readDueDate($trans_date, $payment_term)
@@ -205,26 +207,34 @@ class Purchase_invoices extends CI_Controller
         }
 
         if($type == "purchase"){
-            $records = $this->crud->query("SELECT a.receipt_no, a.receipt_id, a.taxes, a.total_dp, a.bc_document, a.awb_no FROM (SELECT a.receipt_no, a.receipt_id, d.taxes, d.total_dp, a.bc_document, a.awb_no, COALESCE(e.total_label, 0) AS total_label, a.qty_label AS qty_label
+            $records = $this->crud->query("SELECT a.receipt_no, a.receipt_id, a.taxes, a.total_dp, a.bc_document, a.awb_no, a.journal_type_id, a.journal_type_name FROM (SELECT a.receipt_no, a.receipt_id, d.taxes, d.total_dp, a.bc_document, a.awb_no, COALESCE(e.total_label, 0) AS total_label, a.qty_label AS qty_label, f.journal_type_id, f.journal_type_name
                 FROM (SELECT * FROM purchase_order_receipts WHERE status != '2') a
                 JOIN item_rm b ON a.item_rm_id = b.id
                 JOIN item_familys c ON b.item_family_id = c.id
                 JOIN purchase_orders d ON a.po_no = d.po_no
                 LEFT JOIN (SELECT receipt_id, COUNT(id) AS total_label FROM scan_item_receipts GROUP BY receipt_id) e ON a.receipt_id = e.receipt_id
+                LEFT JOIN (select a.name as journal_type_name, a.id as journal_type_id, b.account_number from journal_types a JOIN journal_setups b ON a.id = b.journal_type_id WHERE a.module like '%PURCHASE INVOICING%' GROUP BY a.id, b.account_number) f ON b.account_number = f.account_number
                 WHERE a.status = '0' AND a.supplier_id = '$supplier_id' $dp
                 GROUP BY a.receipt_id 
                 ORDER BY a.created_date DESC) a
                 GROUP BY a.receipt_no
                 HAVING SUM(a.total_label) = SUM(a.qty_label)");
-        }else{
-            $records = $this->crud->query("SELECT a.receipt_no, d.taxes, d.total_dp, a.bc_document, a.awb_no
+        }else if($type == "other"){
+            $records = $this->crud->query("SELECT a.receipt_no, d.taxes, d.total_dp, a.bc_document, a.awb_no, f.journal_type_id, f.journal_type_name
                 FROM purchase_order_receipt_others a
                 JOIN item_rm b ON a.item_rm_id = b.id
                 JOIN item_familys c ON b.item_family_id = c.id
                 JOIN purchase_order_others d ON a.po_no = d.po_no
+                LEFT JOIN (select a.name as journal_type_name, a.id as journal_type_id, b.account_number from journal_types a JOIN journal_setups b ON a.id = b.journal_type_id WHERE a.module like '%PURCHASE INVOICING%' GROUP BY a.id, b.account_number) f ON b.account_number = f.account_number
                 WHERE a.supplier_id = '$supplier_id' and a.status = '0' and a.store = '1' $dp
                 GROUP BY a.receipt_no 
                 ORDER BY a.created_date desc");
+        }else{
+            $records = $this->crud->query("SELECT po_no as receipt_no, taxes, total_dp
+                FROM purchase_order_services
+                WHERE supplier_id = '$supplier_id' and `status` = '0'
+                GROUP BY po_no 
+                ORDER BY po_no desc");
         }
         
         echo json_encode($records);
@@ -351,7 +361,7 @@ class Purchase_invoices extends CI_Controller
             $this->db->group_by('a.id');
             $this->db->order_by('a.receipt_no', 'asc');
             $records = $this->db->get()->result_array();
-        }else{
+        }elseif($type == "others"){
             $this->db->select("a.receipt_no as por_no, a.po_no, a.asset_code, c.id as item_rm_id, c.number as item_rm_number, c.name as item_rm_name, c.uom, c.hsn_code, b.currency, 
                 a.qty_receipt as qty, f.price, f.discount, 'INR' as currency_local, h.account_number, i.account_name, h.id  as item_family_id, h.name as item_family_name,
                 b.tds, b.state, k.individual, b.type as supplier_type,
@@ -375,6 +385,26 @@ class Purchase_invoices extends CI_Controller
             $this->db->where_in('a.receipt_no', $por_no_ex);
             $this->db->group_by('a.id');
             $this->db->order_by('a.receipt_no', 'asc');
+            $records = $this->db->get()->result_array();
+        }else{
+            $this->db->select("a.po_no as por_no, a.po_no, '-' as asset_code, 'null' as item_rm_id, a.item_name as item_rm_number, a.item_name as item_rm_name, 'Pcs' as uom, a.hsn_code, b.currency, 
+                a.qty, a.price, a.discount, 'INR' as currency_local, '' as account_number, '' as account_name, '' as item_family_id, '' as item_family_name,
+                b.tds, b.state, k.individual, b.type as supplier_type,
+                ((a.qty * a.price) * COALESCE(j.igst, 0) / 100) as igst,
+                ((a.qty * a.price) * COALESCE(j.sgst, 0) / 100) as sgst,
+                ((a.qty * a.price) * COALESCE(j.cgst, 0) / 100) as cgst,
+                (a.qty * a.price) as total,
+                (CASE WHEN g.middle is null THEN 1 ELSE g.middle END) as rate");
+            $this->db->from('purchase_order_services a');
+            $this->db->join('suppliers b', 'a.supplier_id = b.id');
+            $this->db->join('exchange_rates g', "g.start_date = DATE_FORMAT(a.po_no, '%Y-%m-01') and g.currency_from = b.currency", 'left');
+            $this->db->join('hsn j', "a.hsn_code = j.number", 'left');
+            $this->db->join('tds k', "b.tds = k.section", 'left');
+            $this->db->where('a.deleted', 0);
+            $this->db->where('a.status', 0);
+            $this->db->where_in('a.po_no', $por_no_ex);
+            $this->db->group_by('a.id');
+            $this->db->order_by('a.po_no', 'asc');
             $records = $this->db->get()->result_array();
         }
 
@@ -526,6 +556,7 @@ class Purchase_invoices extends CI_Controller
             } else {
                 $this->db->where("a.trans_date between '$date_from' and '$date_to'");
             }
+            $this->db->where('a.flag', "PURCHASE");
             $this->db->like('a.number', $filter_purchase_invoice);
             $this->db->like('a.por_no', $filter_purchase_receipt);
             $this->db->like('a.po_no', $filter_purchase_order);
@@ -984,7 +1015,7 @@ class Purchase_invoices extends CI_Controller
         echo $send;
     }
 
-    public function print_invoicing($invoice)
+    public function print_invoicing($invoice, $tb = "")
     {
         $invoice_no = base64_decode($invoice);
         $this->db->select('a.*, b.name as supplier_name');
@@ -1003,6 +1034,34 @@ class Purchase_invoices extends CI_Controller
         $page = ceil(count($total_invoice) / $rows);
         //Generate QRcode
         $this->createQrcode(@$invoice_no, "assets/image/qrcode/");
+
+        if($tb == ""){
+            $media = "  @media screen {
+                            .print {
+                                display: none !important;
+                            }
+                        }
+            
+                        @media print {
+                            .noprint {
+                                display: none !important;
+                            }
+                        }";
+            $noprint = '<div style="margin:20%;" class="noprint">
+                            <center>
+                                <h1>Press CTRL + P for Print</h1>
+                                <p>Display pages for 8 rows</p>
+                                <p>Paper Size A5, Layout Landscape</p>
+                                <p>Margin Default, Scale 80</p>
+                            </center>
+                        </div>';
+            $script = "<script>window.print()</script>";
+        }else{
+            $media = "";
+            $noprint = "";
+            $script = "";
+        }
+        
         $html = '<html>
                     <head>
                         <title>' . $invoice_no . '</title>
@@ -1024,27 +1083,10 @@ class Purchase_invoices extends CI_Controller
                             padding-bottom: 2px;
                             text-align: center;color: black;
                         }
-                        @media screen {
-                            .print {
-                                display: none !important;
-                            }
-                        }
-            
-                        @media print {
-                            .noprint {
-                                display: none !important;
-                            }
-                        }
+                        '.$media.'
                     </style>
                     <body>
-                    <div style="margin:20%;" class="noprint">
-                        <center>
-                            <h1>Press CTRL + P for Print</h1>
-                            <p>Display pages for 8 rows</p>
-                            <p>Paper Size A5, Layout Landscape</p>
-                            <p>Margin Default, Scale 80</p>
-                        </center>
-                    </div>
+                    '.$noprint.'
                     <div class="print">';
         $no = 1;
         $hal = 1;
@@ -1315,7 +1357,7 @@ class Purchase_invoices extends CI_Controller
                         <th style="height:20px; text-align:center;"><br><hr style="width:60%;margin-left:20%;">Director</th>
                     </tr>
                 </table><br>';
-        $html .= "</div></div><script>window.print()</script></body>";
+        $html .= "</div></div>".$script."</body>";
         die($html);
     }
 
@@ -1355,6 +1397,7 @@ class Purchase_invoices extends CI_Controller
             $this->db->where("a.due_date between '$filter_due_date_from' and '$filter_due_date_to'");
         }
         // $this->db->like('a.family_id', $filter_family_id);
+        $this->db->where('a.flag', "PURCHASE");
         $this->db->like('a.number', $filter_purchase_invoice);
         $this->db->like('a.por_no', $filter_purchase_receipt);
         $this->db->like('a.po_no', $filter_purchase_order);

@@ -188,6 +188,8 @@ class Purchase_order_receipts extends CI_Controller
 
     public function datatables()
     {
+        $this->qas = $this->load->database('qas', TRUE);
+
         if ($this->input->post()) {
             $filter_from = $this->input->get('filter_from');
             $filter_to   = $this->input->get('filter_to');
@@ -252,6 +254,7 @@ class Purchase_order_receipts extends CI_Controller
                 $records = $this->db->get()->result_array();
                 foreach ($records as $record) {
                     $receipt_no = $record['receipt_no'];
+                    $invoice_no = $record['bc_document'];
 
                     if ($filter_item_rm != "") {
                         $where_item_rm_id = "WHERE item_rm_id = '$filter_item_rm'";
@@ -259,8 +262,30 @@ class Purchase_order_receipts extends CI_Controller
                         $where_item_rm_id = "";
                     }
 
+                    $poritems = $this->crud->query("SELECT b.number FROM purchase_order_receipts a JOIN item_rm b ON a.item_rm_id = b.id WHERE receipt_no = '$receipt_no'");
+                    foreach ($poritems as $poritem) {
+                        $array[] = $poritem->number;
+                    }
+                    $itemidimplode = "'" . implode("','", $array) . "'";
+
+                    $sqlLabel = $this->qas->query("SELECT label, count(id_receive) as total FROM receiving_system WHERE no_sj ='$invoice_no' and item_id in ($itemidimplode) GROUP BY label");
+                    $rowLabel = $sqlLabel->row();
+
+                    if(empty(@$rowLabel->total)){
+                        $qas = "OPEN";
+                    }else{
+                        if(@$rowLabel->total == $record['total_data'] && @$rowLabel->label == "OK"){
+                            $qas = "CLOSE";
+                        }elseif(@$rowLabel->total == $record['total_data'] && @$rowLabel->label == "NG"){
+                            $qas = "NG";
+                        }else{
+                            $qas = "OPEN";
+                        }
+                    }
+
                     $purchase_order_label = $this->crud->query("SELECT receipt_id, count(id) as total_scan FROM scan_item_receipts WHERE receipt_id like '%$receipt_no%'");
                     $por_status = $this->crud->query("SELECT COUNT(id) as total_cancel FROM purchase_order_receipts WHERE `status` = '2' and receipt_no = '$receipt_no'");
+                    $status = $this->crud->query("SELECT status FROM purchase_order_receipts WHERE receipt_no = '$receipt_no' ORDER BY status asc");
 
                     if(empty(@$por_status[0]->total_cancel)){
                         $total_scan = @$purchase_order_label[0]->total_scan;
@@ -293,7 +318,9 @@ class Purchase_order_receipts extends CI_Controller
                         "supplier_name" => $record['supplier_name'],
                         "qty_label" => $record['qty_label'],
                         "total_scan" => $total_scan,
-                        "status" => $record['status'],
+                        // "status" => $record['status'],
+                        "qas" => $qas,
+                        "status" => $status[0]->status,
                         "state" => "closed",
                     );
                 }
@@ -337,7 +364,31 @@ class Purchase_order_receipts extends CI_Controller
                 $this->db->group_by('a.receipt_id');
                 $this->db->order_by('a.receipt_id', 'ASC');
                 $records = $this->db->get()->result_array();
-                echo json_encode($records);
+
+                $result = array();
+                foreach ($records as $record) {
+                    $invoice_no = $record['bc_document'];
+                    $item_rm_number = $record['item_rm_number'];
+
+                    $sqlLabel = $this->qas->query("SELECT label FROM receiving_system WHERE no_sj ='$invoice_no' and item_id = '$item_rm_number'");
+                    $rowLabel = $sqlLabel->row();
+
+                    if(empty(@$rowLabel->label)){
+                        $qas = "OPEN";
+                    }else{
+                        if(@$rowLabel->label == "OK"){
+                            $qas = "CLOSE";
+                        }elseif(@$rowLabel->label == "NG"){
+                            $qas = "NG";
+                        }else{
+                            $qas = "OPEN";
+                        }
+                    }
+
+                    $result[] = array_merge($record, ["qas" => $qas]);
+                }
+
+                echo json_encode($result);
             }
         }
     }
@@ -359,11 +410,15 @@ class Purchase_order_receipts extends CI_Controller
             (CASE WHEN a.uom = '' THEN b.uom ELSE a.uom END) as uom,
             round(a.delivery - COALESCE(d.qty_os, 0)) as qty_delivery,
             round(a.delivery - COALESCE(d.qty_os, 0)) as qty_receipt,
+            round(a.delivery - COALESCE(d.qty_os, 0)) as qty_receipt2,
+            '0' as qty_balance,
+            c.currency,
             a.price,
             a.total,
             CEIL(((a.delivery - COALESCE(d.qty_os, 0)) / f.mpq)) as qty_label");
         $this->db->from('purchase_confirm a');
         $this->db->join('item_rm b', 'a.item_rm_id = b.id');
+        $this->db->join('suppliers c', 'a.supplier_id = c.id');
         $this->db->join('item_mpq f', 'a.item_rm_id = f.item_rm_id and a.supplier_id = f.supplier_id');
         $this->db->join('(SELECT sum(qty_receipt) as qty_os, item_rm_id, supplier_id, po_no, bc_document FROM purchase_order_receipts WHERE status = 0 GROUP BY item_rm_id, supplier_id, po_no, bc_document) d', 'a.item_rm_id = d.item_rm_id and a.supplier_id = d.supplier_id and a.po_no = d.po_no and a.invoice_no = d.bc_document', 'left');
         $this->db->join('purchase_orders e', 'a.item_rm_id = e.item_rm_id and a.po_no = e.po_no');

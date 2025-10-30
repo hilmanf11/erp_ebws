@@ -28,6 +28,10 @@ class Report_general_ledgers extends CI_Controller
         }
     }
 
+    function linked($number, $amount){
+        return '<a onclick="window.open(\'' . base_url('finance/journal_postings/print_voucher_tb/' . base64_encode($number)) . '\', \'_blank\', \'location=yes,height=650,width=1500,scrollbars=yes,status=yes\');" style="color: inherit;text-decoration: none;cursor: pointer;">' . number_format($amount, 2) . '</a>';
+    }
+
     public function print($option = "")
     {
         if ($option == "excel") {
@@ -91,7 +95,7 @@ class Report_general_ledgers extends CI_Controller
             LEFT JOIN sales_invoices c ON a.document_no = c.number
             LEFT JOIN ap_payments d ON a.document_no = d.payment_no
             LEFT JOIN ar_receipts e ON a.document_no = e.receipt_no
-            LEFT JOIN asset_fixeds f ON a.number = f.voucher_no
+            LEFT JOIN asset_fixeds f ON a.number = f.voucher_no and a.company_id = f.number
             WHERE a.account_number = '$filter_account' and a.modul != 'BANK STATEMENT' $where_period
             GROUP BY a.id");
             $data_1 = $query_1->result_array();
@@ -318,9 +322,9 @@ class Report_general_ledgers extends CI_Controller
                                             <td style="text-align:center;">INR</td>
                                             <td>' . @$bank_statement->number . '</td>
                                             <td>' . @$bank_statement->trans_date . '</td>
-                                            <td style="text-align:right;font-weight:bold;color:green;">' . number_format($journal['local_debit'], 2) . '</td>
-                                            <td style="text-align:right;font-weight:bold;color:red;">' . number_format($journal['local_credit'], 2) . '</td>
-                                            <td style="text-align:right;font-weight:bold;' . $local_style . '">' . number_format(abs($local_balance), 2) . '</td>
+                                            <td style="text-align:right;font-weight:bold;color:green;">' . $this->linked($journal['number'], $journal['local_debit']) . '</td>
+                                            <td style="text-align:right;font-weight:bold;color:red;">' . $this->linked($journal['number'], $journal['local_credit']) . '</td>
+                                            <td style="text-align:right;font-weight:bold;' . $local_style . '">' . $this->linked($journal['number'], $local_balance) . '</td>
                                         </tr>';
 
                         $local_debit += $journal['local_debit'];

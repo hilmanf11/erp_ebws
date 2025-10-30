@@ -51,6 +51,7 @@ class Report_grn extends CI_Controller
 
         //Details
         $this->db->select('a.*,
+            b.currency,
             b.name as supplier_name, 
             c.number as item_rm_number, 
             c.name as item_rm_name, 
@@ -129,6 +130,9 @@ class Report_grn extends CI_Controller
                 <th>Part No Supplier</th>
                 <th>Uom</th>
                 <th>Qty</th>
+                <th>Currency</th>
+                <th>Price</th>
+                <th>Total Price</th>
                 <th>MPQ</th>
                 <th>Label</th>
                 <th>Scan In</th>
@@ -156,6 +160,9 @@ class Report_grn extends CI_Controller
                             <td style="mso-number-format:\@;">' . $data['item_rm_number'] . '</td>
                             <td>' . $data['uom'] . '</td>
                             <td style="text-align:right">' . number_format($data['qty_receipt']) . '</td>
+                            <td>' . $data['currency'] . '</td>
+                            <td style="text-align:right">' . number_format($data['price'], 5) . '</td>
+                            <td style="text-align:right">' . number_format($data['total'], 2) . '</td>
                             <td style="text-align:right">' . number_format($data['qty_mpq']) . '</td>
                             <td style="text-align:right">' . number_format($data['qty_label']) . '</td>
                             <td style="text-align:right">' . number_format($data['total_scan']) . '</td>

@@ -205,7 +205,7 @@ class Rgp_in extends CI_Controller
     {
 
         $datenow = date("ym");
-        $sql = $this->db->query("SELECT max(`number`) as kode From rgp_transactions where `number` like '%$datenow%'");
+        $sql = $this->db->query("SELECT max(`number`) as kode From rgp_transactions where `number` like '%NRGP-$datenow%'");
         $row = $sql->row();
         if (empty($row->kode)) {
             $kode = substr($row->kode, 1);

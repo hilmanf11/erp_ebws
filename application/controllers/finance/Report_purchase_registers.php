@@ -272,6 +272,12 @@ class Report_purchase_registers extends CI_Controller
                 $style_tds = "";
             }
 
+            if($data['flag'] == "RETURN"){
+                $minus = -1;
+            }else{
+                $minus = 1;
+            }
+
             $html .= '  <tr '.$style.'>
                             <td style="text-align:center">' . $no . '</td>
                             <td>' . $config->gst_no . '</td>
@@ -286,28 +292,28 @@ class Report_purchase_registers extends CI_Controller
                             <td style="mso-number-format:\@;">' . $data['item_rm_number'] . '</td>
                             <td>' . $data['product_family'] . '</td>
                             <td>' . $data['hsn_code'] . '</td>
-                            <td style="text-align:right;">' . $data['qty'] . '</td>
+                            <td style="text-align:right;">' . ($data['qty'] * $minus) . '</td>
                             <td style="text-align:center;">' . $currency . '</td>
                             <td style="text-align:right;">' . $data['price'] . '</td>
                             <td style="text-align:right;">' . $data['rate'] . '</td>
-                            <td style="text-align:right;">' . $total . '</td>
+                            <td style="text-align:right;">' . ($total * $minus) . '</td>
                             <td style="text-align:right;">' . $igst_rate . '</td>
-                            <td style="text-align:right;">' . $data['igst'] . '</td>
+                            <td style="text-align:right;">' . ($data['igst'] * $minus) . '</td>
                             <td style="text-align:right;">' . $cgst_rate . '</td>
-                            <td style="text-align:right;">' . $data['cgst'] . '</td>
+                            <td style="text-align:right;">' . ($data['cgst'] * $minus) . '</td>
                             <td style="text-align:right;">' . $sgst_rate . '</td>
-                            <td style="text-align:right;">' . $data['sgst'] . '</td>
-                            <td style="text-align:right;">' . $data['total_tcs'] . '</td>
-                            <td style="text-align:right;'.$style_tds.'">' . $data['total_tds'] . '</td>
+                            <td style="text-align:right;">' . ($data['sgst'] * $minus) . '</td>
+                            <td style="text-align:right;">' . ($data['total_tcs'] * $minus) . '</td>
+                            <td style="text-align:right;'.$style_tds.'">' . ($data['total_tds'] * $minus) . '</td>
                             <td>' . $data['tds'] . '</td>
-                            <td style="text-align:right;">' . ($total2) . '</td>
+                            <td style="text-align:right;">' . ($total2 * $minus) . '</td>
                             <td>' . $data['number'] . '</td>
                             <td>' . $data['por_no'] . '</td>
                             <td>' . @$porData->receipt_date . '</td>
                             <td style="mso-number-format:\@;">' . $data['account_number'] . '</td>
                             <td>' . $data['account_name'] . '</td>
                             <td style="text-align:left;">' . @$porData->po_no . '</td>
-                            <td style="text-align:right;">' . ($data['qty'] * $data['price']) . '</td>
+                            <td style="text-align:right;">' . (($data['qty'] * $data['price']) * $minus) . '</td>
                         </tr>';
             $no++;
         }

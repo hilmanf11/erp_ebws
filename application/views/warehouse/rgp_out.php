@@ -991,50 +991,62 @@
                 confirmButtonText: 'Yes, delete it!'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    Swal.fire({
-                        title: 'Please Wait...',
-                        showConfirmButton: false,
-                        allowOutsideClick: false,
-                        allowEscapeKey: false,
-                        didOpen: () => {
-                            Swal.showLoading();
-                        },
-                    });
+                    $.ajax({
+                        type: "post",
+                        url: "<?= base_url('closing/locks/checkLock') ?>",
+                        data: "period=" + rows[0].transaction_date + "&menus_id=<?= $id_menu ?>",
+                        dataType: "json",
+                        success: function (lock) {
+                            if(lock.total > 0){
+                                toastr.error("This period is not active by Accounting");
+                                return false;
+                            }
 
-                    requestDelete(rows.length, rows);
-
-                    function requestDelete(total, json, number = 1, value = 0) {
-                        if (value < 100) {
-                            var row = json[number - 1];
-                            value = Math.floor((number / total) * 100);
-
-                            $.ajax({
-                                method: 'post',
-                                url: '<?= base_url('warehouse/rgp_out/delete') ?>',
-                                data: {
-                                    number: row.number
-                                },
-                                success: function(result) {
-                                    var result = eval('(' + result + ')');
-                                    requestDelete(total, json, number + 1, value);
-
-                                    if (number == total) {
-                                        $('#dg').datagrid('reload');
-                                        Swal.close();
-                                        Swal.fire(
-                                            'Delete Completed',
-                                            'Delete Data has been completed, You cannot restore data that has been deleted',
-                                            'success'
-                                        );
-                                    }
-                                },
-                                error: function(jqXHR, textStatus, errorThrown) {
-                                    toastr.error(jqXHR.statusText);
-                                    swal.close();
+                            Swal.fire({
+                                title: 'Please Wait...',
+                                showConfirmButton: false,
+                                allowOutsideClick: false,
+                                allowEscapeKey: false,
+                                didOpen: () => {
+                                    Swal.showLoading();
                                 },
                             });
+
+                            requestDelete(rows.length, rows);
+                            function requestDelete(total, json, number = 1, value = 0) {
+                                if (value < 100) {
+                                    var row = json[number - 1];
+                                    value = Math.floor((number / total) * 100);
+
+                                    $.ajax({
+                                        method: 'post',
+                                        url: '<?= base_url('warehouse/rgp_out/delete') ?>',
+                                        data: {
+                                            number: row.number
+                                        },
+                                        success: function(result) {
+                                            var result = eval('(' + result + ')');
+                                            requestDelete(total, json, number + 1, value);
+
+                                            if (number == total) {
+                                                $('#dg').datagrid('reload');
+                                                Swal.close();
+                                                Swal.fire(
+                                                    'Delete Completed',
+                                                    'Delete Data has been completed, You cannot restore data that has been deleted',
+                                                    'success'
+                                                );
+                                            }
+                                        },
+                                        error: function(jqXHR, textStatus, errorThrown) {
+                                            toastr.error(jqXHR.statusText);
+                                            swal.close();
+                                        },
+                                    });
+                                }
+                            }
                         }
-                    }
+                    });
                 }
             });
         } else {
@@ -1308,125 +1320,137 @@
                     var totalrows = rows.length;
                     endEditing();
 
-                    if (rgp_number == '') {
-                        var qty_over = 0;
-                        for (let i = 0; i < totalrows; i++) {
-                            if (parseInt(rows[i].qty) > parseInt(rows[i].stock)) {
-                                qty_over = qty_over + 1;
+                    $.ajax({
+                        type: "post",
+                        url: "<?= base_url('closing/locks/checkLock') ?>",
+                        data: "period=" + transaction_date + "&menus_id=<?= $id_menu ?>",
+                        dataType: "json",
+                        success: function (lock) {
+                            if(lock.total > 0){
+                                toastr.error("This period is not active by Accounting");
+                                return false;
+                            }
+
+                            if (rgp_number == '') {
+                                var qty_over = 0;
+                                for (let i = 0; i < totalrows; i++) {
+                                    if (parseInt(rows[i].qty) > parseInt(rows[i].stock)) {
+                                        qty_over = qty_over + 1;
+                                    }
+                                }
+
+                                if (qty_over > 0) {
+                                    toastr.warning("Qty must be less than or equal to inventory stock", "Information");
+                                } else {
+                                    $('#dlg_insert').dialog('close');
+                                    Swal.fire({
+                                        title: 'Please Wait...',
+                                        showConfirmButton: false,
+                                        allowOutsideClick: false,
+                                        allowEscapeKey: false,
+                                        didOpen: () => {
+                                            Swal.showLoading();
+                                        },
+                                    });
+
+                                    requestData(totalrows, rows);
+                                }
+                            } else {
+                                var qty_over = 0;
+                                for (let i = 0; i < rows.length; i++) {
+                                    $.ajax({
+                                        type: "post",
+                                        url: '<?= base_url('warehouse/rgp_out/readStockRgp') ?>',
+                                        data: {
+                                            rgp_number: rgp_number,
+                                            item_id: rows[i].item_id
+                                        },
+                                        dataType: "json",
+                                        async: false, // Makes the request synchronous
+                                        success: function(result) {
+                                            if (parseInt(rows[i].qty) > parseInt(result.balance)) {
+                                                qty_over++;
+                                            }
+                                        }
+                                    });
+                                }
+
+                                if (qty_over > 0) {
+                                    toastr.warning("Qty must be less than or equal to balance", "Information");
+                                } else {
+                                    $('#dlg_insert').dialog('close');
+                                    Swal.fire({
+                                        title: 'Please Wait...',
+                                        showConfirmButton: false,
+                                        allowOutsideClick: false,
+                                        allowEscapeKey: false,
+                                        didOpen: () => {
+                                            Swal.showLoading();
+                                        },
+                                    });
+
+                                    requestData(totalrows, rows);
+                                }
+                            }
+                            
+                            function requestData(total, json, numberData = 1, value = 0, success = 1, failed = 1) {
+                                var i = (numberData - 1);
+                                if (value < 100) {
+                                    value = Math.floor((numberData / total) * 100);
+                                    $.ajax({
+                                        type: "post",
+                                        url: '<?= base_url('warehouse/rgp_out/create') ?>',
+                                        data: {
+                                            process_type: process_type,
+                                            transaction_date: transaction_date,
+                                            number: number,
+                                            company_id: company_id,
+                                            plant: plant,
+                                            item_category_id: item_category_id,
+                                            departement_id: departement_id,
+                                            rgp_type_id: rgp_type_id,
+                                            reference_number: reference_number,
+                                            rgp_number: rgp_number,
+                                            return_date_estimation: return_date_estimation,
+                                            notes: notes,
+                                            declaration: declaration,
+                                            item_id: json[i].item_id,
+                                            uom: json[i].uom,
+                                            stock: json[i].stock,
+                                            hsn_code: json[i].hsn_code,
+                                            qty: json[i].qty,
+                                            currency: json[i].currency,
+                                            price: json[i].price,
+                                            value: json[i].value,
+                                            igst_value: json[i].igst_value,
+                                            sgst_value: json[i].sgst_value,
+                                            cgst_value: json[i].cgst_value,
+                                            total: json[i].total,
+                                        },
+                                        dataType: "json",
+                                        success: function(result) {
+                                            if (i == (total - 1)) {
+                                                Swal.close();
+                                                Swal.fire({
+                                                    title: result.message,
+                                                    icon: result.theme,
+                                                    confirmButtonText: 'Ok',
+                                                    allowOutsideClick: false,
+                                                }).then((result) => {
+                                                    if (result.isConfirmed) {
+                                                        // window.location.reload();
+                                                        $('#dg').datagrid('reload');
+                                                    }
+                                                });
+                                            }
+
+                                            requestData(total, json, numberData + 1, value, success + 1, failed + 0);
+                                        }
+                                    });
+                                }
                             }
                         }
-
-                        if (qty_over > 0) {
-                            toastr.warning("Qty must be less than or equal to inventory stock", "Information");
-                        } else {
-                            $('#dlg_insert').dialog('close');
-                            Swal.fire({
-                                title: 'Please Wait...',
-                                showConfirmButton: false,
-                                allowOutsideClick: false,
-                                allowEscapeKey: false,
-                                didOpen: () => {
-                                    Swal.showLoading();
-                                },
-                            });
-
-                            requestData(totalrows, rows);
-                        }
-                    } else {
-                        var qty_over = 0;
-                        for (let i = 0; i < rows.length; i++) {
-                            $.ajax({
-                                type: "post",
-                                url: '<?= base_url('warehouse/rgp_out/readStockRgp') ?>',
-                                data: {
-                                    rgp_number: rgp_number,
-                                    item_id: rows[i].item_id
-                                },
-                                dataType: "json",
-                                async: false, // Makes the request synchronous
-                                success: function(result) {
-                                    if (parseInt(rows[i].qty) > parseInt(result.balance)) {
-                                        qty_over++;
-                                    }
-                                }
-                            });
-                        }
-
-                        if (qty_over > 0) {
-                            toastr.warning("Qty must be less than or equal to balance", "Information");
-                        } else {
-                            $('#dlg_insert').dialog('close');
-                            Swal.fire({
-                                title: 'Please Wait...',
-                                showConfirmButton: false,
-                                allowOutsideClick: false,
-                                allowEscapeKey: false,
-                                didOpen: () => {
-                                    Swal.showLoading();
-                                },
-                            });
-
-                            requestData(totalrows, rows);
-                        }
-                    }
-
-
-                    function requestData(total, json, numberData = 1, value = 0, success = 1, failed = 1) {
-                        var i = (numberData - 1);
-                        if (value < 100) {
-                            value = Math.floor((numberData / total) * 100);
-                            $.ajax({
-                                type: "post",
-                                url: '<?= base_url('warehouse/rgp_out/create') ?>',
-                                data: {
-                                    process_type: process_type,
-                                    transaction_date: transaction_date,
-                                    number: number,
-                                    company_id: company_id,
-                                    plant: plant,
-                                    item_category_id: item_category_id,
-                                    departement_id: departement_id,
-                                    rgp_type_id: rgp_type_id,
-                                    reference_number: reference_number,
-                                    rgp_number: rgp_number,
-                                    return_date_estimation: return_date_estimation,
-                                    notes: notes,
-                                    declaration: declaration,
-                                    item_id: json[i].item_id,
-                                    uom: json[i].uom,
-                                    stock: json[i].stock,
-                                    hsn_code: json[i].hsn_code,
-                                    qty: json[i].qty,
-                                    currency: json[i].currency,
-                                    price: json[i].price,
-                                    value: json[i].value,
-                                    igst_value: json[i].igst_value,
-                                    sgst_value: json[i].sgst_value,
-                                    cgst_value: json[i].cgst_value,
-                                    total: json[i].total,
-                                },
-                                dataType: "json",
-                                success: function(result) {
-                                    if (i == (total - 1)) {
-                                        Swal.close();
-                                        Swal.fire({
-                                            title: result.message,
-                                            icon: result.theme,
-                                            confirmButtonText: 'Ok',
-                                            allowOutsideClick: false,
-                                        }).then((result) => {
-                                            if (result.isConfirmed) {
-                                                // window.location.reload();
-                                                $('#dg').datagrid('reload');
-                                            }
-                                        });
-                                    }
-
-                                    requestData(total, json, numberData + 1, value, success + 1, failed + 0);
-                                }
-                            });
-                        }
-                    }
+                    });
                 }
             }]
         });

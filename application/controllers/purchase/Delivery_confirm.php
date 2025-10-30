@@ -62,7 +62,7 @@ class Delivery_confirm extends CI_Controller
                 (a.qty - COALESCE(SUM(c.delivery), 0)) as qty, 
                 a.uom,
                 a.price,
-                a.currency,
+                e.currency,
                 a.delivery_date, 
                 DATE_FORMAT(now(), '%Y-%m-%d') as today, 
                 (a.qty - COALESCE(SUM(c.delivery), 0)) as delivery, 
@@ -70,6 +70,7 @@ class Delivery_confirm extends CI_Controller
                 (a.price * (a.qty - COALESCE(SUM(c.delivery), 0))) as total
             FROM purchase_orders a 
             JOIN item_rm b ON a.item_rm_id = b.id
+            JOIN suppliers e ON a.supplier_id = e.id
             LEFT JOIN purchase_confirm c ON a.po_no = c.po_no and a.item_rm_id = c.item_rm_id and a.supplier_id = c.supplier_id
             LEFT JOIN convertions d ON a.item_rm_id = d.item_rm_id
             WHERE a.po_no = '$po_no' and a.status = 0 and (b.number LIKE '%$post%' and b.id like '%$post%')

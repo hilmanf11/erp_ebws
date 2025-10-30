@@ -110,11 +110,11 @@
                 <div style="width: 30%; float: left;">
                     <div class="fitem">
                         <span style="width:35%; display:inline-block;">Invoice No</span>
-                        <input style="width:60%;" id="invoice_no" name="invoice_no" readonly class="easyui-textbox">
+                        <input style="width:60%;" id="invoice_no" name="invoice_no" class="easyui-textbox">
                     </div>
                     <div class="fitem">
                         <span style="width:35%; display:inline-block;">Invoice date</span>
-                        <input style="width:60%;" id="invoice_date" name="invoice_date" readonly class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
+                        <input style="width:60%;" id="invoice_date" name="invoice_date" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
                     </div>
                 </div>
             </fieldset>
@@ -974,16 +974,16 @@
                     for (var i = 0; i < rows.length; i++) {
                         var row = rows[i];
 
-                        // $.ajax({
-                        //     type: "post",
-                        //     url: "<?= base_url('closing/locks/checkLock') ?>",
-                        //     data: "period=" + row.trans_date + "&menus_id=<?= $menus_id ?>",
-                        //     dataType: "json",
-                        //     success: function (lock) {
-                        //         if(lock.total > 0){
-                        //             toastr.error("This period is not active by Accounting");
-                        //             return false;
-                        //         }
+                        $.ajax({
+                            type: "post",
+                            url: "<?= base_url('closing/locks/checkLock') ?>",
+                            data: "period=" + row.trans_date + "&menus_id=<?= $menus_id ?>",
+                            dataType: "json",
+                            success: function (lock) {
+                                if(lock.total > 0){
+                                    toastr.error("This period is not active by Accounting");
+                                    return false;
+                                }
 
                                 if(row.status == 0){
                                     // if(row.gl_no == null){
@@ -1016,8 +1016,8 @@
                                     swal.close();
                                     toastr.error("AP Payment Status is closed");
                                 }
-                        //     }
-                        // });
+                            }
+                        });
                     }
                 }
             });

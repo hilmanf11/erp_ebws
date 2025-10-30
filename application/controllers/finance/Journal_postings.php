@@ -2119,6 +2119,22 @@ class Journal_postings extends CI_Controller
         }
     }
 
+    function linked($modul, $document_no, $amount){
+        if($modul == "PURCHASE INVOICING"){
+            $html = '<a onclick="window.open(\'' . base_url('finance/purchase_invoices/print_invoicing/' . base64_encode($document_no) . "/tb") . '\', \'_blank\', \'location=yes,height=650,width=1500,scrollbars=yes,status=yes\');" style="color: inherit;text-decoration: none;cursor: pointer;">' . number_format($amount, 2) . '</a>';
+        }elseif($modul == "SALES INVOICING"){
+            $html = '<a onclick="window.open(\'' . base_url('finance/sales_invoices/print_dn/' . base64_encode($document_no). "/tb") . '\', \'_blank\', \'location=yes,height=650,width=1500,scrollbars=yes,status=yes\');" style="color: inherit;text-decoration: none;cursor: pointer;">' . number_format($amount, 2) . '</a>';
+        }elseif($modul == "AP PAYMENT"){
+            $html = '<a onclick="window.open(\'' . base_url('finance/ap_payments/print_voucher/' . base64_encode($document_no). "/tb") . '\', \'_blank\', \'location=yes,height=650,width=1500,scrollbars=yes,status=yes\');" style="color: inherit;text-decoration: none;cursor: pointer;">' . number_format($amount, 2) . '</a>';
+        }elseif($modul == "AR RECEIPT"){
+            $html = '<a onclick="window.open(\'' . base_url('finance/ar_receipts/print_voucher/' . base64_encode($document_no). "/tb") . '\', \'_blank\', \'location=yes,height=650,width=1500,scrollbars=yes,status=yes\');" style="color: inherit;text-decoration: none;cursor: pointer;">' . number_format($amount, 2) . '</a>';
+        }else{
+            $html = number_format($amount, 2);
+        }
+        
+        return $html;
+    }
+
     public function print_voucher($number)
     {
         $number = base64_decode($number);
@@ -2308,7 +2324,7 @@ class Journal_postings extends CI_Controller
             }
 
             $html .= '  <tr>
-                            <th style="text-align:right" colspan="6">SUB TOTAL</th>
+                            <th style="text-align:right" colspan="7">SUB TOTAL</th>
                             <th style="text-align:right;">' . @number_format($original_debit, 2) . '</th>
                             <th style="text-align:right;">' . @number_format($original_credit, 2) . '</th>
                             <th style="text-align:right;">-</th>
@@ -2346,6 +2362,156 @@ class Journal_postings extends CI_Controller
                 </table>';
 
         $html .= "</div></div><script>window.print()</script></body>";
+        die($html);
+    }
+
+    public function print_voucher_tb($number)
+    {
+        $number = base64_decode($number);
+
+        $config = $this->db->get('config')->row();
+        $html = '<html>
+                    <head>
+                        <title>' . $number . '</title>
+                        <link rel="icon" href="' . $config->favicon . '" type="image/png" sizes="16x16">
+                    </head>
+                    <style>
+                        body {
+                            font-family: Arial, Helvetica, sans-serif;
+                        }
+                        #customers {
+                            border-collapse: collapse;width: 100%;
+                            font-size: 12px;
+                        }
+                        #customers td, #customers th {
+                            border: 1px solid black;padding: 2px;
+                        }
+                        #customers th {
+                            padding-top: 2px;
+                            padding-bottom: 2px;
+                            text-align: center;color: black;
+                        }
+                    </style>
+                    <body>
+                    <div class="print">';
+        $no = 1;
+            $this->db->select('a.*, b.name as journal_type_name');
+            $this->db->from('journal_postings a');
+            $this->db->join('journal_types b', 'a.journal_type_id = b.id');
+            $this->db->like('a.number', $number);
+            $this->db->order_by('a.trans_date', 'ASC');
+            $records = $this->db->get()->result_array();
+
+            $html .= '  <table style="width:100%;">
+                            <tr>
+                                <th width="10"><img src="' . $config->favicon . '" width="60" /></th>
+                                <td width="250" style="padding:10px;">
+                                    <b style="font-size:14px;">' . $config->name . '</b><br>
+                                    <span style="font-size:10px;">' . $config->address . '</span><br>
+                                </td>
+                                <td width="200" style="text-align:right;">
+                                </td>
+                            </tr>
+                        </table>
+                        <div style="border: 1px solid black; width:100%;">
+                            <div style="padding:10px;">
+                                <center>
+                                    <h3>GENERAL LEDGER VOUCHER</h3>
+                                </center>
+                                <div style="float:left; width:49%;"> 
+                                    <table style="width:100%; font-size:12px; margin-bottom:10px;">
+                                        <tr>
+                                            <td width="80">General Ledger No</td>
+                                            <td width="10">:</td>
+                                            <td><b>' . $number . '</b></td>
+                                        </tr>
+                                        <tr>
+                                            <td width="50">Journal Date</td>
+                                            <td width="10">:</td>
+                                            <td><b>' . @$records[0]['journal_date'] . '</b></td>
+                                        </tr>
+                                        <tr>
+                                            <td width="50">Journal Type</td>
+                                            <td width="10">:</td>
+                                            <td><b>' . @$records[0]['journal_type_name'] . '</b></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                                <div style="float:left; width:50%;"> 
+                                    <table style="width:100%; font-size:12px; margin-bottom:10px;">
+                                        <tr>
+                                            <td width="80">Company Name</td>
+                                            <td width="10">:</td>
+                                            <td><b>' . @$records[0]['company_name'] . '</b></td>
+                                        </tr>
+                                        <tr>
+                                            <td width="50">Modul</td>
+                                            <td width="10">:</td>
+                                            <td><b>' . @$records[0]['modul'] . '</b></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                                <table id="customers">
+                                    <tr>
+                                        <th rowspan="2">No</th>
+                                        <th rowspan="2">Document No</th>
+                                        <th rowspan="2">Account No</th>
+                                        <th rowspan="2">Account Name</th>
+                                        <th rowspan="2">Description</th>
+                                        <th rowspan="2">Company Name</th>
+                                        <th colspan="3">Original Currency</th>
+                                        <th colspan="3">Local Currency</th>
+                                    </tr>
+                                    <tr>
+                                        <th>Currency</th>
+                                        <th>Debit</th>
+                                        <th>Credit</th>
+                                        <th>Rates</th>
+                                        <th>Debit</th>
+                                        <th>Credit</th>
+                                    </tr>';
+            $original_debit = 0;
+            $original_credit = 0;
+            $rates = 0;
+            $local_debit = 0;
+            $local_credit = 0;
+            foreach ($records as $record) {
+                $html .= '  <tr>
+                                <td style="text-align:center">' . $no . '</td>
+                                <td>' . $record['document_no'] . '</td>
+                                <td>' . $record['account_number'] . '</td>
+                                <td>' . $record['account_name'] . '</td>
+                                <td style="font-size:10px;">' . $record['description'] . '</td>
+                                <td>' . $record['company_name'] . '</td>
+                                <td>' . $record['currency'] . '</td>
+                                <td style="text-align:right;">' . $this->linked($record['modul'], $record['document_no'], $record['original_debit']) . '</td>
+                                <td style="text-align:right;">' . $this->linked($record['modul'], $record['document_no'], $record['original_credit']) . '</td>
+                                <td style="text-align:right;">' . @number_format($record['rates'], 2) . '</td>
+                                <td style="text-align:right;">' . $this->linked($record['modul'], $record['document_no'], $record['local_debit']) . '</td>
+                                <td style="text-align:right;">' . $this->linked($record['modul'], $record['document_no'], $record['local_credit']) . '</td>
+                            </tr>';
+
+                $original_debit += $record['original_debit'];
+                $original_credit += $record['original_credit'];
+                $rates += $record['rates'];
+                $local_debit += $record['local_debit'];
+                $local_credit += $record['local_credit'];
+                $no++;
+            }
+
+            $html .= '  <tr>
+                            <th style="text-align:right" colspan="7">SUB TOTAL</th>
+                            <th style="text-align:right;">' . @number_format($original_debit, 2) . '</th>
+                            <th style="text-align:right;">' . @number_format($original_credit, 2) . '</th>
+                            <th style="text-align:right;">-</th>
+                            <th style="text-align:right;">' . @number_format($local_debit, 2) . '</th>
+                            <th style="text-align:right;">' . @number_format($local_credit, 2) . '</th>
+                        </tr>
+                    </table>
+                </div>
+            </div>';
+
+        $html .= "</div></div></body>";
         die($html);
     }
 
@@ -2432,24 +2598,25 @@ class Journal_postings extends CI_Controller
         $no = 1;
         foreach ($records as $data) {
             $html .= '<tr>
-                    <td>' . $no . '</td>
-                    <td>' . $data['number'] . '</td>
-                    <td>' . $data['journal_date'] . '</td>
-                    <td>' . $data['journal_type_name'] . '</td>
-                    <td>' . $data['modul'] . '</td>
-                    <td>' . $data['document_no'] . '</td>
-                    <td>' . $data['invoice_no'] . '</td>
-                    <td>' . $data['company_name'] . '</td>
-                    <td>' . $data['trans_date'] . '</td>
-                    <td>' . $data['description'] . '</td>
-                    <td>' . $data['account_number'] . '</td>
-                    <td>' . $data['account_name'] . '</td>
-                    <td>' . $data['currency'] . '</td>
-                    <td>' . number_format($data['original_debit'], 4) . '</td>
-                    <td>' . number_format($data['original_credit'], 4) . '</td>
-                    <td>' . number_format($data['rates'], 2) . '</td>
-                    <td>' . number_format($data['local_debit'], 4) . '</td>
-                    <td>' . number_format($data['local_credit'], 4) . '</td>';
+                        <td>' . $no . '</td>
+                        <td>' . $data['number'] . '</td>
+                        <td>' . $data['journal_date'] . '</td>
+                        <td>' . $data['journal_type_name'] . '</td>
+                        <td>' . $data['modul'] . '</td>
+                        <td>' . $data['document_no'] . '</td>
+                        <td>' . $data['invoice_no'] . '</td>
+                        <td>' . $data['company_name'] . '</td>
+                        <td>' . $data['trans_date'] . '</td>
+                        <td>' . $data['description'] . '</td>
+                        <td>' . $data['account_number'] . '</td>
+                        <td>' . $data['account_name'] . '</td>
+                        <td>' . $data['currency'] . '</td>
+                        <td>' . number_format($data['original_debit'], 4) . '</td>
+                        <td>' . number_format($data['original_credit'], 4) . '</td>
+                        <td>' . number_format($data['rates'], 2) . '</td>
+                        <td>' . number_format($data['local_debit'], 4) . '</td>
+                        <td>' . number_format($data['local_credit'], 4) . '</td>
+                    </t';
             $no++;
         }
         $html .= '</table></body></html>';

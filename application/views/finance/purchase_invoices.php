@@ -140,6 +140,7 @@
                             <option value="purchase">Non Down Payment</option>
                             <option value="dp">Down Payment</option>
                             <option value="others">Others</option>
+                            <option value="services">Services</option>
                         </select>
                     </div>
                     <div class="fitem">
@@ -204,12 +205,12 @@
                 <tr>
                     <th rowspan="2" data-options="field:'action',width:120,formatter:buttonEdit">Action</th>
                     <th hidden rowspan="2" data-options="field:'id',width:150, editor: {type: 'textbox'}">ID</th>
-                    <th hidden rowspan="2" data-options="field:'asset_code',width:150, editor: {type: 'textbox'}">Asset Code</th>
                     <th rowspan="2" data-options="field:'por_no',width:150,editor: {type: 'textbox'}">POR. No</th>
                     <th rowspan="2" data-options="field:'po_no',width:180,editor: {type: 'textbox'}">PO. No</th>
                     <th rowspan="2" data-options="field:'item_rm_id',width:120,editor: {type: 'textbox', options: {readonly: true}}">Part No EBWS</th>
                     <th rowspan="2" data-options="field:'item_rm_number',width:150,editor: {type: 'textbox', options: {required: true}}">Part No Supplier</th>
                     <th rowspan="2" data-options="field:'item_family_name',width:120,editor: {type: 'textbox', options: {readonly: true}}">Product Family</th>
+                    <th rowspan="2" data-options="field:'asset_code',width:150, editor: {type: 'textbox', options: {readonly: true}}">Asset Code</th>
                     <th rowspan="2" data-options="field:'hsn_code',width:100,editor: {type: 'textbox', options: {readonly: true}}">HSN Code</th>
                     <th hidden rowspan="2" data-options="field:'item_family_id',width:200,editor: {type: 'textbox'}">Product Family ID</th>
                     <th hidden rowspan="2" data-options="field:'item_rm_name',width:200,editor: {type: 'textbox'}">Description</th>
@@ -1302,16 +1303,16 @@
                     for (var i = 0; i < rows.length; i++) {
                         var row = rows[i];
 
-                        // $.ajax({
-                        //     type: "post",
-                        //     url: "<?= base_url('closing/locks/checkLock') ?>",
-                        //     data: "period=" + row.trans_date + "&menus_id=<?= $menus_id ?>",
-                        //     dataType: "json",
-                        //     success: function (lock) {
-                        //         if(lock.total > 0){
-                        //             toastr.error("This period is not active by Accounting");
-                        //             return false;
-                        //         }
+                        $.ajax({
+                            type: "post",
+                            url: "<?= base_url('closing/locks/checkLock') ?>",
+                            data: "period=" + row.trans_date + "&menus_id=<?= $menus_id ?>",
+                            dataType: "json",
+                            success: function (lock) {
+                                if(lock.total > 0){
+                                    toastr.error("This period is not active by Accounting");
+                                    return false;
+                                }
 
                                 if(row.status == 0){
                                     // if(row.gl_no == null){
@@ -1344,8 +1345,8 @@
                                     swal.close();
                                     toastr.error("AP Payment Status is closed");
                                 }
-                        //     }
-                        // });
+                            }
+                        });
                     }
                 }
             });
@@ -1721,16 +1722,16 @@
                     var total_grand = $("#total_grand").numberbox('getValue');
                     var total_dp = $("#total_dp").numberbox('getValue');
 
-                    // $.ajax({
-                    //     type: "post",
-                    //     url: "<?= base_url('closing/locks/checkLock') ?>",
-                    //     data: "period=" + trans_date + "&menus_id=<?= $menus_id ?>",
-                    //     dataType: "json",
-                    //     success: function (lock) {
-                    //         if(lock.total > 0){
-                    //             toastr.error("This period is not active by Accounting");
-                    //             return false;
-                    //         }
+                    $.ajax({
+                        type: "post",
+                        url: "<?= base_url('closing/locks/checkLock') ?>",
+                        data: "period=" + trans_date + "&menus_id=<?= $menus_id ?>",
+                        dataType: "json",
+                        success: function (lock) {
+                            if(lock.total > 0){
+                                toastr.error("This period is not active by Accounting");
+                                return false;
+                            }
 
                             if (parseFloat(balance_debit) == parseFloat(balance_credit)) {
                                 if (por_no == "" || invoice_no == "" || supplier_id == "" || total_grand == "") {
@@ -1926,8 +1927,8 @@
                             } else {
                                 toastr.error("Balance Debit Cannot match on Balance Credit");
                             }
-                    //     }
-                    // });
+                        }
+                    });
                 }
             }]
         });
@@ -2081,9 +2082,10 @@
                             onSelect: function(row) {
                                 $("#invoice_no").textbox('setValue', row.bc_document);
                                 $("#boe_no").textbox('setValue', row.awb_no);
+                                $("#journal_type").combobox('setValue', row.journal_type_id);
                             }
                         });
-                    }else{
+                    }else if (type == "others") {
                         $("#por_no").combobox({
                             url: '<?= base_url('finance/purchase_invoices/readReceipt/other?supplier_id=') ?>' + row.id,
                             valueField: 'receipt_no',
@@ -2093,6 +2095,20 @@
                             onSelect: function(row) {
                                 $("#invoice_no").textbox('setValue', row.bc_document);
                                 $("#boe_no").textbox('setValue', row.awb_no);
+                                $("#journal_type").combobox('setValue', row.journal_type_id);
+                            }
+                        });
+                    }else{
+                        $("#por_no").combobox({
+                            url: '<?= base_url('finance/purchase_invoices/readReceipt/service?supplier_id=') ?>' + row.id,
+                            valueField: 'receipt_no',
+                            textField: 'receipt_no',
+                            // multiple: true,
+                            prompt: "Choose Purchase Order Receipts",
+                            onSelect: function(row) {
+                                $("#invoice_no").textbox('setValue', row.bc_document);
+                                $("#boe_no").textbox('setValue', row.awb_no);
+                                // $("#journal_type").combobox('setValue', row.journal_type_id);
                             }
                         });
                     }
@@ -2105,6 +2121,7 @@
                         onSelect: function(row) {
                             $("#invoice_no").textbox('setValue', row.bc_document);
                             $("#total_dp").numberbox('setValue', row.total_dp);
+                            $("#journal_type").combobox('setValue', row.journal_type_id);
                         }
                     });
                 }

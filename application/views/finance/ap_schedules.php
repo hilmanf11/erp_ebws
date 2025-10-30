@@ -12,6 +12,10 @@
                 <input style="width:60%;" id="filter_supplier" class="easyui-combobox">
             </div>
             <div class="fitem">
+                <span style="width:35%; display:inline-block;">Currency</span>
+                <input style="width:60%;" id="filter_currency" value="INR" class="easyui-combobox" panelHeight="auto">
+            </div>
+            <div class="fitem">
                 <span style="width:35%; display:inline-block;"></span>
                 <a href="javascript:;" class="easyui-linkbutton" onclick="filter()"><i class="fa fa-search"></i> Filter Data</a>
             </div>
@@ -29,9 +33,13 @@
         var filter_from = $("#filter_from").datebox("getValue");
         var filter_to = $("#filter_to").datebox("getValue");
         var filter_supplier = $("#filter_supplier").combobox("getValue");
+        var filter_currency = $("#filter_currency").combobox("getValue");
+
         var url = "?filter_from=" + window.btoa(filter_from) +
             "&filter_to=" + window.btoa(filter_to) +
-            "&filter_supplier=" + filter_supplier;
+            "&filter_supplier=" + filter_supplier +
+            "&filter_currency=" + filter_currency;
+
         if (filter_from == "" || filter_to == "") {
             toastr.warning("Please select Trans Date!");
         } else {
@@ -44,9 +52,12 @@
         var filter_from = $("#filter_from").datebox("getValue");
         var filter_to = $("#filter_to").datebox("getValue");
         var filter_supplier = $("#filter_supplier").combobox("getValue");
+        var filter_currency = $("#filter_currency").combobox("getValue");
+
         var url = "?filter_from=" + window.btoa(filter_from) +
             "&filter_to=" + window.btoa(filter_to) +
-            "&filter_supplier=" + filter_supplier;
+            "&filter_supplier=" + filter_supplier +
+            "&filter_currency=" + filter_currency;
 
         if (filter_from == "" || filter_to == "") {
             toastr.warning("Please select Trans Date!");
@@ -62,6 +73,7 @@
     function reload() {
         window.location.reload();
     }
+
     $(function() {
         $('#filter_supplier').combobox({
             url: '<?php echo base_url('master/suppliers/reads'); ?>',
@@ -74,8 +86,22 @@
                     $(e.data.target).combobox('clear').combobox('textbox').focus();
                 }
             }],
+            onSelect: function(row){
+                $('#filter_currency').combobox({
+                    // url: '<?php echo base_url('master/currencies/reads'); ?>',
+                    data: [{
+                        "number" : "INR",
+                    },{
+                        "number" : row.currency,
+                    }],
+                    valueField: 'number',
+                    textField: 'number',
+                    prompt: 'Choose Currency',
+                });
+            }
         });
     });
+
     //Format Datepicker
     function myformatter(date) {
         var y = date.getFullYear();

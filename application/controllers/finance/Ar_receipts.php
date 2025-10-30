@@ -916,7 +916,16 @@ class Ar_receipts extends CI_Controller
         die($html);
     }
 
-    public function print_voucher($receipt)
+    function linked($document_no, $amount){
+        if($document_no != "-" ){
+            $html = '<a onclick="window.open(\'' . base_url('finance/sales_invoices/print_dn/' . base64_encode($document_no). "/tb") . '\', \'_blank\', \'location=yes,height=650,width=1500,scrollbars=yes,status=yes\');" style="color: inherit;text-decoration: none;cursor: pointer;">' . number_format($amount, 2) . '</a>';
+            return $html;
+        }else{
+            return number_format($amount, 2);
+        }
+    }
+
+    public function print_voucher($receipt, $tb = "")
     {
         $receipt_no = base64_decode($receipt);
         $this->db->select('a.*, b.name as customer_name');
@@ -936,6 +945,34 @@ class Ar_receipts extends CI_Controller
         $page = ceil(count($receipt_total) / $rows);
         //Generate QRcode
         $this->createQrcode(@$receipt_no, "assets/image/qrcode/");
+
+        if($tb == ""){
+            $media = "  @media screen {
+                            .print {
+                                display: none !important;
+                            }
+                        }
+            
+                        @media print {
+                            .noprint {
+                                display: none !important;
+                            }
+                        }";
+            $noprint = '<div style="margin:20%;" class="noprint">
+                            <center>
+                                <h1>Press CTRL + P for Print</h1>
+                                <p>Display pages for 8 rows</p>
+                                <p>Paper Size A5, Layout Landscape</p>
+                                <p>Margin Default, Scale 80</p>
+                            </center>
+                        </div>';
+            $script = "<script>window.print()</script>";
+        }else{
+            $media = "";
+            $noprint = "";
+            $script = "";
+        }
+
         $html = '<html>
                     <head>
                         <title>' . $receipt_no . '</title>
@@ -957,27 +994,10 @@ class Ar_receipts extends CI_Controller
                             padding-bottom: 2px;
                             text-align: center;color: black;
                         }
-                        @media screen {
-                            .print {
-                                display: none !important;
-                            }
-                        }
-            
-                        @media print {
-                            .noprint {
-                                display: none !important;
-                            }
-                        }
+                        '.$media.'
                     </style>
                     <body>
-                    <div style="margin:20%;" class="noprint">
-                        <center>
-                            <h1>Press CTRL + P for Print</h1>
-                            <p>Display pages for 10 rows</p>
-                            <p>Paper Size A5, Layout Landscape</p>
-                            <p>Margin Default, Scale 80</p>
-                        </center>
-                    </div>
+                    '.$noprint.'
                     <div class="print">';
         $no = 1;
         $hal = 1;
@@ -1112,7 +1132,7 @@ class Ar_receipts extends CI_Controller
                                 <td>' . $record['currency'] . '</td>
                                 <td style="text-align:right;">' . @number_format(($record['amount']), 2) . '</td>
                                 <td style="text-align:right;">' . @number_format($record['balance'], 2) . '</td>
-                                <td style="text-align:right;">' . @number_format($record['receipt'], 2) . '</td>
+                                <td style="text-align:right;">' . $this->linked($record['sales_invoice'], $record['receipt']) . '</td>
                                 <td>' . $record['remarks'] . '</td>
                             </tr>';
                 $no++;
@@ -1173,7 +1193,7 @@ class Ar_receipts extends CI_Controller
             </div>
         </div>';
 
-        $html .= "</div></div><script>window.print()</script></body>";
+        $html .= "</div></div>".$script."</body>";
         die($html);
     }
 

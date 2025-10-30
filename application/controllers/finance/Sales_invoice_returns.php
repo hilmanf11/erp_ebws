@@ -264,7 +264,7 @@ class Sales_invoice_returns extends CI_Controller
         $this->db->from('config');
         $config = $this->db->get()->row();
 
-        $this->db->select("a.document_no as dn_number, a.customer_order_no as customer_po, a.sales_order_no as so_number, b.uom,
+        $this->db->select("a.document_no as rtn_number, a.sales_invoice_no as dn_number, a.customer_order_no as customer_po, a.sales_order_no as so_number, b.uom,
             a.item_fg_id, b.number_customer, b.number as item_fg_number, b.name as item_fg_name, b.account_number, b.account_name, b.hsn_code, h.bill_state as state,
             ROUND((a.qty_return * c.price) * COALESCE(f.igst, 0) / 100, 2) as igst,
             ROUND((a.qty_return * c.price) * COALESCE(f.sgst, 0) / 100, 2) as sgst,
@@ -322,6 +322,7 @@ class Sales_invoice_returns extends CI_Controller
             $total_local += $total2_local;
 
             $obj[] = array(
+                "rtn_number" => $record['rtn_number'],
                 "dn_number" => $record['dn_number'],
                 "so_number" => $record['so_number'],
                 "customer_po" => $record['customer_po'],
@@ -420,13 +421,13 @@ class Sales_invoice_returns extends CI_Controller
                 $send = $this->crud->update('sales_invoices', ["id" => $post['id']], $post);
                 echo $send;
             } else {
-                $sales_invoices = $this->crud->reads('sales_invoices', [], ["dn_number" => $post['dn_number'], "number" => $post['number'], "item_no" => $post['item_no'], "customer_id" => $post['customer_id']]);
+                $sales_invoices = $this->crud->reads('sales_invoices', [], ["rtn_number" => $post['rtn_number'], "number" => $post['number'], "item_no" => $post['item_no'], "customer_id" => $post['customer_id']]);
                 if (count($sales_invoices) > 0) {
                     die(json_encode(array("title" => "Available", "message" => "Data Already Created", "theme" => "error")));
                 }
 
                 $send = $this->crud->create('sales_invoices', $post);
-                $this->db->update('sales_returns', ["status" => "1"], ["document_no" => $post['dn_number'], "item_fg_id" => $post['item_fg_id']]);
+                $this->db->update('sales_returns', ["status" => "1"], ["document_no" => $post['rtn_number'], "item_fg_id" => $post['item_fg_id']]);
                 echo $send;
             }
         } else {
@@ -695,17 +696,11 @@ class Sales_invoice_returns extends CI_Controller
     public function delete()
     {
         $data = $this->input->post();
-        $packing_lists = $this->crud->reads('packing_lists', [], ["dn_number" => $data['dn_number']]);
-
-        if (count($packing_lists) > 0) {
-            echo json_encode(array("theme" => "error", "message" => "Please delete packing list first"));
-        } else {
-            $send = $this->crud->delete('sales_invoices', $data);
-            $this->db->delete('sales_invoice_journals', ["number" => $data['number']]);
-            $this->db->delete('journal_postings', ["document_no" => $data['number']]);
-            $this->db->update('sales_returns', ["status" => "0"], ["document_no" => $data['dn_number']]);
-            echo $send;
-        }
+        $send = $this->crud->delete('sales_invoices', $data);
+        $this->db->delete('sales_invoice_journals', ["number" => $data['number']]);
+        $this->db->delete('journal_postings', ["document_no" => $data['number']]);
+        $this->db->update('sales_returns', ["status" => "0"], ["document_no" => $data['rtn_number']]);
+        echo $send;
     }
 
     public function numberJournal($id_menu)
