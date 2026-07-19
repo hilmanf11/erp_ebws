@@ -19,7 +19,7 @@
     <thead>
     <tr>
             <th rowspan="2" field="ck" checkbox="true"></th>
-            <th rowspan="2" data-options="field:'status',width:80,align:'center', styler:cellStylerStatus, formatter:cellFormatterStatus">Status</th>
+            <th rowspan="2" data-options="field:'status_po',width:80,align:'center', styler:cellStylerStatus, formatter:cellFormatterStatus">Status</th>
             <th rowspan="2" data-options="field:'supplier_id',width:100,halign:'center'">Supplier ID</th>
             <th rowspan="2" data-options="field:'supplier_name',width:250,halign:'center'">Supplier Name</th>
             <th rowspan="2" data-options="field:'supplier_type',width:80,halign:'center'">Type</th>
@@ -374,11 +374,11 @@
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Price</span>
-                <input style="width:30%;" name="price" id="price" readonly class="easyui-numberbox" data-options="precision: 4">
+                <input style="width:30%;" name="price" id="price" readonly class="easyui-numberbox" data-options="precision: 5">
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Total</span>
-                <input style="width:30%;" name="total" id="total" readonly class="easyui-numberbox" data-options="precision: 4">
+                <input style="width:30%;" name="total" id="total" readonly class="easyui-numberbox" data-options="precision: 5">
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Remarks</span>
@@ -831,8 +831,6 @@
         var row = $('#dg_purchase_order').datagrid('getSelected');
         if (row) {
             if(row.status == 0){
-                $('#dlg_insert').dialog('open');
-
                 $("#po_no").combogrid({
                     url: '<?= base_url('purchase/purchase_orders/readPo/') ?>' + row.p_month + '/' + row.p_year + '/' + row.revision + '/' + row.item_family_id,
                     panelWidth: 650,
@@ -866,6 +864,16 @@
                 $('#frm_insert').form('load', row);
 
                 url_save = '<?= base_url('purchase/purchase_orders/updateDetails') ?>?id=' + btoa(row.id);
+                
+                if(row.approved_to == "" || row.approved_to == null){
+                    $.messager.prompt('Edit Data PO', 'Data has been Approved, Please input Password to Edit', function(r){
+                        if (r == "EDITPO"){
+                            $('#dlg_insert').dialog('open');
+                        }
+                    });
+                }else{
+                    $('#dlg_insert').dialog('open');
+                }
             }else{
                 toastr.error("Cannot Update because the Delivery Confirmation has been Added");
             }
@@ -1642,8 +1650,14 @@
     }
 
     function numberformatPrice(value, row){
+        if(row.currency == "INR"){
+            var digit = 4;
+        }else{
+            var digit = 5;
+        }
+
         const formatter = new Intl.NumberFormat('ja-JP', {
-            minimumFractionDigits: 5
+            minimumFractionDigits: digit
         });
 
         return "<b>" + formatter.format(value) + "</b>";

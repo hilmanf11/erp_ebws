@@ -75,6 +75,16 @@ class Purchase_invoices extends CI_Controller
         die(json_encode($datas));
     }
 
+    public function readSupplierCoa(){
+        $supplier_id = $this->input->post('supplier_id');
+        $journals = $this->crud->query("SELECT b.account_number, b.account_name
+            FROM account_balance_suppliers a 
+            JOIN account_coa b ON a.account_number = b.account_number 
+            WHERE a.supplier_id = '$supplier_id'");
+
+        echo json_encode($journals);
+    }
+
     public function readJournal($journal_type_id)
     {
         $post = isset($_POST['q']) ? $_POST['q'] : "";
@@ -85,14 +95,17 @@ class Purchase_invoices extends CI_Controller
             JOIN account_coa b ON a.account_number = b.account_number 
             WHERE a.account_number LIKE '%$post%' and a.journal_type_id = '$journal_type_id' ORDER BY a.flag ASC");
 
+        $flag = 1;
         foreach ($journals as $journal) {
             $arr[] = array(
                 "account_number" => $journal->account_number,
                 "account_name" => $journal->account_name,
                 "debit" => "0.00",
                 "credit" => "0.00",
-                "flag" => $journal->flag,
+                "flag" => $flag,
             );
+
+            $flag++;
         }
 
         echo json_encode($arr);
@@ -147,13 +160,13 @@ class Purchase_invoices extends CI_Controller
                             "flag" => $flag,
                         );
                     }
-                }
 
-                $flag++;
+                    $flag++;
+                }
             }
 
             $array1 = array_values($mergedData);
-
+            $flag = 1;
             foreach ($journals as $journal) {
                 $array2[] = array(
                     "account_number" => $journal['account_number'],
@@ -207,24 +220,27 @@ class Purchase_invoices extends CI_Controller
         }
 
         if($type == "purchase"){
-            $records = $this->crud->query("SELECT a.receipt_no, a.receipt_id, a.taxes, a.total_dp, a.bc_document, a.awb_no, a.journal_type_id, a.journal_type_name FROM (SELECT a.receipt_no, a.receipt_id, d.taxes, d.total_dp, a.bc_document, a.awb_no, COALESCE(e.total_label, 0) AS total_label, a.qty_label AS qty_label, f.journal_type_id, f.journal_type_name
-                FROM (SELECT * FROM purchase_order_receipts WHERE status != '2') a
+            $records = $this->crud->query("SELECT a.receipt_no, a.receipt_id, a.taxes, a.total_dp, a.bc_document, a.awb_no, a.journal_type_id, a.journal_type_name, SUM(a.qty_label) AS qty_label, SUM(a.total_label) AS total_label FROM (
+                SELECT a.receipt_no, a.receipt_id, d.taxes, d.total_dp, a.bc_document, a.awb_no, f.journal_type_id, f.journal_type_name, a.qty_label, a.total_label
+                FROM (SELECT a.*, b.total_label
+                    FROM purchase_order_receipts a 
+                    LEFT JOIN (SELECT receipt_id, COUNT(id) AS total_label FROM scan_item_receipts GROUP BY receipt_id) b ON a.receipt_id = b.receipt_id
+                    WHERE a.status = 0 AND a.supplier_id = '$supplier_id'
+                ) a
                 JOIN item_rm b ON a.item_rm_id = b.id
-                JOIN item_familys c ON b.item_family_id = c.id
                 JOIN purchase_orders d ON a.po_no = d.po_no
-                LEFT JOIN (SELECT receipt_id, COUNT(id) AS total_label FROM scan_item_receipts GROUP BY receipt_id) e ON a.receipt_id = e.receipt_id
-                LEFT JOIN (select a.name as journal_type_name, a.id as journal_type_id, b.account_number from journal_types a JOIN journal_setups b ON a.id = b.journal_type_id WHERE a.module like '%PURCHASE INVOICING%' GROUP BY a.id, b.account_number) f ON b.account_number = f.account_number
-                WHERE a.status = '0' AND a.supplier_id = '$supplier_id' $dp
+                LEFT JOIN (SELECT a.name AS journal_type_name, a.id AS journal_type_id, b.account_number FROM journal_types a JOIN journal_setups b ON a.id = b.journal_type_id WHERE a.module LIKE '%PURCHASE INVOICING%' GROUP BY a.id, b.account_number) f ON b.account_number = f.account_number
                 GROUP BY a.receipt_id 
                 ORDER BY a.created_date DESC) a
                 GROUP BY a.receipt_no
-                HAVING SUM(a.total_label) = SUM(a.qty_label)");
+                HAVING SUM(a.qty_label) = SUM(a.total_label)");
         }else if($type == "other"){
-            $records = $this->crud->query("SELECT a.receipt_no, d.taxes, d.total_dp, a.bc_document, a.awb_no, f.journal_type_id, f.journal_type_name
+            $records = $this->crud->query("SELECT a.receipt_no, d.taxes, d.total_dp, a.bc_document, a.awb_no, (CASE WHEN e.journal_type_id is null THEN f.journal_type_id ELSE e.journal_type_id END) as journal_type_id, f.journal_type_name
                 FROM purchase_order_receipt_others a
                 JOIN item_rm b ON a.item_rm_id = b.id
                 JOIN item_familys c ON b.item_family_id = c.id
                 JOIN purchase_order_others d ON a.po_no = d.po_no
+                LEFT JOIN (select a.number, b.id, b.name, c.account_number, c.account_name, d.journal_type_id from assets a join item_familys b ON a.item_family_id = b.id join account_coa c ON b.account_number = c.account_number join journal_setups d ON b.account_number = d.account_number group by a.number) e ON a.asset_code = e.number
                 LEFT JOIN (select a.name as journal_type_name, a.id as journal_type_id, b.account_number from journal_types a JOIN journal_setups b ON a.id = b.journal_type_id WHERE a.module like '%PURCHASE INVOICING%' GROUP BY a.id, b.account_number) f ON b.account_number = f.account_number
                 WHERE a.supplier_id = '$supplier_id' and a.status = '0' and a.store = '1' $dp
                 GROUP BY a.receipt_no 
@@ -363,7 +379,11 @@ class Purchase_invoices extends CI_Controller
             $records = $this->db->get()->result_array();
         }elseif($type == "others"){
             $this->db->select("a.receipt_no as por_no, a.po_no, a.asset_code, c.id as item_rm_id, c.number as item_rm_number, c.name as item_rm_name, c.uom, c.hsn_code, b.currency, 
-                a.qty_receipt as qty, f.price, f.discount, 'INR' as currency_local, h.account_number, i.account_name, h.id  as item_family_id, h.name as item_family_name,
+                a.qty_receipt as qty, f.price, f.discount, 'INR' as currency_local, 
+                (CASE WHEN l.account_number is null THEN h.account_number ELSE l.account_number END) as account_number, 
+                (CASE WHEN l.account_name is null THEN i.account_name ELSE l.account_name END) as account_name,
+                (CASE WHEN l.id is null THEN h.id ELSE l.id END) as item_family_id,
+                (CASE WHEN l.name is null THEN h.name ELSE l.name END) as item_family_name,
                 b.tds, b.state, k.individual, b.type as supplier_type,
                 ((a.qty_receipt * f.price) * COALESCE(j.igst, 0) / 100) as igst,
                 ((a.qty_receipt * f.price) * COALESCE(j.sgst, 0) / 100) as sgst,
@@ -380,6 +400,7 @@ class Purchase_invoices extends CI_Controller
             $this->db->join('account_coa i', "h.account_number = i.account_number", 'left');
             $this->db->join('hsn j', "c.hsn_code = j.number", 'left');
             $this->db->join('tds k', "b.tds = k.section", 'left');
+            $this->db->join("(select a.number, b.id, b.name, c.account_number, c.account_name from assets a join item_familys b ON a.item_family_id = b.id join account_coa c ON b.account_number = c.account_number group by a.number) l", "a.asset_code = l.number", 'left');
             $this->db->where('a.deleted', 0);
             // $this->db->where('a.status', 0);
             $this->db->where_in('a.receipt_no', $por_no_ex);
@@ -604,89 +625,68 @@ class Purchase_invoices extends CI_Controller
             $dataPurchaseInvoices = $post['dataPurchaseInvoices'];
             $combinedJournals = $post['combinedJournals'];
 
+            $dataAssets = array();
             foreach ($dataPurchaseInvoices as $purchase_invoice) {
                 if (!empty(@$purchase_invoice['id'])) {
                     $send = $this->crud->update('purchase_invoices', ["id" => $purchase_invoice['id']], $purchase_invoice);
                 } else {
-                    // $purchase_invoices = $this->crud->reads('purchase_invoices', [], ["por_no" => $post['por_no'], "po_no" => $post['po_no'], "item_no" => $post['item_no'], "supplier_id" => $post['supplier_id'], "trans_date" => $post['trans_date']]);
-                    
-                    // if(count($purchase_invoices) > 0){
-                    //     die(json_encode(array("title" => "Available", "message" => "Data Already Created", "theme" => "error")));
-                    // }
-
                     $send = $this->crud->create('purchase_invoices', $purchase_invoice, "logs");
                     if ($send) {
                         if ($purchase_invoice['por_no'] != "-") {
                             if ($purchase_invoice['type'] != "dp") {
                                 if($purchase_invoice['type'] == "purchase"){
                                     $this->db->update('purchase_order_receipts', ["status" => 1], ["receipt_no" => $purchase_invoice['por_no'], "po_no" => $purchase_invoice['po_no'], "item_rm_id" => $purchase_invoice['item_rm_id'], "supplier_id" => $purchase_invoice['supplier_id']]);
-                                }else{
-                                    // $supplier = $this->crud->read("suppliers", [], ["id" => $post['supplier_id']]);
-                                    // $item_rm = $this->crud->read("item_rm", [], ["id" => $post['item_rm_id']]);
-                                    // $item_family = $this->crud->read("item_familys", [], ["id" => $post['item_family_id']]);
+                                }else{                                    
+                                    if(@$purchase_invoice['asset_code'] != "" && @$purchase_invoice['asset_code'] != "-"){
+                                        $asset_code = $purchase_invoice['asset_code'];
 
-                                    // $estimate_year = $item_family->usefull;
-                                    // $shift = $item_family->shift;
-                                    // $estimate_month = ($estimate_year * 12);
-                                    // $depreciation = ($estimate_year / $estimate_month);
-                                    // $expired_date = date("Y-m-d", strtotime("+" . $estimate_year . " year", strtotime($post['trans_date'])));
-                                    // $date_from  = date_create($post['trans_date']);
-                                    // $date_to  = date_create($expired_date);
-                                    // $diff  = date_diff($date_from, $date_to); 
-                                    // $estimate_day = $diff->d;
+                                        $item_rm = $this->crud->read("item_rm", [], ["id" => $purchase_invoice['item_rm_id']]);
+                                        $item_family = $this->crud->read("item_familys", [], ["id" => $item_rm->item_family_id]);
+                                        $supplier = $this->crud->read('suppliers', [], ["id" => $purchase_invoice['supplier_id']]);
+                                        $asset_fixeds = $this->crud->read('asset_fixeds', [], ["number" => $asset_code]);
+                                        $asset = $this->crud->read('assets', [], ["number" => $asset_code]);
 
-                                    // if($shift == "1"){
-                                    //     $factor = 1;
-                                    // }else{
-                                    //     $factor = 2;
-                                    // }
+                                        if (isset($dataAsset[$asset_code])) {
+                                            $amount += $purchase_invoice['total'];
+                                        } else {
+                                            $amount = $purchase_invoice['total'];
+                                        }
 
-                                    // //Fixed Asset
-                                    // if($item_rm->item_category_id = 'C06'){
-                                    //     if(@$post['asset_code'] != "" && @$post['asset_code'] != "-"){
+                                        if(@$item_family->usefull > 0){
+                                            $estimate_year = $item_family->usefull;
+                                        }else{
+                                            $estimate_year = 1;
+                                        }
+                                        
+                                        $depreciation = ($amount / ($estimate_year * 12));
 
-                                    //         $asset_code = $post['asset_code'];
-                                    //         $asset = $this->crud->read("assets", [], ["number" => $asset_code]);
-                                    //         $asset_fixeds = $this->crud->read("asset_fixeds", [], ["number" => $asset_code]);
-                                    //         // $sql_asset_fixed = $this->db->query("SELECT max(numbers) as numbers FROM asset_fixeds WHERE number = '$asset_code'");
-                                    //         // $row_asset_fixed = $sql_asset_fixed->row();
-
-                                    //         $dataAsset = array(
-                                    //             "item_family_id" => $post['item_family_id'],
-                                    //             "purchase_invoice_no" => $post['number'],
-                                    //             "supplier_id" => $post['supplier_id'],
-                                    //             "supplier_name" => @$supplier->name,
-                                    //             "item_rm_id" => $post['item_rm_id'],
-                                    //             "number" => @$asset_code,
-                                    //             // "numbers" => @$row_asset_fixed->numbers + 1,
-                                    //             "name" => @$asset->name,
-                                    //             "shift" => $shift,
-                                    //             "trans_date" => $post['trans_date'],
-                                    //             "qty" => (@$asset->qty),
-                                    //             "currency" => $post['currency'],
-                                    //             "cost" => $post['price'],
-                                    //             "estimate_month" => $estimate_month,
-                                    //             "estimate_year" => $estimate_year,
-                                    //             "residual" => (($post['total2'] * 5) / 100),
-                                    //             "expired_date" => $expired_date,
-                                    //             "depreciation" => $depreciation,
-                                    //             "remarks" => $post['remarks'],
-                                    //             "method" => "PURCHASE INVOICING",
-                                    //             "departement" => @$item_rm->departement,
-                                    //             "total" => $post['total2'],
-                                    //             //Field Baru
-                                    //             "total_period" => 0,
-                                    //             "uom" => @$item_rm->uom,
-                                    //             // "addition" => ($post['total2'] - (($post['total2'] * 5) / 100) / $estimate_year / 365 * $estimate_day * $factor),
-                                    //             "addition" => 0,
-                                    //             "estimate_day" => $estimate_day,
-                                    //         );
-                                            
-                                    //         if(empty($asset_fixeds)){
-                                    //             $this->crud->create('asset_fixeds', $dataAsset);
-                                    //         }
-                                    //     }
-                                    // }
+                                        if(empty($asset_fixeds)){
+                                            $dataAssets[$asset_code] = array(
+                                                "item_family_id" => @$item_family->id,
+                                                "purchase_invoice_no" => $purchase_invoice['number'],
+                                                "supplier_id" => $purchase_invoice['supplier_id'],
+                                                "supplier_name" => @$supplier->name,
+                                                // "item_rm_id" => $data['item_rm_id'],
+                                                "number" => $asset_code,
+                                                "name" => @$asset->name,
+                                                "shift" => @$item_family->shift,
+                                                "trans_date" => $purchase_invoice['trans_date'],
+                                                "uom" => $asset->uom,
+                                                "qty" => $asset->qty,
+                                                "currency" => @$supplier->currency,
+                                                "cost" => $amount,
+                                                "estimate_day" => ($estimate_year * 365),
+                                                "estimate_month" => ($estimate_year * 12),
+                                                "estimate_year" => $estimate_year,
+                                                "expired_date" => date("Y-m-d", strtotime("+" . ($estimate_year * 12) . ' months', strtotime($purchase_invoice['trans_date']))),
+                                                "depreciation" => $depreciation,
+                                                "method" => "PURCHASE",
+                                                "account_number" => $purchase_invoice['account_number'],
+                                                "total" => $amount,
+                                                "posting_date" => $purchase_invoice['trans_date'],
+                                            );
+                                        }
+                                    }
 
                                     $this->db->update('purchase_order_receipt_others', ["status" => 1], ["receipt_no" => $purchase_invoice['por_no'], "po_no" => $purchase_invoice['po_no'], "item_rm_id" => $purchase_invoice['item_rm_id'], "supplier_id" => $purchase_invoice['supplier_id']]);
                                 }
@@ -696,6 +696,10 @@ class Purchase_invoices extends CI_Controller
                         }
                     }
                 }
+            }
+            
+            foreach ($dataAssets as $code => $value) {
+                $this->crud->create('asset_fixeds', $value);
             }
 
             foreach ($combinedJournals as $journal) {
@@ -872,7 +876,7 @@ class Purchase_invoices extends CI_Controller
                         }
 
                         $data[] = array(
-                            "journal_date" => date("Y-m-d"),
+                            "journal_date" => $purchase_invoice['trans_date'],
                             "journal_type_id" => $purchase_invoice['journal_type_id'],
                             "number" => $voucher_no,
                             "trans_date" => $purchase_invoice['trans_date'],
@@ -923,7 +927,7 @@ class Purchase_invoices extends CI_Controller
                     }
 
                     $data[] = array(
-                        "journal_date" => date("Y-m-d"),
+                        "journal_date" => $journal['trans_date'],
                         "journal_type_id" => $purchase_invoice['journal_type_id'],
                         "number" => $voucher_no,
                         "trans_date" => $journal['trans_date'],
@@ -1225,6 +1229,12 @@ class Purchase_invoices extends CI_Controller
                 $total_sgst += round($record['sgst'], 2);
                 $total_cgst += round($record['cgst'], 2);
 
+                if ($record['currency'] == "INR") {
+                    $digits = 4;
+                } else {
+                    $digits = 5;
+                }
+
                 $html .= '  <tr>
                                 <td style="text-align:center">' . $no . '</td>
                                 <td>' . $record['por_no'] . '</td>
@@ -1234,13 +1244,13 @@ class Purchase_invoices extends CI_Controller
                                 <td>' . $record['uom'] . '</td>
                                 <td style="text-align:right;">' . @number_format(($record['qty']), 2) . '</td>
                                 <td>' . $record['currency'] . '</td>
-                                <td style="text-align:right;">' . @number_format($record['price'], 4) . '</td>
+                                <td style="text-align:right;">' . @number_format($record['price'], $digits) . '</td>
                                 <td style="text-align:right;">' . @number_format($record['total'], 2) . '</td>
                                 <td style="text-align:right;">' . @number_format($record['igst'], 2) . '</td>
                                 <td style="text-align:right;">' . @number_format($record['cgst'], 2) . '</td>
                                 <td style="text-align:right;">' . @number_format($record['sgst'], 2) . '</td>
                                 <td style="text-align:right;">' . @number_format($record['total2'], 2) . '</td>
-                                <td style="text-align:right;">' . @number_format($record['rate'], 4) . '</td>
+                                <td style="text-align:right;">' . @number_format($record['rate'], $digits) . '</td>
                                 <td>INR</td>
                                 <td style="text-align:right;">' . @number_format($amount, 2) . '</td>
                             </tr>';

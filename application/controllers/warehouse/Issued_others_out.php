@@ -99,17 +99,31 @@ class Issued_others_out extends CI_Controller
     public function datatableDetails($request_no)
     {
         $request_no = base64_decode($request_no);
+        $filter_from = date("Y-m-d");
 
         //Select Query
         $this->db->select("a.request_no,a.request_name,a.trans_date, a.item_rm_id,a.remarks,
-        a.qty - coalesce(c.qty,0) as stock, 
-        a.qty - coalesce(c.qty,0) as qty, 
-        (a.qty - coalesce(c.qty,0)) - (a.qty - coalesce(c.qty,0)) as balance, 
-        coalesce(c.qty,0) as total_issued,
-        b.number as item_rm_number, b.name as item_rm_name, b.uom");
+            coalesce(d.ending_stock, 0) as ending_stock,
+            a.qty - coalesce(c.qty,0) as stock, 
+            a.qty - coalesce(c.qty,0) as qty, 
+            (a.qty - coalesce(c.qty,0)) - (a.qty - coalesce(c.qty,0)) as balance, 
+            coalesce(c.qty,0) as total_issued,
+            b.number as item_rm_number, b.name as item_rm_name, b.uom");
         $this->db->from('issued_others_request a');
         $this->db->join('item_rm b', 'a.item_rm_id = b.id');
         $this->db->join("(select request_no, item_rm_id, sum(qty) as qty from issued_others where status <> '2' group by request_no, item_rm_id) c", 'a.request_no = c.request_no and a.item_rm_id=c.item_rm_id', 'left');
+        $this->db->join("(SELECT
+            a.id,
+            (COALESCE(c.qty_receipt,0) + COALESCE(e.qty_rgp_in,0) + COALESCE(g.sto_qty_in, 0) - COALESCE(i.sto_qty_out, 0) - COALESCE(f.qty_rgp_out,0) - COALESCE(d.qty,0)) AS ending_stock
+            FROM item_rm a 
+            JOIN item_familys b ON a.item_family_id = b.id AND b.number != '006'
+            LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty_receipt), 0) as qty_receipt FROM purchase_order_receipt_others WHERE receipt_date <= '$filter_from' and store != 0 GROUP BY item_rm_id) c ON a.id = c.item_rm_id
+            LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as qty FROM issued_others WHERE trans_date <= '$filter_from' GROUP BY item_rm_id) d ON a.id = d.item_rm_id
+            LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_in FROM rgp_transactions WHERE type = 'IN' and transaction_date <= '$filter_from' and (approved_to = '' or approved_to is null) GROUP BY item_id) e ON a.id = e.item_id
+            LEFT JOIN (SELECT item_id, COALESCE(SUM(qty), 0) as qty_rgp_out FROM rgp_transactions WHERE type = 'OUT' and transaction_date <= '$filter_from' and (approved_to = '' or approved_to is null) GROUP BY item_id) f ON a.id = f.item_id
+            LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as sto_qty_in FROM sto_ot WHERE type = 'IN' and trans_date <= '$filter_from' and (approved_to = '' or approved_to is null) GROUP BY item_rm_id) g ON a.id = g.item_rm_id
+            LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as sto_qty_out FROM sto_ot WHERE type = 'OUT' and trans_date <= '$filter_from' and (approved_to = '' or approved_to is null) GROUP BY item_rm_id) i ON a.id = i.item_rm_id
+            GROUP BY a.id) d", 'a.item_rm_id = d.id', 'left');
         $this->db->where('a.request_no', $request_no);
         $this->db->where('a.status !=', 2);
         $this->db->order_by('b.number', 'DESC');

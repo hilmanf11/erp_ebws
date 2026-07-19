@@ -238,18 +238,19 @@ class Report_trial_balances extends CI_Controller
         $this->db->from('config');
         $config = $this->db->get()->row();
 
-        $this->db->select('account_number, account_name, header,
-            begin_debit as begin_debit, 
-            begin_credit as begin_credit, 
-            SUM(local_debit) as local_debit, 
-            SUM(local_credit) as local_credit,
-            SUM(ending_debit) as ending_debit,
-            SUM(ending_credit) as ending_credit');
-        $this->db->from('trial_balances');
-        $this->db->where('period >=', $period);
-        $this->db->where('period <=', $period_to);
-        $this->db->order_by('account_number', 'asc');
-        $this->db->group_by('account_number', 'asc');
+        $this->db->select('a.account_number, a.account_name, a.header,
+            b.begin_debit, 
+            b.begin_credit, 
+            SUM(a.local_debit) as local_debit, 
+            SUM(a.local_credit) as local_credit,
+            SUM(a.ending_debit) as ending_debit,
+            SUM(a.ending_credit) as ending_credit');
+        $this->db->from('trial_balances a');
+        $this->db->join("(select * from trial_balances WHERE period = '$period') b", 'a.account_number = b.account_number', 'left');
+        $this->db->where('a.period >=', $period);
+        $this->db->where('a.period <=', $period_to);
+        $this->db->group_by('a.account_number');
+        $this->db->order_by('a.account_number', 'asc');
         $trial_balances = $this->db->get()->result_array();
 
         $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#customers {border-collapse: collapse;width: 100%;font-size: 12px;}#customers td, #customers th {border: 1px solid #ddd;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: #ddd;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: center;color: black;}</style><body>

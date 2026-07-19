@@ -695,6 +695,37 @@
                 });
             }
         });
+
+        $('#filter_item_fg').combogrid({
+            url: '<?= base_url('master/customer_items/reads') ?>',
+            panelWidth: 600,
+            idField: 'id',
+            textField: 'number',
+            mode: 'remote',
+            fitColumns: true,
+            prompt: "Choose Product No",
+            icons: [{
+                iconCls: 'icon-clear',
+                handler: function(e) {
+                    $(e.data.target).combogrid('clear').combogrid('textbox').focus();
+                }
+            }],
+            columns: [
+                [{
+                    field: 'number',
+                    title: 'Product EBWS',
+                    width: 150
+                },{
+                    field: 'number_customer',
+                    title: 'Product Customer',
+                    width: 200
+                }, {
+                    field: 'name',
+                    title: 'Description',
+                    width: 200
+                }]
+            ]
+        });
     });
 
     //Format Datepicker

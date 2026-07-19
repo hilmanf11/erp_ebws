@@ -61,7 +61,7 @@ class Item_rm extends CI_Controller
     public function readItemCategory($item_category = "")
     {
         // if($item_category == "ASSET"){
-        //     $where_category = "and c.type IN ('ASSET','SERVICE')";
+        //     $where_category = "and c.type IN ('OTHER','ASSET','SERVICE')";
         // }else{
         //     $where_category = "and c.type = '$item_category'";
         // }
@@ -464,7 +464,7 @@ class Item_rm extends CI_Controller
                 echo json_encode(array("title" => "Not Found", "message" => "Product Family " . $data['item_family_number'] . " Not Found", "theme" => "error"));
             // } elseif ($data['item_category_number'] == "FA") {
             //     echo json_encode(array("title" => "Fixed Asset", "message" => "Category " . $data['item_category_number'] . " Cannot Create in Master RM", "theme" => "error"));
-            } elseif (empty(@$account_coa->account_number) && $product_family->number != "FA") {
+            } elseif (empty(@$account_coa->account_number) && $category->type != "ASSET") {
                 echo json_encode(array("title" => "Not Found", "message" => "COA No " . @$data['account_number'] . " Not Found", "theme" => "error"));
             } elseif (empty($hsn->name)) {
                 echo json_encode(array("title" => "Not Found", "message" => "HSN Code " . $data['hsn_code'] . " Not Found", "theme" => "error"));

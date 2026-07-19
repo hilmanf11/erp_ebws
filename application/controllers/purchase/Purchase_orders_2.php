@@ -201,6 +201,7 @@ class purchase_orders_2 extends CI_Controller
                 $this->db->join('purchase_invoices h', 'a.item_rm_id = h.item_rm_id and a.po_no = h.po_no', 'left');
                 $this->db->join('purchase_order_receipt_others i', 'a.item_rm_id = i.item_rm_id and a.po_no = i.po_no', 'left');
                 $this->db->where('a.deleted', 0);
+                $this->db->where('a.type', "PO");
                 if ($filter_from != "" or $filter_to != "") {
                     $this->db->where('a.po_date >=', $filter_from);
                     $this->db->where('a.po_date <=', $filter_to);
@@ -322,7 +323,7 @@ class purchase_orders_2 extends CI_Controller
                     $this->db->update("purchase_request_others", ["status" => 1]);
                     echo $send;
                 }else{
-                    show_error();
+                    show_error('Duplicate');
                 }
             } else {
                 show_error(validation_errors());
@@ -397,17 +398,12 @@ class purchase_orders_2 extends CI_Controller
         $supplier = $this->crud->read('suppliers', [], ["id" => @$purchase_order_others->supplier_id]);
         $approval = $this->crud->read('approvals', [], ["table_name" => "purchase_order_others"]);
 
-        $user_3 = $this->crud->read('users', [], ["username" => @$approval->user_approval_2]);
-        $user_4 = $this->crud->read('users', [], ["username" => @$approval->user_approval_3]);
+        $user_3 = $this->crud->read('users', [], ["username" => @$approval->user_approval_1]);
         
         $qr_user_3 = "";
-        $qr_user_4 = "";
         
-        if($purchase_order_others->approved == 3){
+        if($purchase_order_others->approved == 2){
             $qr_user_3 = "src='" .base_url('assets/image/qrcode/' . @$user_3->name . '.png')."'";
-        }elseif($purchase_order_others->approved == 4){
-            $qr_user_3 = "src='" .base_url('assets/image/qrcode/' . @$user_3->name . '.png')."'";
-            $qr_user_4 = "src='" .base_url('assets/image/qrcode/' . @$user_4->name . '.png')."'";
         }
 
         // $month_1 =  date('M Y', strtotime('+1 month', strtotime(@$purchase_order_others->po_date)));
@@ -423,7 +419,6 @@ class purchase_orders_2 extends CI_Controller
         // $this->createQrcode($purchase_order_others->po_no, "assets/image/qrcode/");
 
         $this->createQrcode(@$user_3->name, "assets/image/qrcode/");
-        $this->createQrcode(@$user_4->name, "assets/image/qrcode/");
 
         $media = "@media screen {
                         .print {
@@ -472,6 +467,9 @@ class purchase_orders_2 extends CI_Controller
         $no = 1;
         $hal = 1;
         $subtotal = 0;
+        $total_igst = 0;
+        $total_cgst = 0;
+        $total_sgst = 0;
         for ($i = 0; $i < $page; $i++) {
             $this->db->select('a.*,
                 b.number as item_rm_number, 
@@ -568,9 +566,6 @@ class purchase_orders_2 extends CI_Controller
                                         <th style="text-align:center;">Total Amount</th>
                                     </tr>';
             $row = 0;
-            $total_igst = 0;
-            $total_cgst = 0;
-            $total_sgst = 0;
             foreach ($records as $record) {
                 $subtotal += ($record['total']);
 
@@ -607,6 +602,12 @@ class purchase_orders_2 extends CI_Controller
                 }else{
                     $styles = "";
                 }
+
+                if($record['currency'] == "INR"){
+                    $digit = 4;
+                }else{
+                    $digit = 5;
+                }
                 
                 $html .= '  <tr style="'.$styles.'">
                                 <td  style="text-align:center;">' . $no . '</td>
@@ -616,10 +617,10 @@ class purchase_orders_2 extends CI_Controller
                                 <td>' . $record['maker'] . '</td>
                                 <td>' . $record['delivery_date'] . '</td>
                                 <td>' . $record['currency'] . '</td>
-                                <td style="text-align:right;">' . number_format($record['price'], 4) . '</td>
+                                <td style="text-align:right;">' . number_format($record['price'], $digit) . '</td>
                                 <td style="text-align:right;">' . number_format($record['qty']) . '</td>
                                 <td style="text-align:center;">' . $record['uom'] . '</td>
-                                <td style="text-align:right;">' . number_format($record['total'], 4) . '</td>
+                                <td style="text-align:right;">' . number_format($record['total'], 2) . '</td>
                                 <td style="text-align:right;">' . number_format($dcgst, 2) . '</td>
                                 <td style="text-align:right;">' . number_format($dsgst, 2) . '</td>
                                 <td style="text-align:right;">' . number_format($digst, 2) . '</td>
@@ -637,7 +638,7 @@ class purchase_orders_2 extends CI_Controller
                             </tr>
                             <tr>
                                 <th style="text-align:left" colspan="3">Sub Total</th>
-                                <th style="text-align:right;">' . number_format($subtotal, 4) . '</th>
+                                <th style="text-align:right;">' . number_format($subtotal, 2) . '</th>
                             </tr>
                             <tr>
                                 <th style="text-align:left" colspan="3">CGST</th>
@@ -653,7 +654,7 @@ class purchase_orders_2 extends CI_Controller
                             </tr>
                             <tr>
                                 <th style="text-align:left" colspan="3">Total Amount</th>
-                                <th style="text-align:right;">' . number_format(($subtotal + ($total_cgst + $total_sgst + $total_igst)), 4) . '</th>
+                                <th style="text-align:right;">' . number_format(($subtotal + ($total_cgst + $total_sgst + $total_igst)), 2) . '</th>
                             </tr>
                         </table>';
             } else {
@@ -679,7 +680,7 @@ class purchase_orders_2 extends CI_Controller
                                             <th style="height:80px; text-align:left;"><img '.$qr_user_3.' width="80"/></th>
                                         </tr>
                                         <tr>
-                                            <th style="height:20px; text-align:left;">Authorized Signatory <br>Vishal Sharma</th>
+                                            <th style="height:20px; text-align:left;">Authorized Signatory <br>'.$user_3->name.'</th>
                                         </tr>
                                     </table>
                                     <br>
@@ -735,6 +736,7 @@ class purchase_orders_2 extends CI_Controller
         $this->db->join('supplier_items e', 'a.item_rm_id = e.item_rm_id and a.supplier_id = e.supplier_id');
         $this->db->join('purchase_order_receipt_others f', 'a.item_rm_id = f.item_rm_id and a.po_no = f.po_no', 'left');
         $this->db->where('a.deleted', 0);
+        $this->db->where('a.type', "PO");
         if ($filter_from != "" or $filter_to != "") {
             $this->db->where('a.po_date >=', $filter_from);
             $this->db->where('a.po_date <=', $filter_to);

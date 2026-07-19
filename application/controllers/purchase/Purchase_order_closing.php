@@ -290,7 +290,7 @@ class Purchase_order_closing extends CI_Controller
                 $file = $_FILES['file'];
 
                 // Validasi ekstensi file yang diunggah
-                $allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png'];
+                $allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', '.xls', '.xlsx'];
                 $fileExtension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
 
                 if (!in_array($fileExtension, $allowedExtensions)) {
@@ -402,6 +402,154 @@ class Purchase_order_closing extends CI_Controller
         $data = $this->input->post();
         $send = $this->crud->delete('purchase_orders', $data);
         echo $send;
+    }
+
+    public function upload()
+    {
+        error_reporting(0);
+        require_once 'assets/vendors/excel_reader2.php';
+        $target = basename($_FILES['file_upload']['name']);
+        move_uploaded_file($_FILES['file_upload']['tmp_name'], $target);
+        chmod($_FILES['file_upload']['name'], 0777);
+        $file = $_FILES['file_upload']['name'];
+        $id_menu = $_POST['id_menu'];
+        $data = new Spreadsheet_Excel_Reader($file, false);
+        $total_row = $data->rowcount($sheet_index = 0);
+
+        $new_po = $this->request_no($id_menu);
+
+        $last_supplier = "";
+        $last_po = "";
+        $no = 0;
+        for ($i = 3; $i <= $total_row; $i++) {
+            if($data->val($i, 2) == "CREATE"){
+                if($last_supplier != $data->val($i, 5)){
+                    if($no == 0){
+                        $po_no = $new_po;
+                        $no++;
+                    }else{
+                        $urutan = (int) substr($new_po, -7);
+                        $header = substr($new_po, 0, -7);
+                        $urutan = ($urutan + $no);
+                        $autoID	= sprintf("%07s", $urutan);
+                        $po_no = $header . $autoID;
+                        $no++;
+                    }
+                }else{
+                    $po_no = $last_po;
+                }
+            }else{
+                $po_no = $data->val($i, 3);
+            }
+
+            if($po_no != ""){
+                $datas[] = array(
+                    'type' => $data->val($i, 2),
+                    'po_no' => $po_no,
+                    'po_date' => $data->val($i, 4),
+                    'supplier_id' => $data->val($i, 5),
+                    'item_rm_id' => $data->val($i, 6),
+                    'delivery_date' => $data->val($i, 7),
+                    'qty' => $data->val($i, 8),
+                    'price' => $data->val($i, 9),
+                    'remarks' => $data->val($i, 10)
+                );
+
+                $last_supplier = $data->val($i, 5);
+                $last_po = $po_no;
+            }
+        }
+
+        $datas['total'] = count($datas);
+        echo json_encode($datas);
+
+        unlink($_FILES['file_upload']['name']);
+    }
+
+    public function uploadclearFailed()
+    {
+        @unlink('failed/onetime_purchase_order.txt');
+    }
+    public function uploadcreateFailed()
+    {
+        if ($this->input->post()) {
+            $message = $this->input->post('message');
+            $textFailed = fopen('failed/onetime_purchase_order.txt', 'a');
+            fwrite($textFailed, $message . "\n");
+            fclose($textFailed);
+        }
+    }
+    //UPLOAD DOWNLOAD FAILED
+    public function uploadDownloadFailed()
+    {
+        $file = "failed/onetime_purchase_order.txt";
+        header('Content-Description: File Failed');
+        header('Content-Disposition: attachment; filename=' . basename($file));
+        header('Expires: 0');
+        header('Cache-Control: must-revalidate');
+        header('Pragma: public');
+        header('Content-Length: ' . @filesize($file));
+        header("Content-Type: text/plain");
+        @readfile($file);
+    }
+
+    public function uploadcreate()
+    {
+        if ($this->input->post()) {
+            $post = $this->input->post('data');
+
+            $item_rm = $this->crud->read("item_rm", [], ["id" => $post['item_rm_id']]);
+            $supplier = $this->crud->read("suppliers", [], ["id" => $post['supplier_id']]);
+            // $supplier_items = $this->crud->read("supplier_items", [], ["supplier_id" => $post['supplier_id'], "item_rm_id" => $post['item_rm_id']]);
+            $purchase_order = $this->crud->read("purchase_orders", [], ["item_rm_id" => $post['item_rm_id'], "po_no" => $post['po_no'], "supplier_id" => $post['supplier_id']]);
+
+            if(empty($item_rm)){
+                echo json_encode(array("title" => "Not Found", "message" => "Part No ".$post['item_rm_id']." Not Found in Master Items", "theme" => "error"));
+            }elseif(empty($supplier)){
+                echo json_encode(array("title" => "Not Found", "message" => "Supplier ID ".$post['supplier_id']." Not Found in Master Suppliers", "theme" => "error"));
+            // }elseif(empty($supplier_items)){
+            //     echo json_encode(array("title" => "Not Found", "message" => "Supplier ID ".$post['supplier_id']." and Part No ".$post['item_rm_id']." Not Found in Master Supplier Items", "theme" => "error"));
+            }elseif(!in_array($post['type'], ['CREATE','UPDATE'])){
+                echo json_encode(array("title" => "Not Found", "message" => "Type PO ".$post['type']." Not Match", "theme" => "error"));
+            }elseif($post['type'] == "UPDATE"){
+                if(!empty($purchase_order)){
+                    if($purchase_order->status == 1){
+                        die(json_encode(array("title" => "Failed", "message" => "PO No ".$post['po_no']." Status is Closed", "theme" => "error")));
+                    }
+
+                    $send = $this->crud->update('purchase_orders', ["item_rm_id" => $post['item_rm_id'], "po_no" => $post['po_no'], "supplier_id" => $post['supplier_id']], [
+                        "qty" => $post['qty'],
+                        "delivery_date" => $post['delivery_date'],
+                        "total" => ($purchase_order->price * $post['qty']),
+                        "remarks" => $post['remarks'],
+                        "rev" => ($purchase_order->rev + 1)
+                    ]);
+                    echo $send;
+                }else{
+                    echo json_encode(array("title" => "Not Found", "message" => "PO No ".$post['po_no']." Not Found in Purchase Order", "theme" => "error"));
+                }
+            }elseif($post['type'] == "CREATE"){
+                $postFinal = array(
+                    "supplier_id" => $post['supplier_id'],
+                    "item_rm_id" => $post['item_rm_id'],
+                    "po_no" => $post['po_no'],
+                    "po_date" => $post['po_date'],
+                    "uom" => $item_rm->uom,
+                    "currency" => $supplier->currency,
+                    "qty" => $post['qty'],
+                    "price" => $post['price'],
+                    "total" => ($post['qty'] * $post['price']),
+                    "delivery_date" => $post['delivery_date'],
+                    "type" => "CL",
+                    "remarks" => $post['remarks'],
+                );
+
+                $send = $this->crud->create('purchase_orders', $postFinal);
+                echo $send;
+            }else{
+                echo json_encode(array("title" => "Failed", "message" => "Cannot Process your Data", "theme" => "error"));
+            }
+        }
     }
     
     public function print_po($po_no, $export = "")
@@ -618,6 +766,12 @@ class Purchase_order_closing extends CI_Controller
                 }else{
                     $styles = "";
                 }
+
+                if($record['currency'] == "INR"){
+                    $digit = 4;
+                }else{
+                    $digit = 5;
+                }
                 
                 $html .= '  <tr style="'.$styles.'">
                                 <td  style="text-align:center;">' . $no . '</td>
@@ -626,10 +780,10 @@ class Purchase_order_closing extends CI_Controller
                                 <td>' . $record['item_rm_name'] . '</td>
                                 <td>' . $record['delivery_date'] . '</td>
                                 <td>' . $record['currency'] . '</td>
-                                <td style="text-align:right;">' . number_format($record['price'], 4) . '</td>
+                                <td style="text-align:right;">' . number_format($record['price'], $digit) . '</td>
                                 <td style="text-align:right;">' . number_format($record['qty']) . '</td>
                                 <td style="text-align:center;">' . $record['uom'] . '</td>
-                                <td style="text-align:right;">' . number_format($record['total'], 4) . '</td>
+                                <td style="text-align:right;">' . number_format($record['total'], 2) . '</td>
                                 <td style="text-align:right;">' . number_format($dcgst, 2) . '</td>
                                 <td style="text-align:right;">' . number_format($dsgst, 2) . '</td>
                                 <td style="text-align:right;">' . number_format($digst, 2) . '</td>
@@ -647,7 +801,7 @@ class Purchase_order_closing extends CI_Controller
                             </tr>
                             <tr>
                                 <th style="text-align:left" colspan="3">Sub Total</th>
-                                <th style="text-align:right;">' . number_format($subtotal, 4) . '</th>
+                                <th style="text-align:right;">' . number_format($subtotal, 2) . '</th>
                             </tr>
                             <tr>
                                 <th style="text-align:left" colspan="3">CGST</th>
@@ -663,7 +817,7 @@ class Purchase_order_closing extends CI_Controller
                             </tr>
                             <tr>
                                 <th style="text-align:left" colspan="3">Total Amount</th>
-                                <th style="text-align:right;">' . number_format(($subtotal + ($total_cgst + $total_sgst + $total_igst)), 4) . '</th>
+                                <th style="text-align:right;">' . number_format(($subtotal + ($total_cgst + $total_sgst + $total_igst)), 2) . '</th>
                             </tr>
                         </table>';
             } else {
@@ -762,7 +916,7 @@ class Purchase_order_closing extends CI_Controller
                             </td>
                             <td style="font-size: 14px; text-align: left; margin:2px;">
                                 <b>' . $config->name . '</b><br>
-                                <small>PURCHASE ORDER OTHERS</small>
+                                <small>ONETIME PURCHASE ORDER</small>
                             </td>
                         </tr>
                     </table>

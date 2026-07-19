@@ -502,7 +502,7 @@
                     });
                 } else {
                     $('#check_supply').checkbox({
-                        check_supply: false
+                        checked: false
                     });
                 }
             }

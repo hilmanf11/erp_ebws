@@ -415,86 +415,99 @@
                 toastr.error("Please Posting Journal first!");
                 return false;
             }
-            
-            $('#dlg_insert').dialog('open');
-            $('#frm_insert').form('load', row);
 
-            setTimeout(function() {
-                balance_journal();
-                number("<?= $menus_id ?>", "<?= date("Y-m-d") ?>");
-            }, 2000);
+            $.ajax({
+                type: "post",
+                url: "<?= base_url('finance/ap_payments/checkReversal') ?>",
+                data: "payment_no=" + row.payment_no,
+                dataType: "json",
+                success: function(reverseData) {
+                    if(parseInt(reverseData.total) > 0){
+                        toastr.error("This Payment already Reversal on " + reverseData.number);
+                        return false;
+                    }
 
-            $("#note").textbox('setValue', 'REVERSAL from ' + row.payment_no);
-            $("#total_payment").numberbox('setValue', row.total_ap);
-            $("#payment_date").datebox('enable');
-            $("#payment_type").combobox('enable');
-            $("#supplier_id").combogrid('enable');
-            $("#purchase_invoice").combogrid('enable');
-            $("#showExchange").hide();
-            var payment_by = $("#payment_by").combobox('getValue');
-            if (payment_by == "CHEQUE") {
-                $("#f_cheque_no").show();
-            } else {
-                $("#f_cheque_no").hide();
-            }
-            $('#supplier_id').combogrid({
-                // url: '<?= base_url('master/supplier_items/readSuppliers') ?>',
-                url: '<?= base_url('master/suppliers/reads') ?>',
-                panelWidth: 520,
-                idField: 'id',
-                textField: 'name',
-                mode: 'remote',
-                fitColumns: true,
-                prompt: "Choose Supplier",
-                columns: [
-                    [{
-                        field: 'id',
-                        title: 'Supplier No',
-                        width: 80
-                    }, {
-                        field: 'name',
-                        title: 'Supplier Name',
-                        width: 300
-                    }, {
-                        field: 'state',
-                        title: 'State',
-                        width: 120
-                    }]
-                ],
-                onLoadSuccess: function(load_supplier) {
-                    $("#supplier_id").combogrid('setValue', row.supplier_id);
-                    $("#journal_type").combobox('setValue', row.journal_type);
-                },
-                onSelect: function(supplier) {
-                    $("#purchase_invoice").combogrid({
-                        url: '<?= base_url('finance/ap_payments/readInvoices/') ?>' + btoa(supplier.id),
-                        panelWidth: 500,
-                        idField: 'purchase_invoice',
-                        textField: 'purchase_invoice',
-                        // mode: 'remote',
+                    $('#dlg_insert').dialog('open');
+                    $('#frm_insert').form('load', row);
+
+                    setTimeout(function() {
+                        balance_journal();
+                        number("<?= $menus_id ?>", "<?= date("Y-m-d") ?>");
+                    }, 2000);
+
+                    $("#note").textbox('setValue', 'REVERSAL from ' + row.payment_no);
+                    $("#total_payment").numberbox('setValue', row.total_ap);
+                    $("#payment_date").datebox('enable');
+                    $("#payment_type").combobox('enable');
+                    $("#supplier_id").combogrid('enable');
+                    $("#purchase_invoice").combogrid('enable');
+                    $("#showExchange").hide();
+                    var payment_by = $("#payment_by").combobox('getValue');
+                    if (payment_by == "CHEQUE") {
+                        $("#f_cheque_no").show();
+                    } else {
+                        $("#f_cheque_no").hide();
+                    }
+                    $('#supplier_id').combogrid({
+                        // url: '<?= base_url('master/supplier_items/readSuppliers') ?>',
+                        url: '<?= base_url('master/suppliers/reads') ?>',
+                        panelWidth: 520,
+                        idField: 'id',
+                        textField: 'name',
+                        mode: 'remote',
                         fitColumns: true,
-                        prompt: "Choose Purchase invoice No",
+                        prompt: "Choose Supplier",
                         columns: [
                             [{
-                                field: 'purchase_invoice',
-                                title: 'Purchase Invoice No',
-                                width: 200
+                                field: 'id',
+                                title: 'Supplier No',
+                                width: 80
                             }, {
-                                field: 'supplier_invoice',
-                                title: 'Supplier Invoice No',
-                                width: 250
-                            }, ]
+                                field: 'name',
+                                title: 'Supplier Name',
+                                width: 300
+                            }, {
+                                field: 'state',
+                                title: 'State',
+                                width: 120
+                            }]
                         ],
-                        onLoadSuccess: function(load_invoice) {
-                            $("#purchase_invoice").combogrid('setValue', row.purchase_invoice);
+                        onLoadSuccess: function(load_supplier) {
+                            $("#supplier_id").combogrid('setValue', row.supplier_id);
+                            $("#journal_type").combobox('setValue', row.journal_type);
                         },
+                        onSelect: function(supplier) {
+                            $("#purchase_invoice").combogrid({
+                                url: '<?= base_url('finance/ap_payments/readInvoices/') ?>' + btoa(supplier.id),
+                                panelWidth: 500,
+                                idField: 'purchase_invoice',
+                                textField: 'purchase_invoice',
+                                // mode: 'remote',
+                                fitColumns: true,
+                                prompt: "Choose Purchase invoice No",
+                                columns: [
+                                    [{
+                                        field: 'purchase_invoice',
+                                        title: 'Purchase Invoice No',
+                                        width: 200
+                                    }, {
+                                        field: 'supplier_invoice',
+                                        title: 'Supplier Invoice No',
+                                        width: 250
+                                    }, ]
+                                ],
+                                onLoadSuccess: function(load_invoice) {
+                                    $("#purchase_invoice").combogrid('setValue', row.purchase_invoice);
+                                },
+                            });
+                        }
                     });
+
+
+                    preview('<?= base_url('finance/ap_payments/readReverse/') ?>' + window.btoa(row.payment_no));
+                    addTable2('<?= base_url('finance/ap_payments/readJournalReverse/') ?>' + window.btoa(row.payment_no) + "/" + window.btoa(row.journal_type) + "/" + window.btoa(row.bank_account));
                 }
             });
-
-
-            preview('<?= base_url('finance/ap_payments/readReverse/') ?>' + window.btoa(row.payment_no));
-            addTable2('<?= base_url('finance/ap_payments/readJournalReverse/') ?>' + window.btoa(row.payment_no) + "/" + window.btoa(row.journal_type) + "/" + window.btoa(row.bank_account));
         } else {
             toastr.warning("Please select one of the data in the table first!", "Information");
         }
@@ -1333,13 +1346,67 @@
                                     var totalrows2 = rows2.length;
                                     endEditing2();
 
-                                    for (let z = 0; z < totalrows; z++) {
-                                        var dataz = rows[z];
+                                    combinedAp = [];
+                                    for (let i = 0; i < totalrows; i++) {
+                                        var json = rows[i];
 
-                                        if(dataz.account_number == "" || dataz.account_number == null){
+                                        if(json.account_number == "" || json.account_number == null){
                                             toastr.error("Account No Not valid, Please Check your data input and save again!!");
                                             return false;
                                         }
+
+                                        combinedAp.push({
+                                            payment_type: payment_type,
+                                            payment_date: payment_date,
+                                            payment_no: payment_no,
+                                            supplier_id: supplier_id,
+                                            journal_type_id: journal_type_id,
+                                            bank_account: bank_account,
+                                            other_account: other_account,
+                                            imprest_account: imprest_account,
+                                            payment_by: payment_by,
+                                            cheque_no: cheque_no,
+                                            note: note,
+                                            total_payment: total_payment,
+                                            id: json.id,
+                                            purchase_invoice: json.purchase_invoice,
+                                            supplier_invoice: json.supplier_invoice,
+                                            currency: json.currency,
+                                            amount: json.amount,
+                                            balance: json.balance,
+                                            payment: json.payment,
+                                            remarks: json.remarks,
+                                            rate: json.rate,
+                                            account_number: json.account_number,
+                                            account_type: json.account_type,
+                                        });
+                                    }
+
+                                    combinedJournals = [];
+                                    var total_debit  = 0;
+                                    var total_credit = 0;
+                                    for (let z = 0; z < totalrows2; z++) {
+                                        var json2 = rows2[z];
+
+                                        if(json2.account_number == "" || json2.account_number == null){
+                                            toastr.error("Account No Not valid, Please Check your data input and save again!!");
+                                            return false;
+                                        }
+
+                                        combinedJournals.push({
+                                            payment_no: payment_no,
+                                            account_number: json2.account_number,
+                                            account_name: json2.account_name,
+                                            description: json2.description,
+                                            debit: json2.debit,
+                                            credit: json2.credit,
+                                            local_debit: json2.local_debit,
+                                            local_credit: json2.local_credit,
+                                            flag: json2.flag,
+                                        });
+
+                                        total_debit += parseFloat(json2.local_debit);
+                                        total_credit += parseFloat(json2.local_credit);
                                     }
 
                                     if (totalrows2 <= 0) {
@@ -1347,160 +1414,108 @@
                                         return false;
                                     }
 
-                                    for (let c = 0; c < totalrows2; c++) {
-                                        var datac = rows2[c];
-
-                                        if(datac.account_number == "" || datac.account_number == null){
-                                            toastr.error("Account No Not valid, Please Check your data input and save again!!");
-                                            return false;
-                                        }
+                                    if(total_debit == 0 && total_credit == 0){
+                                        toastr.error("Debit and Credit still 0, please click add to journal first");
+                                        return false;
                                     }
                                     
                                     if (totalrows > 0) {
-                                        requestData(totalrows, rows);
-                                        $('#dlg_insert').dialog('close');
-                                        
-                                        $.ajax({
-                                            method: 'post',
-                                            url: '<?= base_url('finance/ap_payments/deleteJournal') ?>',
-                                            data: {
-                                                payment_no: payment_no
+                                        $("#dlg_insert").dialog('close');
+
+                                        Swal.fire({
+                                            title: 'Please Wait for Saving Data',
+                                            showConfirmButton: false,
+                                            allowOutsideClick: false,
+                                            allowEscapeKey: false,
+                                            didOpen: () => {
+                                                Swal.showLoading();
                                             },
-                                            success: function(result) {
-                                                Swal.fire({
-                                                    title: 'Please Wait for Saving Data',
-                                                    showConfirmButton: false,
-                                                    allowOutsideClick: false,
-                                                    allowEscapeKey: false,
-                                                    didOpen: () => {
-                                                        Swal.showLoading();
+                                        });
+
+                                        $.ajax({
+                                            type: "post",
+                                            url: "<?= base_url('finance/ap_payments/deleteJournal') ?>",
+                                            data: "payment_no=" + payment_no,
+                                            dataType: "json",
+                                            success: function(response) {
+                                                $.ajax({
+                                                    type: "post",
+                                                    url: '<?= base_url('finance/ap_payments/create') ?>',
+                                                    data: JSON.stringify({ combinedAp: combinedAp, combinedJournals: combinedJournals}),
+                                                    dataType: "json",
+                                                    success: function (result) {
+                                                        Swal.close();
+
+                                                        Swal.fire({
+                                                            title: 'Posting Journal',
+                                                            text: result.message + ", Do you want to save journal posting to ?",
+                                                            icon: result.theme,
+                                                            showCancelButton: true,
+                                                            allowOutsideClick: false,
+                                                            allowEscapeKey: false,
+                                                            confirmButtonText: 'Yes, Add to Journal!'
+                                                        }).then((msg) => {
+                                                            if (msg.isConfirmed) {
+                                                                Swal.fire({
+                                                                    title: 'Please Wait...',
+                                                                    showConfirmButton: false,
+                                                                    allowOutsideClick: false,
+                                                                    allowEscapeKey: false,
+                                                                    didOpen: () => {
+                                                                        Swal.showLoading();
+                                                                    },
+                                                                });
+
+                                                                $.ajax({
+                                                                    type: "post",
+                                                                    url: '<?= base_url('finance/ap_payments/createPosting') ?>',
+                                                                    data: {
+                                                                        payment_no: payment_no
+                                                                    },
+                                                                    dataType: "json",
+                                                                    success: function(result3) {
+                                                                        Swal.close();
+
+                                                                        Swal.fire({
+                                                                            title: result3.message,
+                                                                            icon: result3.theme,
+                                                                            confirmButtonText: 'Ok',
+                                                                            allowOutsideClick: false,
+                                                                        }).then((result3) => {
+                                                                            if (result3.isConfirmed) {
+                                                                                window.location.reload();
+                                                                            }
+                                                                        });
+
+                                                                    }
+                                                                });
+                                                            }
+                                                        });
                                                     },
+                                                    error: function(msg){
+                                                        Swal.fire({
+                                                            title: "Failed to Save Data, Please Try Again",
+                                                            icon: "error",
+                                                            confirmButtonText: 'Ok',
+                                                            allowOutsideClick: false,
+                                                        }).then((result3) => {
+                                                            if (result3.isConfirmed) {
+                                                                $.ajax({
+                                                                    type: "post",
+                                                                    url: "<?= base_url('finance/ap_payments/delete') ?>",
+                                                                    data: "payment_no=" + payment_no,
+                                                                    dataType: "json",
+                                                                    success: function(response) {
+                                                                        window.location.reload();
+                                                                    }
+                                                                });
+                                                            }
+                                                        });
+                                                    }
                                                 });
                                             }
                                         });
 
-                                        function requestData(total, json, jml = 1, value = 0) {
-                                            if (value < 100) {
-                                                value = Math.floor((jml / total) * 100);
-                                                var i = (jml - 1);
-                                                // if (json[i].purchase_invoice) {
-                                                    $.ajax({
-                                                        type: "post",
-                                                        url: '<?= base_url('finance/ap_payments/create') ?>',
-                                                        data: {
-                                                            payment_type: payment_type,
-                                                            payment_date: payment_date,
-                                                            payment_no: payment_no,
-                                                            supplier_id: supplier_id,
-                                                            journal_type_id: journal_type_id,
-                                                            bank_account: bank_account,
-                                                            other_account: other_account,
-                                                            imprest_account: imprest_account,
-                                                            payment_by: payment_by,
-                                                            cheque_no: cheque_no,
-                                                            note: note,
-                                                            total_payment: total_payment,
-                                                            id: json[i].id,
-                                                            purchase_invoice: json[i].purchase_invoice,
-                                                            supplier_invoice: json[i].supplier_invoice,
-                                                            currency: json[i].currency,
-                                                            amount: json[i].amount,
-                                                            balance: json[i].balance,
-                                                            payment: json[i].payment,
-                                                            remarks: json[i].remarks,
-                                                            rate: json[i].rate,
-                                                            account_number: json[i].account_number,
-                                                            account_type: json[i].account_type,
-                                                        },
-                                                        dataType: "json",
-                                                        success: function(result) {
-                                                            requestData(total, json, jml + 1, value);
-                                                            if (jml == total) {
-                                                                if (totalrows2 > 0) {
-                                                                    requestData2(totalrows2, rows2);
-                                                                    
-                                                                    function requestData2(total2, json2, jml2 = 1, value2 = 0) {
-                                                                        if (value2 < 100) {
-                                                                            value2 = Math.floor((jml2 / total2) * 100);
-                                                                            var z = (jml2 - 1);
-
-                                                                            $.ajax({
-                                                                                type: "post",
-                                                                                url: '<?= base_url('finance/ap_payments/createJournals') ?>',
-                                                                                data: {
-                                                                                    payment_no: payment_no,
-                                                                                    account_number: json2[z].account_number,
-                                                                                    account_name: json2[z].account_name,
-                                                                                    description: json2[z].description,
-                                                                                    debit: json2[z].debit,
-                                                                                    credit: json2[z].credit,
-                                                                                    local_debit: json2[z].local_debit,
-                                                                                    local_credit: json2[z].local_credit,
-                                                                                    flag: json2[z].flag,
-                                                                                },
-                                                                                dataType: "json",
-                                                                                success: function(result2) {
-                                                                                    requestData2(total2, json2, jml2 + 1, value2);
-                                                                                    if (jml2 == total2) {
-                                                                                        Swal.close();
-
-                                                                                        Swal.fire({
-                                                                                            title: 'Posting Journal',
-                                                                                            text: result2.message + ", Do you want to save journal posting to ?",
-                                                                                            icon: result2.theme,
-                                                                                            showCancelButton: true,
-                                                                                            allowOutsideClick: false,
-                                                                                            allowEscapeKey: false,
-                                                                                            confirmButtonText: 'Yes, Add to Journal!'
-                                                                                        }).then((msg) => {
-                                                                                            if (msg.isConfirmed) {
-                                                                                                Swal.fire({
-                                                                                                    title: 'Please Wait...',
-                                                                                                    showConfirmButton: false,
-                                                                                                    allowOutsideClick: false,
-                                                                                                    allowEscapeKey: false,
-                                                                                                    didOpen: () => {
-                                                                                                        Swal.showLoading();
-                                                                                                    },
-                                                                                                });
-
-                                                                                                $.ajax({
-                                                                                                    type: "post",
-                                                                                                    url: '<?= base_url('finance/ap_payments/createPosting') ?>',
-                                                                                                    data: {
-                                                                                                        payment_no: payment_no
-                                                                                                    },
-                                                                                                    dataType: "json",
-                                                                                                    success: function(result3) {
-                                                                                                        Swal.close();
-
-                                                                                                        Swal.fire({
-                                                                                                            title: result3.message,
-                                                                                                            icon: result3.theme,
-                                                                                                            confirmButtonText: 'Ok',
-                                                                                                            allowOutsideClick: false,
-                                                                                                        }).then((result3) => {
-                                                                                                            if (result3.isConfirmed) {
-                                                                                                                window.location.reload();
-                                                                                                            }
-                                                                                                        });
-
-                                                                                                    }
-                                                                                                });
-                                                                                            }
-                                                                                        });
-                                                                                    }
-                                                                                }
-                                                                            });
-                                                                        }
-                                                                    }
-                                                                }
-                                                            }
-                                                        }
-                                                    });
-                                                // }
-                                            }
-                                        }
                                         $('#dg').datagrid('reload');
                                     } else {
                                         toastr.warning("please selections your data in table first");

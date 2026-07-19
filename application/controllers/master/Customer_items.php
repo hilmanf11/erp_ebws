@@ -145,7 +145,7 @@ class Customer_items extends CI_Controller
             $this->db->where('customer_id', $customer_id);
             $this->db->where('plant', $plant);
             $this->db->where('item_fg_id', $item_fg_id);
-            $this->db->order_by('created_date', 'DESC');
+            $this->db->order_by('valid_date', 'DESC');
             $records = $this->db->get()->result_array();
 
             echo json_encode($records);
@@ -159,7 +159,7 @@ class Customer_items extends CI_Controller
             $post = $this->input->post();
 
             $customer_items = $this->crud->read("customer_items", [], ["customer_id" => $post['customer_id'], "item_fg_id" => $post['item_fg_id'], "plant" => $post['plant']]);
-            // $customer_item_histories = $this->crud->read("customer_item_histories", [], ["customer_id" => $post['customer_id'], "item_fg_id" => $post['item_fg_id'], "plant" => $post['plant'], "price" => $post['price']]);
+            $customer_item_histories = $this->crud->read("customer_item_histories", [], ["customer_id" => $post['customer_id'], "item_fg_id" => $post['item_fg_id'], "plant" => $post['plant'], "price" => $post['price']]);
             if (@$customer_items->customer_id != "") {
                 if($customer_items->price != $post['price']){
                     $send = $this->crud->update('customer_items', ["customer_id" => $post['customer_id'], "item_fg_id" => $post['item_fg_id'], "plant" => $post['plant']], $post);
@@ -169,10 +169,12 @@ class Customer_items extends CI_Controller
                     echo json_encode(array("title" => "Good Job", "message" => "Data Updated Successfully", "theme" => "success"));
                 }
 
-                $this->crud->create('customer_item_histories', $post);
+                if (@$customer_item_histories->customer_id == "") {
+                    $send2 = $this->crud->create('customer_item_histories', $post);
+                }
             } else {
                 $send = $this->crud->create('customer_items', $post);
-                $this->crud->create('customer_item_histories', $post);
+                $send2 = $this->crud->create('customer_item_histories', $post);
                 echo $send;
             }
         } else {

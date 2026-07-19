@@ -49,11 +49,13 @@ class Purchase_request_services extends CI_Controller
         // $supplier_id = base64_decode($this->input->get('supplier_id'));
 
         //Select Query
-        $this->db->select("a.*");
+        $this->db->select("a.*, (CASE WHEN a.request_type = 'ASSET' THEN b.number ELSE '-' END) as asset_code, b.name as asset_name");
         $this->db->from('purchase_request_services a');
+        $this->db->join('assets b', 'a.request_no = b.request_no', 'left');
         $this->db->where('a.status', 0);
+        $this->db->where("((CASE WHEN a.request_type = 'ASSET' THEN b.number ELSE '-' END) is not null)");
         $this->db->where("(a.approved_to = '' or a.approved_to is null)");
-        $this->db->where('request_no', $request_no);
+        $this->db->where('a.request_no', $request_no);
         $this->db->order_by('a.id', 'ASC');
         $records = $this->db->get()->result_array();
         
@@ -64,7 +66,9 @@ class Purchase_request_services extends CI_Controller
     {  
          $records = $this->crud->query("SELECT a.request_no, a.request_date, a.request_name 
             FROM purchase_request_services a 
+            LEFT JOIN assets b ON  a.request_no = b.request_no
             WHERE a.status = 0 and (a.approved_to = '' or a.approved_to is null) 
+            AND (CASE WHEN a.request_type = 'ASSET' THEN b.number ELSE '-' END) is not null
             GROUP BY a.request_no ORDER BY a.created_date desc");
         echo json_encode($records);
     }
@@ -182,8 +186,9 @@ class Purchase_request_services extends CI_Controller
             $result = array_merge($result, ['rows' => @$arr]);
             echo json_encode($result);
         } else {
-            $this->db->select('a.*, d.po_no');
+            $this->db->select('a.*, d.po_no, b.name as item_family_name');
             $this->db->from('purchase_request_services a');
+            $this->db->join('item_familys b', 'a.item_family_id = b.id', 'left');
             $this->db->join('purchase_order_services d', 'a.request_no = d.request_no and a.item_name = d.item_name', 'left');
             $this->db->where('a.deleted', 0);
             if ($filter_from != "" or $filter_to != "") {
@@ -212,12 +217,16 @@ class Purchase_request_services extends CI_Controller
             $post   = $this->input->post();
             $p_month = date("m", strtotime($post['request_date']));
             $p_year = date("Y", strtotime($post['request_date']));
+            
+            $item_family = $this->crud->read("item_familys", [], ["id" => $post['item_family_id']]);
+            $item_category = $this->crud->read("item_categories", [], ["id" => $item_family->item_category_id]);
 
             $purchase_request_item = $this->crud->read('purchase_request_services', [], ["request_no" => $post['request_no'], "item_name" => $post['item_name']]);
+            
             if (@$purchase_request_item->id != "") {
-                $send = $this->crud->update('purchase_request_services', ["request_no" => $post['request_no'], "item_name" => $post['item_name']], $post);
+                $send = $this->crud->update('purchase_request_services', ["request_no" => $post['request_no'], "item_name" => $post['item_name']], array_merge($post, ["request_type" => @$item_category->type]));
             } else {
-                $send = $this->crud->create('purchase_request_services', array_merge($post, ["request_type" => "SERVICES", "p_month" => $p_month, "p_year" => $p_year]));
+                $send = $this->crud->create('purchase_request_services', array_merge($post, ["request_type" => @$item_category->type, "p_month" => $p_month, "p_year" => $p_year]));
             }
 
             echo $send;
@@ -502,8 +511,9 @@ class Purchase_request_services extends CI_Controller
         $this->db->from('config');
         $config = $this->db->get()->row();
         
-        $this->db->select('a.*, e.po_no');
+        $this->db->select('a.*, e.po_no, b.name as item_family_name');
         $this->db->from('purchase_request_services a');
+        $this->db->join('item_familys b', 'a.item_family_id = b.id', 'left');
         $this->db->join('purchase_order_services e', 'a.request_no = e.request_no and a.item_name = e.item_name', 'left');
         $this->db->where('a.deleted', 0);
         if(!in_array($this->session->username, ["PURCHASE-03", "Purchase-01", "PURCHASE-02", "admin", "hariom_bhardwaj", "ITADMIN", "Accounts01"])){
@@ -553,6 +563,7 @@ class Purchase_request_services extends CI_Controller
                 <th>Request Name</th>
                 <th>Expected Date</th>
                 <th>Description of Service</th>
+                <th>Product Family</th>
                 <th>Qty</th>
                 <th>Currency</th>
                 <th>Est. Price</th>
@@ -580,6 +591,7 @@ class Purchase_request_services extends CI_Controller
                         <td>' . $data['expected_date'] . '</td>
                         <td>' . $data['request_name'] . '</td>
                         <td>' . $data['item_name'] . '</td>
+                        <td>' . $data['item_family_name'] . '</td>
                         <td>' . $data['qty'] . '</td>
                         <td>' . $data['currency'] . '</td>
                         <td>' . $data['price'] . '</td>

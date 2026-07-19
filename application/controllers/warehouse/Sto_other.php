@@ -223,7 +223,7 @@ class Sto_other extends CI_Controller
             $document_no = "STO-" . $datenow . "-" . $data['type'] . "-" . $autoID;
 
             $item_rm = $this->crud->read('item_rm', [], ["id" => $data['item_rm_id']]);
-            $warehouse_location_others = $this->crud->read('warehouse_location_others', [], ["number" => $data['number']]);
+            $warehouse_location_others = $this->crud->read('warehouse_location_others', [], ["number" => $data['location_other_number']]);
 
             if (empty($item_rm->id)) {
                 echo json_encode(array("title" => "Not Found", "message" => "Part No EBWS " . $data['item_rm_id'] . " is Not Found", "theme" => "error"));

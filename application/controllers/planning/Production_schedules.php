@@ -326,8 +326,8 @@ class Production_schedules extends CI_Controller
                 $mpp = $record['period'];
                 $wp = sprintf("%02s", $record['wp'])."/".substr($mpp, -2);
 
-                $sqlQty = $this->dummy->query("SELECT COUNT(x.serial_number) as qty FROM (
-                    SELECT DISTINCT z.serial_number FROM (
+                $sqlQty = $this->dummy->query("SELECT x.kode_proses, COUNT(x.serial_number) as qty FROM (
+                    SELECT DISTINCT z.serial_number, z.kode_proses FROM (
                     SELECT DISTINCT
                         TRIM(a.serial_number) AS serial_number,
                         TRIM(a.assy_number) AS assy_number,
@@ -335,17 +335,21 @@ class Production_schedules extends CI_Controller
                         TRIM(a.mpp) AS mpp,
                         TRIM(a.wp) AS wp,
                         TRIM(a.lot) AS lot,
+                        kode_proses,
                         DATE(a.tanggal_proses) AS tanggal,
                         COALESCE(a.jam_scan,'00:00:00') AS jam,
                         a.wds_qty
                     FROM mst_scan_proses a
-                    WHERE kode_proses = '5' and assy_number = '$assy_number' and mpp = '$mpp' and wp = '$wp' and
-                    tanggal_proses between '$filter_date_from' and '$filter_date_to' and status_repair = 'false' 
-                    AND status_before IS NOT NULL
-                    AND status_repair = 'f'
-                    ORDER BY serial_number) z ) x");
-                $rowQty = $sqlQty->row();
-                $qty_scan = empty(@$rowQty->qty) ? 0 : @$rowQty->qty;
+                    WHERE kode_proses IN ('1','5') and assy_number = '$assy_number' and mpp = '$mpp' and wp = '$wp' and
+                    tanggal_proses between '$filter_date_from' and '$filter_date_to' AND (status_repair = 'f' or status_repair is null)
+                    ORDER BY serial_number) z 
+                    ORDER BY z.kode_proses ASC) x
+                    GROUP BY x.kode_proses
+                    ORDER BY x.kode_proses ASC");
+                $rowQty = $sqlQty->result_array();
+                
+                $qty_scan = empty(@$rowQty[1]['qty']) ? 0 : @$rowQty[1]['qty'];
+                $qty_wirecollect = empty(@$rowQty[0]['qty']) ? 0 : @$rowQty[0]['qty'];
 
                 if($record['qty'] > $record['total_rfg']){
                     $status_rfg = "0";
@@ -362,6 +366,7 @@ class Production_schedules extends CI_Controller
                 if($filter_status == $status_rfg || $filter_status == ""){
                     $arr[] = array_merge($record, [
                         "total_visual" => $qty_scan,
+                        "total_wirecollect" => $qty_wirecollect,
                         "status_rfg" => $status_rfg,
                         "status_visual" => $status_visual,
                     ]);
@@ -520,6 +525,7 @@ class Production_schedules extends CI_Controller
                     <th>Product Name</th>
                     <th>UoM</th>
                     <th>Qty</th>
+                    <th>Wire Collect Qty</th>
                     <th>Visual Qty</th>
                     <th>RFG Qty</th>
                     <th>Created By</th>
@@ -533,8 +539,8 @@ class Production_schedules extends CI_Controller
             $mpp = $data['period'];
             $wp = sprintf("%02s", $data['wp'])."/".substr($mpp, -2);
 
-            $sqlQty = $this->dummy->query("SELECT COUNT(x.serial_number) as qty FROM (
-                SELECT DISTINCT z.serial_number FROM (
+            $sqlQty = $this->dummy->query("SELECT x.kode_proses, COUNT(x.serial_number) as qty FROM (
+                SELECT DISTINCT z.serial_number, z.kode_proses FROM (
                 SELECT DISTINCT
                     TRIM(a.serial_number) AS serial_number,
                     TRIM(a.assy_number) AS assy_number,
@@ -542,37 +548,41 @@ class Production_schedules extends CI_Controller
                     TRIM(a.mpp) AS mpp,
                     TRIM(a.wp) AS wp,
                     TRIM(a.lot) AS lot,
+                    kode_proses,
                     DATE(a.tanggal_proses) AS tanggal,
                     COALESCE(a.jam_scan,'00:00:00') AS jam,
                     a.wds_qty
                 FROM mst_scan_proses a
-                WHERE kode_proses = '5' and assy_number = '$assy_number' and mpp = '$mpp' and wp = '$wp' and
-                tanggal_proses between '$filter_date_from' and '$filter_date_to' and status_repair = 'false' 
-                AND status_before IS NOT NULL
-                AND status_repair = 'f'
-                ORDER BY serial_number) z ) x");
-            $rowQty = $sqlQty->row();
-            $qty_scan = empty(@$rowQty->qty) ? 0 : @$rowQty->qty;
+                WHERE kode_proses IN ('1','5') and assy_number = '$assy_number' and mpp = '$mpp' and wp = '$wp' and
+                tanggal_proses between '$filter_date_from' and '$filter_date_to' AND (status_repair = 'f' or status_repair is null)
+                ORDER BY serial_number) z 
+                ORDER BY z.kode_proses ASC) x
+                GROUP BY x.kode_proses
+                ORDER BY x.kode_proses ASC");
+            $rowQty = $sqlQty->result_array();
+
+            $qty_scan = empty(@$rowQty[1]['qty']) ? 0 : @$rowQty[1]['qty'];
+            $qty_wirecollect = empty(@$rowQty[0]['qty']) ? 0 : @$rowQty[0]['qty'];
 
             if($data['qty'] > $data['total_rfg']){
-                $status_rfg = "0";
-                $status_rfg2 = "OPEN";
+                $status_rfg = "OPEN";
+                $status_rfg2 = 0;
             }else{
-                $status_rfg = "1";
-                $status_rfg2 = "CLOSED";
+                $status_rfg = "CLOSE";
+                $status_rfg2 = 1;
             }
 
             if($qty_scan >= $data['qty']){
-                $status_visual = "CLOSED";
+                $status_visual = "CLOSE";
             }else{
                 $status_visual = "OPEN";
             }
 
-            if($filter_status == $status_rfg || $filter_status == ""){
+            if($filter_status == $status_rfg2 || $filter_status == ""){
                 $html .= '<tr>
                             <td style="text-align:center">' . $no . '</td>
                             <td>' . $status_visual . '</td>
-                            <td>' . $status_rfg2 . '</td>
+                            <td>' . $status_rfg . '</td>
                             <td>' . $data['precut_status'] . '</td>
                             <td>' . $data['period'] . '</td>
                             <td>' . $data['wp'] . '</td>
@@ -586,6 +596,7 @@ class Production_schedules extends CI_Controller
                             <td>' . $data['item_name'] . '</td>
                             <td>' . $data['uom'] . '</td>
                             <td>' . number_format($data['qty'], 2) . '</td>
+                            <td>' . number_format($qty_wirecollect, 2) . '</td>
                             <td>' . number_format($qty_scan, 2) . '</td>
                             <td>' . number_format($data['total_rfg'], 2) . '</td>
                             <td>' . $data['created_by'] . '</td>

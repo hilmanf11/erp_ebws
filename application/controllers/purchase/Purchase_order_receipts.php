@@ -38,13 +38,13 @@ class Purchase_order_receipts extends CI_Controller
         $item_rm_number = base64_decode($this->input->get('item_rm_number'));
 
         //Select Query
-        $this->db->select('a.*, b.number, b.name, b.uom, c.name as item_family_name, f.mpq, SUM(a.qty_receipt) as qty_receipt');
+        $this->db->select('a.*, b.number, b.name, b.uom, c.name as item_family_name, SUM(a.qty_receipt) as qty_receipt');
         $this->db->from('purchase_order_receipts a');
         $this->db->join('item_rm b', 'a.item_rm_id = b.id');
         $this->db->join('item_familys c', 'b.item_family_id = c.id');
         // $this->db->join('supplier_items d', 'a.item_rm_id = d.item_rm_id');
         // $this->db->join('suppliers e', 'd.supplier_id = e.id');
-        $this->db->join('item_mpq f', 'a.item_rm_id = f.item_rm_id and a.supplier_id = f.supplier_id');
+        // $this->db->join('item_mpq f', 'a.item_rm_id = f.item_rm_id and a.supplier_id = f.supplier_id');
         // $this->db->join("(select distinct receipt_id FROM purchase_order_labels) f", 'f.receipt_id != a.receipt_id', 'left');
         $this->db->where('a.deleted', 0);
         $this->db->where('a.status', 0);
@@ -262,22 +262,22 @@ class Purchase_order_receipts extends CI_Controller
                         $where_item_rm_id = "";
                     }
 
-                    $poritems = $this->crud->query("SELECT b.number FROM purchase_order_receipts a JOIN item_rm b ON a.item_rm_id = b.id WHERE receipt_no = '$receipt_no'");
+                    $poritems = $this->crud->query("SELECT b.number, COUNT(a.id) as jml FROM purchase_order_receipts a JOIN item_rm b ON a.item_rm_id = b.id WHERE receipt_no = '$receipt_no' GROUP BY b.number");
+                    $total_data = 0;
                     foreach ($poritems as $poritem) {
-                        $array[] = $poritem->number;
+                        $array[] = trim($poritem->number);
+                        $total_data++;
                     }
                     $itemidimplode = "'" . implode("','", $array) . "'";
 
-                    $sqlLabel = $this->qas->query("SELECT label, count(id_receive) as total FROM receiving_system WHERE no_sj ='$invoice_no' and item_id in ($itemidimplode) GROUP BY label");
+                    $sqlLabel = $this->qas->query("SELECT count(id_receive) as total FROM receiving_system WHERE no_sj ='$invoice_no' and item_id in ($itemidimplode)");
                     $rowLabel = $sqlLabel->row();
-
+                    
                     if(empty(@$rowLabel->total)){
                         $qas = "OPEN";
                     }else{
-                        if(@$rowLabel->total == $record['total_data'] && @$rowLabel->label == "OK"){
+                        if(@$rowLabel->total >= $total_data){
                             $qas = "CLOSE";
-                        }elseif(@$rowLabel->total == $record['total_data'] && @$rowLabel->label == "NG"){
-                            $qas = "NG";
                         }else{
                             $qas = "OPEN";
                         }
@@ -291,6 +291,8 @@ class Purchase_order_receipts extends CI_Controller
                         $total_scan = @$purchase_order_label[0]->total_scan;
                     }elseif(@$por_status[0]->total_cancel == $record['total_data']){
                         $total_scan = 0;
+                    }elseif(@$por_status[0]->total_cancel < $record['total_data'] && $qas == "CLOSE"){
+                        $total_scan = $record['qty_label'];
                     }elseif(empty(@$purchase_order_label[0]->total_scan)){
                         $total_scan = @$purchase_order_label[0]->total_scan;
                     }else{
@@ -319,7 +321,7 @@ class Purchase_order_receipts extends CI_Controller
                         "qty_label" => $record['qty_label'],
                         "total_scan" => $total_scan,
                         // "status" => $record['status'],
-                        "qas" => $qas,
+                        "qas" => @$qas,
                         "status" => $status[0]->status,
                         "state" => "closed",
                     );
@@ -367,8 +369,8 @@ class Purchase_order_receipts extends CI_Controller
 
                 $result = array();
                 foreach ($records as $record) {
-                    $invoice_no = $record['bc_document'];
-                    $item_rm_number = $record['item_rm_number'];
+                    $invoice_no = trim($record['bc_document']);
+                    $item_rm_number = trim($record['item_rm_number']);
 
                     $sqlLabel = $this->qas->query("SELECT label FROM receiving_system WHERE no_sj ='$invoice_no' and item_id = '$item_rm_number'");
                     $rowLabel = $sqlLabel->row();
@@ -570,11 +572,11 @@ class Purchase_order_receipts extends CI_Controller
         if($por->status == 0){
             $deleteScanItemReceipts = $this->crud->delete('purchase_order_labels', ["receipt_id" => $data['receipt_id']]);
             $this->db->update('purchase_order_receipts', ["status" => 2, "cancel_status" => date("Y-m-d H:i:s")], ["receipt_id" => $data['receipt_id']]);
-            $this->db->update('purchase_confirm', ["status" => 0], ["po_no" => $por->po_no, "item_rm_id" => $por->item_rm_id]);
+            $this->db->update('purchase_confirm', ["status" => 2], ["po_no" => $por->po_no, "invoice_no" => $por->bc_document, "item_rm_id" => $por->item_rm_id]);
             echo $deleteScanItemReceipts;
         }else if($por->status == 2){
             $this->db->update('purchase_order_receipts', ["status" => 0, "cancel_status" => null], ["receipt_id" => $data['receipt_id']]);
-            $this->db->update('purchase_confirm', ["status" => 1], ["po_no" => $por->po_no, "item_rm_id" => $por->item_rm_id]);
+            $this->db->update('purchase_confirm', ["status" => 1], ["po_no" => $por->po_no, "invoice_no" => $por->bc_document, "item_rm_id" => $por->item_rm_id]);
             echo json_encode(array("theme" => "success"));
         }else{
             echo json_encode(array("theme" => "error"));
@@ -583,13 +585,14 @@ class Purchase_order_receipts extends CI_Controller
 
     public function print_label($receipt_id)
     {
+        $this->qas = $this->load->database('qas', TRUE);
+        
         //Config
         $this->db->select('*');
         $this->db->from('config');
         $config = $this->db->get()->row();
         $receipt_id = base64_decode($receipt_id);
         //Cek Label
-
         $this->db->select('a.*, c.id as item_rm_id, b.receipt_date, b.bc_document, c.number, c.name, f.number as location, c.uom');
         $this->db->from('purchase_order_labels a');
         $this->db->join('purchase_order_receipts b', 'a.receipt_id = b.receipt_id');
@@ -602,6 +605,28 @@ class Purchase_order_receipts extends CI_Controller
         $this->db->where('a.receipt_id', $receipt_id);
         $this->db->order_by('a.label_no', 'asc');
         $records = $this->db->get()->result_object();
+
+        $por = $this->crud->read("purchase_order_receipts", [], ["receipt_id" => $receipt_id]);
+        $item_rm = $this->crud->read("item_rm", [], ["id" => $por->item_rm_id]);
+
+        $invoice_no = $por->bc_document;
+        $item_rm_number = $item_rm->number;
+
+        $sqlLabel = $this->qas->query("SELECT label FROM receiving_system WHERE no_sj ='$invoice_no' and item_id = '$item_rm_number'");
+        $rowLabel = $sqlLabel->row();
+
+        if(empty(@$rowLabel->label)){
+            $qas = "<b style='color:orange; font-size:15px;'>CHECK</b>";
+        }else{
+            if(@$rowLabel->label == "OK"){
+                $qas = "<b style='color:green; font-size:15px;'>OK</b>";
+            }elseif(@$rowLabel->label == "NG"){
+                $qas = "<b style='color:red; fosnt-size:15px;'>NG</b>";
+            }else{
+                $qas = "<b style='color:green; font-size:15px;'>".@$rowLabel->label."</b>";
+            }
+        }
+
         $html = '<html>
                     <head>
                         <title>' . $receipt_id . '</title>
@@ -620,6 +645,7 @@ class Purchase_order_receipts extends CI_Controller
                 } else {
                     $padding = "padding:2mm 3mm 3mm 2mm;";
                 }
+
                 //Generate QRcode
                 $this->createQrcode($record->label_no, "assets/image/qrcode/");
                 $html .= '  <div style="width: 44mm; max-height:40mm; float:left; ' . $padding . '">
@@ -648,6 +674,7 @@ class Purchase_order_receipts extends CI_Controller
                                         </th>
                                         <th style="text-align:left">
                                             <small>Location</small><br><b style="font-size:15px;">'.$record->location.'</b><br>
+                                            <small>QAS</small><br>'.$qas.'<br>
                                         </th>
                                     </tr>
                                     
@@ -934,6 +961,8 @@ class Purchase_order_receipts extends CI_Controller
             header("Content-Disposition: attachment; filename=purchase_order_receipts_$format.xls");
         }
 
+        $this->qas = $this->load->database('qas', TRUE);
+
         $filter_from = $this->input->get('filter_from');
         $filter_to = $this->input->get('filter_to');
         $filter_supplier = $this->input->get('filter_supplier');
@@ -1022,6 +1051,7 @@ class Purchase_order_receipts extends CI_Controller
                 <th rowspan="2" width="20">No</th>
                 <th rowspan="2" width="80">Status<br>GRN</th>
                 <th rowspan="2" width="80">Status<br>Invoice</th>
+                <th rowspan="2" width="80">Status<br>QAS</th>
                 <th rowspan="2">MRN No</th>
                 <th rowspan="2">GRN No</th>
                 <th rowspan="2">PO No</th>
@@ -1074,10 +1104,33 @@ class Purchase_order_receipts extends CI_Controller
                 $style2 = "style='background: green; color:white;'";
             }
 
+            $invoice_no = trim($data['bc_document']);
+            $item_rm_number = trim($data['item_rm_number']);
+
+            $sqlLabel = $this->qas->query("SELECT label FROM receiving_system WHERE no_sj ='$invoice_no' and item_id = '$item_rm_number'");
+            $rowLabel = $sqlLabel->row();
+
+            if(empty(@$rowLabel->label)){
+                $qas = "OPEN";
+                $style3 = "style='background: green; color:white;'";
+            }else{
+                if(@$rowLabel->label == "OK"){
+                    $qas = "CLOSE";
+                    $style3 = "style='background: red; color:white;'";
+                }elseif(@$rowLabel->label == "NG"){
+                    $qas = "NG";
+                    $style3 = "style='background: red; color:white;'";
+                }else{
+                    $qas = "OPEN";
+                    $style3 = "style='background: green; color:white;'";
+                }
+            }
+
             $html .= '<tr>
                         <td style="text-align:center">' . $no . '</td>
                         <td '.$style2.'>' . $status2 . '</td>
                         <td '.$style.'>' . $status . '</td>
+                        <td '.$style3.'>' . $qas . '</td>
                         <td>' . $data['receipt_no'] . '</td>
                         <td>' . $grn_no . '</td>
                         <td>' . $data['po_no'] . '</td>

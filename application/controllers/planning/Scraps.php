@@ -144,11 +144,25 @@ class Scraps extends CI_Controller
 
     function datatablesTemp(){
         $workorder = $this->input->get('workorder');
+        $filter_from = date("Y-m-d");
 
         //Select Query
-        $this->db->select("a.*, a.qty as qty_reject, b.number as item_rm_number, 'User' as source, b.name as item_rm_name");
+        $this->db->select("a.*, a.qty as qty_reject, b.number as item_rm_number, 'User' as source, b.name as item_rm_name, coalesce(c.stock_wip, 0) as stock_wip");
         $this->db->from('item_ng a');
         $this->db->join('item_rm b', 'a.item_rm_id = b.id');
+        $this->db->join("(SELECT a.id, (COALESCE(c.issued, 0) + COALESCE(g.adjustment_in, 0) - COALESCE(abs(i.adjustment_out), 0) - COALESCE(d.return, 0) - COALESCE(e.ng, 0) - COALESCE(f.scrap, 0) - COALESCE(h.rfg, 0)) AS stock_wip
+            FROM item_rm a
+            JOIN item_familys b ON a.item_family_id = b.id
+            LEFT JOIN (SELECT item_rm_id, SUM(qty) AS issued FROM issued_material_details WHERE DATE_FORMAT(created_date, '%Y-%m-%d') <= '$filter_from' and request_no NOT LIKE '%PR-%' GROUP BY item_rm_id) c ON a.id = c.item_rm_id
+            LEFT JOIN (SELECT item_rm_id, SUM(qty) AS `return` FROM return_materials WHERE return_date <= '$filter_from' GROUP BY item_rm_id) d ON a.id = d.item_rm_id
+            LEFT JOIN (SELECT item_rm_id, SUM(qty) AS ng FROM scraps WHERE trans_date <= '$filter_from' and source = 'Vendor' GROUP BY item_rm_id) e ON a.id = e.item_rm_id
+            LEFT JOIN (SELECT item_rm_id, SUM(qty) AS scrap FROM scraps WHERE trans_date <= '$filter_from' and source = 'User' GROUP BY item_rm_id) f ON a.id = f.item_rm_id
+            LEFT JOIN (SELECT item_rm_id, SUM(qty) AS adjustment_in FROM sto_wip WHERE trans_date <= '$filter_from' and qty > 0 GROUP BY item_rm_id) g ON a.id = g.item_rm_id
+            LEFT JOIN (SELECT item_rm_id, SUM(qty) AS adjustment_out FROM sto_wip WHERE trans_date <= '$filter_from' and qty < 0 GROUP BY item_rm_id) i ON a.id = i.item_rm_id
+            LEFT JOIN (SELECT item_rm_id, SUM(consumed) AS rfg FROM wip_receipt_balance WHERE DATE_FORMAT(created_date, '%Y-%m-%d') <= '$filter_from' GROUP BY item_rm_id) h ON a.id = h.item_rm_id
+            WHERE a.item_category_id = 'C01'
+            GROUP BY a.id
+            ORDER BY a.number) c", 'a.item_rm_id = c.id', 'left');
         $this->db->where('a.deleted', 0);
         $this->db->where('a.document', $workorder);
         $totalRows = $this->db->count_all_results('', false);

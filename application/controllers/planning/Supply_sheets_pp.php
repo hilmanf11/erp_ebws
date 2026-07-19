@@ -180,7 +180,7 @@ class Supply_sheets_pp extends CI_Controller
         //Select Query
         $id = $_POST['id'];
         if ($id === "0") {
-            $this->db->select('a.*, e.period, e.wp, SUM(a.qty_begin) as qty_begin2, SUM(a.qty_req) as qty_req2, SUM(a.qty_act) as qty_act2, SUM(a.qty_bal) as qty_bal2, b.number_customer as item_number, b.name as item_name, b.uom, coalesce(g.qty_issued2, 0) as qty_issued2');
+            $this->db->select('a.*, e.period, e.wp, SUM(a.qty_req) as qty_req2, SUM(a.qty_act) as qty_act2, SUM(a.qty_bal) as qty_bal2, b.number_customer as item_number, b.name as item_name, b.uom, coalesce(g.qty_issued2, 0) as qty_issued2');
             $this->db->from('supply_sheets a');
             $this->db->join('item_fg b', 'a.item_fg_id = b.id');
             $this->db->join('item_rm c', 'a.item_rm_id = c.id');
@@ -240,7 +240,6 @@ class Supply_sheets_pp extends CI_Controller
                     "workorder" => $record['workorder'],
                     "item_number" => $record['item_number'],
                     "item_name" => $record['item_name'],
-                    "qty_begin" => $record['qty_begin2'],
                     "qty_req" => $record['qty_req2'],
                     "qty_act" => $record['qty_act2'],
                     "qty_bal" => $record['qty_bal2'],
@@ -324,7 +323,6 @@ class Supply_sheets_pp extends CI_Controller
                     "item_name" => $record['item_rm_no'],
                     "main_process" => $record['main_process'],
                     "sub_process" => $record['sub_process'],
-                    "qty_begin" => $record['qty_begin'],
                     "qty_req" => $record['qty_req'],
                     "qty_act" => $record['qty_act'],
                     "qty_bal" => $record['qty_bal'],
@@ -362,65 +360,18 @@ class Supply_sheets_pp extends CI_Controller
             c.number as item_rm_no, 
             c.name as item_rm_name, 
             i.mpq,
-            g.name as item_family_name,
             b.main_process,
+            g.name as item_family_name,
             (CASE WHEN f.uom_po is null THEN c.uom ELSE f.uom_po END) as uom,
             (CASE WHEN f.uom_po is null THEN b.composition ELSE (b.composition * f.convertion) END) as qpa,
-            (CASE 
-                WHEN d.qty_bal IS NOT NULL THEN d.qty_bal
-                WHEN COALESCE(h.qty_begin, 0) > 0 THEN 0
-                ELSE COALESCE(h.qty_begin, 0) 
-            END) as qty_begin,
             a.qty,
             (CASE WHEN i.calculate is null THEN 'YES' ELSE i.calculate END) as calculate,
             COALESCE(d.qty_issued, 0) as qty_issued,
-            ROUND(a.qty * b.composition) AS qty_req2,
-            (CEIL(ROUND(a.qty * b.composition) / i.mpq) * i.mpq) AS qty_req3,
+            ROUND(a.qty * b.composition, 2) AS qty_req2,
+            (CEIL(ROUND(a.qty * b.composition, 2) / i.mpq) * i.mpq) AS qty_req3,
             COALESCE(j.end_stock, 0) as stock,
-            CASE 
-                WHEN COALESCE(j.end_stock, 0) <= 0 THEN 0 
-                WHEN COALESCE(h.qty_begin, 0) < 0 THEN 
-                    CASE 
-                        WHEN (COALESCE(h.qty_begin, 0) + ROUND(a.qty * b.composition)) < 0 THEN 1
-                        ELSE (COALESCE(h.qty_begin, 0) + ROUND(a.qty * b.composition))
-                    END 
-                WHEN d.qty_bal IS NOT NULL THEN d.qty_bal 
-                WHEN f.uom_po IS NOT NULL THEN ROUND(a.qty * (b.composition * f.convertion)) 
-                WHEN i.calculate = 'YES' THEN (CEIL(ROUND(a.qty * b.composition) / i.mpq) * i.mpq) 
-                ELSE ROUND(a.qty * b.composition) 
-            END AS qty_req,
-            CASE 
-                WHEN COALESCE(j.end_stock, 0) <= 0 THEN 0 
-                WHEN COALESCE(h.qty_begin, 0) < 0 THEN 
-                    CASE 
-                        WHEN (COALESCE(h.qty_begin, 0) + ROUND(a.qty * b.composition)) < 0 THEN 0
-                        ELSE (COALESCE(h.qty_begin, 0) + ROUND(a.qty * b.composition))
-                    END 
-                WHEN d.qty_bal IS NOT NULL THEN d.qty_bal 
-                WHEN f.uom_po IS NOT NULL THEN ROUND(a.qty * (b.composition * f.convertion)) 
-                WHEN i.calculate = 'YES' THEN (CEIL(ROUND(a.qty * b.composition) / i.mpq) * i.mpq) 
-                ELSE ROUND(a.qty * b.composition) 
-            END AS qty_act,
-            (
-            (CASE 
-                WHEN d.qty_bal IS NOT NULL THEN (d.qty_bal * -1)
-                WHEN COALESCE(h.qty_begin, 0) > 0 THEN 0
-                ELSE COALESCE(h.qty_begin, 0) 
-            END) + 
-            ROUND(a.qty * b.composition) - 
-            (CASE 
-                WHEN COALESCE(j.end_stock, 0) <= 0 THEN 0 
-                WHEN COALESCE(h.qty_begin, 0) < 0 THEN 
-                    CASE 
-                        WHEN (COALESCE(h.qty_begin, 0) + ROUND(a.qty * b.composition)) < 0 THEN 0
-                        ELSE (COALESCE(h.qty_begin, 0) + ROUND(a.qty * b.composition))
-                    END 
-                WHEN d.qty_bal IS NOT NULL THEN d.qty_bal 
-                WHEN f.uom_po IS NOT NULL THEN ROUND(a.qty * (b.composition * f.convertion)) 
-                WHEN i.calculate = 'YES' THEN (CEIL(ROUND(a.qty * b.composition) / i.mpq) * i.mpq) 
-                ELSE ROUND(a.qty * b.composition) 
-            END)
-            ) as qty_bal");
+            CASE WHEN COALESCE(j.end_stock, 0) <= 0 THEN 0 WHEN d.qty_bal IS NOT NULL THEN d.qty_bal WHEN f.uom_po IS NOT NULL THEN ROUND(a.qty * (b.composition * f.convertion), 2) WHEN i.calculate = 'YES' THEN (CEIL(ROUND(a.qty * b.composition, 2) / i.mpq) * i.mpq) ELSE ROUND(a.qty * b.composition, 2) END AS qty_req,
+            CASE WHEN COALESCE(j.end_stock, 0) <= 0 THEN 0 WHEN d.qty_bal IS NOT NULL THEN d.qty_bal WHEN f.uom_po IS NOT NULL THEN ROUND(a.qty * (b.composition * f.convertion), 2) WHEN i.calculate = 'YES' THEN (CEIL(ROUND(a.qty * b.composition, 2) / i.mpq) * i.mpq) ELSE ROUND(a.qty * b.composition, 2) END AS qty_act");
         $this->db->from('production_schedules a');
         $this->db->join('bom b', 'a.item_fg_id = b.item_fg_id');
         $this->db->join('item_rm c', 'b.item_rm_id = c.id');
@@ -428,7 +379,7 @@ class Supply_sheets_pp extends CI_Controller
         $this->db->join('process_main e', 'b.main_process = e.name');
         $this->db->join('convertions f', 'b.item_rm_id = f.item_rm_id', 'left');
         $this->db->join('item_familys g', 'c.item_family_id = g.id');
-        $this->db->join("(SELECT item_rm_id, (SUM(qty_req) - SUM(qty_act)) AS qty_begin FROM supply_sheets WHERE qty_begin != 0 OR qty_bal != 0 GROUP BY item_rm_id) h", 'c.id = h.item_rm_id', 'left');
+        // $this->db->join('supplier_items h', 'c.id = h.item_rm_id', 'left');
         $this->db->join("(SELECT * FROM item_mpq ORDER BY mpq DESC) i", 'c.id = i.item_rm_id');
         $this->db->join("(SELECT
                 a.id,

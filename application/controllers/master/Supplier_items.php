@@ -268,17 +268,6 @@ class Supplier_items extends CI_Controller
                         $send = $this->crud->create('supplier_items', $postFinal);
                         $this->crud->create("supplier_item_histories", $history);
                         echo $send;
-
-                        $approval = $this->crud->read('approvals', [], ["table_name" => "supplier_items"]);
-                        if (!empty($approval)) {
-                            $formApprove = [
-                                "approved" => 1,
-                                "approved_to" => $approval->user_approval_1,
-                                "approved_by" => $this->session->username,
-                            ];
-
-                            $this->db->update('supplier_items', $formApprove, ["supplier_id" => $post['supplier_id'], "item_rm_id" => $post['item_rm_id']]);
-                        }
                     } else {
                         if($supplier_items->price == $post['price']){
                             $this->db->update('supplier_items', $post, ["supplier_id" => $post['supplier_id'], "item_rm_id" => $post['item_rm_id']]);
@@ -288,17 +277,6 @@ class Supplier_items extends CI_Controller
                             echo $send;
 
                             $this->crud->create("supplier_item_histories", $history);
-
-                            $approval = $this->crud->read('approvals', [], ["table_name" => "supplier_items"]);
-                            if (!empty($approval)) {
-                                $formApprove = [
-                                    "approved" => 1,
-                                    "approved_to" => $approval->user_approval_1,
-                                    "approved_by" => $this->session->username,
-                                ];
-
-                                $this->db->update('supplier_items', $formApprove, ["supplier_id" => $post['supplier_id'], "item_rm_id" => $post['item_rm_id']]);
-                            }
                         }
                     }   
                 }else{
@@ -357,17 +335,6 @@ class Supplier_items extends CI_Controller
                         echo $send;
 
                         $this->crud->create("supplier_item_histories", $history);
-
-                        $approval = $this->crud->read('approvals', [], ["table_name" => "supplier_items"]);
-                        if (!empty($approval)) {
-                            $formApprove = [
-                                "approved" => 1,
-                                "approved_to" => $approval->user_approval_1,
-                                "approved_by" => $this->session->username,
-                            ];
-
-                            $this->db->update('supplier_items', $formApprove, ["id" => $id]);
-                        }
                     }
                 }else{
                     echo json_encode(array("title" => "MPQ 0", "message" => "MPQ, MOQ, Leadtime, Transit for Part No " . $post['item_rm_id'] . " Cannot <= 0", "theme" => "error"));

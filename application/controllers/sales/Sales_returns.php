@@ -134,7 +134,7 @@ class Sales_returns extends CI_Controller
 
             $id = $_POST['id'];
             if ($id === "0") {
-                $this->db->select("a.document_no,a.return_no,a.sales_invoice_no,a.return_date, b.name as customer_name, c.plant, (CASE WHEN d.total_label = e.total_label_scan THEN 1 ELSE 0 END) as scan");
+                $this->db->select("a.document_no,a.return_no,a.sales_invoice_no,a.return_date, b.name as customer_name, c.plant, (CASE WHEN d.total_label = e.total_label_scan THEN 1 ELSE 0 END) as scan, a.status");
                 $this->db->from('sales_returns a');
                 $this->db->join('customers b', 'a.customer_id = b.id');
                 $this->db->join('customer_address c', 'a.customer_address_id = c.id');
@@ -179,6 +179,7 @@ class Sales_returns extends CI_Controller
                         "customer_name" => $record['customer_name'],
                         "plant" => $record['plant'],
                         "scan" => $record['scan'],
+                        "status" => $record['status'],
                         "state" => "closed",
                     );
                 }

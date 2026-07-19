@@ -73,11 +73,11 @@ class Report_history_transactions_fg extends CI_Controller
         LEFT JOIN (SELECT item_fg_id, delivery_note_date, COALESCE(SUM(qty), 0) as qty FROM delivery_notes WHERE DATE_FORMAT(created_date, '%Y-%m-%d') between '$filter_from' and '$filter_to' and `status` != '2' GROUP BY item_fg_id) g ON a.id = g.item_fg_id
         LEFT JOIN ( SELECT
                         a.id,
-                        (COALESCE(b.qty_sto, 0) + COALESCE(d.sto_qty_in, 0) + COALESCE(c.qty_wip, 0) + COALESCE(e.qty_rgp_in, 0) - COALESCE(g.qty, 0) - COALESCE(h.sto_qty_out, 0) - COALESCE(f.qty_rgp_out, 0)) as begin_stock
+                        (COALESCE(b.qty_sto, 0) + COALESCE(d.sto_qty_in, 0) + COALESCE(c.qty_wip, 0) + COALESCE(e.qty_rgp_in, 0) + COALESCE(i.qty_return, 0) - COALESCE(g.qty, 0) - COALESCE(h.sto_qty_out, 0) - COALESCE(f.qty_rgp_out, 0)) as begin_stock
                     FROM item_fg a 
                     LEFT JOIN (select a.item_fg_id, COALESCE(SUM(b.qty), 0) as qty_sto FROM os_fg a JOIN scan_item_receipts_fg b ON a.id = b.workorder WHERE a.trans_date < '$filter_from' GROUP BY a.item_fg_id) b ON a.id = b.item_fg_id
                     LEFT JOIN (select a.item_fg_id, COALESCE(SUM(b.qty), 0) as qty_wip FROM wip_receipts a JOIN scan_item_receipts_fg b ON a.workorder = b.workorder and a.checksheet_number = b.checksheet_number WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') < '$filter_from' GROUP BY a.item_fg_id) c ON a.id = c.item_fg_id
-                    LEFT JOIN (select a.item_fg_id, COALESCE(SUM(b.qty), 0) as qty_wip FROM sales_returns a JOIN scan_item_receipts_fg b ON a.sales_invoice_no = b.workorder and a.return_id = b.checksheet_number WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') < '$filter_from' GROUP BY a.item_fg_id) i ON a.id = i.item_fg_id
+                    LEFT JOIN (select a.item_fg_id, COALESCE(SUM(b.qty), 0) as qty_return FROM sales_returns a JOIN scan_item_receipts_fg b ON a.sales_invoice_no = b.workorder and a.return_id = b.checksheet_number WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') < '$filter_from' GROUP BY a.item_fg_id) i ON a.id = i.item_fg_id
                     LEFT JOIN (SELECT a.item_fg_id, COALESCE(SUM(a.qty), 0) as sto_qty_in FROM sto_fg a WHERE a.trans_date < '$filter_from' and a.type = 'IN' and (a.approved_to = '' or a.approved_to is null) GROUP BY item_fg_id) d ON a.id = d.item_fg_id
                     LEFT JOIN (SELECT a.item_fg_id, COALESCE(SUM(a.qty), 0) as sto_qty_out FROM sto_fg a WHERE a.trans_date < '$filter_from' and a.type = 'OUT' and (a.approved_to = '' or a.approved_to is null) GROUP BY item_fg_id) h ON a.id = h.item_fg_id
                     LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) as qty_rgp_in FROM rgp_transactions a JOIN scan_item_rgp b ON a.number = b.rgp_number and a.item_id = b.item_id WHERE a.type = 'IN' and a.transaction_date < '$filter_from' GROUP BY a.item_id) e ON a.id = e.item_id
@@ -177,7 +177,7 @@ class Report_history_transactions_fg extends CI_Controller
                     '0' as qty_out
                 FROM os_fg a 
                 JOIN scan_item_receipts_fg b ON a.id = b.workorder
-                WHERE a.item_fg_id = '$item_fg_id' and DATE_FORMAT(a.created_date, '%Y-%m-%d') BETWEEN '$filter_from' and '$filter_to'
+                WHERE a.item_fg_id = '$item_fg_id' and a.trans_date BETWEEN '$filter_from' and '$filter_to'
                 GROUP BY a.id");
                 $d_os_fg = $q_os_fg->result_array();
 
@@ -185,26 +185,26 @@ class Report_history_transactions_fg extends CI_Controller
                 $q_adj_in = $this->db->query("SELECT
                     'ADJUSTMENT IN' as trans_type,
                     a.created_by,
-                    a.created_date,
+                    a.trans_date as created_date,
                     a.document_no as document_no_1,
                     a.id as document_no_2,
                     a.qty as qty_in,
                     '0' as qty_out
                 FROM sto_fg a 
-                WHERE a.item_fg_id = '$item_fg_id' and DATE_FORMAT(a.created_date, '%Y-%m-%d') BETWEEN '$filter_from' and '$filter_to' and a.type = 'IN'");
+                WHERE a.item_fg_id = '$item_fg_id' and a.trans_date BETWEEN '$filter_from' and '$filter_to' and a.type = 'IN'");
                 $d_adj_in = $q_adj_in->result_array();
 
                 //STO ADJUSTMENT IN
                 $q_adj_out = $this->db->query("SELECT
                     'ADJUSTMENT OUT' as trans_type,
                     a.created_by,
-                    a.created_date,
+                    a.trans_date as created_date,
                     a.document_no as document_no_1,
                     a.id as document_no_2,
                     '0' as qty_in,
                     a.qty as qty_out
                 FROM sto_fg a 
-                WHERE a.item_fg_id = '$item_fg_id' and DATE_FORMAT(a.created_date, '%Y-%m-%d') BETWEEN '$filter_from' and '$filter_to' and a.type = 'OUT'");
+                WHERE a.item_fg_id = '$item_fg_id' and a.trans_date BETWEEN '$filter_from' and '$filter_to' and a.type = 'OUT'");
                 $d_adj_out = $q_adj_out->result_array();
 
                 //RECEIPT

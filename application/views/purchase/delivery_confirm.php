@@ -340,18 +340,6 @@
                                         $(ed13.target).numberbox('setValue', item.price);
                                         $(ed14.target).numberbox('setValue', item.total);
                                         $(ed15.target).textbox('setValue', item.currency);
-
-                                        $(ed9.target).numberbox({
-                                            onChange: function(val){
-                                                if((parseInt(item.qty) - val) <= 0){
-                                                    toastr.info("You cannot exceed qty and delivery");
-                                                    $(ed11.target).numberbox('setValue', 0);
-                                                    $(ed9.target).numberbox('setValue', 0);
-                                                }else{
-                                                    $(ed11.target).numberbox('setValue', (parseInt(item.qty) - val));
-                                                }
-                                            }
-                                        });
                                     }
                                 });
                             }
@@ -492,8 +480,11 @@
                                 var ed1 = dg.datagrid('getEditor', {index: rowIndex, field: 'qty'});
                                 var ed2 = dg.datagrid('getEditor', {index: rowIndex, field: 'balance'});
                                 var ed3 = dg.datagrid('getEditor', {index: rowIndex, field: 'delivery'});
+                                var ed4 = dg.datagrid('getEditor', {index: rowIndex, field: 'price'});
+                                var ed5 = dg.datagrid('getEditor', {index: rowIndex, field: 'total'});
 
                                 var item = $(ed1.target).numberbox('getValue');
+                                var price = $(ed4.target).numberbox('getValue');
 
                                 if((parseInt(item) - val) <= 0){
                                     toastr.info("You cannot exceed qty remain and qty invoice");
@@ -501,6 +492,7 @@
                                     // $(ed3.target).numberbox('setValue', 0);
                                 }else{
                                     $(ed2.target).numberbox('setValue', (parseInt(item) - val));
+                                    $(ed5.target).numberbox('setValue', (val * price));
                                 }
                             }
                         }
@@ -1206,7 +1198,9 @@
     function cellStyler(value, row, index) {
         if (value == 0) {
             return 'background: #53D636; color:white;';
-        } else {
+        } else if(value == 2) {
+            return 'background: #b2c2ff; color:white;';
+        }else{
             return 'background: #FF5F5F; color:white;';
         }
     }
@@ -1215,6 +1209,8 @@
     function cellFormatter(value) {
         if (value == 0) {
             return 'OPEN';
+        } else if(value == 2) {
+            return 'CANCEL';
         } else {
             return 'CLOSED';
         }

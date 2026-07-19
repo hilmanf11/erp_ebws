@@ -42,17 +42,17 @@ class Shipping_orders extends CI_Controller
             $this->db->join("(SELECT z.* FROM (
                 (SELECT a.checksheet_label, b.item_fg_id, a.workorder, a.checksheet_number FROM scan_item_receipts_fg a JOIN wip_receipts b ON a.checksheet_number = b.checksheet_number AND a.workorder = b.workorder)
                 UNION 
-                (SELECT a.checksheet_label, b.item_fg_id, a.workorder, a.checksheet_number FROM scan_item_receipts_fg a JOIN sales_returns b ON a.checksheet_number = b.return_id AND a.workorder = b.sales_invoice_no)
-                UNION
                 (SELECT a.checksheet_label, b.item_fg_id, a.workorder, a.checksheet_number FROM scan_item_receipts_fg a JOIN os_fg b ON a.workorder = b.id)
                 UNION
-                (SELECT a.checksheet_label, b.item_id as item_fg_id, a.workorder, a.checksheet_number FROM scan_item_receipts_fg a JOIN rgp_transactions b ON a.workorder = b.id)
+                (SELECT a.checksheet_label, b.item_id as item_fg_id, a.workorder, a.checksheet_number FROM scan_item_receipts_fg a JOIN rgp_transactions b ON a.checksheet_number = b.rgp_id)
                 UNION
+                (SELECT a.checksheet_label, b.item_fg_id, a.workorder, a.checksheet_number FROM scan_item_receipts_fg a JOIN sales_returns b ON a.checksheet_number = b.return_id)
+                UNION 
                 (SELECT b.label_divided as checksheet_label, b.item_fg_id, a.workorder, a.checksheet_number FROM barcode_divides_fg b JOIN scan_item_receipts_fg a ON (a.checksheet_number = b.reff or a.workorder = b.reff))
             ) z ) d", 'a.item_fg_id = d.item_fg_id');
             $this->db->join('shipping_orders e', 'a.delivery_order_no = e.delivery_order_no AND d.checksheet_label = e.checksheet_label', 'left');
             $this->db->where('a.delivery_order_no', $delivery_order_no);
-            // $this->db->where('a.status', 0);
+            $this->db->where('a.status', 0);
             $this->db->group_by('b.number');
 
             $totalRows = $this->db->count_all_results('', false);
@@ -72,7 +72,7 @@ class Shipping_orders extends CI_Controller
 
             $this->db->select("d.*, a.id as item_fg_id");
             $this->db->from('item_fg a');
-            $this->db->join('wip_receipts c', 'a.id = c.item_fg_id');
+            $this->db->join('wip_receipts c', 'a.id = c.item_fg_id', 'left');
             $this->db->join('scan_item_receipts_fg d', '(c.checksheet_number = d.checksheet_number)');
             $this->db->where('d.checksheet_label', $checksheet_label);
             $this->db->where('d.status', '0');
@@ -109,11 +109,11 @@ class Shipping_orders extends CI_Controller
                         $this->db->group_by('c.label_divided');
                         $totalRows = $this->db->count_all_results('', false);
                         $records = $this->db->get()->result_array();
-                        
+
                         if(empty($records)){
                             $this->db->select("d.*, a.id as item_fg_id");
                             $this->db->from('item_fg a');
-                            $this->db->join('sales_returns c', 'a.id = c.item_fg_id');
+                            $this->db->join('sales_returns c', 'a.id = c.item_fg_id', 'left');
                             $this->db->join('scan_item_receipts_fg d', 'c.return_id = d.checksheet_number');
                             $this->db->where('d.checksheet_label', $checksheet_label);
                             $this->db->where('d.status', '0');
@@ -155,9 +155,9 @@ class Shipping_orders extends CI_Controller
                         // die(@$record->qty_do."-".@$record->shipping."-".$post['qty']);
                         if (!$shipping_orders) {
                             if ((@$record->balance - $post['qty']) >= 0 || empty(@$record->item_fg_id)) {
-                                $send = $this->crud->create('shipping_orders', $post);
-                                $this->crud->update('scan_item_receipts_fg', ["checksheet_label" => $post['checksheet_label']], ["status" => "1"]);
-                                $this->crud->update('barcode_divides_fg', ["label_divided" => $post['checksheet_label']], ["status" => "1"]);
+                                $send = $this->crud->create('shipping_orders', $post, "logs");
+                                $this->db->update('scan_item_receipts_fg', ["status" => "1"], ["checksheet_label" => $post['checksheet_label']]);
+                                $this->db->update('barcode_divides_fg', ["status" => "1"], ["label_divided" => $post['checksheet_label']]);
                                 echo $send;
                             } else {
                                 echo json_encode(array("title" => "Not Match", "message" => "Qty DO and Shipping already Done", "theme" => "error"));

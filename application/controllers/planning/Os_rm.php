@@ -295,10 +295,10 @@ class Os_rm extends CI_Controller
             $label = $rowID->kode;
 
             if ($label == NULL) {
-                $autoID = "STO".$id . sprintf("%04s", $label + 1);
+                $autoID = "STOBR".$id . sprintf("%04s", $label + 1);
             } else {
                 $urutan = (int) substr($label, -4);
-                $autoID = "STO".$id . sprintf("%04s", $urutan + 1);
+                $autoID = "STOBR".$id . sprintf("%04s", $urutan + 1);
             }
 
             $send = $this->crud->create('scan_item_receipts', array("receipt_id" => $id, "label_no" => $autoID, "qty" => 100, "warehouse" => "W01"));
@@ -318,10 +318,10 @@ class Os_rm extends CI_Controller
         $label = $rowID->kode;
 
         if ($label == NULL) {
-            $autoID = "STO".$id . sprintf("%04s", $label + 1);
+            $autoID = "STORM".$id . sprintf("%04s", $label + 1);
         } else {
             $urutan = (int) substr($label, -4);
-            $autoID = "STO".$id . sprintf("%04s", $urutan + 1);
+            $autoID = "STORM".$id . sprintf("%04s", $urutan + 1);
         }
 
         $send = $this->crud->create('scan_item_receipts', array_merge($post, array("label_no" => $autoID)));

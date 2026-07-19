@@ -89,9 +89,9 @@ class Os_sto_fg extends CI_Controller
             $whereDate = date("ymd", strtotime($post['trans_date']));
             $document_no = "STO-FG-".$whereDate."-1";
 
-            $os_rm = $this->crud->read('os_fg', [], ["item_rm_id" => $data['item_rm_id'], "document_no" => $document_no]);
+            $os_fg = $this->crud->read('os_fg', [], ["item_fg_id" => $post['item_fg_id'], "document_no" => $document_no]);
 
-            if(empty($os_rm->id)){
+            if(empty($os_fg->id)){
                 $send = $this->crud->create('os_fg', array_merge($post, array("document_no" => $document_no)));
                 echo $send;
             }else{
@@ -238,10 +238,10 @@ class Os_sto_fg extends CI_Controller
                 $label = $rowID->kode;
 
                 if ($label == NULL) {
-                    $autoID = "STO".$id . sprintf("%04s", $label + 1);
+                    $autoID = "STOFG".$id . sprintf("%04s", $label + 1);
                 } else {
                     $urutan = (int) substr($label, -4);
-                    $autoID = "STO".$id . sprintf("%04s", $urutan + 1);
+                    $autoID = "STOFG".$id . sprintf("%04s", $urutan + 1);
                 }
 
                 if ($qty_receipt > $mpq) {

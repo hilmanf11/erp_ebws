@@ -140,7 +140,6 @@
                             <option value="purchase">Non Down Payment</option>
                             <option value="dp">Down Payment</option>
                             <option value="others">Others</option>
-                            <option value="services">Services</option>
                         </select>
                     </div>
                     <div class="fitem">
@@ -312,7 +311,7 @@
                         options: {
                             readonly: true,
                             required: true,
-                            precision: 4,
+                            precision: 5,
                             onChange: function(value) {
                                 var dg = $('#dg2');
                                 var row = dg.datagrid('getSelected');
@@ -665,6 +664,7 @@
 
     function addJournal() {
         var rows = $('#dg2').datagrid('getRows');
+        var supplier_id = $("#supplier_id").combogrid('getValue');
         // var taxes = $("#taxes").numberbox('getValue');
 
         var totalrows = rows.length;
@@ -676,6 +676,7 @@
         if (totalrows > 0) {
             var data_array = [];
             var data_array2 = [];
+            var data_array3 = [];
             var total_sub = 0;
             var total_igst = 0;
             var total_cgst = 0;
@@ -720,7 +721,7 @@
             var tds_val = 0;
             var arr_tds = ["17000001","17000002","17000003","17000004","17000005","17000006","17000028","17000029"];
             var arr_ap = ['16000001','16000002','16000003','16000004','16000005','16000006','16000007','16000008'];
-
+            var flag = 1;
             for (let z = 0; z < totalrows2; z++) {
                 var debit = rows2[z].debit;
                 var credit = rows2[z].credit;
@@ -775,38 +776,70 @@
                 }
 
                 data_array2.push(data2);
+                data_array3.push(rows2[z].account_number);
+                flag++;
             }
 
-            // if (taxes > 0 && vat_val == 0) {
-            //     var data2 = {
-            //         account_number: "1154105",
-            //         account_name: "TAX",
-            //         debit: disc_tax,
-            //         credit: 0,
-            //         flag: "3",
-            //     }
-
-            //     data_array2.push(data2);
-            // }
-
-            var jsonData = JSON.stringify(data_array);
-            var jsonData2 = JSON.stringify(data_array2);
-
-            $.ajax({
-                type: "POST",
-                url: "<?= base_url('finance/purchase_invoices/createJson') ?>",
-                data: {
-                    jsonData: jsonData,
-                    jsonData2: jsonData2,
-                },
-                success: function(response) {
-                    addTable2('<?= base_url('finance/purchase_invoices/calculateJournal') ?>');
-
-                    setTimeout(function() {
-                        balance_journal();
-                    }, 2000);
-                },
+            let hasil = arr_ap.filter(function(item) {
+                return data_array3.includes(item);
             });
+
+            if (hasil.length == 0) {
+                $.ajax({
+                    type: "post",
+                    url: "<?= base_url('finance/purchase_invoices/readSupplierCoa') ?>",
+                    data: "supplier_id=" + supplier_id,
+                    dataType: "json",
+                    success: function (response) {
+                        var data3 = {
+                            account_number: response[0].account_number,
+                            account_name: response[0].account_name,
+                            debit: 0,
+                            credit: total_grand,
+                            flag: flag,
+                        }
+
+                        data_array2.push(data3);
+                        var jsonData = JSON.stringify(data_array);
+                        var jsonData2 = JSON.stringify(data_array2);
+
+                        $.ajax({
+                            type: "POST",
+                            url: "<?= base_url('finance/purchase_invoices/createJson') ?>",
+                            data: {
+                                jsonData: jsonData,
+                                jsonData2: jsonData2,
+                            },
+                            success: function(response) {
+                                addTable2('<?= base_url('finance/purchase_invoices/calculateJournal') ?>');
+
+                                setTimeout(function() {
+                                    balance_journal();
+                                }, 2000);
+                            },
+                        });
+                    }
+                });
+            }else{
+                var jsonData = JSON.stringify(data_array);
+                var jsonData2 = JSON.stringify(data_array2);
+
+                $.ajax({
+                    type: "POST",
+                    url: "<?= base_url('finance/purchase_invoices/createJson') ?>",
+                    data: {
+                        jsonData: jsonData,
+                        jsonData2: jsonData2,
+                    },
+                    success: function(response) {
+                        addTable2('<?= base_url('finance/purchase_invoices/calculateJournal') ?>');
+
+                        setTimeout(function() {
+                            balance_journal();
+                        }, 2000);
+                    },
+                });
+            }
         } else {
             toastr.warning("please selections your data in table first");
         }
@@ -1746,6 +1779,14 @@
                                     var totalrows2 = rows2.length;
                                     endEditing2();
 
+                                    for (let x = 0; x < totalrows; x++) {
+                                        var check = rows[x];
+                                        if(check.currency != "INR" && parseFloat(check.rate) == 1){
+                                            toastr.error("Please Ensure The Rate is Correct");
+                                            return false;
+                                        }
+                                    }
+
                                     combinedPurchaseInvoice = [];
                                     for (let i = 0; i < totalrows; i++) {
                                         var json = rows[i];
@@ -2095,7 +2136,11 @@
                             onSelect: function(row) {
                                 $("#invoice_no").textbox('setValue', row.bc_document);
                                 $("#boe_no").textbox('setValue', row.awb_no);
-                                $("#journal_type").combobox('setValue', row.journal_type_id);
+                                if(row.journal_type_id == null){
+                                    $("#journal_type").combobox('setValue', "20241120000001");
+                                }else{
+                                    $("#journal_type").combobox('setValue', row.journal_type_id);
+                                }
                             }
                         });
                     }else{
@@ -2140,7 +2185,7 @@
     });
 
     function priceformat(value, row) {
-        var digits = 4;
+        var digits = 5;
         var currency = 'JPY';
         var format = "ja-JP";
 

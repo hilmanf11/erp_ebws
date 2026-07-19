@@ -155,14 +155,6 @@ class Report_ap extends CI_Controller
             $currency = $filter_currency;
         }
 
-        if($filter_status == "0"){
-            $ap_status = "1";
-        }elseif($filter_status == "1"){
-            $ap_status = "0";
-        }else{
-            $ap_status = "";
-        }
-
         //Config
         $this->db->select('*');
         $this->db->from('config');
@@ -208,7 +200,8 @@ class Report_ap extends CI_Controller
                             <th rowspan="2">Invoice Date</th>
                             <th rowspan="2">Receipt Date</th>
                             <th rowspan="2">Payment Due</th>
-                            <th rowspan="2">Aging Due</th>
+                            <th rowspan="2">Number of<br>Days</th>
+                            <th rowspan="2">Aging</th>
                             <th rowspan="2">Document No</th>
                             <th rowspan="2">Invoice No</th>
                             <th rowspan="2">Posting Date</th>
@@ -230,7 +223,7 @@ class Report_ap extends CI_Controller
         $grand_local_debit = 0;
         $grand_local_credit = 0;
         $grand_local_balance = 0;
-
+        $grand_balance_local = 0;
         foreach ($suppliers as $supplier) {
             $supplier_id = $supplier['id'];
             $supplier_name = $supplier['name'];
@@ -279,6 +272,7 @@ class Report_ap extends CI_Controller
 
             $local_debit = 0;
             $local_credit = 0;
+            $total_balance_local = 0;
 
             if($supplier['currency'] == $filter_currency || $filter_currency == ""){
                 $begin_balance_local = $this->begin_balance($supplier_id, $filter_from, $filter_to, $filter_currency, $filter_status, @$supplier['balance_local']);
@@ -288,7 +282,7 @@ class Report_ap extends CI_Controller
 
             // if (count($purchase_invoices) > 0) {
                 $detail .= '  <tr style="background: #DEE2FF; font-weight:bold;">
-                                    <td colspan="17">BEGINING BALANCE - '.$supplier['name'].'</td>
+                                    <td colspan="18">BEGINING BALANCE - '.$supplier['name'].'</td>
                                     <td colspan="3"></td>
                                     <td style="text-align:right;">' . number_format(@$begin_balance_local, 2) . '</td>
                                 </tr>';
@@ -304,6 +298,7 @@ class Report_ap extends CI_Controller
                 $invoice_date = $purchase_invoice['trans_date'];
                 $receipt_date = $purchase_invoice['posting_date'];
                 $payment_due = $purchase_invoice['trans_date'];
+
                 $total_payment = 0;
                 $cl_no_array = array();
                 $cl_date_array = array();
@@ -314,13 +309,9 @@ class Report_ap extends CI_Controller
                     $poro = $this->db->query("SELECT DISTINCT receipt_date FROM purchase_order_receipt_others WHERE bc_document = '$invoice_no'")->row_array();
                     
                     $invoice_date = $purchase['invoice_date'];
-                    $due_date = $purchase['due_date'];
                     $receipt_date = empty($por['receipt_date']) ? @$poro['receipt_date'] : $por['receipt_date'];
 
-                    $tanggal1 = new DateTime($invoice_date);
-                    $tanggal2 = new DateTime($due_date);
-                    $selisih = $tanggal1->diff($tanggal2);
-                    $payment_due = date('Y-m-d', strtotime('+' . $selisih->days . ' days', strtotime($receipt_date)));
+                    $payment_due = date('Y-m-d', strtotime('+' . $purchase['payment_term'] . ' days', strtotime($receipt_date)));
 
                     if($cl_no != ""){
                         $cl_no_array[] = $cl_no;
@@ -395,7 +386,29 @@ class Report_ap extends CI_Controller
                 
                 $accumulated += ($ex_local_credit - $ex_local_debit);
 
-                $detail .= '  <tr>
+                if($aging->days <= 0){
+                    $aging_due = "< 0";
+                } elseif ($aging->days >= 1 && $aging->days <= 30) {
+                    $aging_due = "1-30";
+                } elseif ($aging->days >= 31 && $aging->days <= 45) {
+                    $aging_due = "31-45";
+                } elseif ($aging->days >= 46 && $aging->days <= 60) {
+                    $aging_due = "46-60";
+                } elseif ($aging->days >= 61 && $aging->days <= 75) {
+                    $aging_due = "61-75";
+                } elseif ($aging->days >= 76 && $aging->days <= 90) {
+                    $aging_due = "76-90";
+                } elseif ($aging->days >= 91 && $aging->days <= 120) {
+                    $aging_due = "91-120";
+                } elseif ($aging->days >= 121 && $aging->days <= 180) {
+                    $aging_due = "121-180";
+                } elseif ($aging->days >= 181 && $aging->days <= 365) {
+                    $aging_due = "181-365";  
+                } else {
+                    $aging_due = "> 365";
+                }
+
+                $content = '  <tr>
                                 <td>' . $no . '</td>
                                 <td style="text-align:center;' . $style_status_purchase . '">' . $status_purchase . '</td>
                                 <td>' . $supplier['id'] . '</td>
@@ -405,6 +418,7 @@ class Report_ap extends CI_Controller
                                 <td>' . $receipt_date . '</td>
                                 <td>' . $payment_due . '</td>
                                 <td>' . $aging->days . '</td>
+                                <td>' . $aging_due . '</td>
                                 <td>' . $purchase_invoice['document_no'] . '</td>
                                 <td>' . $purchase_invoice['invoice_no'] . '</td>
                                 <td>' . $purchase_invoice['posting_date'] . '</td>
@@ -418,9 +432,23 @@ class Report_ap extends CI_Controller
                                 <td style="text-align:right;">' . $this->formatNo($balance_local) . '</td>
                                 <td style="text-align:right;">' . $this->formatNo($accumulated) . '</td>
                             </tr>';
+
+                if($filter_status == "0" && $status_purchase == "OPEN"){
+                    $detail .= $content;
+                }
+
+                if($filter_status == "1" && $status_purchase == "CLOSE"){
+                    $detail .= $content;
+                }
+
+                if($filter_status == ""){
+                    $detail .= $content;
+                }
+
                 $no++;
                 $local_debit += $ex_local_debit;
                 $local_credit += $ex_local_credit;
+                $total_balance_local += $balance_local;
             }
 
             $balance_local = ($begin_balance_local + $local_credit - $local_debit);
@@ -444,13 +472,15 @@ class Report_ap extends CI_Controller
                                     <td></td>
                                     <td></td>
                                     <td></td>
+                                    <td></td>
                                     <td style="text-align:right;">' . number_format($local_debit, 2) . '</td>
                                     <td style="text-align:right;">' . number_format($local_credit, 2) . '</td>
-                                    <td style="text-align:right;">' . $this->formatNo($balance_local) . '</td>
+                                    <td style="text-align:right;">' . $this->formatNo($total_balance_local) . '</td>
                                     <td style="text-align:right;">' . $this->formatNo($accumulated) . '</td>
                                 </tr>
                                 <tr>
                                     <td style="height:20px;"></td>
+                                    <td></td>
                                     <td></td>
                                     <td></td>
                                     <td></td>
@@ -478,6 +508,7 @@ class Report_ap extends CI_Controller
 
             $grand_local_debit += $local_debit;
             $grand_local_credit += $local_credit;
+            $grand_balance_local += $total_balance_local;
             $grand_local_balance += ($begin_balance_local + $local_credit - $local_debit);
         }
 
@@ -499,10 +530,11 @@ class Report_ap extends CI_Controller
                             <td></td>
                             <td></td>
                             <td></td>
+                            <td></td>
                             <td style="text-align:right;">' . number_format($grand_local_debit, 2) . '</td>
                             <td style="text-align:right;">' . number_format($grand_local_credit, 2) . '</td>
+                            <td style="text-align:right;">' .$this->formatNo($grand_balance_local) . '</td>
                             <td style="text-align:right;">' .$this->formatNo($grand_local_balance) . '</td>
-                            <td style="text-align:right;">-</td>
                         </tr>';
 
         $htmlend = '</table></body></html>';

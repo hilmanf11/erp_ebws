@@ -286,14 +286,14 @@ class Issued_materials extends CI_Controller
                 $item_id_po = @$purchase_order_receipts->item_rm_id;
                 if(empty($purchase_order_receipts)){
                     $purchase_order_receipts = $this->crud->read("os_rm", [], ["id" => $scan_item_receipts->receipt_id]);
-                    $trans_date = @$purchase_order_receipts->trans_date;
+                    $trans_date = "2020-01-01";
                     $item_id_po = @$purchase_order_receipts->item_rm_id;
                 }
 
                 $checkItems = $this->crud->query("SELECT a.receipt_date, a.receipt_id, e.label_no AS label_1, c.label_divided AS label_2
                     FROM purchase_order_receipts a 
-                    JOIN scan_item_receipts e ON a.receipt_id = e.receipt_id AND e.status = 0
-                    LEFT JOIN barcode_divides c ON a.receipt_id = c.reff
+                    JOIN scan_item_receipts e ON a.receipt_id = e.receipt_id AND e.status = 0 AND e.label_no NOT IN (SELECT DISTINCT label_no FROM issued_material_details)
+                    LEFT JOIN barcode_divides c ON a.receipt_id = c.reff AND c.status = 0 AND c.label_divided NOT IN (SELECT DISTINCT label_no FROM issued_material_details)
                     WHERE a.item_rm_id = '$item_id_po' AND a.receipt_date < '$trans_date' AND a.status != 2
                     ORDER BY a.receipt_date ASC");
 
@@ -367,7 +367,7 @@ class Issued_materials extends CI_Controller
                 $item_id_po = @$purchase_order_receipts->item_rm_id;
                 if(empty($purchase_order_receipts)){
                     $purchase_order_receipts = $this->crud->read("os_rm", [], ["id" => $barcode_divides->reff]);
-                    $receipt_date = @$purchase_order_receipts->trans_date;
+                    $receipt_date = "2020-01-01";
                     $item_id_po = @$purchase_order_receipts->item_rm_id;
                 }
 
@@ -418,7 +418,7 @@ class Issued_materials extends CI_Controller
                         }
                         
                         $this->crud->update('barcode_divides', ["label_divided" => $post['label_no']], ["status" => 1]);
-                        $send = $this->crud->create('issued_material_details', ["request_no" => $post['request_no'], "label_no" => $post['label_no'], "item_rm_id" => $item_rm_id, "qty" => $qty_label]);
+                        $send = $this->crud->create('issued_material_details', ["request_no" => $post['request_no'], "label_no" => $post['label_no'], "item_rm_id" => $item_rm_id, "qty" => $qty_label], "logs");
                         echo $send;
                     } else {
                         $fifo = "";

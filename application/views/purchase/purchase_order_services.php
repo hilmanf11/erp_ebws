@@ -3,12 +3,13 @@
         <tr>
             <th rowspan="2" field="ck" checkbox="true"></th>
             <th rowspan="2" data-options="field:'po_no',width:180,halign:'center'">Del. Sch No</th>
-            <th rowspan="2" data-options="field:'status_pi',width:80,align:'center',formatter:statusformat,styler:statusStyle">Status</th>
+            <th rowspan="2" data-options="field:'status',width:80,align:'center',formatter:statusformat,styler:statusStyle">Status</th>
             <th rowspan="2" data-options="field:'request_no',width:150,halign:'center'">Request No</th>
             <th rowspan="2" data-options="field:'po_date',width:100,align:'center'">Del. Sch Date</th>
             <th rowspan="2" data-options="field:'supplier_po',width:150,halign:'center'">PO No</th>
             <th rowspan="2" data-options="field:'supplier_name',width:250,halign:'center'">Supplier</th>
             <th rowspan="2" data-options="field:'item_name',width:200,halign:'center'">Description of Service</th>
+            <th rowspan="2" data-options="field:'asset_code',width:100,halign:'center'">Asset Code</th>
             <th rowspan="2" data-options="field:'qty',width:100,halign:'center',align:'right',formatter:numberformatDefault">Qty</th>
             <th rowspan="2" data-options="field:'uom',width:80,align:'center'">UoM</th>
             <th rowspan="2" data-options="field:'price',width:100,halign:'center',align:'right',formatter:numberformat">Price</th>
@@ -157,12 +158,12 @@
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Price</span>
-                <input style="width:40%;" name="price" id="price" readonly class="easyui-numberbox" data-options="precision: 4">
+                <input style="width:40%;" name="price" id="price" readonly class="easyui-numberbox" data-options="precision: 5">
                 <!-- <a href="javascript:;" class="easyui-linkbutton" onclick="changePrice()"><i class="fa fa-rotate-left"></i> Sync</a> -->
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Total</span>
-                <input style="width:40%;" name="total" id="total" readonly class="easyui-numberbox" data-options="precision: 4">
+                <input style="width:40%;" name="total" id="total" readonly class="easyui-numberbox" data-options="precision: 5">
             </div>
             <div class="fitem" hidden>
                 <span style="width:35%; display:inline-block;">Revision</span>
@@ -433,6 +434,56 @@
                                 }
                             }
                         },{
+                            field: 'item_family_id',
+                            width: 120,
+                            readonly: true,
+                            halign: 'center',
+                            title: "Product Family",
+                            hidden: true,
+                            editor: {
+                                type: 'textbox',
+                                options: {
+                                    readonly: true
+                                }
+                            }
+                        },{
+                            field: 'request_type',
+                            width: 100,
+                            readonly: true,
+                            halign: 'center',
+                            title: "Type",
+                            editor: {
+                                type: 'textbox',
+                                options: {
+                                    readonly: true
+                                }
+                            }
+                        },{
+                            field: 'asset_code',
+                            width: 120,
+                            readonly: true,
+                            halign: 'center',
+                            title: "Asset Code",
+                            editor: {
+                                type: 'textbox',
+                                options: {
+                                    readonly: true
+                                }
+                            }
+                        },{
+                            field: 'asset_name',
+                            width: 200,
+                            readonly: true,
+                            halign: 'center',
+                            title: "Asset Name",
+                            hidden: true,
+                            editor: {
+                                type: 'textbox',
+                                options: {
+                                    readonly: true
+                                }
+                            }
+                        },{
                             field: 'hsn_code',
                             width: 120,
                             halign: 'center',
@@ -489,7 +540,7 @@
                                 type: 'numberbox',
                                 options: {
                                     required: true,
-                                    precision: 4,
+                                    precision: 5,
                                     onChange: function(value) {
                                         var dg = $('#dg_request');
                                         var row = dg.datagrid('getSelected');
@@ -940,6 +991,11 @@
                                             toastr.error("Delivery Date still Empty!!");
                                             return false;
                                         }
+
+                                        if(row.request_type == "ASSET" && row.asset_code == ""){
+                                            toastr.error("Asset Code Still Empty!!");
+                                            return false;
+                                        }
                                     }
 
                                     for (var i = 0; i < totalrows; i++) {
@@ -954,6 +1010,9 @@
                                                 attachment: row.attachment,
                                                 request_no: row.request_no,
                                                 item_name: row.item_name,
+                                                item_family_id: row.item_family_id,
+                                                asset_code: row.asset_code,
+                                                asset_name: row.asset_name,
                                                 hsn_code: row.hsn_code,
                                                 delivery_date: row.delivery_date,
                                                 qty: row.qty,
@@ -1142,8 +1201,14 @@
     }
 
     function numberformat(value, row) {
+        if(row.currency == "INR"){
+            var digit = 4;
+        }else{
+            var digit = 5;
+        }
+
         const formatter = new Intl.NumberFormat("ja-JP", {
-            minimumFractionDigits: 4
+            minimumFractionDigits: digit
         });
         return "<b>" + formatter.format(value) + "</b>";
     }

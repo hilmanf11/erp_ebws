@@ -33,8 +33,8 @@
                 <th data-options="field:'main_process',width:100,halign:'center'">Process Main</th>
                 <th data-options="field:'product_family_name',width:150,halign:'center'">Product Family</th>
                 <th data-options="field:'uom',width:80,halign:'center'">Uom</th>
-                <th data-options="field:'composition_old',width:80,halign:'center',align:'right',formatter: numberformat">QPA Prev</th>
-                <th data-options="field:'composition',width:80,halign:'center',align:'right',formatter: numberformat">QPA New</th>
+                <th data-options="field:'composition_old',width:80,halign:'center',align:'right'">QPA Prev</th>
+                <th data-options="field:'composition',width:80,halign:'center',align:'right'">QPA New</th>
                 <th data-options="field:'revision',width:50,align:'center'">Rev</th>
                 <th data-options="field:'remark',width:100,halign:'center'">Remarks</th>
                 <th data-options="field:'created_by',width:120,halign:'center'">Created By</th>

@@ -273,22 +273,22 @@ class item_fg extends CI_Controller
                 'polybag' => $data->val($i, 9),
                 'box_label' => $data->val($i, 10),
                 'ng_ration' => $data->val($i, 11),
-                'is_no' => $data->val($i, 11),
-                'weight' => $data->val($i, 12),
+                'is_no' => $data->val($i, 12),
+                'weight' => $data->val($i, 13),
                 // 'color' => $data->val($i, 16),
-                'leadtime' => $data->val($i, 13),
-                'mpq' => $data->val($i, 14),
-                'moq' => $data->val($i, 15),
-                'uom' => $data->val($i, 16),
-                'qty_box' => $data->val($i, 17),
-                'box_sub' => $data->val($i, 18),
-                'hsn_code' => $data->val($i, 19),
-                'account_number' => $data->val($i, 20),
+                'leadtime' => $data->val($i, 14),
+                'mpq' => $data->val($i, 15),
+                'moq' => $data->val($i, 16),
+                'uom' => $data->val($i, 17),
+                'qty_box' => $data->val($i, 18),
+                'box_sub' => $data->val($i, 19),
+                'hsn_code' => $data->val($i, 20),
+                'account_number' => $data->val($i, 21),
                 // 'account_name' => $data->val($i, 22),
-                'logo' => $data->val($i, 21),
-                'type' => $data->val($i, 22),
-                'revision' => $data->val($i, 23),
-                'status' => $data->val($i, 24)
+                'logo' => $data->val($i, 22),
+                'type' => $data->val($i, 23),
+                'revision' => $data->val($i, 24),
+                'status' => $data->val($i, 25)
             );
         }
         $datas['total'] = count($datas);
@@ -328,11 +328,12 @@ class item_fg extends CI_Controller
             $data = $this->input->post('data');
 
             //Cek Process Number          //table       //field        //field excel
-            $item_fg = $this->crud->read('item_fg', [], ["number" => $data['number']]);
+            $item_fg = $this->crud->read('item_fg', [], ["number_customer" => $data['number_customer']]);
             $customer = $this->crud->read('customers', [], ["number" => $data['customer_number']]);
             $harnes_type = $this->crud->read('harnes_types', [], ["number" => $data['harnes_type']]);
             $hsn = $this->crud->read('hsn', [], ["number" => $data['hsn_code']]);
             $account_coa = $this->crud->read('account_coa', [], ["account_number" => $data['account_number']]);
+            $revision = $data['revision'];
 
             if (empty($hsn->number)) {
                 echo json_encode(array("title" => "Not Found", "message" => " HSN Code " . $data['hsn_code'] . " Not Found", "theme" => "error"));
@@ -340,7 +341,7 @@ class item_fg extends CI_Controller
                 echo json_encode(array("title" => "Not Found", "message" => "Customer Code " . $data['customer_number'] . " Not Found", "theme" => "error"));
             } elseif (empty($harnes_type->number)) {
                 echo json_encode(array("title" => "Not Found", "message" => "Harnes Type Code " . $data['harnes_type'] . " Not Found", "theme" => "error"));
-            } elseif (empty($account_coa->name)) {
+            } elseif (empty($account_coa->account_name)) {
                 echo json_encode(array("title" => "Not Found", "message" => "COA No " . $data['account_number'] . " Not Found", "theme" => "error"));
             } elseif (in_array($data['revision'], ["01","02","03","04","05","06","07","08","09","10"])) {
                 echo json_encode(array("title" => "Failed", "message" => "Revision Format " . $data['revision'] . " Is Wrong", "theme" => "error"));
@@ -379,7 +380,7 @@ class item_fg extends CI_Controller
                     "qty_box" => $data['qty_box'],
                     "box_sub" => $data['box_sub'],
                     "hsn_code" => $data['hsn_code'],
-                    "gst_rate" => @$hsn->gst_rate,
+                    // "gst_rate" => @$hsn->gst_rate,
                     "account_number" => $data['account_number'],
                     "account_name" => $account_coa->account_name,
                     "logo" => $data['logo'],

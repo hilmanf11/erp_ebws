@@ -69,6 +69,17 @@ class Ap_payments extends CI_Controller
         die(json_encode($arr));
     }
 
+    public function checkReversal()
+    {
+        $payment_no = $this->input->post("payment_no");
+        $this->db->select('payment_no');
+        $this->db->from('ap_payments');
+        $this->db->like('note', $payment_no);
+        $records = $this->db->get()->result_array();
+
+        die(json_encode(array("total" => count($records), "number" => @$records[0]['payment_no'])));
+    }
+
     public function readJournals($number, $journal_type_id = "", $bank_account = "")
     {
         $number = base64_decode($number);
@@ -663,27 +674,42 @@ class Ap_payments extends CI_Controller
     public function create()
     {
         if ($this->input->post()) {
-            $post = $this->input->post();
+            $jsonData = file_get_contents("php://input");
+            $post = json_decode($jsonData, true);
+            $combinedAp = $post['combinedAp'];
+            $combinedJournals = $post['combinedJournals'];
 
-            if (@$post['id'] != "") {
-                $send = $this->crud->update('ap_payments', ["id" => $post['id']], $post);
-                echo $send;
-            } else {
-                $send = $this->crud->create('ap_payments', $post);
-                if ($send) {
-                    if ($post['balance'] == $post['payment']) {
-                        $pi = $this->crud->reads("purchase_invoices", [], ["number" => $post['purchase_invoice'], "status" => 0]);
-                        if(count($pi) > 0){
-                            $this->db->update('purchase_invoices', ["status" => 1], ["number" => $post['purchase_invoice']]);
-                        }else{
-                            $this->db->update('purchase_invoices', ["status" => 0], ["number" => $post['purchase_invoice']]);
+            foreach ($combinedAp as $ap) {
+                if (!empty(@$ap['id'])) {
+                    $send = $this->crud->update('ap_payments', ["id" => $ap['id']], $ap);
+                } else {
+                    $send = $this->crud->create('ap_payments', $ap, "logs");
+                    if ($send) {
+                        if ($ap['balance'] == $ap['payment']) {
+                            $pi = $this->crud->reads("purchase_invoices", [], ["number" => $ap['purchase_invoice'], "status" => 0]);
+                            if(count($pi) > 0){
+                                $this->db->update('purchase_invoices', ["status" => 1], ["number" => $ap['purchase_invoice']]);
+                            }else{
+                                $this->db->update('purchase_invoices', ["status" => 0], ["number" => $ap['purchase_invoice']]);
+                            }
                         }
-                    }
 
-                    $this->crud->update('ap_payments', ["payment_no" => $post['purchase_invoice']], ["status_dp" => 1]);
+                        $this->crud->update('ap_payments', ["payment_no" => $ap['purchase_invoice']], ["status_dp" => 1]);
+                    }
                 }
-                echo $send;
             }
+
+            foreach ($combinedJournals as $journal) {
+                $ap_payment_journals = $this->crud->read('ap_payment_journals', [], ["payment_no" => $journal['payment_no'], "account_number" => $journal['account_number'], "flag" => $journal['flag']]);
+
+                if (@$ap_payment_journals->id != "") {
+                    $send = $this->crud->update('ap_payment_journals', ["payment_no" => $journal['payment_no'], "account_number" => $journal['account_number'], "flag" => $journal['flag']], $journal);
+                } else {
+                    $send = $this->crud->create('ap_payment_journals', $journal, "logs");
+                }
+            }
+
+            die(json_encode(array("title" => "Good Job", "message" => "Data Save Successfully", "theme" => "success")));
         } else {
             show_error("Cannot Process your request");
         }
@@ -697,24 +723,6 @@ class Ap_payments extends CI_Controller
         // Simpan data JSON ke dalam file
         file_put_contents('json/ap_payments.json', $jsonData);
         file_put_contents('json/ap_payment_journals.json', $jsonData2);
-    }
-
-    public function createJournals()
-    {
-        if ($this->input->post()) {
-            $post = $this->input->post();
-            $purchase_invoice_journals = $this->crud->read('ap_payment_journals', [], ["payment_no" => $post['payment_no'], "account_number" => $post['account_number'], "flag" => $post['flag']]);
-
-            if (@$purchase_invoice_journals->id != "") {
-                $send = $this->crud->update('ap_payment_journals', ["payment_no" => $post['payment_no'], "account_number" => $post['account_number']], $post);
-                echo $send;
-            } else {
-                $send = $this->crud->create('ap_payment_journals', $post);
-                echo $send;
-            }
-        } else {
-            show_error("Cannot Process your request");
-        }
     }
 
     public function createPosting(){

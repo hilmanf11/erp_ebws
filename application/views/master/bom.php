@@ -378,7 +378,7 @@
                     editor: {
                         type: 'numberbox',
                         options: {
-                            precision: 5,
+                            precision: 6,
                         }
                     }
                 }, {
@@ -569,7 +569,7 @@
                     editor: {
                         type: 'numberbox',
                         options: {
-                            precision: 5,
+                            precision: 6,
                         }
                     }
                 }, {

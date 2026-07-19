@@ -486,6 +486,7 @@
         $('#frm_insert').form('clear');
 
         proses = "ADD";
+        last_document_no = "";
 
         $("#journal_date").datebox('enable');
         $("#modul").textbox('enable');
@@ -868,50 +869,66 @@
     function reverse(){
         var row = $('#dg').datagrid('getSelected');
         if (row) {
-            // toastr.warning("Not Available");
-            $('#dlg_insert').dialog('open');
-            // $('#frm_insert').form('load', row);
-            $('#frm_insert').form('clear');
-
             proses = "REVERSE";
+            last_document_no = row.document_no;
 
-            $("#modul").textbox('setValue', "ADJUSTMENT");
-            $("#journal_date").datebox('setValue', row.journal_date);
-            $("#journal_type").combobox('setValue', row.journal_type);
-            $("#journal_type_id").combogrid('setValue', '20241120000001');
-            $("#document_no").textbox('setValue', row.document_no);
-            $("#document_date").datebox('setValue', row.document_date);
-            $("#remarks").textbox('setValue', "REVERSAL");
+            $.ajax({
+                type: "post",
+                url: "<?= base_url('finance/journal_posting_adjustments/checkReversal') ?>",
+                data: "number=" + row.number,
+                dataType: "json",
+                success: function(reverseData) {
+                    if(parseInt(reverseData.total) > 0){
+                        toastr.error("This Transaction already Reversal on " + reverseData.number);
+                        return false;
+                    }
 
-            $("#journal_date").datebox('enable');
-            $("#modul").textbox('enable');
-            $("#journal_type").combogrid('enable');
-            $("#company_name").combobox('enable');
-            $("#document_no").textbox('enable');
-            $("#number").textbox('enable');
-            $("#append").linkbutton('disable');
+                    // toastr.warning("Not Available");
+                    $('#dlg_insert').dialog('open');
+                    // $('#frm_insert').form('load', row);
+                    $('#frm_insert').form('clear');
 
-            var lastIndex;
-            $('#dg2').datagrid({
-                url: '<?= base_url('finance/journal_posting_adjustments/reverse') ?>?number=' + window.btoa(row.number),
-                onLoadSuccess: function(data){
-                    $("#local_debit").numberbox('setValue', data['footer'][0].local_debit);
-                    $("#local_credit").numberbox('setValue', data['footer'][0].local_credit);
-                },
-                onBeforeEdit: function(index, row) {
-                    row.editing = true;
-                    $(this).datagrid('refreshRow', index);
-                },
-                onAfterEdit: function(index, row) {
-                    row.editing = false;
-                    $(this).datagrid('refreshRow', index);
-                },
-                onCancelEdit: function(index, row) {
-                    row.editing = false;
-                    $(this).datagrid('refreshRow', index);
-                },
+                    $("#modul").textbox('setValue', "ADJUSTMENT");
+                    $("#journal_date").datebox('setValue', row.journal_date);
+                    $("#journal_type").combobox('setValue', row.journal_type);
+                    $("#journal_type_id").combogrid('setValue', '20241120000001');
+                    $("#document_no").textbox('setValue', row.document_no);
+                    $("#document_date").datebox('setValue', row.document_date);
+                    $("#remarks").textbox('setValue', "REVERSAL from " + row.number);
+                    $("#remarks").textbox({
+                        readonly:true
+                    });
+
+                    $("#journal_date").datebox('enable');
+                    $("#modul").textbox('enable');
+                    $("#journal_type").combogrid('enable');
+                    $("#company_name").combobox('enable');
+                    $("#document_no").textbox('enable');
+                    $("#number").textbox('enable');
+                    $("#append").linkbutton('disable');
+
+                    var lastIndex;
+                    $('#dg2').datagrid({
+                        url: '<?= base_url('finance/journal_posting_adjustments/reverse') ?>?number=' + window.btoa(row.number),
+                        onLoadSuccess: function(data){
+                            $("#local_debit").numberbox('setValue', data['footer'][0].local_debit);
+                            $("#local_credit").numberbox('setValue', data['footer'][0].local_credit);
+                        },
+                        onBeforeEdit: function(index, row) {
+                            row.editing = true;
+                            $(this).datagrid('refreshRow', index);
+                        },
+                        onAfterEdit: function(index, row) {
+                            row.editing = false;
+                            $(this).datagrid('refreshRow', index);
+                        },
+                        onCancelEdit: function(index, row) {
+                            row.editing = false;
+                            $(this).datagrid('refreshRow', index);
+                        },
+                    });
+                }
             });
-
         } else {
             toastr.warning("Please select one of the data in the table first!", "Information");
         }
@@ -1001,6 +1018,7 @@
             $('#frm_insert').form('load', row);
             
             proses = "UPDATE";
+            last_document_no = row.document_no;
 
             $("#journal_date").datebox('disable');
             $("#modul").textbox('disable');
@@ -1266,10 +1284,10 @@
                     $.ajax({
                         type: "post",
                         url: "<?= base_url('finance/journal_posting_adjustments/checkInvoice') ?>",
-                        data: "document_no=" + document_no,
+                        data: "document_no=" + document_no + "&last_document_no=" + last_document_no,
                         dataType: "json",
                         success: function (inv) {
-                            if(inv.total > 0 && proses == "ADD"){
+                            if(inv.total > 0){
                                 toastr.error("Invoice already created, you cannot save for this invoice");
                                 return false;
                             }else{
@@ -1322,25 +1340,23 @@
                                                                         number: numberFinal
                                                                     },
                                                                     success: function(result) {
-                                                                        requestData(totalrows, rows);
                                                                         $('#dlg_insert').dialog('close');
-                                                                        $('#dlg_generate').dialog('open');
-                                                                    },
-                                                                });
 
-                                                                function requestData(total, json, jml = 1, value = 0) {
-                                                                    if (value < 100) {
-                                                                        value = Math.floor((jml / total) * 100);
-                                                                        var i = (jml - 1);
+                                                                        Swal.fire({
+                                                                            title: 'Please Wait for Saving Data',
+                                                                            showConfirmButton: false,
+                                                                            allowOutsideClick: false,
+                                                                            allowEscapeKey: false,
+                                                                            didOpen: () => {
+                                                                                Swal.showLoading();
+                                                                            },
+                                                                        });
 
-                                                                        $('#p_upload').progressbar('setValue', value);
-                                                                        $('#p_start').html(jml);
-                                                                        $('#p_finish').html(totalrows);
+                                                                        combinedJournal = [];
+                                                                        for (let z = 0; z < totalrows; z++) {
+                                                                            var json = rows[z];
 
-                                                                        $.ajax({
-                                                                            type: "post",
-                                                                            url: '<?= base_url('finance/journal_posting_adjustments/create') ?>',
-                                                                            data: {
+                                                                            combinedJournal.push({
                                                                                 journal_date: journal_date,
                                                                                 modul: modul,
                                                                                 journal_type_id: journal_type_id,
@@ -1352,55 +1368,67 @@
                                                                                 id: "",
                                                                                 document_no: document_no,
                                                                                 document_date: document_date,
-                                                                                amount: json[i].amount,
-                                                                                taxes: json[i].taxes,
-                                                                                taxes_amount: json[i].taxes_amount,
-                                                                                debitcredit: json[i].debitcredit,
-                                                                                account_number: json[i].account_number,
-                                                                                account_name: json[i].account_name,
-                                                                                description: json[i].description,
-                                                                                company_id: json[i].company_id,
-                                                                                company_name: json[i].company_name,
-                                                                                qty: json[i].qty,
-                                                                                rates: json[i].rates,
-                                                                                currency: json[i].currency,
-                                                                                local_debit: json[i].local_debit,
-                                                                                local_credit: json[i].local_credit,
-                                                                                original_debit: json[i].original_debit,
-                                                                                original_credit: json[i].original_credit
-                                                                            },
+                                                                                amount: json.amount,
+                                                                                taxes: json.taxes,
+                                                                                taxes_amount: json.taxes_amount,
+                                                                                debitcredit: json.debitcredit,
+                                                                                account_number: json.account_number,
+                                                                                account_name: json.account_name,
+                                                                                description: json.description,
+                                                                                company_id: json.company_id,
+                                                                                company_name: json.company_name,
+                                                                                qty: json.qty,
+                                                                                rates: json.rates,
+                                                                                currency: json.currency,
+                                                                                local_debit: json.local_debit,
+                                                                                local_credit: json.local_credit,
+                                                                                original_debit: json.original_debit,
+                                                                                original_credit: json.original_credit
+                                                                            });
+                                                                        }
+
+                                                                        $.ajax({
+                                                                            type: "post",
+                                                                            url: '<?= base_url('finance/journal_posting_adjustments/create') ?>',
+                                                                            data: JSON.stringify({ dataJournals: combinedJournal}),
                                                                             dataType: "json",
-                                                                            success: function(result) {
-                                                                                requestData(total, json, jml + 1, value);
+                                                                            success: function (result) {
+                                                                                Swal.close();
 
-                                                                                if (result.theme == "success") {
-                                                                                    var title = "<b style='color: green;'>" + result.title + "</b> | " + result.message;
-                                                                                } else {
-                                                                                    var title = "<b style='color: red;'>" + result.title + "</b> | " + result.message;
-                                                                                }
-
-                                                                                $("#p_remarks").append(title + "<br>");
-
-                                                                                if (i == (totalrows - 1)) {
-                                                                                    Swal.close();
-                                                                                    $('#dlg_generate').dialog('close');
-
-                                                                                    Swal.fire({
-                                                                                        title: result.message,
-                                                                                        icon: result.theme,
-                                                                                        confirmButtonText: 'Ok',
-                                                                                        allowOutsideClick: false,
-                                                                                    }).then((result) => {
-                                                                                        if (result.isConfirmed) {
-                                                                                            // window.location.reload();
-                                                                                            $("#dg").datagrid('reload');
-                                                                                        }
-                                                                                    });
-                                                                                }
+                                                                                Swal.fire({
+                                                                                    title: result.message,
+                                                                                    icon: result.theme,
+                                                                                    confirmButtonText: 'Ok',
+                                                                                    allowOutsideClick: false,
+                                                                                }).then((result) => {
+                                                                                    if (result.isConfirmed) {
+                                                                                        window.location.reload();
+                                                                                    }
+                                                                                });
+                                                                            },
+                                                                            error: function(msg){
+                                                                                Swal.fire({
+                                                                                    title: "Failed to Save Data, Please Try Again",
+                                                                                    icon: "error",
+                                                                                    confirmButtonText: 'Ok',
+                                                                                    allowOutsideClick: false,
+                                                                                }).then((result) => {
+                                                                                    if (result.isConfirmed) {
+                                                                                        $.ajax({
+                                                                                            type: "post",
+                                                                                            url: "<?= base_url('finance/journal_posting_adjustments/delete') ?>",
+                                                                                            data: "number=" + numberFinal,
+                                                                                            dataType: "json",
+                                                                                            success: function(response) {
+                                                                                                window.location.reload();
+                                                                                            }
+                                                                                        });
+                                                                                    }
+                                                                                });
                                                                             }
                                                                         });
-                                                                    }
-                                                                }
+                                                                    },
+                                                                });
                                                             }
                                                         });
                                                     }

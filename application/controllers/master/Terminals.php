@@ -244,11 +244,11 @@ class Terminals extends CI_Controller
                 <th>Part No Supplier</th>
                 <th>Description</th>
                 <th>Maker Name</th>
-                <th>Crimp Height<br>Copper Barrel</th>
-                <th>Crimp Width<br>Copper Barrel</th>
-                <th>Crimp Width<br>Insulation Barrel</th>
-                <th>Crimp Height<br>Vinly Barrel</th>
-                <th>Crimp Height<br>Vinly Barrel With Seal</th>
+                <th>Crimp Height</th>
+                <th>Crimp Width</th>
+                <th>Insulation Width</th>
+                <th>Insulation Height</th>
+                <th>Seal</th>
                 <th>Stripping</th>
                 <th>Wire Type</th>
                 <th>Wire Size</th>

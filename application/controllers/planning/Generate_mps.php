@@ -78,6 +78,13 @@ class Generate_mps extends CI_Controller
             $filter_product_no = base64_decode($this->input->get('filter_item_fg'));
             $filter_revision = base64_decode($this->input->get('filter_revision'));
 
+            $filter_cutoff_start = date("Y-m-01", strtotime($filter_cutoff));
+            $filter_cutoff_start2 = date("Y-m-01", strtotime("-1 month", strtotime($filter_cutoff)));
+            $filter_cutoff_end = date("Y-m-d", strtotime("-1 day", strtotime($filter_cutoff)));
+            $filter_cutoff_end2 = date("Y-m-t", strtotime($filter_cutoff));
+            $mpp_1 = date("Ym", strtotime("-1 month", strtotime($filter_cutoff)));
+            $mpp_2 = date("Ym", strtotime($filter_cutoff));
+
             $monthBack = date('F Y', strtotime('-1 month', strtotime($filter_year . "-" . $filter_month . "-01")));
             $varBackYear = date('Y', strtotime('+1 month', strtotime($filter_year . "-" . $filter_month . "-01")));
             $varBackMonth = date('m', strtotime('+1 month', strtotime($filter_year . "-" . $filter_month . "-01")));
@@ -130,44 +137,109 @@ class Generate_mps extends CI_Controller
             $this->db->order_by('a.number', 'asc');
             $records = $this->db->get()->result_array();
 
+            //Production Schedules
+            $prods = $this->crud->query("SELECT item_fg_id, SUM(qty) as qty FROM production_schedules WHERE trans_date between '$filter_cutoff_start2' and '$filter_cutoff_end' GROUP BY item_fg_id");
+            $arrProd = [];
+            foreach ($prods as $prod) {
+                $arrProd[$prod->item_fg_id] = $prod->qty;
+            }
+
+            //Shop Floor (MRP Old)
+            $sqlScan = $this->dummy->query("SELECT x.assy_number, COUNT(x.serial_number) as qty FROM (
+                SELECT DISTINCT z.serial_number, z.assy_number FROM (
+                SELECT DISTINCT
+                    TRIM(a.serial_number) AS serial_number,
+                    TRIM(a.assy_number) AS assy_number,
+                    TRIM(a.customer) AS customer,
+                    TRIM(a.mpp) AS mpp,
+                    TRIM(a.wp) AS wp,
+                    TRIM(a.lot) AS lot,
+                    DATE(a.tanggal_proses) AS tanggal,
+                    COALESCE(a.jam_scan,'00:00:00') AS jam,
+                    a.wds_qty
+                FROM mst_scan_proses a
+                WHERE kode_proses = '5' and mpp in ('$mpp_1','$mpp_2') and 
+                tanggal_proses <= '$filter_cutoff_end' and status_repair = 'false' 
+                AND status_before IS NOT NULL
+                AND status_repair = 'f'
+                ORDER BY serial_number) z ) x
+                GROUP BY x.assy_number");
+            $rowScans = $sqlScan->result_array();
+            $arrScan = [];
+            foreach ($rowScans as $scan) {
+                $arrScan[$scan['assy_number']] = $scan['qty'];
+            }
+
+            //Stock FG
+            $stockFgs = $this->crud->query("SELECT
+                a.id,
+                (COALESCE(b.qty_sto, 0) + COALESCE(d.sto_qty_in, 0) + COALESCE(e.qty_rgp_in, 0) + COALESCE(c.qty_wip, 0) + COALESCE(i.qty_return, 0) - COALESCE(g.qty, 0) - COALESCE(f.qty_rgp_out, 0) - COALESCE(h.sto_qty_out, 0)) as end_stock
+                FROM item_fg a 
+                LEFT JOIN (select a.item_fg_id, COALESCE(SUM(b.qty), 0) as qty_sto FROM os_fg a JOIN scan_item_receipts_fg b ON a.id = b.workorder WHERE a.trans_date <= '$filter_cutoff' GROUP BY a.item_fg_id) b ON a.id = b.item_fg_id
+                LEFT JOIN (select a.item_fg_id, COALESCE(SUM(b.qty), 0) as qty_wip FROM wip_receipts a JOIN scan_item_receipts_fg b ON a.workorder = b.workorder and a.checksheet_number = b.checksheet_number WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') <= '$filter_cutoff' GROUP BY a.item_fg_id) c ON a.id = c.item_fg_id
+                LEFT JOIN (select a.item_fg_id, COALESCE(SUM(b.qty), 0) as qty_return FROM sales_returns a JOIN scan_item_receipts_fg b ON a.sales_invoice_no = b.workorder and a.return_id = b.checksheet_number WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') <= '$filter_cutoff' GROUP BY a.item_fg_id) i ON a.id = i.item_fg_id
+                LEFT JOIN (SELECT a.item_fg_id, COALESCE(SUM(a.qty), 0) as sto_qty_in FROM sto_fg a WHERE a.trans_date <= '$filter_cutoff' and a.type = 'IN' and (a.approved_to = '' or a.approved_to is null) GROUP BY item_fg_id) d ON a.id = d.item_fg_id
+                LEFT JOIN (SELECT a.item_fg_id, COALESCE(SUM(a.qty), 0) as sto_qty_out FROM sto_fg a WHERE a.trans_date <= '$filter_cutoff' and a.type = 'OUT' and (a.approved_to = '' or a.approved_to is null) GROUP BY item_fg_id) h ON a.id = h.item_fg_id
+                LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) as qty_rgp_in FROM rgp_transactions a JOIN scan_item_rgp b ON a.number = b.rgp_number and a.item_id= b.item_id WHERE a.type = 'IN' and a.transaction_date <= '$filter_cutoff' GROUP BY a.item_id) e ON a.id = e.item_id
+                LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) as qty_rgp_out FROM rgp_transactions a JOIN scan_item_rgp b ON a.number = b.rgp_number and a.item_id = b.item_id WHERE a.type = 'OUT' and a.transaction_date <= '$filter_cutoff' GROUP BY a.item_id) f ON a.id = f.item_id
+                LEFT JOIN (SELECT item_fg_id, delivery_note_date, COALESCE(SUM(qty), 0) as qty FROM delivery_notes WHERE DATE_FORMAT(created_date, '%Y-%m-%d') <= '$filter_cutoff' and `status` != '2' GROUP BY item_fg_id) g ON a.id = g.item_fg_id
+            GROUP BY a.id
+            ORDER BY a.number");
+
+            $arrstockFg = [];
+            foreach ($stockFgs as $stockFg) {
+                $arrstockFg[$stockFg->id] = $stockFg->end_stock;
+            }
+
+            //OS MPP
+            $p_month = date("m", strtotime($filter_cutoff));
+            $p_year = date("Y", strtotime($filter_cutoff));
+            $osMpps = $this->crud->query("SELECT
+                a.id,
+                ((c.date_1 + c.date_2 + c.date_3 + c.date_4 + c.date_5 + c.date_6 + c.date_7 + c.date_8 + c.date_9 + c.date_10 + c.date_11 + c.date_12 + c.date_13 + c.date_14 + c.date_15 + c.date_16 + c.date_17 + c.date_18 + c.date_19 + c.date_20 + c.date_21 + c.date_22 + c.date_23 + c.date_24 + c.date_25 + c.date_26 + c.date_27 + c.date_28 + c.date_29 + c.date_30 + c.date_31) - COALESCE(SUM(b.qty), 0)) as os_mpp
+            FROM item_fg a 
+            JOIN generate_mpp c ON a.id = c.item_fg_id and c.p_month = '$p_month' and c.p_year = '$p_year'
+            LEFT JOIN production_schedules b ON a.id = b.item_fg_id and b.trans_date between '$filter_cutoff_start' and '$filter_cutoff_end2'
+            GROUP BY a.id");
+            $arrOsMpp = [];
+            foreach ($osMpps as $osMpp) {
+                $arrOsMpp[$osMpp->id] = $osMpp->os_mpp;
+            }
+
             foreach ($records as $data) {
-                $filter_cutoff_start = date("Y-m-01", strtotime($filter_cutoff));
-                $filter_cutoff_start2 = date("Y-m-01", strtotime("-1 month", strtotime($filter_cutoff)));
-                $filter_cutoff_end = date("Y-m-d", strtotime("-1 day", strtotime($filter_cutoff)));
-                $filter_cutoff_end2 = date("Y-m-t", strtotime($filter_cutoff));
-                $mpp_1 = date("Ym", strtotime("-1 month", strtotime($filter_cutoff)));
-                $mpp_2 = date("Ym", strtotime($filter_cutoff));
                 $item_fg_id = $data['id'];
                 $assy_number = $data['number_customer'];
                 
-                $prod = $this->crud->query("SELECT item_fg_id, SUM(qty) as qty FROM production_schedules 
-                WHERE trans_date between '$filter_cutoff_start2' and '$filter_cutoff_end' and item_fg_id = '$item_fg_id'
-                GROUP BY item_fg_id");
-                $qty_prod = empty(@$prod[0]->qty) ? 0 : @$prod[0]->qty;
+                // $prod = $this->crud->query("SELECT item_fg_id, SUM(qty) as qty FROM production_schedules 
+                // WHERE trans_date between '$filter_cutoff_start2' and '$filter_cutoff_end' and item_fg_id = '$item_fg_id'
+                // GROUP BY item_fg_id");
+                // $qty_prod = empty(@$prod[0]->qty) ? 0 : @$prod[0]->qty;
+                $qty_prod = empty($arrProd[$item_fg_id]) ? 0 : $arrProd[$item_fg_id];
 
-                $sqlQty = $this->dummy->query("SELECT COUNT(x.serial_number) as qty FROM (
-                    SELECT DISTINCT z.serial_number FROM (
-                    SELECT DISTINCT
-                        TRIM(a.serial_number) AS serial_number,
-                        TRIM(a.assy_number) AS assy_number,
-                        TRIM(a.customer) AS customer,
-                        TRIM(a.mpp) AS mpp,
-                        TRIM(a.wp) AS wp,
-                        TRIM(a.lot) AS lot,
-                        DATE(a.tanggal_proses) AS tanggal,
-                        COALESCE(a.jam_scan,'00:00:00') AS jam,
-                        a.wds_qty
-                    FROM mst_scan_proses a
-                    WHERE kode_proses = '5' and assy_number = '$assy_number' and mpp in ('$mpp_1','$mpp_2') and 
-                    tanggal_proses <= '$filter_cutoff_end' and status_repair = 'false' 
-                    AND status_before IS NOT NULL
-                    AND status_repair = 'f'
-                    ORDER BY serial_number) z ) x");
-                $rowQty = $sqlQty->row();
-                $qty_scan = empty(@$rowQty->qty) ? 0 : @$rowQty->qty;
+                // $sqlQty = $this->dummy->query("SELECT COUNT(x.serial_number) as qty FROM (
+                //     SELECT DISTINCT z.serial_number FROM (
+                //     SELECT DISTINCT
+                //         TRIM(a.serial_number) AS serial_number,
+                //         TRIM(a.assy_number) AS assy_number,
+                //         TRIM(a.customer) AS customer,
+                //         TRIM(a.mpp) AS mpp,
+                //         TRIM(a.wp) AS wp,
+                //         TRIM(a.lot) AS lot,
+                //         DATE(a.tanggal_proses) AS tanggal,
+                //         COALESCE(a.jam_scan,'00:00:00') AS jam,
+                //         a.wds_qty
+                //     FROM mst_scan_proses a
+                //     WHERE kode_proses = '5' and assy_number = '$assy_number' and mpp in ('$mpp_1','$mpp_2') and 
+                //     tanggal_proses <= '$filter_cutoff_end' and status_repair = 'false' 
+                //     AND status_before IS NOT NULL
+                //     AND status_repair = 'f'
+                //     ORDER BY serial_number) z ) x");
+                // $rowQty = $sqlQty->row();
+                // $qty_scan = empty(@$rowQty->qty) ? 0 : @$rowQty->qty;
+                $qty_scan = empty(@$arrScan[$assy_number]) ? 0 : @$arrScan[$assy_number];
 
                 if(($qty_prod - $qty_scan) > 0){
-                    $balance_wip = ($prod[0]->qty - $qty_scan);
+                    $balance_wip = ($qty_prod - $qty_scan);
                 }else{
                     $balance_wip = 0;
                 }
@@ -192,39 +264,37 @@ class Generate_mps extends CI_Controller
                 $forecast = $qForecast->row();
                 // $forecast = $this->crud->read('forecasts', [], ["item_fg_id" => $data['id'], "customer_id" => $data['customer_id'], "p_month" => $filter_month, "p_year" => $filter_year, "revision" => $filter_revision]);
 
-                $stockFg = $this->crud->query("SELECT
-                    a.id,
-                    (COALESCE(b.qty_sto, 0) + COALESCE(d.sto_qty_in, 0) + COALESCE(c.qty_wip, 0) + COALESCE(e.qty_rgp_in, 0) - COALESCE(g.qty, 0) - COALESCE(h.sto_qty_out, 0) - COALESCE(f.qty_rgp_out, 0)) AS end_stock
-                FROM item_fg a 
-                LEFT JOIN (SELECT a.item_fg_id, COALESCE(SUM(b.qty), 0) AS qty_sto FROM os_fg a JOIN scan_item_receipts_fg b ON a.id = b.workorder WHERE a.trans_date < '$filter_cutoff' GROUP BY a.item_fg_id) b ON a.id = b.item_fg_id
-                LEFT JOIN (SELECT a.item_fg_id, COALESCE(SUM(b.qty), 0) AS qty_wip FROM wip_receipts a JOIN scan_item_receipts_fg b ON a.workorder = b.workorder AND a.checksheet_number = b.checksheet_number WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') < '$filter_cutoff' GROUP BY a.item_fg_id) c ON a.id = c.item_fg_id
-                LEFT JOIN (SELECT a.item_fg_id, COALESCE(SUM(a.qty), 0) AS sto_qty_in FROM sto_fg a WHERE a.trans_date < '$filter_cutoff' AND a.type = 'IN' AND (a.approved_to = '' OR a.approved_to IS NULL) GROUP BY item_fg_id) d ON a.id = d.item_fg_id
-                LEFT JOIN (SELECT a.item_fg_id, COALESCE(SUM(a.qty), 0) AS sto_qty_out FROM sto_fg a WHERE a.trans_date < '$filter_cutoff' AND a.type = 'OUT' AND (a.approved_to = '' OR a.approved_to IS NULL) GROUP BY item_fg_id) h ON a.id = h.item_fg_id
-                LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) AS qty_rgp_in FROM rgp_transactions a JOIN scan_item_receipts_fg b ON  a.rgp_id = b.checksheet_number AND a.id = b.workorder WHERE a.type = 'IN' AND a.transaction_date < '$filter_cutoff' GROUP BY a.item_id) e ON a.id = e.item_id
-                LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) AS qty_rgp_out FROM rgp_transactions a JOIN scan_item_rgp b ON a.number = b.rgp_number AND a.item_id = b.item_id WHERE a.type = 'OUT' AND a.transaction_date < '$filter_cutoff' GROUP BY a.item_id) f ON a.id = f.item_id
-                LEFT JOIN (SELECT item_fg_id, delivery_note_date, COALESCE(SUM(qty), 0) AS qty FROM delivery_notes WHERE DATE_FORMAT(created_date, '%Y-%m-%d') < '$filter_cutoff' AND `status` != '2' GROUP BY item_fg_id) g ON a.id = g.item_fg_id
-                WHERE a.id = '$item_fg_id'
-                GROUP BY a.id
-                ORDER BY a.number");
+                // $stockFg = $this->crud->query("SELECT
+                //     a.id,
+                //     (COALESCE(b.qty_sto, 0) + COALESCE(d.sto_qty_in, 0) + COALESCE(e.qty_rgp_in, 0) + COALESCE(c.qty_wip, 0) + COALESCE(i.qty_return, 0) - COALESCE(g.qty, 0) - COALESCE(f.qty_rgp_out, 0) - COALESCE(h.sto_qty_out, 0)) as end_stock
+                //     FROM item_fg a 
+                //     LEFT JOIN (select a.item_fg_id, COALESCE(SUM(b.qty), 0) as qty_sto FROM os_fg a JOIN scan_item_receipts_fg b ON a.id = b.workorder WHERE a.trans_date <= '$filter_cutoff' GROUP BY a.item_fg_id) b ON a.id = b.item_fg_id
+                //     LEFT JOIN (select a.item_fg_id, COALESCE(SUM(b.qty), 0) as qty_wip FROM wip_receipts a JOIN scan_item_receipts_fg b ON a.workorder = b.workorder and a.checksheet_number = b.checksheet_number WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') <= '$filter_cutoff' GROUP BY a.item_fg_id) c ON a.id = c.item_fg_id
+                //     LEFT JOIN (select a.item_fg_id, COALESCE(SUM(b.qty), 0) as qty_return FROM sales_returns a JOIN scan_item_receipts_fg b ON a.sales_invoice_no = b.workorder and a.return_id = b.checksheet_number WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') <= '$filter_cutoff' GROUP BY a.item_fg_id) i ON a.id = i.item_fg_id
+                //     LEFT JOIN (SELECT a.item_fg_id, COALESCE(SUM(a.qty), 0) as sto_qty_in FROM sto_fg a WHERE a.trans_date <= '$filter_cutoff' and a.type = 'IN' and (a.approved_to = '' or a.approved_to is null) GROUP BY item_fg_id) d ON a.id = d.item_fg_id
+                //     LEFT JOIN (SELECT a.item_fg_id, COALESCE(SUM(a.qty), 0) as sto_qty_out FROM sto_fg a WHERE a.trans_date <= '$filter_cutoff' and a.type = 'OUT' and (a.approved_to = '' or a.approved_to is null) GROUP BY item_fg_id) h ON a.id = h.item_fg_id
+                //     LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) as qty_rgp_in FROM rgp_transactions a JOIN scan_item_rgp b ON a.number = b.rgp_number and a.item_id= b.item_id WHERE a.type = 'IN' and a.transaction_date <= '$filter_cutoff' GROUP BY a.item_id) e ON a.id = e.item_id
+                //     LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) as qty_rgp_out FROM rgp_transactions a JOIN scan_item_rgp b ON a.number = b.rgp_number and a.item_id = b.item_id WHERE a.type = 'OUT' and a.transaction_date <= '$filter_cutoff' GROUP BY a.item_id) f ON a.id = f.item_id
+                //     LEFT JOIN (SELECT item_fg_id, delivery_note_date, COALESCE(SUM(qty), 0) as qty FROM delivery_notes WHERE DATE_FORMAT(created_date, '%Y-%m-%d') <= '$filter_cutoff' and `status` != '2' GROUP BY item_fg_id) g ON a.id = g.item_fg_id
+                // WHERE a.id = '$item_fg_id'
+                // GROUP BY a.id
+                // ORDER BY a.number");
 
-                $p_month = date("m", strtotime($filter_cutoff));
-                $p_year = date("Y", strtotime($filter_cutoff));
-                $osMpp = $this->crud->query("SELECT
-                    a.id,
-                    ((c.date_1 + c.date_2 + c.date_3 + c.date_4 + c.date_5 + c.date_6 + c.date_7 + c.date_8 + c.date_9 + c.date_10 + c.date_11 + c.date_12 + c.date_13 + c.date_14 + c.date_15 + c.date_16 + c.date_17 + c.date_18 + c.date_19 + c.date_20 + c.date_21 + c.date_22 + c.date_23 + c.date_24 + c.date_25 + c.date_26 + c.date_27 + c.date_28 + c.date_29 + c.date_30 + c.date_31) - COALESCE(SUM(b.qty), 0)) as os_mpp
-                FROM item_fg a 
-                JOIN generate_mpp c ON a.id = c.item_fg_id and c.p_month = '$p_month' and c.p_year = '$p_year'
-                LEFT JOIN production_schedules b ON a.id = b.item_fg_id and b.trans_date between '$filter_cutoff_start' and '$filter_cutoff_end2'
-                WHERE a.id = '$item_fg_id'
-                GROUP BY a.id");
+                // $p_month = date("m", strtotime($filter_cutoff));
+                // $p_year = date("Y", strtotime($filter_cutoff));
+                // $osMpp = $this->crud->query("SELECT
+                //     a.id,
+                //     ((c.date_1 + c.date_2 + c.date_3 + c.date_4 + c.date_5 + c.date_6 + c.date_7 + c.date_8 + c.date_9 + c.date_10 + c.date_11 + c.date_12 + c.date_13 + c.date_14 + c.date_15 + c.date_16 + c.date_17 + c.date_18 + c.date_19 + c.date_20 + c.date_21 + c.date_22 + c.date_23 + c.date_24 + c.date_25 + c.date_26 + c.date_27 + c.date_28 + c.date_29 + c.date_30 + c.date_31) - COALESCE(SUM(b.qty), 0)) as os_mpp
+                // FROM item_fg a 
+                // JOIN generate_mpp c ON a.id = c.item_fg_id and c.p_month = '$p_month' and c.p_year = '$p_year'
+                // LEFT JOIN production_schedules b ON a.id = b.item_fg_id and b.trans_date between '$filter_cutoff_start' and '$filter_cutoff_end2'
+                // WHERE a.id = '$item_fg_id'
+                // GROUP BY a.id");
 
-                if(@$osMpp[0]->os_mpp > 0){
-                    $os_mpp = @$osMpp[0]->os_mpp;
-                }else{
-                    $os_mpp = 0;
-                }
+                $os_mpp = empty($arrOsMpp[$item_fg_id]) ? 0 : $arrOsMpp[$item_fg_id];
 
-                $stock_fg = (@$stockFg[0]->end_stock);
+                // $stock_fg = (@$stockFg[0]->end_stock);
+                $stock_fg = empty($arrstockFg[$item_fg_id]) ? 0 : $arrstockFg[$item_fg_id];
 
                 // $totalStock = ($data['total_wip'] + @$stock_fg + $os_mpp);
                 $totalStock = ($balance_wip + @$stock_fg + $os_mpp);

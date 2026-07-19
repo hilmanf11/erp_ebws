@@ -153,13 +153,16 @@ class Fixeds extends CI_Controller
 
             //Select Query
             $this->db->select("a.*, 
-                b.account_number,
+                d.number as voucher_no,
+                (CASE WHEN a.account_number is null THEN b.account_number ELSE a.account_number END) as account_number,
                 b.name as asset_category_name,
                 b.usefull, b.shift as shift_factor,
                 (CASE WHEN (a.cost - (COALESCE(c.depreciation_acc, 0))) > 0 THEN 0 ELSE 1 END) as status_expired");
             $this->db->from('asset_fixeds a');
             $this->db->join('item_familys b', 'a.item_family_id = b.id');
             $this->db->join("(SELECT asset_no, SUM(debit) as depreciation_acc FROM asset_journals WHERE periode BETWEEN '$filter_period_from' and '$filter_period_to' GROUP BY asset_no) c", 'a.number = c.asset_no', 'left');
+            $this->db->join('journal_postings d', 'a.purchase_invoice_no = d.document_no', 'left');
+            
             $this->db->where('a.trans_date >=', $filter_from);
             $this->db->where('a.trans_date <=', $filter_to);
             $this->db->group_by('a.id');
@@ -537,53 +540,53 @@ class Fixeds extends CI_Controller
             $html .= '<div style="width: 44mm;">';
             $no = 1;
             foreach ($records as $record) {
-                if ($no == 3) {
-                    $no = 1;
+                for ($i=0; $i < $record->qty; $i++) {
+                    if ($no == 1) {
+                        $padding = "padding:2mm 3mm 3mm 2mm;";
+                    } else {
+                        $padding = "padding:2mm 3mm 3mm 2mm;";
+                    }
+                
+                    //Generate QRcode
+                    $this->createQrcode($record->number, "assets/image/qrcode/");
+                    $html .= '  <div style="width: 44mm; max-height:40mm; float:left; ' . $padding . '">
+                                    <table id="customers" border="1" style="margin-bottom:20px;">
+                                        <tr>
+                                            <th colspan="3" style="font-size:7px; text-align:center;"><b>' . $config->name . '</b></th>
+                                        </tr>
+                                        <tr>
+                                            <th style="text-align:center;">
+                                                <img src="' . base_url('assets/image/qrcode/' . $record->number . '.png') . '" width="50"/>
+                                            </th>
+                                            <th style="text-align:left">
+                                                <small style="font-size:7px;">Asset Code</small><br>
+                                                <small style="font-size:12px;"><b>' . $record->number . "/" . $no . '</b></small><br>
+                                                <small style="font-size:7px;">Invoice No</small><br>
+                                                <small style="font-size:10px;">' . $record->purchase_invoice_no . '</small>
+                                            </th>
+                                        </tr>
+                                        <tr>
+                                            <td colspan="3" style="height:35px;">
+                                                <small style="font-size:7px;">Asset Name</small><br>
+                                                <small style="font-size:12px;"><b>' . $record->name . '</b></small>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align:left" width="150">
+                                                <small>Quantity</small><br>
+                                                <center>
+                                                    <b style="font-size:20px;">' . $no . "/" . number_format($record->qty, 0) . '</b></small><br>
+                                                    <small style="font-size:10px;"><b>'. $record->uom . '</b></small>
+                                                </center>
+                                            </td>
+                                            <td style="text-align:left" width="200">
+                                                <small>Trans Date</small><br><b style="font-size:10px;">'.$record->trans_date.'</b><br>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </div>';
+                    $no++;
                 }
-                if ($no == 1) {
-                    $padding = "padding:2mm 3mm 3mm 2mm;";
-                } else {
-                    $padding = "padding:2mm 3mm 3mm 2mm;";
-                }
-                //Generate QRcode
-                $this->createQrcode($record->number, "assets/image/qrcode/");
-                $html .= '  <div style="width: 44mm; max-height:40mm; float:left; ' . $padding . '">
-                                <table id="customers" border="1" style="margin-bottom:20px;">
-                                    <tr>
-                                        <th colspan="3" style="font-size:7px; text-align:center;"><b>' . $config->name . '</b></th>
-                                    </tr>
-                                    <tr>
-                                        <th style="text-align:center;">
-                                            <img src="' . base_url('assets/image/qrcode/' . $record->number . '.png') . '" width="50"/>
-                                        </th>
-                                        <th style="text-align:left">
-                                            <small style="font-size:7px;">Asset Code</small><br>
-                                            <small style="font-size:12px;"><b>' . $record->number . '</b></small><br>
-                                            <small style="font-size:7px;">Invoice No</small><br>
-                                            <small style="font-size:10px;">' . $record->purchase_invoice_no . '</small>
-                                        </th>
-                                    </tr>
-                                    <tr>
-                                        <td colspan="3" style="height:35px;">
-                                            <small style="font-size:7px;">Asset Name</small><br>
-                                            <small style="font-size:12px;"><b>' . $record->name . '</b></small>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td style="text-align:left" width="150">
-                                            <small>Quantity</small><br>
-                                            <center>
-                                                <b style="font-size:20px;">' . number_format($record->qty, 0) . '</b></small><br>
-                                                <small style="font-size:10px;"><b>'. $record->uom . '</b></small>
-                                            </center>
-                                        </td>
-                                        <td style="text-align:left" width="200">
-                                            <small>Trans Date</small><br><b style="font-size:10px;">'.$record->trans_date.'</b><br>
-                                        </td>
-                                    </tr>
-                                </table>
-                            </div>';
-                $no++;
             }
             $html .= '</div><script>window.print()</script>';
         } else {

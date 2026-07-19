@@ -62,39 +62,9 @@
         var filter_items = $("#filter_items").combogrid('getValue');
         var filter_display = $("#filter_display").combobox('getValue');
 
-        Swal.fire({
-            title: 'Please Wait for Calculate Data',
-            showConfirmButton: false,
-            allowOutsideClick: false,
-            allowEscapeKey: false,
-            didOpen: () => {
-                Swal.showLoading();
-            },
-        });
-
-        $.ajax({
-            type: "post",
-            url: '<?= base_url('costing/inventory_wip/getData') ?>',
-            data: {
-                filter_from: filter_from,
-                filter_to: filter_to,
-                filter_items: filter_items,
-            },
-            dataType: "json",
-            success: function(data) {
-                Swal.close();
-                if(data.total > 0){
-                    url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_items=" + filter_items + "&filter_display=" + filter_display;
-                    $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
-                    $("#printout").attr('src', '<?= base_url('costing/inventory_wip/print') ?>' + url);
-                }else{
-                    toastr.warning("Data Not Found");
-                }
-            }, error: function(){
-                Swal.close();
-                toastr.error("Something Error in get Data");
-            }
-        });
+        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_items=" + filter_items + "&filter_display=" + filter_display;
+        $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
+        $("#printout").attr('src', '<?= base_url('costing/inventory_wip/print') ?>' + url);
     }
 
     function excel() {

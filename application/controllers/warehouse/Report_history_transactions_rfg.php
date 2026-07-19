@@ -68,21 +68,21 @@ class Report_history_transactions_rfg extends CI_Controller
         $this->db->join('item_familys b', 'a.item_family_id = b.id');
         $this->db->join("(SELECT item_rm_id, SUM(qty) AS issued FROM issued_material_details WHERE DATE_FORMAT(created_date, '%Y-%m-%d') BETWEEN '$filter_from' and '$filter_to' and request_no NOT LIKE '%PR-%' GROUP BY item_rm_id) c", 'a.id = c.item_rm_id', 'left');
         $this->db->join("(SELECT item_rm_id, SUM(qty) AS `return` FROM return_materials WHERE return_date BETWEEN '$filter_from' and '$filter_to' GROUP BY item_rm_id) d", 'a.id = d.item_rm_id', 'left');
-        $this->db->join("(SELECT item_rm_id, SUM(qty) AS ng FROM scraps WHERE trans_date BETWEEN '$filter_from' and '$filter_to' and source = 'Vendor' GROUP BY item_rm_id) e", 'a.id = e.item_rm_id', 'left');
-        $this->db->join("(SELECT item_rm_id, SUM(qty) AS scrap FROM scraps WHERE trans_date BETWEEN '$filter_from' and '$filter_to' and source = 'User' GROUP BY item_rm_id) f", 'a.id = f.item_rm_id', 'left');
+        $this->db->join("(SELECT item_rm_id, SUM(qty) AS ng FROM scraps WHERE trans_date BETWEEN '$filter_from' and '$filter_to' and source = 'Vendor' and (approved_to = '' or approved_to is null) GROUP BY item_rm_id) e", 'a.id = e.item_rm_id', 'left');
+        $this->db->join("(SELECT item_rm_id, SUM(qty) AS scrap FROM scraps WHERE trans_date BETWEEN '$filter_from' and '$filter_to' and source = 'User' and (approved_to = '' or approved_to is null) GROUP BY item_rm_id) f", 'a.id = f.item_rm_id', 'left');
         $this->db->join("(SELECT item_rm_id, SUM(qty) AS adjustment FROM sto_wip WHERE trans_date BETWEEN '$filter_from' and '$filter_to' and qty > 0 GROUP BY item_rm_id) g", 'a.id = g.item_rm_id', 'left');
         $this->db->join("(SELECT item_rm_id, SUM(qty) AS adjustment FROM sto_wip WHERE trans_date BETWEEN '$filter_from' and '$filter_to' and qty < 0 GROUP BY item_rm_id) j", 'a.id = j.item_rm_id', 'left');
-        $this->db->join("(SELECT item_rm_id, SUM(qty) AS rfg FROM wip_receipt_details WHERE trans_date BETWEEN '$filter_from' and '$filter_to' GROUP BY item_rm_id) h", 'a.id = h.item_rm_id', 'left');
+        $this->db->join("(SELECT a.item_rm_id, SUM(a.consumed) AS rfg FROM wip_receipt_balance a JOIN wip_receipts b ON a.checksheet_number = b.checksheet_number WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') between '$filter_from' and '$filter_to' GROUP BY a.item_rm_id) h", 'a.id = h.item_rm_id', 'left');
         $this->db->join("(SELECT a.id, (COALESCE(c.issued, 0) + COALESCE(g.adjustment_in, 0) - COALESCE(abs(i.adjustment_out), 0) - COALESCE(d.return, 0) - COALESCE(e.ng, 0) - COALESCE(f.scrap, 0) - COALESCE(h.rfg, 0)) AS begin
             FROM item_rm a
             JOIN item_familys b ON a.item_family_id = b.id
             LEFT JOIN (SELECT item_rm_id, SUM(qty) AS issued FROM issued_material_details WHERE DATE_FORMAT(created_date, '%Y-%m-%d') < '$filter_from' and request_no NOT LIKE '%PR-%' GROUP BY item_rm_id) c ON a.id = c.item_rm_id
             LEFT JOIN (SELECT item_rm_id, SUM(qty) AS `return` FROM return_materials WHERE return_date < '$filter_from' GROUP BY item_rm_id) d ON a.id = d.item_rm_id
-            LEFT JOIN (SELECT item_rm_id, SUM(qty) AS ng FROM scraps WHERE trans_date < '$filter_from' and source = 'Vendor' GROUP BY item_rm_id) e ON a.id = e.item_rm_id
-            LEFT JOIN (SELECT item_rm_id, SUM(qty) AS scrap FROM scraps WHERE trans_date < '$filter_from' and source = 'User' GROUP BY item_rm_id) f ON a.id = f.item_rm_id
+            LEFT JOIN (SELECT item_rm_id, SUM(qty) AS ng FROM scraps WHERE trans_date < '$filter_from' and source = 'Vendor' and (approved_to = '' or approved_to is null) GROUP BY item_rm_id) e ON a.id = e.item_rm_id
+            LEFT JOIN (SELECT item_rm_id, SUM(qty) AS scrap FROM scraps WHERE trans_date < '$filter_from' and source = 'User' and (approved_to = '' or approved_to is null) GROUP BY item_rm_id) f ON a.id = f.item_rm_id
             LEFT JOIN (SELECT item_rm_id, SUM(qty) AS adjustment_in FROM sto_wip WHERE trans_date < '$filter_from' and qty > 0 GROUP BY item_rm_id) g ON a.id = g.item_rm_id
             LEFT JOIN (SELECT item_rm_id, SUM(qty) AS adjustment_out FROM sto_wip WHERE trans_date < '$filter_from' and qty < 0 GROUP BY item_rm_id) i ON a.id = i.item_rm_id
-            LEFT JOIN (SELECT item_rm_id, SUM(qty) AS rfg FROM wip_receipt_details WHERE trans_date < '$filter_from' GROUP BY item_rm_id) h ON a.id = h.item_rm_id
+            LEFT JOIN (SELECT a.item_rm_id, SUM(a.consumed) AS rfg FROM wip_receipt_balance a JOIN wip_receipts b ON a.checksheet_number = b.checksheet_number WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') < '$filter_from' GROUP BY a.item_rm_id) h ON a.id = h.item_rm_id
             WHERE a.item_category_id = 'C01'
             GROUP BY a.id
             ORDER BY a.number) i", 'a.id = i.id', 'left');
@@ -153,10 +153,10 @@ class Report_history_transactions_rfg extends CI_Controller
                             <td>' . $record->name . '</td>
                             <td>' . $record->item_family_name . '</td>
                             <td>' . $record->uom . '</td>
-                            <td style="text-align:right;">' . number_format($record->begin, 0) . '</td>
-                            <td style="text-align:right;">' . number_format($in, 0) . '</td>
-                            <td style="text-align:right;">' . number_format($out, 0) . '</td>
-                            <td style="text-align:right; '.$style.'">' . number_format($balance, 0) . '</td>
+                            <td style="text-align:right;">' . number_format($record->begin, 2) . '</td>
+                            <td style="text-align:right;">' . number_format($in, 2) . '</td>
+                            <td style="text-align:right;">' . number_format($out, 2) . '</td>
+                            <td style="text-align:right; '.$style.'">' . number_format($balance, 2) . '</td>
                         </tr>';
 
             if ($filter_display == "DETAIL") {
@@ -193,6 +193,7 @@ class Report_history_transactions_rfg extends CI_Controller
                     WHERE trans_date BETWEEN '$filter_from' AND '$filter_to'
                     AND item_rm_id = '$item_rm_id'
                     AND source = 'User'
+                    and (approved_to = '' or approved_to is null)
                     GROUP BY id
                     UNION
                     SELECT item_rm_id, 'NG' AS trans_type, created_by, document AS document_no, workorder AS serial_no, trans_date, '0' AS qty_in, qty AS qty_out
@@ -200,6 +201,7 @@ class Report_history_transactions_rfg extends CI_Controller
                     WHERE trans_date BETWEEN '$filter_from' AND '$filter_to'
                     AND item_rm_id = '$item_rm_id'
                     AND source = 'Vendor'
+                    and (approved_to = '' or approved_to is null)
                     GROUP BY id
                     UNION
                     SELECT item_rm_id, 'ADJUSTMENT IN' AS trans_type, created_by, document_no, '-' AS serial_no, trans_date, qty AS qty_in, '0' AS qty_out
@@ -216,11 +218,12 @@ class Report_history_transactions_rfg extends CI_Controller
                     AND qty < 0
                     GROUP BY id
                     UNION
-                    SELECT item_rm_id, 'RFG' AS trans_type, created_by, checksheet_number AS document_no, workorder AS serial_no, trans_date, '0' AS qty_in, qty AS qty_out
-                    FROM wip_receipt_details
-                    WHERE trans_date BETWEEN '$filter_from' AND '$filter_to'
-                    AND item_rm_id = '$item_rm_id'
-                    GROUP BY id");
+                    SELECT a.item_rm_id, 'RFG' AS trans_type, b.created_by, a.checksheet_number AS document_no, a.workorder AS serial_no, DATE_FORMAT(b.created_date, '%Y-%m-%d') as trans_date, '0' AS qty_in, a.consumed AS qty_out
+                    FROM wip_receipt_balance a
+                    JOIN wip_receipts b ON a.checksheet_number = b.checksheet_number
+                    WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') BETWEEN '$filter_from' AND '$filter_to'
+                    AND a.item_rm_id = '$item_rm_id'
+                    GROUP BY a.item_rm_id, a.checksheet_number");
 
                 $nod = 1;
                 $begin = @$record->begin;

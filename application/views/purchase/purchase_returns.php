@@ -8,6 +8,7 @@
             <th rowspan="2" data-options="field:'return_date',width:100,halign:'center'">Return Date</th>
             <th rowspan="2" data-options="field:'return_name',width:150,halign:'center'">Return Name</th>
             <th rowspan="2" data-options="field:'supplier_name',width:200,halign:'center'">Supplier</th>
+            <th rowspan="2" data-options="field:'source',width:80,halign:'center'">Source</th>
             <th rowspan="2" data-options="field:'po_no',width:120,halign:'center'">Purchase Order</th>
             <th rowspan="2" data-options="field:'invoice_no',width:120,halign:'center'">Invoice No</th>
             <th rowspan="2" data-options="field:'receipt_id',width:150,halign:'center'">Receipt ID</th>
@@ -446,13 +447,13 @@
 
     function BtnPrint(val, row) {
         if(row.datatable == 1){
-            var detail = "printReturn('"+row.return_no+"','"+row.status+"')";
+            var detail = "printReturn('"+row.return_no+"','"+row.status+"','"+row.source+"')";
             return '<a class="btn btn-primary w-100" onClick="'+detail+'" style="pointer-events: visible; opacity:1;"><i class="fa fa-print"></i> Print</a>';
         }
     }
 
-    function printReturn(return_no, status){
-        if(status == "1"){
+    function printReturn(return_no, status, source){
+        if(status == "1" || source == "QAS"){
             $.messager.prompt('Print', 'Please input the Password', function(r){
                 if (r == "FNC"){
                     window.open('<?= base_url('purchase/purchase_returns/print_return/') ?>'+btoa(return_no));

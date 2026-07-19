@@ -2,6 +2,7 @@
     <thead frozen="true">
         <tr>
             <th field="ck" checkbox="true"></th>
+            <th data-options="field:'state',width:80,align:'center',formatter:BtnPrintLabel">Label</th>
             <th data-options="field:'number',width:150,halign:'center'">Asset No</th>
             <th data-options="field:'name',width:200,halign:'center'">Asset Description</th>
         </tr>
@@ -477,6 +478,16 @@
     function reload() {
         window.location.reload();
     }
+
+    function BtnPrintLabel(val, row) {
+        var onClick = "princtLabel('"+row.number+"')";
+        return '<a class="btn btn-primary w-100" style="pointer-events: visible; opacity:1;" target="_blank" onClick="'+onClick+'"><i class="fa fa-print"></i> Print</a>';
+    }
+
+    function princtLabel(number){
+        window.open("<?= base_url('assets/fixeds/print_label/') ?>" + window.btoa(number), '_blank');
+    }
+
     $(function() {
         filter();
 

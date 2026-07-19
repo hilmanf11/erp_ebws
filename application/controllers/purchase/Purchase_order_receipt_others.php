@@ -744,6 +744,7 @@ class Purchase_order_receipt_others extends CI_Controller
             <tr>
                 <th rowspan="2" width="20">No</th>
                 <th rowspan="2" width="80">Status<br>Invoice</th>
+                <th rowspan="2">Store</th>
                 <th rowspan="2">POR No</th>
                 <th rowspan="2">PO No</th>
                 <th rowspan="2">Invoice No</th>
@@ -778,9 +779,18 @@ class Purchase_order_receipt_others extends CI_Controller
                 $style = "style='background: red; color:white;'";
             }
 
+            if($data['store'] > 0){
+                $status_store = "Confirmed";
+                $style_store = "style='background: green; color:white;'";
+            }else{
+                $status_store = "Unconfirm";
+                $style_store = "style='background: red; color:white;'";
+            }
+
             $html .= '<tr>
                         <td style="text-align:center">' . $no . '</td>
                         <td '.$style.'>' . $status . '</td>
+                        <td '.$style_store.'>' . $status_store . '</td>
                         <td>' . $data['receipt_no'] . '</td>
                         <td>' . $data['po_no'] . '</td>
                         <td>' . $data['bc_document'] . '</td>

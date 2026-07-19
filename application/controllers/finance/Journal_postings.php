@@ -181,7 +181,7 @@ class Journal_postings extends CI_Controller
         } elseif ($modul == "CLOSING JOURNAL"){
             $this->db->select('*');
             $this->db->from('journal_types');
-            $this->db->where('number', 'J048');
+            $this->db->where('number', 'JC051');
             $this->db->like('name', $post);
             $this->db->order_by('name', 'asc');
             $records = $this->db->get()->result_array();
@@ -653,12 +653,12 @@ class Journal_postings extends CI_Controller
 
                                 if ($purchase_invoice['account_type'] == "DEBIT") {
                                     // $local_debit = round($purchase_invoice['total'] * @$exchange->middle, 2);
-                                    $local_debit = round($purchase_invoice['total'] * @$purchase_invoice['rate'], 2);
+                                    $local_debit = ($purchase_invoice['total'] * @$purchase_invoice['rate']);
                                     $local_credit = 0;
                                 } else {
                                     $local_debit = 0;
                                     // $local_credit = round($purchase_invoice['total'] * @$exchange->middle, 2);
-                                    $local_credit = round($purchase_invoice['total'] * @$purchase_invoice['rate'], 2);
+                                    $local_credit = ($purchase_invoice['total'] * @$purchase_invoice['rate']);
                                 }
 
                                 // $rates = @$exchange->middle;
@@ -1732,8 +1732,8 @@ class Journal_postings extends CI_Controller
                 "company_id" => "ALL",
                 "company_name" => "ALL",
                 "modul" => $modul,
-                "account_number" => "3091200",
-                "account_name" => "RETAINED EARNING",
+                "account_number" => "11000002",
+                "account_name" => "Retained Earnings",
                 "description" => "-",
                 "currency" => "INR",
                 "original_debit" => $earn_debit,
@@ -1961,39 +1961,43 @@ class Journal_postings extends CI_Controller
     public function create()
     {
         if ($this->input->post()) {
+            $jsonData = file_get_contents("php://input");
+            $data = json_decode($jsonData, true);
+            $dataJournals = $data['dataJournals'];
 
-            $post = $this->input->post();
-            $period = date("Ym", strtotime($post['trans_date']));
+            foreach ($dataJournals as $dataJournal) {
+                $period = date("Ym", strtotime($dataJournal['trans_date']));
 
-            if(empty($post['id'])){
-                if($post['modul'] == "CLOSING JOURNAL"){
-                    $trial_balance = $this->crud->reads("trial_balances", [], [
-                        "period" => $period, 
-                        "account_number" => $post['account_number']
-                    ]);
+                if(empty($dataJournal['id'])){
+                    if($dataJournal['modul'] == "CLOSING JOURNAL"){
+                        $trial_balance = $this->crud->reads("trial_balances", [], [
+                            "period" => $period, 
+                            "account_number" => $dataJournal['account_number']
+                        ]);
 
-                    if($post['original_debit'] > 0){
-                        $local_debit = (@$trial_balance->local_debit + $post['original_debit']);
-                        $local_credit = (@$trial_balance->local_credit + $post['original_credit']);
-                    }else{
-                        $local_debit = (@$trial_balance->local_debit + $post['original_debit']);
-                        $local_credit = (@$trial_balance->local_credit + $post['original_credit']);
+                        if($dataJournal['original_debit'] > 0){
+                            $local_debit = (@$trial_balance->local_debit + $dataJournal['original_debit']);
+                            $local_credit = (@$trial_balance->local_credit + $dataJournal['original_credit']);
+                        }else{
+                            $local_debit = (@$trial_balance->local_debit + $dataJournal['original_debit']);
+                            $local_credit = (@$trial_balance->local_credit + $dataJournal['original_credit']);
+                        }
+
+                        $send = $this->crud->update('trial_balances', [
+                            "period" => $period, 
+                            "account_number" => $dataJournal['account_number']
+                        ], [
+                            "local_debit" => $local_debit,
+                            "local_credit" => $local_credit,
+                            "ending_debit" => 0,
+                            "ending_credit" => 0,
+                        ]);
                     }
 
-                    $send = $this->crud->update('trial_balances', [
-                        "period" => $period, 
-                        "account_number" => $post['account_number']
-                    ], [
-                        "local_debit" => $local_debit,
-                        "local_credit" => $local_credit,
-                        "ending_debit" => 0,
-                        "ending_credit" => 0,
-                    ]);
+                    $send = $this->crud->create('journal_postings', $dataJournal);
+                }else{
+                    $send = $this->crud->update('journal_postings', ["id" => $dataJournal['id']], $dataJournal);
                 }
-
-                $send = $this->crud->create('journal_postings', $post);
-            }else{
-                $send = $this->crud->update('journal_postings', ["id" => $post['id']], $post);
             }
 
             echo $send;
@@ -2616,7 +2620,7 @@ class Journal_postings extends CI_Controller
                         <td>' . number_format($data['rates'], 2) . '</td>
                         <td>' . number_format($data['local_debit'], 4) . '</td>
                         <td>' . number_format($data['local_credit'], 4) . '</td>
-                    </t';
+                    </tr>';
             $no++;
         }
         $html .= '</table></body></html>';

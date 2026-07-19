@@ -189,6 +189,13 @@
                                         var rows = $('#dg_detail').datagrid('getRows');
                                         var totalrows = rows.length;
 
+                                        for (let z = 0; z < totalrows; z++) {
+                                            if(parseInt(rows[z].qty) > parseInt(rows[z].ending_stock)){
+                                                toastr.error("Part No "+rows[z].item_rm_number+" Qty Cannot > Ending Stock OT");
+                                                return false;
+                                            }
+                                        }
+
                                         if (totalrows > 0) {
                                             for (let i = 0; i < totalrows; i++) {
                                                 if (rows[i].balance >= 0) {
@@ -377,6 +384,17 @@
                     width: 200,
                     halign: 'center',
                     title: "Description",
+                }, {
+                    field: 'ending_stock',
+                    width: 80,
+                    halign: 'center',
+                    title: "Ending Stock",
+                    editor: {
+                        type: 'numberbox',
+                        options: {
+                            readonly: true
+                        }
+                    }
                 }, {
                     field: 'stock',
                     width: 80,

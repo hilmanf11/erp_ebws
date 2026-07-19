@@ -269,7 +269,7 @@
                                 }
                             }
                         }}">Currency</th>
-                    <th data-options="field:'rates',width:100,halign:'center',align:'right',formatter:numberformatDefault,editor: {type: 'numberbox', options: {required: true, precision:2}}">Rates</th>
+                    <th data-options="field:'rates',width:100,halign:'center',align:'right',formatter:numberformatDefault,editor: {type: 'numberbox', options: {required: true, precision:4}}">Rates</th>
                     <th data-options="field:'local_debit',width:120,halign:'center',align:'right',formatter:numberformatDefaultIdr,editor: {type: 'numberbox', options: {required: true, precision:2}}">Debit</th>
                     <th data-options="field:'local_credit',width:120,halign:'center',align:'right',formatter:numberformatDefaultIdr,editor: {type: 'numberbox', options: {required: true, precision:2}}">Credit</th>
                 </tr>
@@ -840,6 +840,46 @@
                                             if(local_debit == local_credit){
                                                 $.messager.confirm('Warning', 'Are you sure you want to save this data?', function(r) {
                                                     if (r) {
+                                                        combinedJournal = [];
+                                                        var total_debit  = 0;
+                                                        var total_credit = 0;
+                                                        for (let i = 0; i < totalrows; i++) {
+                                                            var json = rows[i];
+
+                                                            combinedJournal.push({
+                                                                journal_date: journal_date,
+                                                                modul: modul,
+                                                                journal_type_id: journal_type,
+                                                                number: number,
+                                                                remarks: remarks,
+                                                                id: json.id,
+                                                                trans_date: json.trans_date,
+                                                                document_no: json.document_no,
+                                                                invoice_no: json.invoice_no,
+                                                                company_id: json.company_id,
+                                                                company_name: json.company_name,
+                                                                account_number: json.account_number,
+                                                                account_name: json.account_name,
+                                                                description: json.description,
+                                                                currency: json.currency,
+                                                                original_debit: json.original_debit,
+                                                                original_credit: json.original_credit,
+                                                                rates: json.rates,
+                                                                local_debit: json.local_debit,
+                                                                local_credit: json.local_credit
+                                                            });
+
+                                                            total_debit += parseFloat(json.local_debit);
+                                                            total_credit += parseFloat(json.local_credit);
+                                                        }
+
+                                                        if(Math.round(total_debit) != Math.round(total_credit)){
+                                                            toastr.error("Debit & Credit Not Balance (Debit : "+Math.round(total_debit)+") and (Credit : "+Math.round(total_credit)+")");
+                                                            return false;
+                                                        }
+
+                                                        $('#dlg_insert').dialog('close');
+
                                                         Swal.fire({
                                                             title: 'Please Wait for Saving Data',
                                                             showConfirmButton: false,
@@ -850,77 +890,46 @@
                                                             },
                                                         });
 
-                                                        if (totalrows > 0) {
-                                                            requestData(totalrows, rows);
-                                                            $('#dlg_insert').dialog('close');
-                                                            $('#dlg_generate').dialog('open');
+                                                        $.ajax({
+                                                            type: "post",
+                                                            url: '<?= base_url('finance/journal_postings/create') ?>',
+                                                            data: JSON.stringify({ dataJournals: combinedJournal}),
+                                                            dataType: "json",
+                                                            success: function (result) {
+                                                                Swal.close();
 
-                                                            function requestData(total, json, jml = 1, value = 0) {
-                                                                if (value < 100) {
-                                                                    value = Math.floor((jml / total) * 100);
-                                                                    var i = (jml - 1);
-
-                                                                    $('#p_upload').progressbar('setValue', value);
-                                                                    $('#p_start').html(jml);
-                                                                    $('#p_finish').html(totalrows);
-
-                                                                    $.ajax({
-                                                                        type: "post",
-                                                                        url: '<?= base_url('finance/journal_postings/create') ?>',
-                                                                        data: {
-                                                                            journal_date: journal_date,
-                                                                            modul: modul,
-                                                                            journal_type_id: journal_type,
-                                                                            number: number,
-                                                                            remarks: remarks,
-                                                                            id: json[i].id,
-                                                                            trans_date: json[i].trans_date,
-                                                                            document_no: json[i].document_no,
-                                                                            invoice_no: json[i].invoice_no,
-                                                                            company_id: json[i].company_id,
-                                                                            company_name: json[i].company_name,
-                                                                            account_number: json[i].account_number,
-                                                                            account_name: json[i].account_name,
-                                                                            description: json[i].description,
-                                                                            currency: json[i].currency,
-                                                                            original_debit: json[i].original_debit,
-                                                                            original_credit: json[i].original_credit,
-                                                                            rates: json[i].rates,
-                                                                            local_debit: json[i].local_debit,
-                                                                            local_credit: json[i].local_credit
-                                                                        },
-                                                                        dataType: "json",
-                                                                        success: function(result) {
-                                                                            requestData(total, json, jml + 1, value);
-
-                                                                            if (result.theme == "success") {
-                                                                                var title = "<b style='color: green;'>" + result.title + "</b> | " + result.message;
-                                                                            } else {
-                                                                                var title = "<b style='color: red;'>" + result.title + "</b> | " + result.message;
+                                                                Swal.fire({
+                                                                    title: result.message,
+                                                                    icon: result.theme,
+                                                                    confirmButtonText: 'Ok',
+                                                                    allowOutsideClick: false,
+                                                                }).then((result) => {
+                                                                    if (result.isConfirmed) {
+                                                                        window.location.reload();
+                                                                    }
+                                                                });
+                                                            },
+                                                            error: function(msg){
+                                                                Swal.fire({
+                                                                    title: "Failed to Save Data, Please Try Again",
+                                                                    icon: "error",
+                                                                    confirmButtonText: 'Ok',
+                                                                    allowOutsideClick: false,
+                                                                }).then((result) => {
+                                                                    if (result.isConfirmed) {
+                                                                        $.ajax({
+                                                                            type: "post",
+                                                                            url: "<?= base_url('finance/journal_postings/delete') ?>",
+                                                                            data: "number=" + number,
+                                                                            dataType: "json",
+                                                                            success: function(response) {
+                                                                                window.location.reload();
                                                                             }
-
-                                                                            $("#p_remarks").append(title + "<br>");
-
-                                                                            if (i == (totalrows - 1)) {
-                                                                                Swal.close();
-                                                                                $('#dlg_generate').dialog('close');
-
-                                                                                Swal.fire({
-                                                                                    title: result.message,
-                                                                                    icon: result.theme,
-                                                                                    confirmButtonText: 'Ok',
-                                                                                    allowOutsideClick: false,
-                                                                                }).then((result) => {
-                                                                                    if (result.isConfirmed) {
-                                                                                        window.location.reload();
-                                                                                    }
-                                                                                });
-                                                                            }
-                                                                        }
-                                                                    });
-                                                                }
+                                                                        });
+                                                                    }
+                                                                });
                                                             }
-                                                        }
+                                                        });
                                                     }
                                                 });
                                             } else {

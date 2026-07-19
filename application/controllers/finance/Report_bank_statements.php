@@ -69,7 +69,7 @@ class Report_bank_statements extends CI_Controller
             FROM ap_payment_journals a 
             JOIN ap_payments b ON a.payment_no = b.payment_no 
             WHERE b.payment_date between '2023-01-01' and '$filter_from_1' and a.account_number = '$filter_account' GROUP BY a.account_number, b.payment_no) a
-            GROUP BY a.account_number");
+            GROUP BY a.payment_no, a.account_number, a.description");
             
         $journal_adj_begin = $this->crud->query("SELECT `number`, document_no, `description`, currency, rates,
             (COALESCE(SUM(original_debit), 0) - COALESCE(SUM(original_credit), 0)) as original_begin,

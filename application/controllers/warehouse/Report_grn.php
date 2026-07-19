@@ -51,18 +51,19 @@ class Report_grn extends CI_Controller
 
         //Details
         $this->db->select('a.*,
-            b.currency,
             b.name as supplier_name, 
             c.number as item_rm_number, 
             c.name as item_rm_name, 
             d.name as item_family_name, 
             c.uom,
+            g.scan_qty,
+            g.scan_date,
             g.total_scan');
         $this->db->from('purchase_order_receipts a');
         $this->db->join('suppliers b', 'a.supplier_id = b.id');
         $this->db->join('item_rm c', 'a.item_rm_id = c.id');
         $this->db->join('item_familys d', 'c.item_family_id = d.id');
-        $this->db->join('(SELECT receipt_id, COUNT(id) as total_scan FROM scan_item_receipts GROUP BY receipt_id) g', 'g.receipt_id = a.receipt_id', 'left');
+        $this->db->join("(SELECT receipt_id, DATE_FORMAT(created_date, '%Y-%m-%d') as scan_date, SUM(qty) as scan_qty, COUNT(id) as total_scan FROM scan_item_receipts GROUP BY receipt_id, DATE_FORMAT(created_date, '%Y-%m-%d')) g", 'g.receipt_id = a.receipt_id', 'left');
         $this->db->where('a.deleted', 0);
         $this->db->where("a.status != 2");
         if ($filter_from != "" and $filter_to != "") {
@@ -85,6 +86,8 @@ class Report_grn extends CI_Controller
             $this->db->where("a.qty_label = g.total_scan");
         }
         $this->db->group_by('a.receipt_id');
+        $this->db->group_by('a.bc_document');
+        $this->db->group_by('g.scan_date');
         $this->db->order_by('b.name', 'ASC');
         $this->db->order_by('a.receipt_id', 'ASC');
         $records = $this->db->get()->result_array();
@@ -124,24 +127,39 @@ class Report_grn extends CI_Controller
                 <th>Receipt No</th>
                 <th>Receipt ID</th>
                 <th>Receipt Date</th>
+                <th>Scan Date</th>
                 <th>Supplier Name</th>
                 <th>Invoice No</th>
                 <th>Part No EBWS</th>
                 <th>Part No Supplier</th>
                 <th>Uom</th>
-                <th>Qty</th>
-                <th>Currency</th>
-                <th>Price</th>
-                <th>Total Price</th>
+                <th>Qty Gate</th>
+                <th>Qty Scan</th>
                 <th>MPQ</th>
                 <th>Label</th>
                 <th>Scan In</th>
                 <th>GRN No</th>
                 <th>Status</th>
             </tr>';
+
+        $receipt_id = "";
+        $total_scan = 0;
+        $arr = [];
+        foreach ($records as $data) {
+            if($receipt_id == $data['receipt_id']){
+                $receipt_id = $data['receipt_id'];
+                $total_scan += $data['total_scan'];
+            }else{
+                $receipt_id = $data['receipt_id'];
+                $total_scan = $data['total_scan'];
+            }
+
+            $arr[$receipt_id] = $total_scan;
+        }
+
         $no = 1;
         foreach ($records as $data) {
-            if($data['qty_label'] == $data['total_scan']){
+            if($data['qty_label'] == $arr[$data['receipt_id']]){
                 $grn_no = "GRN".substr(@$data['receipt_no'], 3);
                 $status = "<b style='color:red;'>CLOSE</b>";
             }else{
@@ -154,15 +172,14 @@ class Report_grn extends CI_Controller
                             <td>' . $data['receipt_no'] . '</td>
                             <td>' . $data['receipt_id'] . '</td>
                             <td>' . $data['receipt_date'] . '</td>
+                            <td>' . $data['scan_date'] . '</td>
                             <td>' . $data['supplier_name'] . '</td>
                             <td>' . $data['bc_document'] . '</td>
                             <td style="mso-number-format:\@;">' . $data['item_rm_id'] . '</td>
                             <td style="mso-number-format:\@;">' . $data['item_rm_number'] . '</td>
                             <td>' . $data['uom'] . '</td>
                             <td style="text-align:right">' . number_format($data['qty_receipt']) . '</td>
-                            <td>' . $data['currency'] . '</td>
-                            <td style="text-align:right">' . number_format($data['price'], 5) . '</td>
-                            <td style="text-align:right">' . number_format($data['total'], 2) . '</td>
+                            <td style="text-align:right">' . number_format($data['scan_qty']) . '</td>
                             <td style="text-align:right">' . number_format($data['qty_mpq']) . '</td>
                             <td style="text-align:right">' . number_format($data['qty_label']) . '</td>
                             <td style="text-align:right">' . number_format($data['total_scan']) . '</td>

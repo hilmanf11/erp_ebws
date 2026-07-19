@@ -469,8 +469,14 @@
 
     function numberformat(value, row) {
         if (value != null) {
+            if(row.currency == "INR"){
+                var digit = 4;
+            }else{
+                var digit = 5;
+            }
+
             const formatter = new Intl.NumberFormat('ja-JP', {
-                minimumFractionDigits: 4
+                minimumFractionDigits: digit
             });
             return "<b>" + formatter.format(value) + "</b>";
         }

@@ -110,7 +110,7 @@ class Item_receipts_fg extends CI_Controller
                         "checksheet_number" => strtoupper($post['checksheet_number']),
                         "workorder" => $post['workorder'],
                         "qty" => $post['qty']
-                    ]);
+                    ], "logs");
 
                     $this->db->update('sales_return_labels', ["status" => 1], ["label_no" => $post['checksheet_label']]);
                     echo $send;

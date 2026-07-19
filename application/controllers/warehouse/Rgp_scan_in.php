@@ -129,12 +129,12 @@ class Rgp_scan_in extends CI_Controller
                             }
                         } else { // jika FG
                             $send   = $this->crud->create('scan_item_rgp', array_merge($post, ["type" => "IN"]));
-                            $rgp_transactions = $this->crud->read("rgp_transactions", [], ["number" => $post['rgp_number'], "item_id" => $post['item_id']]);
+                            // $rgp_transactions = $this->crud->read("rgp_transactions", [], ["number" => $post['rgp_number'], "item_id" => $post['item_id']]);
                             if ($send) {
                                 $postItemReceipts = array(
                                     "checksheet_number" => $post['rgp_id'],
                                     "checksheet_label" => $post['label_no'],
-                                    "workorder" => @$rgp_transactions->id,
+                                    // "workorder" => @$rgp_transactions->id,
                                     "qty" => $post['qty'],
                                     "status" => 0,
                                 );

@@ -223,10 +223,20 @@
                                     index: rowIndex,
                                     field: 'stock'
                                 });
+                                var ed5 = dg.datagrid('getEditor', {
+                                    index: rowIndex,
+                                    field: 'issued'
+                                });
+                                var ed6 = dg.datagrid('getEditor', {
+                                    index: rowIndex,
+                                    field: 'wip'
+                                });
 
                                 $(ed2.target).textbox('setValue', rows.number);
                                 $(ed3.target).textbox('setValue', rows.uom);
                                 $(ed4.target).numberbox('setValue', rows.qty);
+                                $(ed5.target).numberbox('setValue', rows.issued);
+                                $(ed6.target).numberbox('setValue', rows.wip);
                             }
                         }
                     }
@@ -266,6 +276,32 @@
                         }
                     }
                 }, {
+                    field: 'issued',
+                    width: 80,
+                    halign: 'center',
+                    title: "Issued",
+                    editor: {
+                        type: 'numberbox',
+                        options: {
+                            required: true,
+                            readonly: true,
+                            precision: 2
+                        }
+                    }
+                }, {
+                    field: 'wip',
+                    width: 80,
+                    halign: 'center',
+                    title: "WIP<br>Ending",
+                    editor: {
+                        type: 'numberbox',
+                        options: {
+                            required: true,
+                            readonly: true,
+                            precision: 2
+                        }
+                    }
+                }, {
                     field: 'qty',
                     width: 80,
                     halign: 'center',
@@ -295,53 +331,16 @@
                                 });
 
                                 var stock = $(ed.target).numberbox('getValue');
-                                // var scrap = $(ed2.target).numberbox('getValue');
-                                // $(ed3.target).numberbox('setValue', (parseInt(stock) - (parseInt(valQty) + parseInt(scrap))));
                                 if((parseInt(stock) - (parseInt(valQty))) >= 0){
                                     $(ed3.target).numberbox('setValue', (parseInt(stock) - (parseInt(valQty))));
                                 }else{
-                                    toastr.error("Qty Receipt Cannot < Qty Rejection");
+                                    toastr.error("Qty Cannot < Qty Rejection");
                                     $(ed3.target).numberbox('clear');
                                     $(ed2.target).numberbox('clear');
                                 }
                             }
                         }
                     }
-                // }, {
-                //     field: 'scrap',
-                //     width: 80,
-                //     halign: 'center',
-                //     title: "Scrap",
-                //     editor: {
-                //         type: 'numberbox',
-                //         options: {
-                //             required: true,
-                //             precision: 2,
-                //             onChange: function(valScrap) {
-                //                 var row = $('#dg2').datagrid('getSelected');
-                //                 var rowIndex = $('#dg2').datagrid('getRowIndex', row);
-
-                //                 var ed = $('#dg2').datagrid('getEditor', {
-                //                     index: rowIndex,
-                //                     field: 'stock'
-                //                 });
-
-                //                 var ed2 = $('#dg2').datagrid('getEditor', {
-                //                     index: rowIndex,
-                //                     field: 'qty'
-                //                 });
-
-                //                 var ed3 = $('#dg2').datagrid('getEditor', {
-                //                     index: rowIndex,
-                //                     field: 'balance'
-                //                 });
-
-                //                 var stock = $(ed.target).numberbox('getValue');
-                //                 var qty = $(ed2.target).numberbox('getValue');
-                //                 $(ed3.target).numberbox('setValue', (parseInt(stock) - (parseInt(valScrap) + parseInt(qty))));
-                //             }
-                //         }
-                //     }
                 }, {
                     field: 'balance',
                     width: 80,
@@ -527,6 +526,26 @@
                     var rows = $('#dg2').datagrid('getRows');
                     var totalrows = rows.length;
                     endEditing();
+
+                    for (let z = 0; z < totalrows; z++) {
+                        var json = rows[z];
+
+                        if(parseFloat(json.qty) > parseFloat(json.stock)){
+                            toastr.error("Rejection Qty Cannot be greater than Qty");
+                            return false;
+                        }
+
+                        if(parseFloat(json.qty) > parseFloat(json.issued)){
+                            toastr.error("Rejection Qty Cannot be greater than Issued Qty");
+                            return false;
+                        }
+
+                        if(parseFloat(json.qty) > parseFloat(json.wip)){
+                            toastr.error("Rejection Qty Cannot be greater than WIP Qty");
+                            return false;
+                        }
+                    }
+
                     for (let i = 0; i < totalrows; i++) {
                         if (rows[i].item_rm_id) {
                             $.ajax({

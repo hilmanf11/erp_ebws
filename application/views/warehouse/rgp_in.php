@@ -676,9 +676,10 @@
     function removeit() {
         var process_type = $("#process_type").combobox('getValue');
 
-        if (process_type == 'NRGP') {
-            toastr.error("Can't add or remove for process type RGP/NRGP");
-        } else {
+        // if (process_type == 'NRGP') {
+        //     toastr.error("Can't add or remove for process type RGP/NRGP");
+        // } else {
+        if(action == "add"){
             if (editIndex == undefined) {
                 return true;
             }
@@ -714,6 +715,8 @@
 
             $('#dg2').datagrid('cancelEdit', editIndex).datagrid('deleteRow', editIndex);
             editIndex = undefined;
+        }else{
+            toastr.error("Can't remove this data");
         }
     }
 

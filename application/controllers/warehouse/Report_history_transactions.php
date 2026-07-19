@@ -132,7 +132,7 @@ class Report_history_transactions extends CI_Controller
         LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) as qty_sto FROM os_rm a JOIN scan_item_receipts b ON a.id  = b.receipt_id WHERE a.trans_date between '$filter_from' and '$filter_to' GROUP BY item_rm_id) c ON a.id = c.item_rm_id
         LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(a.qty), 0) as sto_qty_out FROM sto_rm a WHERE a.type = 'OUT' and a.trans_date between '$filter_from' and '$filter_to' and a.approved_to = '' GROUP BY item_rm_id) d ON a.id = d.item_rm_id
         LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(a.qty), 0) as sto_qty_in FROM sto_rm a WHERE a.type = 'IN' and a.trans_date between '$filter_from' and '$filter_to' and a.approved_to = '' GROUP BY item_rm_id) dd ON a.id = dd.item_rm_id
-        LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) as qty_receipt FROM purchase_order_receipts a JOIN scan_item_receipts b ON a.receipt_id  = b.receipt_id WHERE a.receipt_date between '$filter_from' and '$filter_to' GROUP BY item_rm_id) e ON a.id = e.item_rm_id
+        LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) as qty_receipt FROM purchase_order_receipts a JOIN scan_item_receipts b ON a.receipt_id  = b.receipt_id WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') between '$filter_from' and '$filter_to' GROUP BY item_rm_id) e ON a.id = e.item_rm_id
         LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as qty FROM issued_material_details WHERE DATE_FORMAT(created_date, '%Y-%m-%d') between '$filter_from' and '$filter_to' GROUP BY item_rm_id) f ON a.id = f.item_rm_id
         LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) as qty_reject FROM purchase_order_receipts a JOIN scan_item_rejections b ON a.receipt_id  = b.receipt_id WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') between '$filter_from' and '$filter_to' GROUP BY item_rm_id) i ON a.id = i.item_rm_id
         LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) as qty_rgp_in FROM rgp_transactions a JOIN scan_item_rgp b ON a.number = b.rgp_number and a.item_id = b.item_id WHERE a.type = 'IN' and a.transaction_date between '$filter_from' and '$filter_to' GROUP BY a.item_id) j ON a.id = j.item_id
@@ -151,7 +151,7 @@ class Report_history_transactions extends CI_Controller
             LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) AS qty_sto FROM os_rm a JOIN scan_item_receipts b ON a.id  = b.receipt_id WHERE a.trans_date < '$filter_from' GROUP BY item_rm_id) c ON a.id = c.item_rm_id
             LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(a.qty), 0) as sto_qty_out FROM sto_rm a WHERE a.type = 'OUT' and a.trans_date < '$filter_from' and a.approved_to = '' GROUP BY item_rm_id) d ON a.id = d.item_rm_id
             LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(a.qty), 0) as sto_qty_in FROM sto_rm a WHERE a.type = 'IN' and a.trans_date < '$filter_from' and a.approved_to = '' GROUP BY item_rm_id) dd ON a.id = dd.item_rm_id
-            LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) AS qty_receipt FROM purchase_order_receipts a JOIN scan_item_receipts b ON a.receipt_id  = b.receipt_id WHERE a.receipt_date < '$filter_from' GROUP BY item_rm_id) e ON a.id = e.item_rm_id
+            LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) AS qty_receipt FROM purchase_order_receipts a JOIN scan_item_receipts b ON a.receipt_id  = b.receipt_id WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') < '$filter_from' GROUP BY item_rm_id) e ON a.id = e.item_rm_id
             LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) AS qty FROM issued_material_details WHERE DATE_FORMAT(created_date, '%Y-%m-%d') < '$filter_from' GROUP BY item_rm_id) f ON a.id = f.item_rm_id
             LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) AS qty_reject FROM purchase_order_receipts a JOIN scan_item_rejections b ON a.receipt_id  = b.receipt_id WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') < '$filter_from' GROUP BY item_rm_id) h ON a.id = h.item_rm_id
             LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) as qty_rgp_in FROM rgp_transactions a JOIN scan_item_rgp b ON a.number = b.rgp_number and a.item_id = b.item_id WHERE a.type = 'IN' and a.transaction_date < '$filter_from' GROUP BY a.item_id) j ON a.id = j.item_id
@@ -245,38 +245,86 @@ class Report_history_transactions extends CI_Controller
                                 <th>Balance</th>
                             </tr>';
 
-                $details = $this->crud->query("SELECT z.* FROM (
-                SELECT 'STO' AS trans_type, c.name AS created_by, a.trans_date, '-' AS supplier_id, '-' AS supplier_name, a.document_no, a.id AS invoice_no, COALESCE(SUM(b.qty), 0) AS qty_in, '0' AS qty_out FROM os_rm a JOIN scan_item_receipts b ON a.id = b.receipt_id JOIN users c ON a.created_by = c.username WHERE a.item_rm_id = '$item_rm_id' GROUP BY a.id
-                UNION
-                SELECT 'STO ADJUSTMENT IN' AS trans_type, c.name AS created_by, a.trans_date, '-' AS supplier_id, '-' AS supplier_name, a.document_no, '-' AS invoice_no, a.qty AS qty_in, '0' AS qty_out FROM sto_rm a JOIN users c ON a.created_by = c.username WHERE a.type = 'IN' AND a.item_rm_id = '$item_rm_id' GROUP BY a.id
-                UNION
-                SELECT 'STO ADJUSTMENT OUT' AS trans_type, c.name AS created_by, a.trans_date, '-' AS supplier_id, '-' AS supplier_name, a.document_no, '-' AS invoice_no, '0' AS qty_in, a.qty AS qty_out FROM sto_rm a JOIN users c ON a.created_by = c.username WHERE a.type = 'OUT' AND a.item_rm_id = '$item_rm_id' GROUP BY a.id
-                UNION
-                SELECT 'RECEIPT' AS trans_type, c.name AS created_by, a.receipt_date AS trans_date, d.id AS supplier_id, d.name AS supplier_name, a.receipt_no AS document_no, a.bc_document AS invoice_no, SUM(b.qty) AS qty_in, '0' AS qty_out FROM purchase_order_receipts a JOIN scan_item_receipts b ON a.receipt_id = b.receipt_id JOIN users c ON a.created_by = c.username JOIN suppliers d ON a.supplier_id = d.id WHERE a.item_rm_id = '$item_rm_id' GROUP BY a.receipt_no, a.bc_document
-                UNION
-                SELECT 'REJECTION' AS trans_type, c.name AS created_by, b.created_date AS trans_date, d.id AS supplier_id, d.name AS supplier_name, a.bc_document AS document_no, b.label_no AS invoice_no, '0' AS qty_in, SUM(b.qty) AS qty_out FROM purchase_order_receipts a JOIN scan_item_rejections b ON a.receipt_id = b.receipt_id JOIN users c ON b.created_by = c.username JOIN suppliers d ON a.supplier_id = d.id WHERE a.item_rm_id = '$item_rm_id' GROUP BY b.id
-                UNION
-                SELECT 'ISSUED' AS trans_type, created_by, created_date AS trans_date, '-' AS supplier_id, '-' AS supplier_name, request_no AS document_no, label_no AS invoice_no, '0' AS qty_in, qty AS qty_out FROM issued_material_details WHERE item_rm_id = '$item_rm_id'
-                UNION
-                SELECT 'RETURN MATERIAL' AS trans_type, d.name AS created_by, a.return_date AS trans_date, '-' AS supplier_id, '-' AS supplier_name, a.return_no AS document_no, b.label_no AS invoice_no, b.qty AS qty_in, '0' AS qty_out FROM return_materials a JOIN return_material_labels b ON a.return_id = b.return_id JOIN scan_item_receipts c ON a.return_id = c.receipt_id JOIN users d ON a.created_by = d.username WHERE a.item_rm_id = '$item_rm_id' GROUP BY b.label_no
-                UNION 
-                SELECT 'RGP IN' AS trans_type, a.created_by, c.created_date AS trans_date, b.id AS supplier_id, b.name AS supplier_name, c.rgp_number AS document_no, c.label_no AS invoice_no, c.qty AS qty_in, '0' AS qty_out FROM rgp_transactions a LEFT JOIN suppliers b ON a.company_id = b.id JOIN scan_item_rgp c ON a.number = c.rgp_number and a.item_id = c.item_id WHERE a.type = 'IN' AND a.item_id = '$item_rm_id' GROUP BY c.id
-                UNION
-                SELECT 'RGP OUT' AS trans_type, a.created_by, c.created_date AS trans_date, b.id AS supplier_id, b.name AS supplier_name, c.rgp_number AS document_no, c.label_no AS invoice_no, '0' AS qty_in, c.qty AS qty_out FROM rgp_transactions a LEFT JOIN suppliers b ON a.company_id = b.id JOIN scan_item_rgp c ON a.number = c.rgp_number and a.item_id = c.item_id WHERE a.type = 'OUT' AND a.item_id = '$item_rm_id' GROUP BY c.id
-                ) z WHERE z.trans_date between '$filter_from' and '$filter_to' ORDER BY z.trans_date ASC");
+                // $detail = $this->db->query("SELECT z.* FROM (
+                // SELECT 'STO' AS trans_type, c.name AS created_by, a.trans_date, '-' AS supplier_id, '-' AS supplier_name, a.document_no, a.id AS invoice_no, COALESCE(SUM(b.qty), 0) AS qty_in, '0' AS qty_out FROM os_rm a JOIN scan_item_receipts b ON a.id = b.receipt_id JOIN users c ON a.created_by = c.username WHERE a.item_rm_id = '$item_rm_id' GROUP BY a.id
+                // UNION
+                // SELECT 'STO ADJUSTMENT IN' AS trans_type, c.name AS created_by, a.trans_date, '-' AS supplier_id, '-' AS supplier_name, a.document_no, '-' AS invoice_no, a.qty AS qty_in, '0' AS qty_out FROM sto_rm a JOIN users c ON a.created_by = c.username WHERE a.type = 'IN' AND a.item_rm_id = '$item_rm_id' GROUP BY a.id
+                // UNION
+                // SELECT 'STO ADJUSTMENT OUT' AS trans_type, c.name AS created_by, a.trans_date, '-' AS supplier_id, '-' AS supplier_name, a.document_no, '-' AS invoice_no, '0' AS qty_in, a.qty AS qty_out FROM sto_rm a JOIN users c ON a.created_by = c.username WHERE a.type = 'OUT' AND a.item_rm_id = '$item_rm_id' GROUP BY a.id
+                // UNION
+                // SELECT 'RECEIPT' AS trans_type, c.name AS created_by, DATE_FORMAT(b.created_date, '%Y-%m-%d') AS trans_date, d.id AS supplier_id, d.name AS supplier_name, a.receipt_no AS document_no, a.bc_document AS invoice_no, SUM(b.qty) AS qty_in, '0' AS qty_out FROM purchase_order_receipts a JOIN scan_item_receipts b ON a.receipt_id = b.receipt_id JOIN users c ON a.created_by = c.username JOIN suppliers d ON a.supplier_id = d.id WHERE a.item_rm_id = '$item_rm_id' GROUP BY a.receipt_no, a.bc_document
+                // UNION
+                // SELECT 'REJECTION' AS trans_type, c.name AS created_by, b.created_date AS trans_date, d.id AS supplier_id, d.name AS supplier_name, a.bc_document AS document_no, b.label_no AS invoice_no, '0' AS qty_in, SUM(b.qty) AS qty_out FROM purchase_order_receipts a JOIN scan_item_rejections b ON a.receipt_id = b.receipt_id JOIN users c ON b.created_by = c.username JOIN suppliers d ON a.supplier_id = d.id WHERE a.item_rm_id = '$item_rm_id' GROUP BY b.id
+                // UNION
+                // SELECT 'ISSUED' AS trans_type, created_by, created_date AS trans_date, '-' AS supplier_id, '-' AS supplier_name, request_no AS document_no, label_no AS invoice_no, '0' AS qty_in, qty AS qty_out FROM issued_material_details WHERE item_rm_id = '$item_rm_id'
+                // UNION
+                // SELECT 'RETURN MATERIAL' AS trans_type, d.name AS created_by, a.return_date AS trans_date, '-' AS supplier_id, '-' AS supplier_name, a.return_no AS document_no, b.label_no AS invoice_no, b.qty AS qty_in, '0' AS qty_out FROM return_materials a JOIN return_material_labels b ON a.return_id = b.return_id JOIN scan_item_receipts c ON a.return_id = c.receipt_id JOIN users d ON a.created_by = d.username WHERE a.item_rm_id = '$item_rm_id' GROUP BY b.label_no
+                // UNION 
+                // SELECT 'RGP IN' AS trans_type, a.created_by, c.created_date AS trans_date, b.id AS supplier_id, b.name AS supplier_name, c.rgp_number AS document_no, c.label_no AS invoice_no, c.qty AS qty_in, '0' AS qty_out FROM rgp_transactions a LEFT JOIN suppliers b ON a.company_id = b.id JOIN scan_item_rgp c ON a.number = c.rgp_number and a.item_id = c.item_id WHERE a.type = 'IN' AND a.item_id = '$item_rm_id' GROUP BY c.id
+                // UNION
+                // SELECT 'RGP OUT' AS trans_type, a.created_by, c.created_date AS trans_date, b.id AS supplier_id, b.name AS supplier_name, c.rgp_number AS document_no, c.label_no AS invoice_no, '0' AS qty_in, c.qty AS qty_out FROM rgp_transactions a LEFT JOIN suppliers b ON a.company_id = b.id JOIN scan_item_rgp c ON a.number = c.rgp_number and a.item_id = c.item_id WHERE a.type = 'OUT' AND a.item_id = '$item_rm_id' GROUP BY c.id
+                // ) z WHERE z.trans_date between '$filter_from' and '$filter_to' ORDER BY z.trans_date ASC");
+                // $detail->result_array();
 
+                //RECEIPT
+                $sql = $this->db->query("SELECT 'RECEIPT' AS trans_type, c.name AS created_by, b.trans_date, d.id AS supplier_id, d.name AS supplier_name, a.receipt_no AS document_no, a.bc_document AS invoice_no, SUM(b.qty) AS qty_in, '0' AS qty_out 
+                    FROM purchase_order_receipts a 
+                    JOIN (select receipt_id, DATE_FORMAT(created_date, '%Y-%m-%d') as trans_date, SUM(qty) as qty FROM scan_item_receipts WHERE DATE_FORMAT(created_date, '%Y-%m-%d') BETWEEN '$filter_from' and '$filter_to' GROUP BY receipt_id, DATE_FORMAT(created_date, '%Y-%m-%d')) b ON a.receipt_id = b.receipt_id 
+                    JOIN users c ON a.created_by = c.username 
+                    JOIN suppliers d ON a.supplier_id = d.id 
+                    WHERE a.item_rm_id = '$item_rm_id'
+                    GROUP BY a.receipt_no, a.bc_document, b.trans_date");
+                $row = $sql->result_array();
+
+                //STO
+                $sql2 = $this->db->query("SELECT 'STO' AS trans_type, c.name AS created_by, a.trans_date, '-' AS supplier_id, '-' AS supplier_name, a.document_no, a.id AS invoice_no, COALESCE(SUM(b.qty), 0) AS qty_in, '0' AS qty_out FROM os_rm a JOIN scan_item_receipts b ON a.id = b.receipt_id JOIN users c ON a.created_by = c.username WHERE a.item_rm_id = '$item_rm_id' and a.trans_date between '$filter_from' and '$filter_to' GROUP BY a.id");
+                $row2 = $sql2->result_array();
+
+                //STO ADJUSTMENT IN
+                $sql3 = $this->db->query("SELECT 'STO ADJUSTMENT IN' AS trans_type, c.name AS created_by, a.trans_date, '-' AS supplier_id, '-' AS supplier_name, a.document_no, '-' AS invoice_no, a.qty AS qty_in, '0' AS qty_out FROM sto_rm a JOIN users c ON a.created_by = c.username WHERE a.type = 'IN' AND a.item_rm_id = '$item_rm_id' and a.trans_date between '$filter_from' and '$filter_to' GROUP BY a.id");
+                $row3 = $sql3->result_array();
+
+                //STO ADJUSTMENT OUT
+                $sql4 = $this->db->query("SELECT 'STO ADJUSTMENT OUT' AS trans_type, c.name AS created_by, a.trans_date, '-' AS supplier_id, '-' AS supplier_name, a.document_no, '-' AS invoice_no, '0' AS qty_in, a.qty AS qty_out FROM sto_rm a JOIN users c ON a.created_by = c.username WHERE a.type = 'OUT' AND a.item_rm_id = '$item_rm_id' and a.trans_date between '$filter_from' and '$filter_to' GROUP BY a.id");
+                $row4 = $sql4->result_array();
+
+                //REJECTION
+                $sql5 = $this->db->query("SELECT 'REJECTION' AS trans_type, c.name AS created_by, b.created_date AS trans_date, d.id AS supplier_id, d.name AS supplier_name, a.bc_document AS document_no, b.label_no AS invoice_no, '0' AS qty_in, SUM(b.qty) AS qty_out FROM purchase_order_receipts a JOIN scan_item_rejections b ON a.receipt_id = b.receipt_id JOIN users c ON b.created_by = c.username JOIN suppliers d ON a.supplier_id = d.id WHERE a.item_rm_id = '$item_rm_id' and DATE_FORMAT(b.created_date, '%Y-%m-%d') between '$filter_from' and '$filter_to' GROUP BY b.id");
+                $row5 = $sql5->result_array();
+                
+                //ISSUED
+                $sql6 = $this->db->query("SELECT 'ISSUED' AS trans_type, created_by, created_date AS trans_date, '-' AS supplier_id, '-' AS supplier_name, request_no AS document_no, label_no AS invoice_no, '0' AS qty_in, qty AS qty_out FROM issued_material_details WHERE item_rm_id = '$item_rm_id' and DATE_FORMAT(created_date, '%Y-%m-%d') between '$filter_from' and '$filter_to'");
+                $row6 = $sql6->result_array();
+                
+                //RETURN MATERIAL
+                $sql7 = $this->db->query("SELECT 'RETURN MATERIAL' AS trans_type, d.name AS created_by, a.return_date AS trans_date, '-' AS supplier_id, '-' AS supplier_name, a.return_no AS document_no, b.label_no AS invoice_no, b.qty AS qty_in, '0' AS qty_out FROM return_materials a JOIN return_material_labels b ON a.return_id = b.return_id JOIN scan_item_receipts c ON a.return_id = c.receipt_id JOIN users d ON a.created_by = d.username WHERE a.item_rm_id = '$item_rm_id' and a.return_date between '$filter_from' and '$filter_to' GROUP BY b.label_no");
+                $row7 = $sql7->result_array();
+
+                //RGP IN
+                $sql8 = $this->db->query("SELECT 'RGP IN' AS trans_type, a.created_by, c.created_date AS trans_date, b.id AS supplier_id, b.name AS supplier_name, c.rgp_number AS document_no, c.label_no AS invoice_no, c.qty AS qty_in, '0' AS qty_out FROM rgp_transactions a LEFT JOIN suppliers b ON a.company_id = b.id JOIN scan_item_rgp c ON a.number = c.rgp_number and a.item_id = c.item_id WHERE a.type = 'IN' AND a.item_id = '$item_rm_id' and DATE_FORMAT(c.created_date, '%Y-%m-%d') between '$filter_from' and '$filter_to' GROUP BY c.id");
+                $row8 = $sql8->result_array();
+
+                //RGP OUT
+                $sql9 = $this->db->query("SELECT 'RGP OUT' AS trans_type, a.created_by, c.created_date AS trans_date, b.id AS supplier_id, b.name AS supplier_name, c.rgp_number AS document_no, c.label_no AS invoice_no, '0' AS qty_in, c.qty AS qty_out FROM rgp_transactions a LEFT JOIN suppliers b ON a.company_id = b.id JOIN scan_item_rgp c ON a.number = c.rgp_number and a.item_id = c.item_id WHERE a.type = 'OUT' AND a.item_id = '$item_rm_id' and DATE_FORMAT(c.created_date, '%Y-%m-%d') between '$filter_from' and '$filter_to' GROUP BY c.id");
+                $row9 = $sql9->result_array();
+
+                $details = array_merge($row, $row2, $row3, $row4, $row5, $row6, $row7, $row8, $row9);
+                usort($details, function($a, $b) {
+                    return strtotime($a['trans_date']) - strtotime($b['trans_date']);
+                });
+                
                 $nod = 1;
                 $begin = @$record->begin_stock;
                 $in_qty = 0;
                 $out_qty = 0;
                 $balance = @$record->begin_stock;
                 foreach ($details as $detail) {
-                    if($detail->qty_in > 0){
-                        $in_qty = $detail->qty_in;
+                    if($detail['qty_in'] > 0){
+                        $in_qty = $detail['qty_in'];
                         $out_qty = 0;
                     }else{
                         $in_qty = 0;
-                        $out_qty = $detail->qty_out;
+                        $out_qty = $detail['qty_out'];
                     }
 
                     $balance = ($begin + $in_qty - $out_qty);
@@ -284,20 +332,20 @@ class Report_history_transactions extends CI_Controller
                     $html .= '  <tr>
                                     <td></td>
                                     <td style="text-align:center">' . $nod . '</td>
-                                    <td>' . $detail->trans_type . '</td>
-                                    <td>' . $detail->created_by . '</td>
-                                    <td>' . $detail->trans_date . '</td>
-                                    <td>' . $detail->supplier_id . '</td>
-                                    <td>' . $detail->supplier_name . '</td>
-                                    <td>' . $detail->document_no . '</td>
-                                    <td>' . $detail->invoice_no . '</td>
+                                    <td>' . $detail['trans_type'] . '</td>
+                                    <td>' . $detail['created_by'] . '</td>
+                                    <td>' . $detail['trans_date'] . '</td>
+                                    <td>' . $detail['supplier_id'] . '</td>
+                                    <td>' . $detail['supplier_name'] . '</td>
+                                    <td>' . $detail['document_no'] . '</td>
+                                    <td>' . $detail['invoice_no'] . '</td>
                                     <td style="text-align:right;">' . number_format($begin, 2) . '</td>
                                     <td style="text-align:right;">' . number_format($in_qty, 2)  . '</td>
                                     <td style="text-align:right;">' . number_format($out_qty, 2) . '</td>
                                     <td style="text-align:right;">' . number_format($balance, 2)  . '</td>
                                 </tr>';
 
-                    if($detail->qty_in > 0){
+                    if($detail['qty_in'] > 0){
                         $begin += ($in_qty);
                     }else{
                         $begin -= ($out_qty);

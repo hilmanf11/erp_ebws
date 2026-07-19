@@ -102,13 +102,20 @@ class Supplier_item_others extends CI_Controller
         $this->db->join('item_familys d', "c.item_family_id = d.id and d.item_category_id NOT IN ('C01','C08')");
         $this->db->where('a.deleted', 0);
         $this->db->where('b.status', 0);
-        $this->db->like("c.number", $item_number);
-        $this->db->like("c.id", $item_id);
-        $this->db->like("d.id", $item_family_id);
+        if($item_number != ""){
+            $this->db->where("c.number", $item_number);
+        }
+        if($item_id != ""){
+            $this->db->where("c.id", $item_id);
+        }
+        if($item_family_id != ""){
+            $this->db->where("d.id", $item_family_id);
+        }
         $this->db->like("b.name", $post);
-        $this->db->group_by('b.number');
+        $this->db->group_by('b.id');
         $this->db->order_by('b.name', 'ASC');
         $records = $this->db->get()->result_array();
+        
         echo json_encode($records);
     }
 
@@ -260,33 +267,11 @@ class Supplier_item_others extends CI_Controller
                 echo $send;
 
                 $this->crud->create("supplier_item_histories", $history);
-
-                $approval = $this->crud->read('approvals', [], ["table_name" => "supplier_item_others"]);
-                if (!empty($approval)) {
-                    $formApprove = [
-                        "approved" => 1,
-                        "approved_to" => $approval->user_approval_1,
-                        "approved_by" => $this->session->username,
-                    ];
-
-                    $this->db->update('supplier_items', $formApprove, ["supplier_id" => $post['supplier_id'], "item_rm_id" => $post['item_rm_id']]);
-                }
             } else {
                 $send = $this->crud->update('supplier_items', ["supplier_id" => $post['supplier_id'], "item_rm_id" => $post['item_rm_id']], $post);
                 echo $send;
 
                 $this->crud->create("supplier_item_histories", $history);
-
-                $approval = $this->crud->read('approvals', [], ["table_name" => "supplier_item_others"]);
-                if (!empty($approval)) {
-                    $formApprove = [
-                        "approved" => 1,
-                        "approved_to" => $approval->user_approval_1,
-                        "approved_by" => $this->session->username,
-                    ];
-
-                    $this->db->update('supplier_items', $formApprove, ["supplier_id" => $post['supplier_id'], "item_rm_id" => $post['item_rm_id']]);
-                }
             }
         } else {
             show_error("Cannot Process your request");
@@ -334,17 +319,6 @@ class Supplier_item_others extends CI_Controller
                 echo $send;
 
                 $this->crud->create("supplier_item_histories", $history);
-
-                $approval = $this->crud->read('approvals', [], ["table_name" => "supplier_item_others"]);
-                if (!empty($approval)) {
-                    $formApprove = [
-                        "approved" => 1,
-                        "approved_to" => $approval->user_approval_1,
-                        "approved_by" => $this->session->username,
-                    ];
-
-                    $this->db->update('supplier_items', $formApprove, ["id" => $id]);
-                }
             }
         } else {
             show_error("Cannot Process your request");

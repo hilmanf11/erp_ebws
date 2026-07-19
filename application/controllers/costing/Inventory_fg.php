@@ -1,8 +1,6 @@
 <?php
-error_reporting(0);
 date_default_timezone_set("Asia/Bangkok");
 defined('BASEPATH') or exit('No direct script access allowed');
-
 class Inventory_fg extends CI_Controller
 {
     public function __construct()
@@ -32,112 +30,26 @@ class Inventory_fg extends CI_Controller
         }
     }
 
-    public function getData(){
-        $filter_from = $this->input->post('filter_from');
-        $filter_to   = $this->input->post('filter_to');
-        $filter_items = $this->input->post('filter_items');
-        $periode = date("Ym", strtotime($filter_from));
-        $periode_bf = date("Ym", strtotime("-1 month", strtotime($filter_from)));
-        $month = date("m", strtotime($filter_from));
-        $year = date("m", strtotime($filter_from));
-
-        $start = strtotime($filter_from);
-        $finish = strtotime($filter_to);
-
-        //Item Receipts
-        $records = $this->crud->query("SELECT
-            a.id,
-            a.uom
-        FROM item_fg a 
-        WHERE a.id like '%$filter_items%'
-        GROUP BY a.id
-        ORDER BY a.number");
-        
-        $data = array();
-        foreach ($records as $record) {
-            $item_fg_id = $record->id;
-            
-            $begin = $this->crud->query("SELECT item_fg_id, SUM(qty) as qty, SUM(amount) as amount, SUM(direct_material) as direct_material, SUM(direct_labor) as direct_labor, SUM(direct_foh) as direct_foh FROM inventory_fg WHERE trans_date < '$filter_from' and item_fg_id = '$item_fg_id' GROUP BY item_fg_id");
-            
-            //INVENTORIES
-            $inventories = $this->crud->query("SELECT * FROM inventory_wip WHERE trans_type = 'SCAN FG' and item_fg_id = '$item_fg_id' and trans_date between '$filter_from' and '$filter_to'");
-
-            //DELIVERY
-            $deliveries = $this->crud->query("SELECT a.* FROM delivery_notes a WHERE a.item_fg_id = '$item_fg_id' and a.delivery_note_date between '$filter_from' and '$filter_to'");
-
-            $price = 0;
-            foreach ($inventories as $inventory) {
-                $data[] = array(
-                    "created_by" => $this->session->username,
-                    "created_date" => date("Y-m-d H:i:s"),
-                    "period" => $periode,
-                    "item_fg_id" => $item_fg_id,
-                    "trans_type" => "RECEIPT FG",
-                    "created_name" => $inventory->created_by,
-                    "trans_date" => $inventory->trans_date,
-                    "invoice_no" => $inventory->invoice_no,
-                    "customer_po" => "",
-                    "document_no" => $inventory->document_no,
-                    "uom" => $record->uom,
-                    "qty" => abs($inventory->qty),
-                    "price" => abs($inventory->price),
-                    "amount" => abs($inventory->amount),
-                );
-
-                $price = $inventory->price;
-            }
-
-            foreach ($deliveries as $delivery) {
-                $data[] = array(
-                    "created_by" => $this->session->username,
-                    "created_date" => date("Y-m-d H:i:s"),
-                    "period" => $periode,
-                    "item_fg_id" => $item_fg_id,
-                    "trans_type" => "DELIVERY NOTE",
-                    "created_name" => $delivery->created_by,
-                    "trans_date" => $delivery->delivery_note_date,
-                    "invoice_no" => $delivery->delivery_order_no,
-                    "customer_po" => $delivery->customer_order_no,
-                    "document_no" => $delivery->delivery_note_no,
-                    "uom" => $record->uom,
-                    "qty" => ($delivery->qty * -1),
-                    "price" => $price,
-                    "amount" => (($delivery->qty * -1) * $price),
-                );
-            }
+    public function readItemFamily($number = "")
+    {
+        $this->db->select('*');
+        $this->db->from('item_familys');
+        $this->db->where('deleted', 0);
+        if ($number != "001") {
+            $this->db->where("number", $number);
+        } else {
+            $this->db->where("number !=", $number);
         }
-
-        foreach ($data as $dt) {
-            $inventory_fg = $this->crud->reads("inventory_fg", [], [
-                "item_fg_id" => $dt['item_fg_id'], 
-                "invoice_no" => $dt['invoice_no'],
-                "document_no" => $dt['document_no'], 
-                "trans_date" => $dt['trans_date']
-            ]);
-
-            if(count($inventory_fg) > 0){
-                $this->db->update('inventory_fg', $dt, [
-                    "item_fg_id" => $dt['item_fg_id'], 
-                    "invoice_no" => $dt['invoice_no'],
-                    "document_no" => $dt['document_no'], 
-                    "trans_date" => $dt['trans_date']
-                ]);
-            }else{
-                $this->db->insert('inventory_fg', $dt);
-            }
-        }
-
-        $result['total'] = count($data);
-        $result = array_merge($result, ['rows' => $data]);
-        echo json_encode($result);
+        $this->db->order_by('name', 'ASC');
+        $records = $this->db->get()->result_array();
+        echo json_encode($records);
     }
 
-
-    public function formatNo($number, $decimal){
+    public function formatNo($number){
         if($number >= 0){
-            return "<span>".number_format($number, $decimal)."</span>";
+            return "<span>".number_format($number, 2)."</span>";
         }else{
-            return "<span style='color:red;'>(".number_format(abs($number), $decimal).")</span>";
+            return "<span style='color:red;'>(".number_format(abs($number), 2).")</span>";
         }
     }
 
@@ -157,11 +69,8 @@ class Inventory_fg extends CI_Controller
         $start = strtotime($filter_from);
         $finish = strtotime($filter_to);
 
-        $period_tb = date("Ym", strtotime($filter_from));
-        $periode_tb_bf = date("Ym", strtotime("-1 month", strtotime($filter_from)));
-
-        $periode = date("Y-m", strtotime($filter_from));
-        $periode_bf = date("Y-m", strtotime("-1 month", strtotime($filter_from)));
+        $periode = date("Ym", strtotime($filter_from));
+        $periode_bf = date("Ym", strtotime("-1 month", strtotime($filter_from)));
 
         //Config
         $this->db->select('*');
@@ -178,7 +87,7 @@ class Inventory_fg extends CI_Controller
                             </td>
                             <td style="font-size: 14px; text-align: left; margin:2px;">
                                 <b>' . $config->name . '</b><br>
-                                <small>REPORT INVENTORY HISTORY TRANSACTION FINISHGOOD</small><br>
+                                <small>REPORT INVENTORY HISTORY TRANSACTION FINISH GOOD</small><br>
                                 <small>PERIOD : <b>' . $filter_from . '</b> To <b>' . $filter_to . '</b></small>
                             </td>
                         </tr>
@@ -191,235 +100,726 @@ class Inventory_fg extends CI_Controller
             </center>
             <br><br><br><br>';
 
-        $records = $this->crud->query("SELECT
-            a.id,
-            a.number_customer as number, 
-            a.name, 
-            'FINISH GOOD' as prodfam, 
-            a.uom,
-            COALESCE(d.qty) as qty_in,
-            COALESCE(d.direct_material) as direct_material_in,
-            COALESCE(d.direct_labor) as direct_labor_in,
-            COALESCE(d.direct_foh) as direct_foh_in,
-            COALESCE(d.price) as price_in,
-            COALESCE(d.amount) as amount_in,
-            COALESCE(e.qty) as qty_out,
-            COALESCE(e.direct_material) as direct_material_out,
-            COALESCE(e.direct_labor) as direct_labor_out,
-            COALESCE(e.direct_foh) as direct_foh_out,
-            COALESCE(e.price) as price_out,
-            COALESCE(e.amount) as amount_out
-        FROM item_fg a
-        LEFT JOIN (SELECT item_fg_id, price, SUM(qty) as qty, SUM(amount) as amount, SUM(direct_material) as direct_material, SUM(direct_labor) as direct_labor, SUM(direct_foh) as direct_foh FROM inventory_fg WHERE trans_date between '$filter_from' and '$filter_to' and trans_type = 'RECEIPT FG' GROUP BY item_fg_id) d ON a.id = d.item_fg_id
-        LEFT JOIN (SELECT item_fg_id, price, SUM(qty) as qty, SUM(amount) as amount, SUM(direct_material) as direct_material, SUM(direct_labor) as direct_labor, SUM(direct_foh) as direct_foh FROM inventory_fg WHERE trans_date between '$filter_from' and '$filter_to' and trans_type = 'DELIVERY NOTE' GROUP BY item_fg_id) e ON a.id = e.item_fg_id
-        WHERE a.id like '%$filter_items%'
-        GROUP BY a.id
-        ORDER BY a.number");
-
-        $html .= '<table id="customers" style="width: 100%">
-                    <tr>
-                        <th rowspan="2" width="20">No</th>
-                        <th colspan="2" rowspan="2">Product No</th>
-                        <th colspan="3" rowspan="2">Product Name</th>
-                        <th rowspan="2">Uom</th>
-                        <th  colspan="3">Begining Stock</th>
-                        <th  colspan="3">In</th>
-                        <th  colspan="3">Out</th>
-                        <th  colspan="3">Ending Stock</th>
-                    </tr>
-                    <tr>
-                        <th >Qty</th>
-                        <th >Price</th>
-                        <th >Amount</th>
-                        <th >Qty</th>
-                        <th >Price</th>
-                        <th >Amount</th>
-                        <th >Qty</th>
-                        <th >Price</th>
-                        <th >Amount</th>
-                        <th >Qty</th>
-                        <th >Price</th>
-                        <th >Amount</th>
-                    </tr>';
-
-        $noh = 1;
-        $total_begin = 0;
-        $total_begin_price = 0;
-        $total_qty_in = 0;
-        $total_qty_in_price = 0;
-        $total_qty_out = 0;
-        $total_qty_out_price = 0;
-        $total_end = 0;
-        $total_end_price = 0;
-
-        foreach ($records as $record) {
-            $item_fg_id = $record->id;
-
-            $begin = $this->crud->query("SELECT item_fg_id, SUM(qty) as qty, SUM(amount) as amount, SUM(direct_material) as direct_material, SUM(direct_labor) as direct_labor, SUM(direct_foh) as direct_foh FROM inventory_fg WHERE trans_date < '$filter_from' and item_fg_id = '$item_fg_id' GROUP BY item_fg_id");
-
-            if(is_nan(@$begin[0]->amount / @$begin[0]->qty)){
-                $begin_price = 0;
-            }else{
-                $begin_price = (@$begin[0]->amount / @$begin[0]->qty);
-            }
-            
-            if($record->qty_in > 0){
-                $price_in = ($record->amount_in / $record->qty_in);
-            }else{
-                $price_in = 0;
-            }
-
-            if(abs($record->qty_out) > 0){
-                $price_out = abs($record->amount_out / $record->qty_out);
-            }else{
-                $price_out = 0;
-            }
-
-            $ending_qty = (@$begin[0]->qty + $record->qty_in - abs($record->qty_out));
-            $ending_amount = (@$begin[0]->amount + $record->amount_in - abs($record->amount_out));
-
-            if($ending_qty > 0){
-                $ending_price = ($ending_amount / $ending_qty);
-            }else{
-                $ending_price = 0;
-            }
-
-            $html .= '  <tr>
-                            <td style="text-align:center">' . $noh . '</td>
-                            <td colspan="2">' . $record->number . '</td>
-                            <td colspan="3">' . $record->name . '</td>
-                            <td>' . $record->uom . '</td>
-                            <td style="text-align:right;">' . $this->formatNo(@$begin[0]->qty, 2) . '</td>
-                            <td style="text-align:right;">' . $this->formatNo($begin_price, 4) . '</td>
-                            <td style="text-align:right;">' . $this->formatNo(@$begin[0]->amount, 2) . '</td>
-                            <td style="text-align:right;">' . $this->formatNo($record->qty_in, 2) . '</td>
-                            <td style="text-align:right;">' . $this->formatNo($price_in, 4) . '</td>
-                            <td style="text-align:right;">' . $this->formatNo($record->amount_in, 2) . '</td>
-                            <td style="text-align:right;">' . $this->formatNo(($record->qty_out), 2) . '</td>
-                            <td style="text-align:right;">' . $this->formatNo($price_out, 4) . '</td>
-                            <td style="text-align:right;">' . $this->formatNo(($record->amount_out), 2) . '</td>
-                            <td style="text-align:right;">' . $this->formatNo($ending_qty, 2) . '</td>
-                            <td style="text-align:right;">' . $this->formatNo($ending_price, 4) . '</td>
-                            <td style="text-align:right;">' . $this->formatNo($ending_amount, 2) . '</td>
-                        </tr>';
-
-            if ($filter_display == "DETAIL") {
+            if ($filter_display == "RECAP") {
+                $sql_begin = $this->crud->query("SELECT c.id as item_rm_id, 
+                        c.number_customer AS item_fg_number, c.name AS item_fg_name, c.uom,
+                        ROUND(zz.begin_qty, 2) AS begin_qty,
+                        ROUND(zz.begin_price, 4) AS begin_price,
+                        ROUND(zz.begin_amount, 4) AS begin_amount,
+                        ROUND(SUM(zz.qty_in), 2) AS qty_in, 
+                        ROUND(SUM(zz.amount_in) / SUM(zz.qty_in), 4) AS price_in,
+                        ROUND(SUM(zz.amount_in), 4) AS amount_in, 
+                        ROUND(COALESCE(SUM(zz.qty_out), 0), 2) AS qty_out, 
+                        ROUND(COALESCE((SUM(zz.amount_out) / SUM(zz.qty_out)), 0), 4) AS price_out,
+                        ROUND(COALESCE(SUM(zz.amount_out), 0), 4) AS amount_out,
+                        ROUND(zz.begin_qty + SUM(zz.qty_in) - SUM(zz.qty_out), 2) AS bal_qty,
+                        ROUND((zz.begin_amount + SUM(zz.amount_in) - SUM(zz.amount_out)) / (zz.begin_qty + SUM(zz.qty_in) - SUM(zz.qty_out)), 2) AS bal_price,
+                        ROUND((ROUND(zz.begin_qty + SUM(zz.qty_in) - SUM(zz.qty_out), 2) * ROUND((zz.begin_amount + SUM(zz.amount_in) - SUM(zz.amount_out)) / (zz.begin_qty + SUM(zz.qty_in) - SUM(zz.qty_out)), 2)), 2) AS bal_amount
+                    FROM item_fg c
+                    LEFT JOIN (SELECT (@no_urut := @no_urut + 1) AS no_urut, 
+                        c.number_customer AS item_fg_number, c.name AS item_fg_name, c.uom, z.created_by,
+                        z.trans_type, z.trans_date, z.workorder, 
+                        (CASE WHEN @item_fg_id = z.item_fg_id THEN '1' ELSE '0' END) AS typee,
+                        @begin_qty := ROUND(CASE WHEN @item_fg_id = z.item_fg_id THEN @balance_qty ELSE 0 END, 2) AS begin_qty,
+                        @begin_price := ROUND(CASE WHEN @item_fg_id = z.item_fg_id THEN @balance_price ELSE COALESCE(bgin.begin_price, 0) END, 4) AS begin_price,
+                        @begin_amount := ROUND(CASE WHEN @item_fg_id = z.item_fg_id THEN @balance_amount ELSE COALESCE(bgin.begin_amount, 0) END, 4) AS begin_amount,
+                        @item_fg_id := z.item_fg_id AS item_fg_id,
+                        z.qty_in, 
+                        ROUND(CASE WHEN z.price_in = 0 THEN @begin_price ELSE z.price_in END, 4) AS price_in,
+                        ROUND(CASE WHEN z.amount_in = 0 THEN (z.qty_in * @begin_price) ELSE z.amount_in END, 4) AS amount_in,
+                        z.qty_out, 
+                        ROUND(CASE WHEN z.qty_in = 0 THEN @begin_price ELSE 0 END, 4) AS price_out, 
+                        (CASE WHEN z.qty_in = 0 THEN ROUND(z.qty_out * @begin_price, 4) ELSE 0 END) AS amount_out,
+                        @balance_price := (CASE WHEN z.amount_in = 0 THEN @begin_price ELSE COALESCE(ROUND((@begin_amount + z.amount_in - (CASE WHEN z.qty_in = 0 THEN ROUND(z.qty_out * @begin_price, 4) ELSE 0 END)) / (@begin_qty + z.qty_in - z.qty_out), 2), 0) END) AS balance_price,
+                        @balance_qty := COALESCE(ROUND(@begin_qty + z.qty_in - z.qty_out, 2), 0) AS balance_qty,
+                        @balance_amount := COALESCE(ROUND(@balance_qty * @balance_price, 4), 0) AS balance_amount
+                    FROM (SELECT a.* FROM (
+                        SELECT
+                            a.id,
+                            b.item_fg_id,
+                            'STO FG' AS trans_type,
+                            a.created_by,
+                            DATE_FORMAT(a.created_date, '%Y-%m-%d') AS trans_date,
+                            b.document_no AS workorder,
+                            a.qty AS qty_in,
+                            COALESCE(c.direct_total, 0) AS price_in,
+                            (a.qty * COALESCE(c.direct_total, 0)) AS amount_in,
+                            0 AS qty_out
+                        FROM scan_item_receipts_fg a
+                        JOIN os_fg b ON a.workorder = b.id
+                        LEFT JOIN costing_products c ON b.item_fg_id = c.item_fg_id AND c.periode = '$periode'
+                        WHERE DATE_FORMAT(a.created_date, '%Y-%m-%d') BETWEEN '$filter_from' AND '$filter_to'
+                        GROUP BY a.id
+                        UNION
+                        SELECT
+                            a.id,
+                            b.item_fg_id,
+                            'SCAN FG' AS trans_type,
+                            a.created_by,
+                            DATE_FORMAT(a.created_date, '%Y-%m-%d') AS trans_date,
+                            b.checksheet_number AS workorder,
+                            a.qty AS qty_in,
+                            COALESCE(c.direct_total, 0) AS price_in,
+                            (a.qty * COALESCE(c.direct_total, 0)) AS amount_in,
+                            0 AS qty_out
+                        FROM scan_item_receipts_fg a
+                        JOIN wip_receipts b ON a.workorder = b.workorder AND a.checksheet_number = b.checksheet_number 
+                        LEFT JOIN costing_products c ON b.item_fg_id = c.item_fg_id AND c.periode = '$periode'
+                        WHERE DATE_FORMAT(a.created_date, '%Y-%m-%d') BETWEEN '$filter_from' AND '$filter_to'
+                        UNION
+                        SELECT
+                            a.id,
+                            a.item_fg_id,
+                            'ADJUSTMENT IN' AS trans_type,
+                            a.created_by,
+                            a.trans_date,
+                            a.document_no AS workorder,
+                            a.qty AS qty_in,
+                            0 AS price_in,
+                            0 AS amount_in,
+                            0 AS qty_out
+                        FROM sto_fg a
+                        WHERE a.type = 'IN' AND (a.approved_to = '' OR a.approved_to IS NULL) AND a.trans_date BETWEEN '$filter_from' AND '$filter_to'
+                        GROUP BY a.id
+                        UNION
+                        SELECT
+                            a.id,
+                            a.item_fg_id,
+                            'ADJUSTMENT OUT' AS trans_type,
+                            a.created_by,
+                            a.trans_date,
+                            a.document_no AS workorder,
+                            0 AS qty_in,
+                            0 AS price_in,
+                            0 AS amount_in,
+                            a.qty AS qty_out
+                        FROM sto_fg a
+                        WHERE a.type = 'OUT' AND (a.approved_to = '' OR a.approved_to IS NULL) AND a.trans_date BETWEEN '$filter_from' AND '$filter_to'
+                        GROUP BY a.id
+                        UNION
+                        SELECT
+                            a.id,
+                            b.id AS item_fg_id,
+                            CONCAT(a.process_type, ' IN') AS trans_type,
+                            a.created_by,
+                            a.transaction_date AS trans_date,
+                            a.number AS workorder,
+                            a.qty AS qty_in,
+                            a.price AS price_in,
+                            (a.qty * a.price) AS amount_in,
+                            0 AS qty_out
+                        FROM rgp_transactions a
+                        JOIN item_fg b ON a.item_id = b.id
+                        JOIN scan_item_receipts_fg c ON a.rgp_id = c.checksheet_number AND a.id = c.workorder
+                        WHERE a.type = 'IN' AND a.transaction_date BETWEEN '$filter_from' AND '$filter_to'
+                        GROUP BY a.id
+                        UNION
+                        SELECT
+                            a.id,
+                            b.id AS item_fg_id,
+                            CONCAT(a.process_type, ' IN') AS trans_type,
+                            a.created_by,
+                            a.transaction_date AS trans_date,
+                            a.number AS workorder,
+                            0 AS qty_in,
+                            0 AS price_in,
+                            0 AS amount_in,
+                            a.qty AS qty_out
+                        FROM rgp_transactions a
+                        JOIN item_fg b ON a.item_id = b.id
+                        JOIN scan_item_rgp c ON a.number = c.rgp_number and a.item_id = c.item_id
+                        WHERE a.type = 'OUT' AND a.transaction_date BETWEEN '$filter_from' AND '$filter_to'
+                        GROUP BY a.id
+                        UNION
+                        SELECT
+                            a.id,
+                            a.item_fg_id,
+                            'DELIVERY' AS trans_type,
+                            a.created_by,
+                            DATE_FORMAT(a.created_date, '%Y-%m-%d') AS trans_date,
+                            a.delivery_note_no AS workorder,
+                            0 AS qty_in,
+                            0 AS price_in,
+                            0 AS amount_in,
+                            a.qty AS qty_out
+                        FROM delivery_notes a
+                        WHERE DATE_FORMAT(a.created_date, '%Y-%m-%d') BETWEEN '$filter_from' AND '$filter_to' and a.status != '2'
+                        GROUP BY a.id) a
+                        ORDER BY a.item_fg_id, a.trans_date ASC) z
+                    LEFT JOIN (SELECT 
+                            c.id AS item_fg_id,
+                            c.number_customer AS item_fg_number, 
+                            (COALESCE(a.qty, 0) + COALESCE(SUM(zz.qty_in), 0) - COALESCE(SUM(zz.qty_out), 0)) AS begin_qty, 
+                            (CASE WHEN zz.balance_price IS NULL OR zz.balance_price = 0 THEN a.price ELSE zz.balance_price END) AS begin_price, 
+                            ((COALESCE(a.qty, 0) + COALESCE(SUM(zz.qty_in), 0) - COALESCE(SUM(zz.qty_out), 0)) * (CASE WHEN zz.balance_price IS NULL OR zz.balance_price = 0 THEN a.price ELSE zz.balance_price END)) AS begin_amount
+                        FROM item_fg c
+                        LEFT JOIN (
+                        SELECT (@no_urut := @no_urut + 1) AS no_urut, z.trans_date,
+                            (CASE WHEN @item_fg_id = z.item_fg_id THEN '1' ELSE '0' END) AS typee,
+                            @begin_qty := ROUND(CASE WHEN @item_fg_id = z.item_fg_id THEN @balance_qty ELSE 0 END, 2) AS begin_qty,
+                            @begin_price := ROUND(CASE WHEN @item_fg_id = z.item_fg_id THEN @balance_price ELSE 0 END, 4) AS begin_price,
+                            @begin_amount := ROUND(CASE WHEN @item_fg_id = z.item_fg_id THEN @balance_amount ELSE 0 END, 4) AS begin_amount,
+                            @item_fg_id := z.item_fg_id AS item_fg_id,
+                            z.qty_in, 
+                            ROUND(CASE WHEN z.price_in = 0 THEN @begin_price ELSE z.price_in END, 4) AS price_in,
+                            ROUND(CASE WHEN z.amount_in = 0 THEN (z.qty_in * @begin_price) ELSE z.amount_in END, 4) AS amount_in,
+                            z.qty_out, 
+                            ROUND(CASE WHEN z.qty_in = 0 THEN @begin_price ELSE 0 END, 4) AS price_out, 
+                            (CASE WHEN z.qty_in = 0 THEN ROUND(z.qty_out * @begin_price, 4) ELSE 0 END) AS amount_out,
+                            @balance_price := COALESCE(ROUND((@begin_amount + z.amount_in - (CASE WHEN z.qty_in = 0 THEN ROUND(z.qty_out * @begin_price, 4) ELSE 0 END)) / (@begin_qty + z.qty_in - z.qty_out), 4), 0) AS balance_price,
+                            @balance_qty := COALESCE(ROUND(@begin_qty + z.qty_in - z.qty_out, 2), 0) AS balance_qty,
+                            @balance_amount := COALESCE(ROUND(@balance_qty * @balance_price, 4), 0) AS balance_amount
+                        FROM (
+                        SELECT a.* FROM (
+                            SELECT
+                                a.id,
+                                b.item_fg_id,
+                                'SCAN FG' AS trans_type,
+                                a.created_by,
+                                DATE_FORMAT(a.created_date, '%Y-%m-%d') AS trans_date,
+                                b.document_no AS workorder,
+                                a.qty AS qty_in,
+                                c.direct_total AS price_in,
+                                (a.qty * c.direct_total) AS amount_in,
+                                0 AS qty_out
+                            FROM scan_item_receipts_fg a
+                            JOIN os_fg b ON a.workorder = b.id
+                            LEFT JOIN costing_products c ON b.item_fg_id = c.item_fg_id AND c.periode = '$periode_bf'
+                            WHERE DATE_FORMAT(a.created_date, '%Y-%m-%d') < '$filter_from'
+                            GROUP BY a.id
+                            UNION
+                            SELECT
+                                a.id,
+                                b.item_fg_id,
+                                'SCAN FG' AS trans_type,
+                                a.created_by,
+                                DATE_FORMAT(a.created_date, '%Y-%m-%d') AS trans_date,
+                                b.checksheet_number AS workorder,
+                                a.qty AS qty_in,
+                                c.direct_total AS price_in,
+                                (a.qty * c.direct_total) AS amount_in,
+                                0 AS qty_out
+                            FROM scan_item_receipts_fg a
+                            JOIN wip_receipts b ON a.workorder = b.workorder AND a.checksheet_number = b.checksheet_number 
+                            LEFT JOIN costing_products c ON b.item_fg_id = c.item_fg_id AND c.periode = '$periode_bf'
+                            WHERE DATE_FORMAT(a.created_date, '%Y-%m-%d') < '$filter_from'
+                            UNION
+                            SELECT
+                                a.id,
+                                a.item_fg_id,
+                                'STO FG' AS trans_type,
+                                a.created_by,
+                                a.trans_date,
+                                a.document_no AS workorder,
+                                a.qty AS qty_in,
+                                0 AS price_in,
+                                0 AS amount_in,
+                                0 AS qty_out
+                            FROM sto_fg a
+                            WHERE a.type = 'IN' AND (a.approved_to = '' OR a.approved_to IS NULL) AND a.trans_date < '$filter_from'
+                            GROUP BY a.id
+                            UNION
+                            SELECT
+                                a.id,
+                                a.item_fg_id,
+                                'STO FG' AS trans_type,
+                                a.created_by,
+                                a.trans_date,
+                                a.document_no AS workorder,
+                                0 AS qty_in,
+                                0 AS price_in,
+                                0 AS amount_in,
+                                a.qty AS qty_out
+                            FROM sto_fg a
+                            WHERE a.type = 'OUT' AND (a.approved_to = '' OR a.approved_to IS NULL) AND a.trans_date < '$filter_from'
+                            GROUP BY a.id
+                            UNION
+                            SELECT
+                                a.id,
+                                b.id AS item_fg_id,
+                                CONCAT(a.process_type, ' IN') AS trans_type,
+                                a.created_by,
+                                a.transaction_date AS trans_date,
+                                a.number AS workorder,
+                                a.qty AS qty_in,
+                                a.price AS price_in,
+                                (a.qty * a.price) AS amount_in,
+                                0 AS qty_out
+                            FROM rgp_transactions a
+                            JOIN item_fg b ON a.item_id = b.id
+                            JOIN scan_item_rgp c ON a.number = c.rgp_number and a.item_id = c.item_id
+                            WHERE a.type = 'IN' AND a.transaction_date < '$filter_from'
+                            GROUP BY a.id
+                            UNION
+                            SELECT
+                                a.id,
+                                b.id AS item_fg_id,
+                                CONCAT(a.process_type, ' IN') AS trans_type,
+                                a.created_by,
+                                a.transaction_date AS trans_date,
+                                a.number AS workorder,
+                                0 AS qty_in,
+                                0 AS price_in,
+                                0 AS amount_in,
+                                a.qty AS qty_out
+                            FROM rgp_transactions a
+                            JOIN item_fg b ON a.item_id = b.id
+                            JOIN scan_item_receipts_fg c ON a.rgp_id = c.checksheet_number AND a.id = c.workorder
+                            WHERE a.type = 'OUT' AND a.transaction_date < '$filter_from'
+                            GROUP BY a.id
+                            UNION
+                            SELECT
+                                a.id,
+                                a.item_fg_id,
+                                'DELIVERY' AS trans_type,
+                                a.created_by,
+                                DATE_FORMAT(a.created_date, '%Y-%m-%d') AS trans_date,
+                                a.delivery_note_no AS workorder,
+                                0 AS qty_in,
+                                0 AS price_in,
+                                0 AS amount_in,
+                                a.qty AS qty_out
+                            FROM delivery_notes a
+                            WHERE DATE_FORMAT(a.created_date, '%Y-%m-%d') < '$filter_from' and a.status != '2'
+                            GROUP BY a.id) a
+                            ORDER BY a.item_fg_id, a.trans_date ASC
+                        ) z,
+                        (SELECT @no_urut := 0, @balance_qty := 0.0000, @balance_price := 0.0000, @balance_amount := 0.0000) AS zz
+                        ORDER BY z.item_fg_id, z.trans_date ASC) zz ON c.id = zz.item_fg_id
+                        LEFT JOIN inventory_fg a ON c.id = a.item_fg_id
+                        WHERE c.id LIKE '%$filter_items%'
+                        GROUP BY c.id) bgin ON z.item_fg_id = bgin.item_fg_id
+                    JOIN item_fg c ON z.item_fg_id = c.id,
+                    (SELECT @no_urut := 0, @item_fg_id := 0) AS za
+                    WHERE z.item_fg_id LIKE '%$filter_items%'
+                    ORDER BY z.item_fg_id, z.trans_date, no_urut ASC) zz ON zz.item_fg_id = c.id
+                    WHERE c.id LIKE '%$filter_items%'
+                    GROUP BY c.id
+                    ORDER BY c.number asc"
+                );
+    
+                $html .= '<table id="customers" border="1" style="width: 100%">
+                                <tr>
+                                    <th width="10" rowspan="2"width="20">No</th>
+                                    <th width="100" rowspan="2">Product No</th>
+                                    <th width="200" rowspan="2">Product Name</th>
+                                    <th width="50" rowspan="2">Uom</th>
+                                    <th colspan="3">Begin</th>
+                                    <th colspan="3">In</th>
+                                    <th colspan="3">Out</th>
+                                    <th colspan="3">Ending</th>
+                                </tr>
+                                <tr>
+                                    <th width="50">Qty</th>
+                                    <th width="50">Price</th>
+                                    <th width="50">Amount</th>
+                                    <th width="50">Qty</th>
+                                    <th width="50">Price</th>
+                                    <th width="50">Amount</th>
+                                    <th width="50">Qty</th>
+                                    <th width="50">Price</th>
+                                    <th width="50">Amount</th>
+                                    <th width="50">Qty</th>
+                                    <th width="50">Price</th>
+                                    <th width="50">Amount</th>
+                                </tr>';
+                $noh = 1;
+                $total_begin_qty = 0;
+                $total_begin_amount = 0;
+                $total_in_qty = 0;
+                $total_in_amount = 0;
+                $total_out_qty = 0;
+                $total_out_amount = 0;
+                $total_bal_qty = 0;
+                $total_bal_amount = 0;
+                foreach ($sql_begin as $itemReceipt) {
+                    $html .= '  <tr>
+                                    <td>' . $noh . '</td>
+                                    <td style="mso-number-format:\@;">' . $itemReceipt->item_fg_number . '</td>
+                                    <td style="mso-number-format:\@;">' . $itemReceipt->item_fg_name . '</td>
+                                    <td>' . $itemReceipt->uom . '</td>
+                                    <td style="text-align:right;">' . $this->formatNo($itemReceipt->begin_qty) . '</td>
+                                    <td style="text-align:right;">' . $this->formatNo($itemReceipt->begin_price) . '</td>
+                                    <td style="text-align:right;">' . $this->formatNo($itemReceipt->begin_amount) . '</td>
+                                    <td style="text-align:right;">' . $this->formatNo($itemReceipt->qty_in) . '</td>
+                                    <td style="text-align:right;">' . $this->formatNo($itemReceipt->price_in) . '</td>
+                                    <td style="text-align:right;">' . $this->formatNo($itemReceipt->amount_in) . '</td>
+                                    <td style="text-align:right;">' . $this->formatNo($itemReceipt->qty_out) . '</td>
+                                    <td style="text-align:right;">' . $this->formatNo($itemReceipt->price_out) . '</td>
+                                    <td style="text-align:right;">' . $this->formatNo($itemReceipt->amount_out) . '</td>
+                                    <td style="text-align:right;">' . $this->formatNo($itemReceipt->bal_qty) . '</td>
+                                    <td style="text-align:right;">' . $this->formatNo($itemReceipt->bal_price) . '</td>
+                                    <td style="text-align:right;">' . $this->formatNo($itemReceipt->bal_amount) . '</td>
+                                </tr>';
+    
+                    $total_begin_qty += $itemReceipt->begin_qty;
+                    $total_begin_amount += $itemReceipt->begin_amount;
+                    $total_in_qty += $itemReceipt->qty_in;
+                    $total_in_amount += $itemReceipt->amount_in;
+                    $total_out_qty += $itemReceipt->qty_out;
+                    $total_out_amount += $itemReceipt->amount_out;
+                    $total_bal_qty += ($itemReceipt->bal_qty);
+                    $total_bal_amount += ($itemReceipt->bal_amount);
+                    $noh++;
+                }
+    
                 $html .= '  <tr>
-                                <td colspan="19" style="background:#D1FFC6;"><b>DETAIL OF ' . $record->number . ' - ' . $record->name . '</b></td>
+                                <td colspan="4" style="text-align:right;"><b>GRAND TOTAL</b></td>
+                                <td style="text-align:right;"><b>' . $this->formatNo($total_begin_qty) . '</b></td>
+                                <td style="text-align:right;">-</td>
+                                <td style="text-align:right;"><b>' . $this->formatNo($total_begin_amount) . '</b></td>
+                                <td style="text-align:right;"><b>' . $this->formatNo($total_in_qty) . '</b></td>
+                                <td style="text-align:right;">-</td>
+                                <td style="text-align:right;"><b>' . $this->formatNo($total_in_amount) . '</b></td>
+                                <td style="text-align:right;"><b>' . $this->formatNo($total_out_qty) . '</b></td>
+                                <td style="text-align:right;">-</td>
+                                <td style="text-align:right;"><b>' . $this->formatNo($total_out_amount) . '</b></td>
+                                <td style="text-align:right;"><b>' . $this->formatNo($total_bal_qty) . '</b></td>
+                                <td style="text-align:right;">-</td>
+                                <td style="text-align:right;"><b>' . $this->formatNo($total_bal_amount) . '</b></td>
                             </tr>';
-                $html .= '  <tr>
-                                <th rowspan="2" width="20"></th>
-                                <th rowspan="2">No</th>
+                $html .= '</table></body></html>';
+            } else {
+                $itemReceipts = $this->crud->query("SELECT (@no_urut := @no_urut + 1) AS no_urut, 
+                    c.number_customer AS item_fg_number, c.name AS item_fg_name, c.uom, z.created_by,
+                    z.trans_type, z.trans_date, z.workorder, 
+                    (CASE WHEN @item_fg_id = z.item_fg_id THEN '1' ELSE '0' END) AS typee,
+                    @begin_qty := ROUND(CASE WHEN @item_fg_id = z.item_fg_id THEN @balance_qty ELSE 0 END, 2) AS begin_qty,
+                    @begin_price := ROUND(CASE WHEN @item_fg_id = z.item_fg_id THEN @balance_price ELSE COALESCE(bgin.begin_price, 0) END, 4) AS begin_price,
+                    @begin_amount := ROUND(CASE WHEN @item_fg_id = z.item_fg_id THEN @balance_amount ELSE 0 END, 4) AS begin_amount,
+                    @item_fg_id := z.item_fg_id AS item_fg_id,
+                    z.qty_in, 
+                    ROUND(CASE WHEN z.price_in = 0 THEN @begin_price ELSE z.price_in END, 4) AS price_in,
+                    ROUND(CASE WHEN z.amount_in = 0 THEN (z.qty_in * @begin_price) ELSE z.amount_in END, 4) AS amount_in,
+                    z.qty_out, 
+                    ROUND(CASE WHEN z.qty_in = 0 THEN @begin_price ELSE 0 END, 4) AS price_out, 
+                    (CASE WHEN z.qty_in = 0 THEN ROUND(z.qty_out * @begin_price, 4) ELSE 0 END) AS amount_out,
+                    @balance_price := (CASE WHEN z.amount_in = 0 THEN @begin_price ELSE COALESCE(ROUND((@begin_amount + z.amount_in - (CASE WHEN z.qty_in = 0 THEN ROUND(z.qty_out * @begin_price, 4) ELSE 0 END)) / (@begin_qty + z.qty_in - z.qty_out), 2), 0) END) AS balance_price,
+                    @balance_qty := COALESCE(ROUND(@begin_qty + z.qty_in - z.qty_out, 2), 0) AS balance_qty,
+                    @balance_amount := COALESCE(ROUND(@balance_qty * @balance_price, 4), 0) AS balance_amount
+                FROM (SELECT a.* FROM (
+                    SELECT
+                        a.id,
+                        b.item_fg_id,
+                        'STO FG' AS trans_type,
+                        a.created_by,
+                        b.trans_date,
+                        b.document_no AS workorder,
+                        SUM(a.qty) AS qty_in,
+                        COALESCE(c.direct_total, 0) AS price_in,
+                        (SUM(a.qty) * COALESCE(c.direct_total, 0)) AS amount_in,
+                        0 AS qty_out
+                    FROM os_fg b
+                    JOIN scan_item_receipts_fg a ON a.workorder = b.id
+                    LEFT JOIN costing_products c ON b.item_fg_id = c.item_fg_id AND c.periode = '$periode'
+                    WHERE b.trans_date BETWEEN '$filter_from' AND '$filter_to'
+                    GROUP BY b.id
+                    UNION
+                    SELECT
+                        a.id,
+                        b.item_fg_id,
+                        'SCAN FG' AS trans_type,
+                        a.created_by,
+                        a.created_date AS trans_date,
+                        a.checksheet_label AS workorder,
+                        a.qty AS qty_in,
+                        COALESCE(c.direct_total, 0) AS price_in,
+                        (a.qty * COALESCE(c.direct_total, 0)) AS amount_in,
+                        0 AS qty_out
+                    FROM wip_receipts b
+                    JOIN scan_item_receipts_fg a ON a.workorder = b.workorder AND a.checksheet_number = b.checksheet_number 
+                    LEFT JOIN costing_products c ON b.item_fg_id = c.item_fg_id AND c.periode = '$periode'
+                    WHERE DATE_FORMAT(a.created_date, '%Y-%m-%d') BETWEEN '$filter_from' AND '$filter_to'
+                    UNION
+                    SELECT
+                        a.id,
+                        a.item_fg_id,
+                        'ADJUSTMENT IN' AS trans_type,
+                        a.created_by,
+                        a.trans_date,
+                        a.document_no AS workorder,
+                        a.qty AS qty_in,
+                        0 AS price_in,
+                        0 AS amount_in,
+                        0 AS qty_out
+                    FROM sto_fg a
+                    WHERE a.type = 'IN' AND (a.approved_to = '' OR a.approved_to IS NULL) AND a.trans_date BETWEEN '$filter_from' AND '$filter_to'
+                    UNION
+                    SELECT
+                        a.id,
+                        a.item_fg_id,
+                        'ADJUSTMENT OUT' AS trans_type,
+                        a.created_by,
+                        a.trans_date,
+                        a.document_no AS workorder,
+                        0 AS qty_in,
+                        0 AS price_in,
+                        0 AS amount_in,
+                        a.qty AS qty_out
+                    FROM sto_fg a
+                    WHERE a.type = 'OUT' AND (a.approved_to = '' OR a.approved_to IS NULL) AND a.trans_date BETWEEN '$filter_from' AND '$filter_to'
+                    UNION
+                    SELECT
+                        a.id,
+                        b.id AS item_fg_id,
+                        CONCAT(a.process_type, ' IN') AS trans_type,
+                        a.created_by,
+                        a.transaction_date AS trans_date,
+                        a.number AS workorder,
+                        a.qty AS qty_in,
+                        a.price AS price_in,
+                        (a.qty * a.price) AS amount_in,
+                        0 AS qty_out
+                    FROM rgp_transactions a
+                    JOIN item_fg b ON a.item_id = b.id
+                    JOIN scan_item_receipts_fg c ON a.rgp_id = c.checksheet_number AND a.id = c.workorder
+                    WHERE a.type = 'IN' AND a.transaction_date BETWEEN '$filter_from' AND '$filter_to'
+                    GROUP BY a.id
+                    UNION
+                    SELECT
+                        a.id,
+                        b.id AS item_fg_id,
+                        CONCAT(a.process_type, ' IN') AS trans_type,
+                        a.created_by,
+                        a.transaction_date AS trans_date,
+                        a.number AS workorder,
+                        0 AS qty_in,
+                        0 AS price_in,
+                        0 AS amount_in,
+                        a.qty AS qty_out
+                    FROM rgp_transactions a
+                    JOIN item_fg b ON a.item_id = b.id
+                    JOIN scan_item_rgp c ON a.number = c.rgp_number and a.item_id = c.item_id
+                    WHERE a.type = 'OUT' AND a.transaction_date BETWEEN '$filter_from' AND '$filter_to'
+                    GROUP BY a.id
+                    UNION
+                    SELECT
+                        a.id,
+                        a.item_fg_id,
+                        'DELIVERY' AS trans_type,
+                        a.created_by,
+                        a.created_date AS trans_date,
+                        a.delivery_note_no AS workorder,
+                        0 AS qty_in,
+                        0 AS price_in,
+                        0 AS amount_in,
+                        a.qty AS qty_out
+                    FROM delivery_notes a
+                    WHERE DATE_FORMAT(a.created_date, '%Y-%m-%d') BETWEEN '$filter_from' AND '$filter_to' and a.status != '2') a
+                    ORDER BY a.item_fg_id, a.trans_date ASC) z
+                LEFT JOIN (SELECT 
+                        c.id AS item_fg_id,
+                        c.number_customer AS item_fg_number, 
+                        (COALESCE(a.qty, 0) + COALESCE(SUM(zz.qty_in), 0) - COALESCE(SUM(zz.qty_out), 0)) AS begin_qty, 
+                        (CASE WHEN zz.balance_price IS NULL OR zz.balance_price = 0 THEN a.price ELSE zz.balance_price END) AS begin_price, 
+                        ((COALESCE(a.qty, 0) + COALESCE(SUM(zz.qty_in), 0) - COALESCE(SUM(zz.qty_out), 0)) * (CASE WHEN zz.balance_price IS NULL OR zz.balance_price = 0 THEN a.price ELSE zz.balance_price END)) AS begin_amount
+                    FROM item_fg c
+                    LEFT JOIN (
+                    SELECT (@no_urut := @no_urut + 1) AS no_urut, z.trans_date,
+                        (CASE WHEN @item_fg_id = z.item_fg_id THEN '1' ELSE '0' END) AS typee,
+                        @begin_qty := ROUND(CASE WHEN @item_fg_id = z.item_fg_id THEN @balance_qty ELSE 0 END, 2) AS begin_qty,
+                        @begin_price := ROUND(CASE WHEN @item_fg_id = z.item_fg_id THEN @balance_price ELSE 0 END, 4) AS begin_price,
+                        @begin_amount := ROUND(CASE WHEN @item_fg_id = z.item_fg_id THEN @balance_amount ELSE 0 END, 4) AS begin_amount,
+                        @item_fg_id := z.item_fg_id AS item_fg_id,
+                        z.qty_in, 
+                        ROUND(CASE WHEN z.price_in = 0 THEN @begin_price ELSE z.price_in END, 4) AS price_in,
+                        ROUND(CASE WHEN z.amount_in = 0 THEN (z.qty_in * @begin_price) ELSE z.amount_in END, 4) AS amount_in,
+                        z.qty_out, 
+                        ROUND(CASE WHEN z.qty_in = 0 THEN @begin_price ELSE 0 END, 4) AS price_out, 
+                        (CASE WHEN z.qty_in = 0 THEN ROUND(z.qty_out * @begin_price, 4) ELSE 0 END) AS amount_out,
+                        @balance_price := COALESCE(ROUND((@begin_amount + z.amount_in - (CASE WHEN z.qty_in = 0 THEN ROUND(z.qty_out * @begin_price, 4) ELSE 0 END)) / (@begin_qty + z.qty_in - z.qty_out), 4), 0) AS balance_price,
+                        @balance_qty := COALESCE(ROUND(@begin_qty + z.qty_in - z.qty_out, 2), 0) AS balance_qty,
+                        @balance_amount := COALESCE(ROUND(@balance_qty * @balance_price, 4), 0) AS balance_amount
+                    FROM (
+                    SELECT a.* FROM (
+                        SELECT
+                            a.id,
+                            b.item_fg_id,
+                            'STO FG' AS trans_type,
+                            a.created_by,
+                            b.trans_date,
+                            b.document_no AS workorder,
+                            SUM(a.qty) AS qty_in,
+                            COALESCE(c.direct_total, 0) AS price_in,
+                            (SUM(a.qty) * COALESCE(c.direct_total, 0)) AS amount_in,
+                            0 AS qty_out
+                        FROM os_fg b
+                        JOIN scan_item_receipts_fg a ON a.workorder = b.id
+                        LEFT JOIN costing_products c ON b.item_fg_id = c.item_fg_id AND c.periode = '$periode_bf'
+                        WHERE b.trans_date < '$filter_from'
+                        GROUP BY b.id
+                        UNION
+                        SELECT
+                            a.id,
+                            b.item_fg_id,
+                            'SCAN FG' AS trans_type,
+                            a.created_by,
+                            a.created_date AS trans_date,
+                            a.checksheet_label AS workorder,
+                            a.qty AS qty_in,
+                            COALESCE(c.direct_total, 0) AS price_in,
+                            (a.qty * COALESCE(c.direct_total, 0)) AS amount_in,
+                            0 AS qty_out
+                        FROM wip_receipts b
+                        JOIN scan_item_receipts_fg a ON a.workorder = b.workorder AND a.checksheet_number = b.checksheet_number 
+                        LEFT JOIN costing_products c ON b.item_fg_id = c.item_fg_id AND c.periode = '$periode_bf'
+                        WHERE DATE_FORMAT(a.created_date, '%Y-%m-%d') < '$filter_from'
+                        UNION
+                        SELECT
+                            a.id,
+                            a.item_fg_id,
+                            'ADJUSTMENT IN' AS trans_type,
+                            a.created_by,
+                            a.trans_date,
+                            a.document_no AS workorder,
+                            a.qty AS qty_in,
+                            0 AS price_in,
+                            0 AS amount_in,
+                            0 AS qty_out
+                        FROM sto_fg a
+                        WHERE a.type = 'IN' AND (a.approved_to = '' OR a.approved_to IS NULL) AND a.trans_date < '$filter_from'
+                        UNION
+                        SELECT
+                            a.id,
+                            a.item_fg_id,
+                            'ADJUSTMENT OUT' AS trans_type,
+                            a.created_by,
+                            a.trans_date,
+                            a.document_no AS workorder,
+                            0 AS qty_in,
+                            0 AS price_in,
+                            0 AS amount_in,
+                            a.qty AS qty_out
+                        FROM sto_fg a
+                        WHERE a.type = 'OUT' AND (a.approved_to = '' OR a.approved_to IS NULL) AND a.trans_date < '$filter_from'
+                        UNION
+                        SELECT
+                            a.id,
+                            b.id AS item_fg_id,
+                            CONCAT(a.process_type, ' IN') AS trans_type,
+                            a.created_by,
+                            a.transaction_date AS trans_date,
+                            a.number AS workorder,
+                            a.qty AS qty_in,
+                            a.price AS price_in,
+                            (a.qty * a.price) AS amount_in,
+                            0 AS qty_out
+                        FROM rgp_transactions a
+                        JOIN item_fg b ON a.item_id = b.id
+                        JOIN scan_item_receipts_fg c ON a.rgp_id = c.checksheet_number AND a.id = c.workorder
+                        WHERE a.type = 'IN' AND a.transaction_date < '$filter_from'
+                        GROUP BY a.id
+                        UNION
+                        SELECT
+                            a.id,
+                            b.id AS item_fg_id,
+                            CONCAT(a.process_type, ' IN') AS trans_type,
+                            a.created_by,
+                            a.transaction_date AS trans_date,
+                            a.number AS workorder,
+                            0 AS qty_in,
+                            0 AS price_in,
+                            0 AS amount_in,
+                            a.qty AS qty_out
+                        FROM rgp_transactions a
+                        JOIN item_fg b ON a.item_id = b.id
+                        JOIN scan_item_rgp c ON a.number = c.rgp_number and a.item_id = c.item_id
+                        WHERE a.type = 'OUT' AND a.transaction_date < '$filter_from'
+                        GROUP BY a.id
+                        UNION
+                        SELECT
+                            a.id,
+                            a.item_fg_id,
+                            'DELIVERY' AS trans_type,
+                            a.created_by,
+                            a.created_date AS trans_date,
+                            a.delivery_note_no AS workorder,
+                            0 AS qty_in,
+                            0 AS price_in,
+                            0 AS amount_in,
+                            a.qty AS qty_out
+                        FROM delivery_notes a
+                        WHERE DATE_FORMAT(a.created_date, '%Y-%m-%d') < '$filter_from' and a.status != '2'
+                        ) a
+                        ORDER BY a.item_fg_id, a.trans_date ASC
+                    ) z,
+                    (SELECT @no_urut := 0, @balance_qty := 0.0000, @balance_price := 0.0000, @balance_amount := 0.0000) AS zz
+                    ORDER BY z.item_fg_id, z.trans_date ASC) zz ON c.id = zz.item_fg_id
+                    LEFT JOIN inventory_fg a ON c.id = a.item_fg_id
+                    WHERE c.id LIKE '%$filter_items%') bgin ON z.item_fg_id = bgin.item_fg_id
+                JOIN item_fg c ON z.item_fg_id = c.id,
+                (SELECT @no_urut := 0, @item_fg_id := 0) AS za
+                WHERE z.item_fg_id LIKE '%$filter_items%'
+                ORDER BY z.item_fg_id, z.trans_date, no_urut ASC");
+    
+                $html .= '<table id="customers" style="width: 100%">
+                            <tr>
+                                <th rowspan="2" width="20">No</th>
+                                <th rowspan="2">Product No</th>
+                                <th rowspan="2">Product Name</th>
                                 <th rowspan="2">Trans Type</th>
-                                <th rowspan="2">Trans Date</th>
                                 <th rowspan="2">Created By</th>
-                                <th rowspan="2">WO / DO</th>
-                                <th rowspan="2">Doc No</th>
-                                <th colspan="3">Begining Stock</th>
+                                <th rowspan="2">Trans Date</th>
+                                <th rowspan="2">Document No</th>
+                                <th colspan="3">Begin</th>
                                 <th colspan="3">In</th>
                                 <th colspan="3">Out</th>
-                                <th colspan="3">Ending Stock</th>
+                                <th colspan="3">Ending</th>
                             </tr>
                             <tr>
-                                <th>Qty</th>
-                                <th>Price</th>
-                                <th>Amount</th>
-                                <th>Qty</th>
-                                <th>Price</th>
-                                <th>Amount</th>
-                                <th>Qty</th>
-                                <th>Price</th>
-                                <th>Amount</th>
-                                <th>Qty</th>
-                                <th>Price</th>
-                                <th>Amount</th>
+                                <th width="50">Qty</th>
+                                <th width="50">Price</th>
+                                <th width="50">Amount</th>
+                                <th width="50">Qty</th>
+                                <th width="50">Price</th>
+                                <th width="50">Amount</th>
+                                <th width="50">Qty</th>
+                                <th width="50">Price</th>
+                                <th width="50">Amount</th>
+                                <th width="50">Qty</th>
+                                <th width="50">Price</th>
+                                <th width="50">Amount</th>
                             </tr>';
                 $nod = 1;
-                for ($i = $start; $i <= $finish; $i += (60 * 60 * 24)) {
-                    $working_date = date('Y-m-d', $i);
-                    $inventories = $this->crud->query("SELECT * FROM inventory_fg WHERE item_fg_id = '$item_fg_id' and trans_date = '$working_date'");
-
-                    //Wip Receipt
-                    foreach ($inventories as $inventory) {
-                        if($inventory->trans_type == "RECEIPT FG"){
-                            $qty_in = $inventory->qty;
-                            $price_in = $inventory->price;
-                            $amount_in = $inventory->amount;
-                            $qty_out = 0;
-                            $price_out = 0;
-                            $amount_out = 0;
-                        }else{
-                            $qty_in = 0;
-                            $price_in = 0;
-                            $amount_in = 0;
-                            $qty_out = $inventory->qty;
-                            $price_out = $inventory->price;
-                            $amount_out = $inventory->amount;
-                        }
-
-                        $qty_end = ($begin_qty + $qty_in - abs($qty_out));
-                        $amount_end = abs($begin_amount + $amount_in - abs($amount_out));
-                        $price_end = ($amount_end / $qty_end);
-
-                        $html .= '  <tr>
-                                        <td></td>
-                                        <td style="text-align:center">' . $nod . '</td>
-                                        <td>'.$inventory->trans_type.'</td>
-                                        <td>' . $inventory->trans_date . '</td>
-                                        <td>' . $inventory->created_name . '</td>
-                                        <td>' . $inventory->invoice_no . '</td>
-                                        <td>' . $inventory->document_no . '</td>
-                                        <td style="text-align:right;">' . $this->formatNo($begin_qty, 2) . '</td>
-                                        <td style="text-align:right;">' . $this->formatNo($begin_price, 4) . '</td>
-                                        <td style="text-align:right;">' . $this->formatNo(abs($begin_amount), 2) . '</td>
-                                        <td style="text-align:right;">' . $this->formatNo($qty_in, 2) . '</td>
-                                        <td style="text-align:right;">' . $this->formatNo($price_in, 4) . '</td>
-                                        <td style="text-align:right;">' . $this->formatNo($amount_in, 2) . '</td>
-                                        <td style="text-align:right;">' . $this->formatNo(abs($qty_out), 2)  . '</td>
-                                        <td style="text-align:right;">' . $this->formatNo(abs($price_out), 4)  . '</td>
-                                        <td style="text-align:right;">' . $this->formatNo(abs($amount_out), 2)  . '</td>
-                                        <td style="text-align:right;">' . $this->formatNo($qty_end, 2)  . '</td>
-                                        <td style="text-align:right;">' . $this->formatNo($price_end, 4)  . '</td>
-                                        <td style="text-align:right;">' . $this->formatNo($amount_end, 2)  . '</td>
+                $last_item_rm_id = "";
+                foreach ($itemReceipts as $itemReceipt) {
+                    $item_fg_id = $itemReceipt->item_fg_id;
+                    if($item_fg_id != $last_item_rm_id){
+    
+                        $html .= '  <tr style="background: #aae9b5;">
+                                        <td colspan="16" style="font-weight:bold;">BEGINING STOCK ('.$itemReceipt->item_fg_number.')</td>
+                                        <td style="text-align:right; font-weight:bold;">' . $this->formatNo($itemReceipt->begin_qty) . '</td>
+                                        <td style="text-align:right; font-weight:bold;">' . $this->formatNo($itemReceipt->begin_price) . '</td>
+                                        <td colspan="2" style="text-align:right; font-weight:bold;">' . $this->formatNo($itemReceipt->begin_amount) . '</td>
                                     </tr>';
-
-                        $begin_qty += ($qty_in - abs($qty_out));
-                        $begin_amount += ($amount_in - abs($amount_out));
-                        $begin_price = (abs($begin_amount) / $begin_qty);
-                        $nod++;
                     }
+    
+                    $html .= '  <tr>
+                                    <td>' . $nod . '</td>
+                                    <td style="mso-number-format:\@;">' . $itemReceipt->item_fg_number . '</td>
+                                    <td style="mso-number-format:\@;">' . $itemReceipt->item_fg_name . '</td>
+                                    <td>' . $itemReceipt->trans_type . '</td>
+                                    <td>' . $itemReceipt->created_by . '</td>
+                                    <td>' . $itemReceipt->trans_date . '</td>
+                                    <td>' . $itemReceipt->workorder . '</td>
+                                    <td style="text-align:right;">' . $this->formatNo($itemReceipt->begin_qty) . '</td>
+                                    <td style="text-align:right;">' . $this->formatNo($itemReceipt->begin_price) . '</td>
+                                    <td style="text-align:right;">' . $this->formatNo($itemReceipt->begin_amount) . '</td>
+                                    <td style="text-align:right;">' . $this->formatNo($itemReceipt->qty_in) . '</td>
+                                    <td style="text-align:right;">' . $this->formatNo($itemReceipt->price_in) . '</td>
+                                    <td style="text-align:right;">' . $this->formatNo($itemReceipt->amount_in) . '</td>
+                                    <td style="text-align:right;">' . $this->formatNo($itemReceipt->qty_out) . '</td>
+                                    <td style="text-align:right;">' . $this->formatNo($itemReceipt->price_out) . '</td>
+                                    <td style="text-align:right;">' . $this->formatNo($itemReceipt->amount_out) . '</td>
+                                    <td style="text-align:right;">' . $this->formatNo($itemReceipt->balance_qty) . '</td>
+                                    <td style="text-align:right;">' . $this->formatNo($itemReceipt->balance_price) . '</td>
+                                    <td style="text-align:right;">' . $this->formatNo($itemReceipt->balance_amount) . '</td>
+                                </tr>';
+    
+                    $last_item_rm_id = $item_fg_id;
+                    $nod++;
                 }
             }
-
-            $noh++;
-
-            $total_begin += @$begin_qty;
-            $total_begin_price += @$begin_amount;
-            $total_qty_in += $record->qty_in;
-            $total_qty_in_price += $record->amount_in;
-            $total_qty_out += $record->qty_out;
-            $total_qty_out_price += $record->amount_out;
-            $total_end += $ending_qty;
-            $total_end_price += $ending_amount;
-        }
-
-        if ($filter_display == "RECAP") {
-            $html .= '  <tr>
-                            <td colspan="7" style="text-align:right;"><b>GRAND TOTAL</b></td>
-                            <td style="text-align:right;"><b>' . $this->formatNo($total_begin, 2) . '</b></td>
-                            <td style="text-align:right;"><b>-</b></td>
-                            <td style="text-align:right;"><b>' . $this->formatNo($total_begin_price, 2) . '</b></td>
-                            <td style="text-align:right;"><b>' . $this->formatNo($total_qty_in, 2) . '</b></td>
-                            <td style="text-align:right;"><b>-</b></td>
-                            <td style="text-align:right;"><b>' . $this->formatNo($total_qty_in_price, 2) . '</b></td>
-                            <td style="text-align:right;"><b>' . $this->formatNo(abs($total_qty_out), 2) . '</b></td>
-                            <td style="text-align:right;"><b>-</b></td>
-                            <td style="text-align:right;"><b>' . $this->formatNo($total_qty_out_price, 2) . '</b></td>
-                            <td style="text-align:right;"><b>' . $this->formatNo($total_end, 2) . '</b></td>
-                            <td style="text-align:right;"><b>-</b></td>
-                            <td style="text-align:right;"><b>' . $this->formatNo($total_end_price, 2) . '</b></td>
-                        </tr>';
-        }
 
         $html .= '</table></body></html>';
         echo $html;

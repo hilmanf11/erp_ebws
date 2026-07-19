@@ -41,24 +41,39 @@
 <div id="toolbar" style="height: 200px; padding:10px;">
     <!-- <div style="width: 100%; display: grid; grid-template-columns: auto auto auto; grid-gap: 5px; display: flex;"> -->
     <div style="width: 100%;">
-        <fieldset style="width: 70%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
+        <fieldset style="width: 100%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; border-radius:4px;">
             <legend><b>Form Filter Data</b></legend>
-            <div style="float: left; width: 50%;">
+            <div style="float: left; width: 30%;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Period</span>
                     <input style="width:28%;" id="filter_from" value="<?= date("Y-m-01") ?>" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false"> To
                     <input style="width:28%;" id="filter_to" value="<?= date("Y-m-t") ?>" class="easyui-datebox" data-options="formatter:myformatter,parser:myparser, editable:false">
                 </div>
                 <div class="fitem">
-                    <span style="width:35%; display:inline-block;">Request No</span>
-                    <input style="width:60%;" id="filter_request_no" class="easyui-combobox">
+                    <span style="width:35%; display:inline-block;">Category</span>
+                    <select style="width:60%;" name="filter_category" id="filter_category" class="easyui-combobox" panelHeight="auto" required>
+                        <option value="">ALL</option>
+                        <option value="SERVICE">SERVICE</option>
+                        <option value="ASSET">FIXED ASSET</option>
+                        <option value="OTHER">OTHER</option>
+                    </select>
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;"></span>
                     <a href="javascript:;" class="easyui-linkbutton" onclick="filter()"><i class="fa fa-search"></i> Filter Data</a>
                 </div>
             </div>
-            <div style="float: left; width: 50%;">
+            <div style="float: left; width: 30%;">
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Request No</span>
+                    <input style="width:60%;" id="filter_request_no" class="easyui-combobox">
+                </div>
+                <div class="fitem">
+                    <span style="width:35%; display:inline-block;">Request Name</span>
+                    <input style="width:60%;" id="filter_request_name" class="easyui-combobox">
+                </div>
+            </div>
+            <div style="float: left; width: 30%;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Product Family</span>
                     <input style="width:60%;" id="filter_item_familys" class="easyui-combogrid">
@@ -549,9 +564,9 @@
 
                     flag = "update";
 
-                    setTimeout(function() {
-                        $('#request_no').textbox('setValue', row.request_no);
-                    }, 2000);
+                    // setTimeout(function() {
+                    //     $('#request_no').textbox('setValue', row.request_no);
+                    // }, 2000);
 
                     addTable(row.item_category_id, '<?= base_url('purchase/purchase_request_others/datatable_updates?request_no=') ?>' + window.btoa(row.request_no));
                 } else {
@@ -587,7 +602,7 @@
                                     asset_code: row.asset_code
                                 },
                                 success: function(result) {
-                                    readRequestno();
+                                    // readRequestno();
                                     var result = eval('(' + result + ')');
                                 },
                                 error: function(jqXHR, textStatus, errorThrown) {
@@ -595,6 +610,7 @@
                                     $.messager.alert("Error", jqXHR.statusText, 'error');
                                 },
                                 complete: function(data) {
+                                    toastr.success("Delete Data Success");
                                     $('#dg').treegrid('reload');
                                 }
                             });
@@ -619,11 +635,13 @@
     function filter() {
         var filter_from = $("#filter_from").datebox('getValue');
         var filter_to = $("#filter_to").datebox('getValue');
+        var filter_category = $("#filter_category").combobox('getValue');
         var filter_request_no = $("#filter_request_no").combobox('getValue');
+        var filter_request_name = $("#filter_request_name").combobox('getValue');
         var filter_item_rm = $("#filter_item_rm").combogrid('getValue');
         var filter_item_familys = $("#filter_item_familys").combogrid('getValue');
 
-        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_request_no=" + filter_request_no + "&filter_item_familys=" + filter_item_familys + "&filter_item_rm=" + filter_item_rm;
+        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_request_no=" + filter_request_no + "&filter_category=" + filter_category + "&filter_request_name=" + filter_request_name + "&filter_item_familys=" + filter_item_familys + "&filter_item_rm=" + filter_item_rm;
         
         $('#dg').treegrid({
             url: '<?= base_url('purchase/purchase_request_others/datatables') ?>' + url,
@@ -632,7 +650,7 @@
             idField: 'id',
             treeField: 'request_no',
             fit: true,
-            singleSelect: false,
+            singleSelect: true,
             pageList: [20, 50, 100, 500, 1000],
             pageSize: 20,
             onBeforeLoad: function(row, param) {
@@ -653,11 +671,13 @@
     function excel() {
         var filter_from = $("#filter_from").datebox('getValue');
         var filter_to = $("#filter_to").datebox('getValue');
+        var filter_category = $("#filter_category").combobox('getValue');
         var filter_request_no = $("#filter_request_no").combobox('getValue');
+        var filter_request_name = $("#filter_request_name").combobox('getValue');
         var filter_item_rm = $("#filter_item_rm").combogrid('getValue');
         var filter_item_familys = $("#filter_item_familys").combogrid('getValue');
 
-        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_request_no=" + filter_request_no + "&filter_item_familys=" + filter_item_familys + "&filter_item_rm=" + filter_item_rm;
+        url = "?filter_from=" + filter_from + "&filter_to=" + filter_to + "&filter_request_no=" + filter_request_no + "&filter_category=" + filter_category + "&filter_request_name=" + filter_request_name + "&filter_item_familys=" + filter_item_familys + "&filter_item_rm=" + filter_item_rm;
         window.location.assign('<?= base_url('purchase/purchase_request_others/print/excel') ?>' + url);
     }
 
@@ -680,6 +700,19 @@
             valueField: 'request_no',
             textField: 'request_no',
             prompt: "Select Request No",
+            icons: [{
+                iconCls: 'icon-clear',
+                handler: function(e) {
+                    $(e.data.target).combobox('clear').combobox('textbox').focus();
+                }
+            }],
+        });
+
+        $("#filter_request_name").combobox({
+            url: '<?= base_url('purchase/purchase_request_others/readRequestname') ?>',
+            valueField: 'request_name',
+            textField: 'request_name',
+            prompt: "Select Request Name",
             icons: [{
                 iconCls: 'icon-clear',
                 handler: function(e) {
@@ -889,55 +922,7 @@
 
         $('#item_category_id').combobox({
             onChange: function(value){
-                // if(value == "ASSET"){
-                //     $("#formAsset").show();
-                    
-                //     $('#asset_code').combogrid({
-                //         url: '<?= base_url('assets/assets/reads') ?>',
-                //         panelWidth: 450,
-                //         idField: 'number',
-                //         mode: 'remote',
-                //         fitColumns: true,
-                //         prompt: 'Choose Asset No',
-                //         columns: [
-                //             [{
-                //                 field: 'number',
-                //                 title: 'Asset No',
-                //                 width: 100
-                //             }, {
-                //                 field: 'name',
-                //                 title: 'Asset Name',
-                //                 width: 200
-                //             }, {
-                //                 field: 'qty',
-                //                 title: 'qty',
-                //                 width: 80
-                //             }]
-                //         ],
-                //         onSelect: function(val, row){
-                //             $("#asset_name").textbox("setValue", row.name);
-                //             $("#asset_qty").numberbox("setValue", row.qty);
-                //             $("#asset_uom").textbox("setValue", row.uom);
-
-                //             $("#asset_qty").numberbox({
-                //                 onChange: function(valAsset){
-                //                     if(parseInt(valAsset) > parseInt(row.qty)){
-                //                         toastr.error("Qty Cannot > Qty Asset in Master");
-                //                         $("#asset_qty").numberbox("setValue", row.qty);
-                //                     }
-                //                 }
-                //             });
-                //         },
-                //         onLoadSuccess: function(val){
-                //             if(val.total == 0){
-                //                 toastr.error("Asset Code Empty, Please Contact Finance Departement for Request Asset Code");
-                //             }
-                //         }
-                //     });
-                // }else{
-                //     $("#formAsset").hide();
-                // }
-
+                $('#item_category_id').combobox('disable');
                 addTable(value);
             }
         });

@@ -105,6 +105,8 @@
                             <option value="2">FEMALE</option>
                             <option value="3">LA</option>
                             <option value="4">JT</option>
+                            <option value="5">FB</option>
+                            <option value="6">BATT</option>
                         </select>
                     </div>
                     <div class="fitem" id="t_waterproof">
@@ -478,7 +480,7 @@
                                     }
                                 },
                                 error: function(jqXHR, textStatus, errorThrown) {
-                                    toastr.error(jqXHR.statusText);
+                                    toastr.error("Delete Failed, Already Relation in another module");
                                     swal.close();
                                 },
                             });

@@ -864,30 +864,35 @@ class Journal_posting_clearing extends CI_Controller
     public function create()
     {
         if ($this->input->post()) {
-            $post = $this->input->post();
+            $jsonData = file_get_contents("php://input");
+            $post = json_decode($jsonData, true);
+            $dataClearings = $post['dataClearings'];
+            $dataJournals = $post['dataJournals'];
 
-            $this->db->update("journal_postings", ["status_cl" => 1], ["id" => $post['document_no'], "company_id" => $post['company_id']]);
-            $this->db->update("journal_postings", ["status_cl" => 1], ["document_no" => $post['document_no'], "company_id" => $post['company_id'], "company_name" => $post['company_name'], "description" => $post['description']]);
-            $this->db->update("ar_receipts", ["status_cl" => 1], ["receipt_no" => $post['document_no'], "customer_id" => $post['company_id']]);
-            $this->db->update("ap_payments", ["status_cl" => 1], ["payment_no" => $post['document_no'], "supplier_id" => $post['company_id']]);
-            $this->db->update("purchase_invoices", ["status" => 1], ["number" => $post['document_no'], "supplier_id" => $post['company_id']]);
-            $this->db->update("sales_invoices", ["status" => 1], ["number" => $post['document_no'], "customer_id" => $post['company_id']]);
-            $this->db->update("account_balance_suppliers", ["status" => 1], ["id" => $post['document_no'], "supplier_id" => $post['company_id']]);
-            $this->db->update("account_balance_customers", ["status" => 1], ["id" => $post['document_no'], "customer_id" => $post['company_id']]);
+            $this->db->trans_start();
+            foreach ($dataClearings as $clearing) {
+                $this->crud->create('journal_clearings', $clearing, "logs");
 
-            $send = $this->crud->create('journal_clearings', $post);
-            echo $send;
-        } else {
-            show_error("Cannot Process your request");
-        }
-    }
+                $this->db->update("journal_postings", ["status_cl" => 1], ["id" => $clearing['document_no'], "company_id" => $clearing['company_id']]);
+                $this->db->update("journal_postings", ["status_cl" => 1], ["document_no" => $clearing['document_no'], "company_id" => $clearing['company_id'], "company_name" => $clearing['company_name'], "description" => $clearing['description']]);
+                $this->db->update("ar_receipts", ["status_cl" => 1], ["receipt_no" => $clearing['document_no'], "customer_id" => $clearing['company_id']]);
+                $this->db->update("ap_payments", ["status_cl" => 1], ["payment_no" => $clearing['document_no'], "supplier_id" => $clearing['company_id']]);
+                $this->db->update("purchase_invoices", ["status" => 1], ["number" => $clearing['document_no'], "supplier_id" => $clearing['company_id']]);
+                $this->db->update("sales_invoices", ["status" => 1], ["number" => $clearing['document_no'], "customer_id" => $clearing['company_id']]);
+                $this->db->update("account_balance_suppliers", ["status" => 1], ["id" => $clearing['document_no'], "supplier_id" => $clearing['company_id']]);
+                $this->db->update("account_balance_customers", ["status" => 1], ["id" => $clearing['document_no'], "customer_id" => $clearing['company_id']]);
+            }
+            foreach ($dataJournals as $journal) {
+                $this->crud->create('journal_postings', $journal, "logs");
+            }
 
-    public function createJournals(){
-        if ($this->input->post()) {
-            $post = $this->input->post();
+            $this->db->trans_complete();
 
-            $send = $this->crud->create('journal_postings', $post);
-            echo $send;
+            if ($this->db->trans_status() === FALSE) {
+                die(json_encode(array("title" => "Failed", "message" => "Failed to Save Data", "theme" => "error")));
+            } else {
+                die(json_encode(array("title" => "Good Job", "message" => "Data Save Successfully", "theme" => "success")));
+            }
         } else {
             show_error("Cannot Process your request");
         }

@@ -184,7 +184,7 @@ class Os_fg extends CI_Controller
         if ($this->input->post()) {
             $data = $this->input->post('data');
             $whereDate = date("ymd", strtotime($data['trans_date']));
-            $document_no = "STO-RM-".$whereDate."-1";
+            $document_no = "STO-FG-".$whereDate."-1";
 
             $item_fg = $this->crud->read('item_fg', [], ["number_customer" => $data['item_fg_number']]);
 
@@ -237,10 +237,10 @@ class Os_fg extends CI_Controller
                 $label = $rowID->kode;
 
                 if ($label == NULL) {
-                    $autoID = "STO".$id . sprintf("%04s", $label + 1);
+                    $autoID = "STOBF".$id . sprintf("%04s", $label + 1);
                 } else {
                     $urutan = (int) substr($label, -4);
-                    $autoID = "STO".$id . sprintf("%04s", $urutan + 1);
+                    $autoID = "STOBF".$id . sprintf("%04s", $urutan + 1);
                 }
 
                 if ($qty_receipt > $mpq) {

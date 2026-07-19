@@ -14,7 +14,7 @@
         </tr>
     </thead>
 </table>
-<div id="dlg_detail" class="easyui-dialog" title="Detail Description" data-options="closed: true,modal:true" style="width: 1000px; padding:10px; top: 20px;">
+<div id="dlg_detail" class="easyui-dialog" title="Detail Description" data-options="closed: true,modal:true" style="width: 1000px; height: 550px; padding:10px; top: 20px;">
     <div id="remarks">
 
     </div>
@@ -27,67 +27,67 @@
 <!-- <iframe id="printout" src="<?= base_url('admin/logs/print') ?>" style="width: 100%;" hidden></iframe> -->
 <script>
     //DELETE DATA
-    function deleted() {
-        var rows = $('#dg').datagrid('getSelections');
-        if (rows.length > 0) {
-            Swal.fire({
-                title: 'Delete Data',
-                text: "Are you sure? You want to delete this data!",
-                icon: 'warning',
-                showCancelButton: true,
-                allowOutsideClick: false,
-                allowEscapeKey: false,
-                confirmButtonText: 'Yes, delete it!'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    Swal.fire({
-                        title: 'Please Wait...',
-                        showConfirmButton: false,
-                        allowOutsideClick: false,
-                        allowEscapeKey: false,
-                        didOpen: () => {
-                            Swal.showLoading();
-                        },
-                    });
+    // function deleted() {
+    //     var rows = $('#dg').datagrid('getSelections');
+    //     if (rows.length > 0) {
+    //         Swal.fire({
+    //             title: 'Delete Data',
+    //             text: "Are you sure? You want to delete this data!",
+    //             icon: 'warning',
+    //             showCancelButton: true,
+    //             allowOutsideClick: false,
+    //             allowEscapeKey: false,
+    //             confirmButtonText: 'Yes, delete it!'
+    //         }).then((result) => {
+    //             if (result.isConfirmed) {
+    //                 Swal.fire({
+    //                     title: 'Please Wait...',
+    //                     showConfirmButton: false,
+    //                     allowOutsideClick: false,
+    //                     allowEscapeKey: false,
+    //                     didOpen: () => {
+    //                         Swal.showLoading();
+    //                     },
+    //                 });
 
-                    requestDelete(rows.length, rows);
-                    function requestDelete(total, json, number = 1, value = 0) {
-                        if (value < 100) {
-                            var row = json[number-1];
-                            value = Math.floor((number / total) * 100);
+    //                 requestDelete(rows.length, rows);
+    //                 function requestDelete(total, json, number = 1, value = 0) {
+    //                     if (value < 100) {
+    //                         var row = json[number-1];
+    //                         value = Math.floor((number / total) * 100);
 
-                            $.ajax({
-                                method: 'post',
-                                url: '<?= base_url('admin/logs/delete') ?>',
-                                data: {
-                                    id: row.id
-                                },
-                                success: function(result) {
-                                    var result = eval('(' + result + ')');
-                                    requestDelete(total, json, number + 1, value);
+    //                         $.ajax({
+    //                             method: 'post',
+    //                             url: '<?= base_url('admin/logs/delete') ?>',
+    //                             data: {
+    //                                 id: row.id
+    //                             },
+    //                             success: function(result) {
+    //                                 var result = eval('(' + result + ')');
+    //                                 requestDelete(total, json, number + 1, value);
 
-                                    if (number == total) {
-                                        $('#dg').datagrid('reload');
-                                        Swal.close();
-                                        Swal.fire(
-                                            'Delete Completed',
-                                            'Delete Data has been completed, You cannot restore data that has been deleted',
-                                            'success'
-                                        );
-                                    }
-                                },
-                                error: function(jqXHR, textStatus, errorThrown) {
-                                    toastr.error(jqXHR.statusText);
-                                },
-                            });
-                        }
-                    }
-                }
-            });
-        } else {
-            toastr.info("Please select one of the data in the table first");
-        }
-    }
+    //                                 if (number == total) {
+    //                                     $('#dg').datagrid('reload');
+    //                                     Swal.close();
+    //                                     Swal.fire(
+    //                                         'Delete Completed',
+    //                                         'Delete Data has been completed, You cannot restore data that has been deleted',
+    //                                         'success'
+    //                                     );
+    //                                 }
+    //                             },
+    //                             error: function(jqXHR, textStatus, errorThrown) {
+    //                                 toastr.error(jqXHR.statusText);
+    //                             },
+    //                         });
+    //                     }
+    //                 }
+    //             }
+    //         });
+    //     } else {
+    //         toastr.info("Please select one of the data in the table first");
+    //     }
+    // }
 
     $(function() {
         $('#dg').datagrid({

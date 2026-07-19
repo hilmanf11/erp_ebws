@@ -168,6 +168,7 @@ class Report_sales_registers extends CI_Controller
                     <th>Total Invoice Value</th>
                     <th>COA No</th>
                     <th>COA Name</th>
+                    <th>Remarks</th>
                 </tr>';
         $no = 1;
         foreach ($records as $data) {
@@ -233,6 +234,7 @@ class Report_sales_registers extends CI_Controller
                             <td style="text-align:right;">' . $minus.$data['total2'] . '</td>
                             <td>' . $data['account_number'] . '</td>
                             <td>' . $data['account_name'] . '</td>
+                            <td>' . $data['remarks'] . '</td>
                         </tr>';
             $no++;
         }

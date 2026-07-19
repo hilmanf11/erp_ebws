@@ -16,6 +16,7 @@
             <th rowspan="2" data-options="field:'uom',width:80,align:'center'">Uom</th>
             <th rowspan="2" data-options="field:'qty',width:80,halign:'center',align:'right',formatter:numberformat">Qty</th>
             <!-- <th rowspan="2" data-options="field:'rework',width:80,halign:'center',align:'right',formatter:numberformat">Rework</th> -->
+            <th rowspan="2" data-options="field:'total_wirecollect',width:80,halign:'center',align:'right',formatter:numberformat">Wire Collect<br>Qty</th>
             <th rowspan="2" data-options="field:'total_visual',width:80,halign:'center',align:'right',formatter:numberformat">Visual Qty</th>
             <th rowspan="2" data-options="field:'total_rfg',width:80,halign:'center',align:'right',formatter:numberformat">RFG Qty</th>
             <!-- <th rowspan="2" data-options="field:'so_number',width:150,align:'center'">SO No</th> -->

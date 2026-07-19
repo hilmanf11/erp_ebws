@@ -190,8 +190,8 @@
                     <th rowspan="2" data-options="field:'customer_po',width:120, editor: {type: 'textbox', options: {required: true}}">Customer PO</th>
                     <th rowspan="2" data-options="field:'item_fg_id',width:150, editor: {type: 'textbox', options: {required: true}}" hidden>Product Id</th>
                     <th rowspan="2" data-options="field:'item_fg_number',width:170,editor: {type: 'textbox', options: {required: true}}">Product No EBWS</th>
-                    <th rowspan="2" data-options="field:'number_customer',width:200,editor: {type: 'textbox', options: {required: true}}">Product No Customer</th>
-                    <th rowspan="2" data-options="field:'item_fg_name',width:150,editor: {type: 'textbox', options: {required: true}}">Description</th>
+                    <th rowspan="2" data-options="field:'number_customer',width:200,editor: {type: 'textbox', options: {readonly: true}}">Product No Customer</th>
+                    <th rowspan="2" data-options="field:'item_fg_name',width:150,editor: {type: 'textbox', options: {readonly: true}}">Description</th>
                     <th rowspan="2" data-options="field:'hsn_code',width:100,editor: {type: 'textbox', options: {readonly: true}}">HSN Code</th>
                     <th rowspan="2" data-options="field:'uom',width:80, editor: {
                         type: 'combobox',
@@ -1459,10 +1459,10 @@
                                     return false;
                                 }
 
-                                if(row.gl_no != null){
-                                    toastr.error("Cannot Delete because this Sales Invoice has been created in Posting Journal");
-                                    return false;
-                                }
+                                // if(row.gl_no != null){
+                                //     toastr.error("Cannot Delete because this Sales Invoice has been created in Posting Journal");
+                                //     return false;
+                                // }
 
                                 if (row.cancel != 0) {
                                     toastr.error("Cannot Delete because Sales Invoice status is Cancel");
@@ -1851,6 +1851,17 @@
 
                                     for (let z = 0; z < totalrows2; z++) {
                                         var account_number = rows2[z].account_number;
+                                        var account_letter = /[a-zA-Z]/.test(account_number);
+
+                                        if (account_letter) {
+                                            toastr.error("Account Number Unknown");
+                                            return false;
+                                        }
+
+                                        if(rows2[z].item_fg_number == ""){
+                                            toastr.error("Product No Customer still Empty!");
+                                            return false;
+                                        }
                                         
                                         if(account_number == ""){
                                             toastr.error("Account Number cannot empty!");
@@ -1874,165 +1885,180 @@
                                                     var number = number_edit;
                                                 }
 
+                                                combinedSalesInvoice = [];
+                                                for (let i = 0; i < totalrows; i++) {
+                                                    var json = rows[i];
+
+                                                    combinedSalesInvoice.push({
+                                                        trans_date: trans_date,
+                                                        type: type,
+                                                        number: number,
+                                                        customer_id: customer_id,
+                                                        plant: plant,
+                                                        journal_type_id: journal_type_id,
+                                                        taxes: taxes,
+                                                        payment_term: payment_term,
+                                                        due_date: due_date,
+                                                        vehicle_no: vehicle_no,
+                                                        remarks: remarks,
+                                                        total_sub: total_sub,
+                                                        tcs_option: tcs_option,
+                                                        tcs: tcs,
+                                                        total_grand: total_grand,
+                                                        total_grand_local: total_grand_local,
+                                                        id: json.id,
+                                                        dn_number: json.dn_number,
+                                                        so_number: json.so_number,
+                                                        customer_po: json.customer_po,
+                                                        item_fg_id: json.item_fg_id,
+                                                        uom: json.uom,
+                                                        hsn_code: json.hsn_code,
+                                                        currency_local: json.currency_local,
+                                                        currency: json.currency,
+                                                        item_no: json.item_fg_number,
+                                                        item_name: json.item_fg_name,
+                                                        qty: json.qty,
+                                                        igst: json.igst,
+                                                        sgst: json.sgst,
+                                                        cgst: json.cgst,
+                                                        price: json.price,
+                                                        rate: json.rate,
+                                                        total: json.total,
+                                                        total2: json.total2,
+                                                        total_local: json.total_local,
+                                                        account_number: json.account_number,
+                                                        account_type: json.account_type,
+                                                    });
+                                                }
+
+                                                combinedJournals = [];
+                                                for (let z = 0; z < totalrows2; z++) {
+                                                    var json2 = rows2[z];
+
+                                                    combinedJournals.push({
+                                                        number: number,
+                                                        account_number: json2.account_number,
+                                                        account_name: json2.account_name,
+                                                        debit: json2.debit,
+                                                        credit: json2.credit,
+                                                        flag: json2.flag,
+                                                    });
+                                                }
+
+                                                var total_debit  = 0;
+                                                var total_credit = 0;
+                                                for (let jo = 0; jo < totalrows2; jo++) {
+                                                    var dataJ = rows2[jo];
+
+                                                    if(dataJ.account_number == "" || dataJ.account_name == ""){
+                                                        toastr.error("Account Number Not Valid in Journals, Please Check your data input and save again!!");
+                                                        return false;
+                                                    }
+
+                                                    total_debit += parseFloat(dataJ.debit);
+                                                    total_credit += parseFloat(dataJ.credit);
+                                                }
+
+                                                if(total_debit == 0 && total_credit == 0){
+                                                    toastr.error("Debit and Credit still 0, please click add to journal first");
+                                                    return false;
+                                                }
+
+                                                $("#dlg_insert").dialog('close');
+
+                                                Swal.fire({
+                                                    title: 'Please Wait for Saving Data',
+                                                    showConfirmButton: false,
+                                                    allowOutsideClick: false,
+                                                    allowEscapeKey: false,
+                                                    didOpen: () => {
+                                                        Swal.showLoading();
+                                                    },
+                                                });
+
                                                 $.ajax({
                                                     type: "post",
                                                     url: "<?= base_url('finance/sales_invoices/deleteJournal') ?>",
                                                     data: "number=" + number,
                                                     dataType: "json",
                                                     success: function(response) {
-                                                        Swal.fire({
-                                                            title: 'Please Wait for Saving Data',
-                                                            showConfirmButton: false,
-                                                            allowOutsideClick: false,
-                                                            allowEscapeKey: false,
-                                                            didOpen: () => {
-                                                                Swal.showLoading();
+                                                        $.ajax({
+                                                            type: "post",
+                                                            url: '<?= base_url('finance/sales_invoices/create') ?>',
+                                                            data: JSON.stringify({ combinedSalesInvoices: combinedSalesInvoice, combinedJournals: combinedJournals}),
+                                                            dataType: "json",
+                                                            success: function (result) {
+                                                                Swal.close();
+
+                                                                Swal.fire({
+                                                                    title: 'Posting Journal',
+                                                                    text: result.message + ", Do you want to save journal posting to ?",
+                                                                    icon: result.theme,
+                                                                    showCancelButton: true,
+                                                                    allowOutsideClick: false,
+                                                                    allowEscapeKey: false,
+                                                                    confirmButtonText: 'Yes, Add to Journal!'
+                                                                }).then((msg) => {
+                                                                    if (msg.isConfirmed) {
+                                                                        Swal.fire({
+                                                                            title: 'Please Wait...',
+                                                                            showConfirmButton: false,
+                                                                            allowOutsideClick: false,
+                                                                            allowEscapeKey: false,
+                                                                            didOpen: () => {
+                                                                                Swal.showLoading();
+                                                                            },
+                                                                        });
+
+                                                                        $.ajax({
+                                                                            type: "post",
+                                                                            url: '<?= base_url('finance/sales_invoices/createPosting') ?>',
+                                                                            data: {
+                                                                                number: number
+                                                                            },
+                                                                            dataType: "json",
+                                                                            success: function(result3) {
+                                                                                Swal.close();
+
+                                                                                Swal.fire({
+                                                                                    title: result3.message,
+                                                                                    icon: result3.theme,
+                                                                                    confirmButtonText: 'Ok',
+                                                                                    allowOutsideClick: false,
+                                                                                }).then((result3) => {
+                                                                                    if (result3.isConfirmed) {
+                                                                                        window.location.reload();
+                                                                                    }
+                                                                                });
+
+                                                                            }
+                                                                        });
+                                                                    }
+                                                                });
                                                             },
+                                                            error: function(msg){
+                                                                Swal.fire({
+                                                                    title: "Failed to Save Data, Please Try Again",
+                                                                    icon: "error",
+                                                                    confirmButtonText: 'Ok',
+                                                                    allowOutsideClick: false,
+                                                                }).then((result3) => {
+                                                                    if (result3.isConfirmed) {
+                                                                        $.ajax({
+                                                                            type: "post",
+                                                                            url: "<?= base_url('finance/sales_invoices/delete') ?>",
+                                                                            data: "number=" + number,
+                                                                            dataType: "json",
+                                                                            success: function(response) {
+                                                                                window.location.reload();
+                                                                            }
+                                                                        });
+                                                                    }
+                                                                });
+                                                            }
                                                         });
                                                     }
                                                 });
-
-                                                if (totalrows > 0) {
-                                                    requestData(totalrows, rows);
-                                                    $('#dlg_insert').dialog('close');
-
-                                                    function requestData(total, json, jml = 1, value = 0) {
-                                                        if (value < 100) {
-                                                            value = Math.floor((jml / total) * 100);
-                                                            var i = (jml - 1);
-
-                                                            $.ajax({
-                                                                type: "post",
-                                                                url: '<?= base_url('finance/sales_invoices/create') ?>',
-                                                                data: {
-                                                                    trans_date: trans_date,
-                                                                    type: type,
-                                                                    number: number,
-                                                                    customer_id: customer_id,
-                                                                    plant: plant,
-                                                                    journal_type_id: journal_type_id,
-                                                                    taxes: taxes,
-                                                                    payment_term: payment_term,
-                                                                    due_date: due_date,
-                                                                    vehicle_no: vehicle_no,
-                                                                    remarks: remarks,
-                                                                    total_sub: total_sub,
-                                                                    tcs_option: tcs_option,
-                                                                    tcs: tcs,
-                                                                    total_grand: total_grand,
-                                                                    total_grand_local: total_grand_local,
-                                                                    id: json[i].id,
-                                                                    dn_number: json[i].dn_number,
-                                                                    so_number: json[i].so_number,
-                                                                    customer_po: json[i].customer_po,
-                                                                    item_fg_id: json[i].item_fg_id,
-                                                                    uom: json[i].uom,
-                                                                    hsn_code: json[i].hsn_code,
-                                                                    currency_local: json[i].currency_local,
-                                                                    currency: json[i].currency,
-                                                                    item_no: json[i].item_fg_number,
-                                                                    item_name: json[i].item_fg_name,
-                                                                    qty: json[i].qty,
-                                                                    igst: json[i].igst,
-                                                                    sgst: json[i].sgst,
-                                                                    cgst: json[i].cgst,
-                                                                    price: json[i].price,
-                                                                    rate: json[i].rate,
-                                                                    total: json[i].total,
-                                                                    total2: json[i].total2,
-                                                                    total_local: json[i].total_local,
-                                                                    account_number: json[i].account_number,
-                                                                    account_type: json[i].account_type,
-                                                                },
-                                                                dataType: "json",
-                                                                success: function(result) {
-                                                                    requestData(total, json, jml + 1, value);
-                                                                    if (jml == total) {
-                                                                        
-                                                                        if (totalrows2 > 0) {
-                                                                            requestData2(totalrows2, rows2);
-                                                                            
-                                                                            function requestData2(total2, json2, jml2 = 1, value2 = 0) {
-                                                                                if (value2 < 100) {
-                                                                                    value2 = Math.floor((jml2 / total2) * 100);
-                                                                                    var z = (jml2 - 1);
-
-                                                                                    $.ajax({
-                                                                                        type: "post",
-                                                                                        url: '<?= base_url('finance/sales_invoices/createJournals') ?>',
-                                                                                        data: {
-                                                                                            number: number,
-                                                                                            account_number: json2[z].account_number,
-                                                                                            account_name: json2[z].account_name,
-                                                                                            debit: json2[z].debit,
-                                                                                            credit: json2[z].credit,
-                                                                                            flag: json2[z].flag,
-                                                                                        },
-                                                                                        dataType: "json",
-                                                                                        success: function(result2) {
-                                                                                            requestData2(total2, json2, jml2 + 1, value2);
-                                                                                            if (jml2 == total2) {
-                                                                                                Swal.close();
-
-                                                                                                Swal.fire({
-                                                                                                    title: 'Posting Journal',
-                                                                                                    text: result2.message + ", Do you want to save journal posting to ?",
-                                                                                                    icon: result2.theme,
-                                                                                                    showCancelButton: true,
-                                                                                                    allowOutsideClick: false,
-                                                                                                    allowEscapeKey: false,
-                                                                                                    confirmButtonText: 'Yes, Add to Journal!'
-                                                                                                }).then((msg) => {
-                                                                                                    if (msg.isConfirmed) {
-                                                                                                        Swal.fire({
-                                                                                                            title: 'Please Wait...',
-                                                                                                            showConfirmButton: false,
-                                                                                                            allowOutsideClick: false,
-                                                                                                            allowEscapeKey: false,
-                                                                                                            didOpen: () => {
-                                                                                                                Swal.showLoading();
-                                                                                                            },
-                                                                                                        });
-
-                                                                                                        $.ajax({
-                                                                                                            type: "post",
-                                                                                                            url: '<?= base_url('finance/sales_invoices/createPosting') ?>',
-                                                                                                            data: {
-                                                                                                                number: number
-                                                                                                            },
-                                                                                                            dataType: "json",
-                                                                                                            success: function(result3) {
-                                                                                                                Swal.close();
-
-                                                                                                                Swal.fire({
-                                                                                                                    title: result3.message,
-                                                                                                                    icon: result3.theme,
-                                                                                                                    confirmButtonText: 'Ok',
-                                                                                                                    allowOutsideClick: false,
-                                                                                                                }).then((result3) => {
-                                                                                                                    if (result3.isConfirmed) {
-                                                                                                                        window.location.reload();
-                                                                                                                    }
-                                                                                                                });
-
-                                                                                                            }
-                                                                                                        });
-                                                                                                    }
-                                                                                                });
-                                                                                            }
-                                                                                        }
-                                                                                    });
-                                                                                }
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                }
-                                                            });
-                                                        }
-                                                    }
-                                                } else {
-                                                    toastr.warning("please selections your data in table first");
-                                                }
                                             }
                                         }
                                     });

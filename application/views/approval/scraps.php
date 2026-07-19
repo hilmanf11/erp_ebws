@@ -15,6 +15,7 @@
             <th data-options="field:'item_rm_name',width:100,halign:'center'">Description</th>
             <th data-options="field:'source',width:120,align:'center'">Rejection By</th>
             <th data-options="field:'workorder',width:120,align:'center'">Rejection No</th>
+            <th data-options="field:'stock_wip',width:80,halign:'center',align:'right'">Wip</th>
             <th data-options="field:'ng',width:80,halign:'center',align:'right'">Reject</th>
             <th data-options="field:'qty',width:80,halign:'center',align:'right'">Accepted</th>
             <th data-options="field:'uom',width:80,align:'center'">Uom</th>
@@ -60,6 +61,13 @@
                 confirmButtonText: 'Yes, Approve it!'
             }).then((result) => {
                 if (result.isConfirmed) {
+                    for (let z = 0; z < rows.length; z++) {
+                        if(parseInt(rows[z].qty) > parseInt(rows[z].stock_wip)){
+                            toastr.error("qty accepted cannot be greater than qty WIP");
+                            return false;
+                        }
+                    }
+
                     Swal.fire({
                         title: 'Please Wait...',
                         showConfirmButton: false,

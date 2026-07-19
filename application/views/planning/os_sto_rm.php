@@ -459,6 +459,12 @@
                                                         $("#dg").datagrid("reload");
                                                         window.open("<?= base_url('planning/os_sto_rm/print_label/') ?>" + window.btoa(id), '_blank');
                                                     }
+                                                },
+                                                error: function(){
+                                                    // var title = "<b style='color: red;'>Error:</b> | Failed to Create Label";
+                                                    // $("#p_remarks2").append(title + "<br>");
+                                                    toastr.error("Connection Lost.");
+                                                    requestData2(total, json, number, value, success + 0, failed + 0);
                                                 }
                                             });
                                         }

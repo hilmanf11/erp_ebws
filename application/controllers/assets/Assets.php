@@ -43,12 +43,18 @@ class Assets extends CI_Controller
     {
         $sql = $this->db->query("SELECT a.request_no 
             FROM purchase_request_others a 
-            JOIN assets b ON a.request_no != b.request_no 
-            WHERE a.item_category_id = 'ASSET' 
-            and (a.asset_code = '' or a.asset_code is null or a.asset_code = '-') 
+            WHERE a.item_category_id = 'ASSET' and (a.approved_to = '' or a.approved_to is null)
+            and (a.asset_code = '' or a.asset_code is null or a.asset_code = '-')
             GROUP BY a.request_no 
             ORDER BY a.request_no");
         $datas = $sql->result_array();
+
+        // $sql2 = $this->db->query("SELECT a.request_no 
+        //     FROM purchase_request_services a 
+        //     WHERE a.request_type = 'ASSET' AND a.request_no NOT IN (SELECT DISTINCT request_no FROM assets)
+        //     GROUP BY a.request_no 
+        //     ORDER BY a.request_no");
+        // $datas2 = $sql2->result_array();
 
         $additional[] = array("request_no" => "Additional");
         
@@ -63,6 +69,19 @@ class Assets extends CI_Controller
             JOIN item_rm b ON a.item_rm_id = b.id
             JOIN item_familys c ON b.item_family_id = c.id
             WHERE a.request_no = '$request_no' and (a.asset_code = '' or a.asset_code is null or a.asset_code = '-')
+            ORDER BY a.request_no");
+        $datas = $sql->result_array();
+        echo json_encode($datas);
+    }
+
+    public function readPrDetailUpdate()
+    {
+        $request_no = $this->input->get('request_no');
+        $sql = $this->db->query("SELECT a.*, b.number as item_rm_number, b.name as item_rm_name, c.name as item_family_name, b.uom
+            FROM purchase_request_others a
+            JOIN item_rm b ON a.item_rm_id = b.id
+            JOIN item_familys c ON b.item_family_id = c.id
+            WHERE a.request_no = '$request_no'
             ORDER BY a.request_no");
         $datas = $sql->result_array();
         echo json_encode($datas);
@@ -272,7 +291,7 @@ class Assets extends CI_Controller
         $this->db->select('a.*, b.name as item_family_name');
         $this->db->from('assets a');
         $this->db->join('item_familys b', 'a.item_family_id = b.id');
-        $this->db->order_by('a.number', 'DESC');
+        $this->db->order_by('a.id', 'desc');
         $records = $this->db->get()->result_array();
         
         $html = '<html><head><title>Print Data</title></head><style>body {font-family: Arial, Helvetica, sans-serif;}#customers {border-collapse: collapse;width: 100%;font-size: 12px;}#customers td, #customers th {border: 1px solid black;padding: 2px;}#customers tr:nth-child(even){background-color: #f2f2f2;}#customers tr:hover {background-color: black;}#customers th {padding-top: 2px;padding-bottom: 2px;text-align: center;color: black;}</style><body>
@@ -301,21 +320,26 @@ class Assets extends CI_Controller
             <tr>
                 <th width="20">No</th>
                 <th>Asset Category</th>
+                <th>Request No</th>
                 <th>Asset Code</th>
                 <th>Asset Name</th>
                 <th>Uom</th>
                 <th>Qty</th>
+                <th>Description</th>
+                <th>Created By</th>
             </tr>';
         $no = 1;
         foreach ($records as $data) {
             $html .= '<tr>
                         <td style="text-align:center">' . $no . '</td>
                         <td>' . $data['item_family_name'] . '</td>
+                        <td>' . $data['request_no'] . '</td>
                         <td>' . $data['number'] . '</td>
                         <td>' . $data['name'] . '</td>
                         <td>' . $data['uom'] . '</td>
                         <td>' . $data['qty'] . '</td>
-                        <td>' . $data['status'] . '</td>
+                        <td>' . $data['description'] . '</td>
+                        <td>' . $data['created_by'] . '</td>
                     </tr>';
             $no++;
         }

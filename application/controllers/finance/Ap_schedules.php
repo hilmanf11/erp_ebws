@@ -117,10 +117,15 @@ class Ap_schedules extends CI_Controller
             header("Content-type: application/vnd-ms-excel");
             header("Content-Disposition: attachment; filename=ap_aging_schedules_$format.xls");
         }
-        $filter_from = base64_decode($this->input->get("filter_from"));
-        $filter_to = base64_decode($this->input->get("filter_to"));
-        $filter_supplier = $this->input->get("filter_supplier");
-        $filter_currency = $this->input->get("filter_currency");
+
+        $form = $this->input->get();
+
+        $filter_from = base64_decode($form['filter_from']);
+        $filter_to = base64_decode($form['filter_to']);
+        $filter_supplier = base64_decode($form['filter_supplier']);
+        $filter_currency = base64_decode($form['filter_currency']);
+        $filter_criteria = base64_decode($form['filter_criteria']);
+        $criteria = explode(",", $filter_criteria);
         $period = date("Ym", strtotime($filter_to));
 
         if($filter_currency == "INR"){
@@ -171,26 +176,23 @@ class Ap_schedules extends CI_Controller
             <table id="customers" border="1">
             <tr>
                 <th rowspan="2" width="20">No</th>
+                <th rowspan="2">Supplier ID</th>
                 <th rowspan="2">Supplier Name</th>
                 <th rowspan="2">Currency</th>
-                <th rowspan="2">Current</th>
-                <th colspan="9">Amount Due</th>
+                <th rowspan="2">Total<br>Outstanding</th>
+                <th colspan="'.count($criteria).'">Amount Due</th>
+                <th rowspan="2">Differences</th>
                 <th rowspan="2">Grand Total</th>
             </tr>
-            <tr>
-                <th>1-30 Days</th>
-                <th>31-45 Days</th>
-                <th>46-60 Days</th>
-                <th>61-75 Days</th>
-                <th>76-90 Days</th>
-                <th>91-120 Days</th>
-                <th>121-180 Days</th>
-                <th>181-365 Days</th>
-                <th>Over 365 Days</th>
-            </tr>';
+            <tr>';
+            for ($i = 0; $i < count($criteria); $i++) {
+                $html .= "<th>" . strtr($criteria[$i], "_", " ") . "</th>";
+            }
+            $html .= '</tr>';
 
         $no = 1;
         $grand_total_begin = 0;
+        $grand_total_outstanding = 0;
         $grand_total_current = 0;
         $grand_total_week_1 = 0;
         $grand_total_week_2 = 0;
@@ -202,6 +204,7 @@ class Ap_schedules extends CI_Controller
         $grand_total_week_8 = 0;
         $grand_total_week_9 = 0;
         $grand_total_all = 0;
+        $grand_diferences = 0;
         $header = "";
 
         foreach ($suppliers as $supplier) {
@@ -243,7 +246,6 @@ class Ap_schedules extends CI_Controller
                     GROUP BY number, document_no, account_number, modul
                     ) a
                 LEFT JOIN (SELECT * FROM journal_clearings GROUP BY document_no, company_id, description) b ON a.document_no = b.document_no AND a.company_id = b.company_id AND a.description = b.description
-                WHERE a.modul NOT IN ('CLEARING','BANK STATEMENT')
                 GROUP BY a.number, a.document_no, a.account_number
                 ORDER BY a.journal_date ASC");
             $purchase_invoices = $query_1->result_array();
@@ -254,7 +256,7 @@ class Ap_schedules extends CI_Controller
                 $begin_balance_local = $this->begin_balance($supplier_id, $filter_from, $filter_to, $filter_currency, "", 0);
             }
             
-            $current = @$begin_balance_local;
+            $current = $begin_balance_local;
             $week_1 = 0;
             $week_2 = 0;
             $week_3 = 0;
@@ -264,24 +266,33 @@ class Ap_schedules extends CI_Controller
             $week_7 = 0;
             $week_8 = 0;
             $week_9 = 0;
+            $total_outstanding = $begin_balance_local;
+            $total_diference = 0;
             $arr = [];
 
             foreach ($purchase_invoices as $purchase_invoice) {
                 $document_no = $purchase_invoice['document_no'];
+                $invoice_no = $purchase_invoice['invoice_no'];
 
                 $cl_no = $purchase_invoice['cl_no'];
                 $cl_date = $purchase_invoice['cl_date'];
                 $invoice_date = $purchase_invoice['trans_date'];
+                $receipt_date = $purchase_invoice['posting_date'];
                 $payment_due = $purchase_invoice['trans_date'];
+
                 $total_payment = 0;
                 $cl_no_array = array();
                 $cl_date_array = array();
                 if($purchase_invoice['source'] == "PI"){
                     $payments = $this->db->query("SELECT payment_no, payment_date, payment, account_type FROM ap_payments WHERE purchase_invoice = '$document_no'")->result_array();
                     $purchase = $this->db->query("SELECT * FROM purchase_invoices WHERE number = '$document_no'")->row_array();
+                    $por = $this->db->query("SELECT DISTINCT receipt_date FROM purchase_order_receipts WHERE bc_document = '$invoice_no'")->row_array();
+                    $poro = $this->db->query("SELECT DISTINCT receipt_date FROM purchase_order_receipt_others WHERE bc_document = '$invoice_no'")->row_array();
 
                     $invoice_date = $purchase['invoice_date'];
-                    $payment_due = $purchase['due_date'];
+                    $receipt_date = empty($por['receipt_date']) ? @$poro['receipt_date'] : $por['receipt_date'];
+
+                    $payment_due = date('Y-m-d', strtotime('+' . $purchase['payment_term'] . ' days', strtotime($receipt_date)));
 
                     if($cl_no != ""){
                         $cl_no_array[] = $cl_no;
@@ -333,80 +344,137 @@ class Ap_schedules extends CI_Controller
                     $ex_local_debit = $purchase_invoice['local_debit'];
                     $ex_local_credit = $purchase_invoice['local_credit'];
                 }
-
-                // if($cl_no == ""){
-                //     $balance = ($purchase_invoice['original_credit'] - $purchase_invoice['original_debit']);
-                // }elseif($total_payment != 0){
-                //     $balance = ($purchase_invoice['original_credit'] - $purchase_invoice['original_debit'] - $total_payment);
-                // }else{
-                //     $balance = 0;
-                // }
                 
-                // if ($cl_no == "" || round($balance, 2) != 0) {
-                    $balance_local = ($ex_local_credit - $ex_local_debit);
-                // } else {
-                //     $balance_local = 0;
-                // }
+                if($cl_no == ""){
+                    $balance_local = ($purchase_invoice['original_credit'] - $purchase_invoice['original_debit']);
+                }elseif($total_payment != 0){
+                    $balance_local = ($purchase_invoice['original_credit'] - $purchase_invoice['original_debit'] - $total_payment);
+                }else{
+                    $balance_local = 0;
+                }
+
+                if ($cl_no == "" || round($balance_local, 2) != 0) {
+                    $total = $balance_local;
+                } else {
+                    $total = 0;
+                }
 
                 $date1 = new DateTime($payment_due);
                 $date2 = new DateTime($filter_to);
                 $diviation = $date1->diff($date2);
 
-                if($diviation->days <= 0){
-                    $current += $balance_local;
-                } elseif ($diviation->days >= 1 && $diviation->days <= 30) {
-                    $week_1 += $balance_local;
-                } elseif ($diviation->days >= 31 && $diviation->days <= 45) {
-                    $week_2 += $balance_local;
-                } elseif ($diviation->days >= 46 && $diviation->days <= 60) {
-                    $week_3 += $balance_local;
-                } elseif ($diviation->days >= 61 && $diviation->days <= 75) {
-                    $week_4 += $balance_local;
-                } elseif ($diviation->days >= 76 && $diviation->days <= 90) {
-                    $week_5 += $balance_local;
-                } elseif ($diviation->days >= 91 && $diviation->days <= 120) {
-                    $week_6 += $balance_local;
-                } elseif ($diviation->days >= 121 && $diviation->days <= 180) {
-                    $week_7 += $balance_local;
-                } elseif ($diviation->days >= 181 && $diviation->days <= 365) {
-                    $week_8 += $balance_local;  
-                } else {
-                    $week_9 += $balance_local;
+                $aging_due = "";
+                for ($y = 0; $y < count($criteria); $y++) {
+                    if($criteria[$y] == "1-30 Days"){
+                        if ($diviation->days >= 1 && $diviation->days <= 30) {
+                            $aging_due = "1-30";
+                            $week_1 += $total;
+                        }
+                    }elseif($criteria[$y] == "31-45 Days"){
+                        if ($diviation->days >= 31 && $diviation->days <= 45) {
+                            $week_2 += $total;
+                        }
+                    }elseif($criteria[$y] == "46-60 Days"){
+                        if ($diviation->days >= 46 && $diviation->days <= 60) {
+                            $week_3 += $total;
+                        }
+                    }elseif($criteria[$y] == "61-75 Days"){
+                        if ($diviation->days >= 61 && $diviation->days <= 75) {
+                            $week_4 += $total;
+                        }
+                    }elseif($criteria[$y] == "76-90 Days"){
+                        if ($diviation->days >= 76 && $diviation->days <= 90) {
+                            $week_5 += $total;
+                        }
+                    }elseif($criteria[$y] == "91-120 Days"){
+                        if ($diviation->days >= 91 && $diviation->days <= 120) {
+                            $week_6 += $total;
+                        }
+                    }elseif($criteria[$y] == "121-180 Days"){
+                        if ($diviation->days >= 121 && $diviation->days <= 180) {
+                            $week_7 += $total;
+                        }
+                    }elseif($criteria[$y] == "181-365 Days"){
+                        if ($diviation->days >= 181 && $diviation->days <= 365) {
+                            $week_8 += $total;  
+                        }
+                    }elseif($criteria[$y] == "Over 365 Days"){
+                        if ($diviation->days >= 366) {
+                            $week_9 += $total;
+                        }
+                    }
                 }
 
-                $arr[] = array(
-                    "document_no" => @$purchase_invoice['document_no'],
-                    "trans_date" => @$purchase_invoice['trans_date'],
-                    "due_date" => @$purchase_invoice['due_date'],
-                    "difference" => $diviation->days,
-                    "total" => @$balance_local,
-                );
-
+                if($total >= 1 && $aging_due != ""){
+                    $arr[] = array(
+                        "aging_due" => $aging_due,
+                        "total" => $total
+                    );
+                }
+                
+                $total_outstanding += ($ex_local_credit - $ex_local_debit);
             }
-            
+
             // die(json_encode($arr));
 
-            if(abs($current + $week_1 + $week_2 + $week_3 + $week_4 + $week_5 + $week_6 + $week_7 + $week_8 + $week_9) > 0){
+            $content = "";
+            $week_11 = 0;
+            $week_22 = 0;
+            $week_33 = 0;
+            $week_44 = 0;
+            $week_55 = 0;
+            $week_66 = 0;
+            $week_77 = 0;
+            $week_88 = 0;
+            $week_99 = 0;
+            for ($z = 0; $z < count($criteria); $z++) {
+                if($criteria[$z] == "1-30 Days"){
+                    $content .= '<td style="text-align:right;">' . $this->formatNo($week_1) . '</td>';
+                    $week_11 = $week_1;
+                }elseif($criteria[$z] == "31-45 Days"){
+                    $content .= '<td style="text-align:right;">' . $this->formatNo($week_2) . '</td>';
+                    $week_22 = $week_2;
+                }elseif($criteria[$z] == "46-60 Days"){
+                    $content .= '<td style="text-align:right;">' . $this->formatNo($week_3) . '</td>';
+                    $week_33 = $week_3;
+                }elseif($criteria[$z] == "61-75 Days"){
+                    $content .= '<td style="text-align:right;">' . $this->formatNo($week_4) . '</td>';
+                    $week_44 = $week_4;
+                }elseif($criteria[$z] == "76-90 Days"){
+                    $content .= '<td style="text-align:right;">' . $this->formatNo($week_5) . '</td>';
+                    $week_55 = $week_5;
+                }elseif($criteria[$z] == "91-120 Days"){
+                    $content .= '<td style="text-align:right;">' . $this->formatNo($week_6) . '</td>';
+                    $week_66 = $week_6;
+                }elseif($criteria[$z] == "121-180 Days"){
+                    $content .= '<td style="text-align:right;">' . $this->formatNo($week_7) . '</td>';
+                    $week_77 = $week_7;
+                }elseif(@$criteria[$z] == "181-365 Days"){
+                    $content .= '<td style="text-align:right;">' . $this->formatNo($week_8) . '</td>';
+                    $week_88 = $week_8;
+                }else {
+                    $content .= '<td style="text-align:right;">' . $this->formatNo($week_9) . '</td>';
+                    $week_99 = $week_9;
+                }
+            }
+
+            $total_diference = ($week_11 + $week_22 + $week_33 + $week_44 + $week_55 + $week_66 + $week_77 + $week_88 + $week_99);
+
+            if(abs($total_outstanding) > 0){
                 $header .= '  <tr>
                                 <td style="text-align:center">' . $no . '</td>
+                                <td>' . $supplier['id'] . '</td>
                                 <td>' . $supplier['name'] . '</td>
                                 <td style="text-align:center;">INR</td>
-                                <td style="text-align:right;">' . $this->formatNo($current) . '</td>
-                                <td style="text-align:right;">' . $this->formatNo($week_1) . '</td>
-                                <td style="text-align:right;">' . $this->formatNo($week_2) . '</td>
-                                <td style="text-align:right;">' . $this->formatNo($week_3) . '</td>
-                                <td style="text-align:right;">' . $this->formatNo($week_4) . '</td>
-                                <td style="text-align:right;">' . $this->formatNo($week_5) . '</td>
-                                <td style="text-align:right;">' . $this->formatNo($week_6) . '</td>
-                                <td style="text-align:right;">' . $this->formatNo($week_7) . '</td>
-                                <td style="text-align:right;">' . $this->formatNo($week_8) . '</td>
-                                <td style="text-align:right;">' . $this->formatNo($week_9) . '</td>
-                                <td style="text-align:right;">' . $this->formatNo(($current + $week_1 + $week_2 + $week_3 + $week_4 + $week_5 + $week_6 + $week_7 + $week_8 + $week_9)) . '</td>
+                                <td style="text-align:right;">' . $this->formatNo($total_outstanding) . '</td>
+                                '.$content.'
+                                <td style="text-align:right;">' . $this->formatNo(($total_outstanding - $total_diference)) . '</td>
+                                <td style="text-align:right;">' . $this->formatNo(($total_outstanding)) . '</td>
                             </tr>';
                 $no++;
             }
 
-            $grand_total_current += $current;
+            $grand_total_outstanding += $total_outstanding;
             $grand_total_week_1 += $week_1;
             $grand_total_week_2 += $week_2;
             $grand_total_week_3 += $week_3;
@@ -416,22 +484,39 @@ class Ap_schedules extends CI_Controller
             $grand_total_week_7 += $week_7;
             $grand_total_week_8 += $week_8;
             $grand_total_week_9 += $week_9;
-            $grand_total_all += ($current + $week_1 + $week_2 + $week_3 + $week_4 + $week_5 + $week_6 + $week_7 + $week_8 + $week_9);
+            $grand_diferences += $total_diference;
+            $grand_total_all += ($total_outstanding);
+        }
+
+        $contentTotal = "";
+        for ($x = 0; $x < count($criteria); $x++) {
+            if($criteria[$x] == "1-30 Days"){
+                $contentTotal .= '<td style="text-align:right;">' . $this->formatNo($grand_total_week_1) . '</td>';
+            }elseif($criteria[$x] == "31-45 Days"){
+                $contentTotal .= '<td style="text-align:right;">' . $this->formatNo($grand_total_week_2) . '</td>';
+            }elseif($criteria[$x] == "46-60 Days"){
+                $contentTotal .= '<td style="text-align:right;">' . $this->formatNo($grand_total_week_3) . '</td>';
+            }elseif($criteria[$x] == "61-75 Days"){
+                $contentTotal .= '<td style="text-align:right;">' . $this->formatNo($grand_total_week_4) . '</td>';
+            }elseif($criteria[$x] == "76-90 Days"){
+                $contentTotal .= '<td style="text-align:right;">' . $this->formatNo($grand_total_week_5) . '</td>';
+            }elseif($criteria[$x] == "91-120 Days"){
+                $contentTotal .= '<td style="text-align:right;">' . $this->formatNo($grand_total_week_6) . '</td>';
+            }elseif($criteria[$x] == "121-180 Days"){
+                $contentTotal .= '<td style="text-align:right;">' . $this->formatNo($grand_total_week_7) . '</td>';
+            }elseif($criteria[$x] == "181-365 Days"){
+                $contentTotal .= '<td style="text-align:right;">' . $this->formatNo($grand_total_week_8) . '</td>';
+            }else {
+                $contentTotal .= '<td style="text-align:right;">' . $this->formatNo($grand_total_week_9) . '</td>';
+            }
         }
 
         $header .= '  <tr>
-                        <td style="text-align:right;" colspan="3"><b>GRAND TOTAL</b></td>
-                        <td style="text-align:right;">' . $this->formatNo($grand_total_current) . '</td>
-                        <td style="text-align:right;">' . $this->formatNo($grand_total_week_1) . '</td>
-                        <td style="text-align:right;">' . $this->formatNo($grand_total_week_2) . '</td>
-                        <td style="text-align:right;">' . $this->formatNo($grand_total_week_3) . '</td>
-                        <td style="text-align:right;">' . $this->formatNo($grand_total_week_4) . '</td>
-                        <td style="text-align:right;">' . $this->formatNo($grand_total_week_5) . '</td>
-                        <td style="text-align:right;">' . $this->formatNo($grand_total_week_6) . '</td>
-                        <td style="text-align:right;">' . $this->formatNo($grand_total_week_7) . '</td>
-                        <td style="text-align:right;">' . $this->formatNo($grand_total_week_8) . '</td>
-                        <td style="text-align:right;">' . $this->formatNo($grand_total_week_9) . '</td>
-                        <td style="text-align:right;">' . $this->formatNo($grand_total_all) . '</td>
+                        <td style="text-align:right;" colspan="4"><b>GRAND TOTAL</b></td>
+                        <td style="text-align:right;">' . $this->formatNo($grand_total_outstanding) . '</td>
+                        '.$contentTotal.'
+                        <td style="text-align:right;">' . $this->formatNo(($grand_total_outstanding - $grand_diferences)) . '</td>
+                        <td style="text-align:right;">' . $this->formatNo($grand_total_outstanding) . '</td>
                     </tr>';
 
         $htmlend = '</table></body></html>';

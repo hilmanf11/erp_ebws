@@ -789,127 +789,122 @@
                             if (rows.length > 0) {
                                 $.messager.confirm('Warning', 'Are you sure you want to save this data?', function(r) {
                                     if (r) {
-                                        Swal.fire({
-                                            title: 'Please Wait for Saving Data',
-                                            showConfirmButton: false,
-                                            allowOutsideClick: false,
-                                            allowEscapeKey: false,
-                                            didOpen: () => {
-                                                Swal.showLoading();
-                                            },
-                                        });
-
                                         $.ajax({
                                             type: "post",
                                             url: "<?= base_url('finance/journal_posting_clearing/number/' . $menus_id) ?>/" + btoa(journal_date),
                                             dataType: "html",
                                             success: function(numberValue) {
                                                 if(numberValue == ""){
-                                                    Swal.close();
                                                     toastr.info("Please Check Configuration in Serial No First");
                                                     return false;
                                                 }
 
-                                                requestData(totalrows, rows);
+                                                combinedClearing = [];
+                                                for (let i = 0; i < totalrows; i++) {
+                                                    var json = rows[i];
+
+                                                    combinedClearing.push({
+                                                        journal_date: journal_date,
+                                                        journal_type_id: json.journal_type_id,
+                                                        document_no: json.document_no,
+                                                        document_date: json.document_date,
+                                                        invoice_no: json.invoice_no,
+                                                        invoice_date: json.invoice_date,
+                                                        number: numberValue,
+                                                        company_id: json.company_id,
+                                                        company_name: json.company_name,
+                                                        trans_date: journal_date,
+                                                        description: json.description,
+                                                        account_number: json.account_number,
+                                                        account_name: json.account_name,
+                                                        currency: json.currency,
+                                                        remarks: remarks,
+                                                        source: json.source,
+                                                        amount: json.amount,
+                                                        adjustment: json.adjustment,
+                                                        balance: json.balance,
+                                                    });
+                                                }
+
+                                                combinedJournals = [];
+                                                var total_debit  = 0;
+                                                var total_credit = 0;
+                                                for (let x = 0; x < totalrows2; x++) {
+                                                    var json2 = rows2[x];
+
+                                                    combinedJournals.push({
+                                                        number: number,
+                                                        journal_date: journal_date,
+                                                        journal_type_id: "20241120000002",
+                                                        modul: modul,
+                                                        journal_type: journal_type,
+                                                        number: numberValue,
+                                                        remarks: remarks,
+                                                        company_id: rows[0].company_id,
+                                                        company_name: rows[0].company_name,
+                                                        account_number: json2.account_number,
+                                                        account_name: json2.account_name,
+                                                        description: json2.description,
+                                                        currency: "INR",
+                                                        original_debit: json2.local_debit,
+                                                        original_credit: json2.local_credit,
+                                                        rates: 1,
+                                                        local_debit: json2.local_debit,
+                                                        local_credit: json2.local_credit,
+                                                        status_cl: json2.status_cl,
+                                                    });
+
+                                                    total_debit += parseFloat(json2.local_debit);
+                                                    total_credit += parseFloat(json2.local_credit);
+                                                }
+
+                                                if(Math.round(total_debit) != Math.round(total_credit)){
+                                                    toastr.error("Debit & Credit Not Balance (Debit : "+Math.round(total_debit)+") and (Credit : "+Math.round(total_credit)+")");
+                                                    return false;
+                                                }
+
                                                 $('#dlg_insert').dialog('close');
 
-                                                function requestData(total, json, jml = 1, value = 0) {
-                                                    if (value < 100) {
-                                                        value = Math.floor((jml / total) * 100);
-                                                        var i = (jml - 1);
+                                                Swal.fire({
+                                                    title: 'Please Wait for Saving Data',
+                                                    showConfirmButton: false,
+                                                    allowOutsideClick: false,
+                                                    allowEscapeKey: false,
+                                                    didOpen: () => {
+                                                        Swal.showLoading();
+                                                    },
+                                                });
 
-                                                        $('#p_upload').progressbar('setValue', value);
-                                                        $('#p_start').html(jml);
-                                                        $('#p_finish').html(totalrows);
+                                                $.ajax({
+                                                    type: "post",
+                                                    url: '<?= base_url('finance/journal_posting_clearing/create') ?>',
+                                                    data: JSON.stringify({ dataClearings: combinedClearing, dataJournals: combinedJournals}),
+                                                    dataType: "json",
+                                                    success: function (result) {
+                                                        Swal.close();
 
-                                                        $.ajax({
-                                                            type: "post",
-                                                            url: '<?= base_url('finance/journal_posting_clearing/create') ?>',
-                                                            data: {
-                                                                journal_date: journal_date,
-                                                                journal_type_id: json[i].journal_type_id,
-                                                                document_no: json[i].document_no,
-                                                                document_date: json[i].document_date,
-                                                                invoice_no: json[i].invoice_no,
-                                                                invoice_date: json[i].invoice_date,
-                                                                number: numberValue,
-                                                                company_id: json[i].company_id,
-                                                                company_name: json[i].company_name,
-                                                                trans_date: journal_date,
-                                                                description: json[i].description,
-                                                                account_number: json[i].account_number,
-                                                                account_name: json[i].account_name,
-                                                                currency: json[i].currency,
-                                                                remarks: remarks,
-                                                                source: json[i].source,
-                                                                amount: json[i].amount,
-                                                                adjustment: json[i].adjustment,
-                                                                balance: json[i].balance,
-                                                            },
-                                                            dataType: "json",
-                                                            success: function(result) {
-                                                                requestData(total, json, jml + 1, value);
-                                                                
-                                                                if (jml == total) {
-                                                                    if (totalrows2 > 0) {
-                                                                        requestData2(totalrows2, rows2);
-                                                                        
-                                                                        function requestData2(total2, json2, jml2 = 1, value2 = 0) {
-                                                                            if (value2 < 100) {
-                                                                                value2 = Math.floor((jml2 / total2) * 100);
-                                                                                var z = (jml2 - 1);
-
-                                                                                $.ajax({
-                                                                                    type: "post",
-                                                                                    url: '<?= base_url('finance/journal_posting_clearing/createJournals') ?>',
-                                                                                    data: {
-                                                                                        number: number,
-                                                                                        journal_date: journal_date,
-                                                                                        journal_type_id: "20241120000002",
-                                                                                        modul: modul,
-                                                                                        journal_type: journal_type,
-                                                                                        number: numberValue,
-                                                                                        remarks: remarks,
-                                                                                        company_id: json[0].company_id,
-                                                                                        company_name: json[0].company_name,
-                                                                                        account_number: json2[z].account_number,
-                                                                                        account_name: json2[z].account_name,
-                                                                                        description: json2[z].description,
-                                                                                        currency: "INR",
-                                                                                        original_debit: json2[z].local_debit,
-                                                                                        original_credit: json2[z].local_credit,
-                                                                                        rates: 1,
-                                                                                        local_debit: json2[z].local_debit,
-                                                                                        local_credit: json2[z].local_credit,
-                                                                                        status_cl: json2[z].status_cl,
-                                                                                    },
-                                                                                    dataType: "json",
-                                                                                    success: function(result2) {
-                                                                                        requestData2(total2, json2, jml2 + 1, value2);
-                                                                                        if (jml2 == total2) {
-                                                                                            Swal.close();
-
-                                                                                            Swal.fire({
-                                                                                                title: result2.message,
-                                                                                                icon: result2.theme,
-                                                                                                confirmButtonText: 'Ok',
-                                                                                                allowOutsideClick: false,
-                                                                                            }).then((result2) => {
-                                                                                                if (result2.isConfirmed) {
-                                                                                                    window.location.reload();
-                                                                                                }
-                                                                                            });
-                                                                                        }
-                                                                                    }
-                                                                                });
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                }
+                                                        Swal.fire({
+                                                            title: result.message,
+                                                            icon: result.theme,
+                                                            confirmButtonText: 'Ok',
+                                                            allowOutsideClick: false,
+                                                        }).then((result) => {
+                                                            if (result.isConfirmed) {
+                                                                window.location.reload();
                                                             }
                                                         });
+                                                    },
+                                                    error: function(msg){
+                                                        Swal.close();
+
+                                                        Swal.fire({
+                                                            title: "Failed to Save Data, Please Try Again",
+                                                            icon: "error",
+                                                            confirmButtonText: 'Ok',
+                                                            allowOutsideClick: false,
+                                                        });
                                                     }
-                                                }
+                                                });
                                             }
                                         });
                                     }

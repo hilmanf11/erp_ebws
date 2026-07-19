@@ -118,15 +118,69 @@ class Item_ng extends CI_Controller
     public function readItems($workorder)
     {
         $workorder = base64_decode($workorder);
+        $trans_date = date("Y-m-d");
 
         $post = isset($_POST['q']) ? $_POST['q'] : "";
-        $send = $this->crud->query("SELECT b.id, b.number, b.name, a.qty_act as qty, b.uom
+        $datas = $this->crud->query("SELECT b.id, b.number, b.name, a.qty_act as qty, b.uom, coalesce(c.issued, 0) as issued
         FROM supply_sheets a
         JOIN item_rm b ON a.item_rm_id = b.id
-        -- JOIN uom c ON b.uom_id = c.id
+        LEFT JOIN (SELECT item_rm_id, request_no, SUM(qty) AS issued FROM issued_material_details WHERE DATE_FORMAT(created_date, '%Y-%m-%d') <= '$trans_date' and request_no NOT LIKE '%PR-%' GROUP BY request_no, item_rm_id) c ON a.item_rm_id = c.item_rm_id and a.request_no = c.request_no
         WHERE a.workorder = '$workorder' and b.status = '0' and b.number like '%$post%'
+        group by a.id
         order by b.number asc");
-        echo json_encode($send);
+
+        $sqlwip = $this->db->query("SELECT a.id, (COALESCE(c.issued, 0) + COALESCE(g.adjustment_in, 0) - COALESCE(abs(i.adjustment_out), 0) - COALESCE(d.return, 0) - COALESCE(e.ng, 0) - COALESCE(f.scrap, 0) - COALESCE(h.rfg, 0)) AS balance
+            FROM item_rm a
+            JOIN item_familys b ON a.item_family_id = b.id
+            LEFT JOIN (SELECT item_rm_id, SUM(qty) AS issued FROM issued_material_details WHERE DATE_FORMAT(created_date, '%Y-%m-%d') <= '$trans_date' and request_no NOT LIKE '%PR-%' GROUP BY item_rm_id) c ON a.id = c.item_rm_id
+            LEFT JOIN (SELECT item_rm_id, SUM(qty) AS `return` FROM return_materials WHERE return_date <= '$trans_date' GROUP BY item_rm_id) d ON a.id = d.item_rm_id
+            LEFT JOIN (SELECT item_rm_id, SUM(qty) AS ng FROM scraps WHERE trans_date <= '$trans_date' and source = 'Vendor' GROUP BY item_rm_id) e ON a.id = e.item_rm_id
+            LEFT JOIN (SELECT item_rm_id, SUM(qty) AS scrap FROM scraps WHERE trans_date <= '$trans_date' and source = 'User' GROUP BY item_rm_id) f ON a.id = f.item_rm_id
+            LEFT JOIN (SELECT item_rm_id, SUM(qty) AS adjustment_in FROM sto_wip WHERE trans_date <= '$trans_date' and qty > 0 GROUP BY item_rm_id) g ON a.id = g.item_rm_id
+            LEFT JOIN (SELECT item_rm_id, SUM(qty) AS adjustment_out FROM sto_wip WHERE trans_date <= '$trans_date' and qty < 0 GROUP BY item_rm_id) i ON a.id = i.item_rm_id
+            LEFT JOIN (SELECT a.item_rm_id, SUM(a.consumed) AS rfg FROM wip_receipt_balance a JOIN wip_receipts b ON a.checksheet_number = b.checksheet_number WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') <= '$trans_date' GROUP BY a.item_rm_id) h ON a.id = h.item_rm_id
+            GROUP BY a.id
+            ORDER BY a.number");
+        $datawip = $sqlwip->result_array();
+
+        $arrWip = [];
+        foreach ($datawip as $dataw) {
+            $arrWip[$dataw['id']] = $dataw['balance'];
+        }
+
+        $arr = array();
+        foreach ($datas as $data) {
+            $item_rm_id = $data->id;
+            // $sqlwip = $this->db->query("SELECT a.id, (COALESCE(c.issued, 0) + COALESCE(g.adjustment_in, 0) - COALESCE(abs(i.adjustment_out), 0) - COALESCE(d.return, 0) - COALESCE(e.ng, 0) - COALESCE(f.scrap, 0) - COALESCE(h.rfg, 0)) AS balance
+            //     FROM item_rm a
+            //     JOIN item_familys b ON a.item_family_id = b.id
+            //     LEFT JOIN (SELECT item_rm_id, SUM(qty) AS issued FROM issued_material_details WHERE DATE_FORMAT(created_date, '%Y-%m-%d') <= '$trans_date' and request_no NOT LIKE '%PR-%' GROUP BY item_rm_id) c ON a.id = c.item_rm_id
+            //     LEFT JOIN (SELECT item_rm_id, SUM(qty) AS `return` FROM return_materials WHERE return_date <= '$trans_date' GROUP BY item_rm_id) d ON a.id = d.item_rm_id
+            //     LEFT JOIN (SELECT item_rm_id, SUM(qty) AS ng FROM scraps WHERE trans_date <= '$trans_date' and source = 'Vendor' GROUP BY item_rm_id) e ON a.id = e.item_rm_id
+            //     LEFT JOIN (SELECT item_rm_id, SUM(qty) AS scrap FROM scraps WHERE trans_date <= '$trans_date' and source = 'User' GROUP BY item_rm_id) f ON a.id = f.item_rm_id
+            //     LEFT JOIN (SELECT item_rm_id, SUM(qty) AS adjustment_in FROM sto_wip WHERE trans_date <= '$trans_date' and qty > 0 GROUP BY item_rm_id) g ON a.id = g.item_rm_id
+            //     LEFT JOIN (SELECT item_rm_id, SUM(qty) AS adjustment_out FROM sto_wip WHERE trans_date <= '$trans_date' and qty < 0 GROUP BY item_rm_id) i ON a.id = i.item_rm_id
+            //     LEFT JOIN (SELECT a.item_rm_id, SUM(a.consumed) AS rfg FROM wip_receipt_balance a JOIN wip_receipts b ON a.checksheet_number = b.checksheet_number WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') <= '$trans_date' GROUP BY a.item_rm_id) h ON a.id = h.item_rm_id
+            //     WHERE a.id = '$item_rm_id'
+            //     GROUP BY a.id
+            //     ORDER BY a.number");
+            // $datawip = $sqlwip->row();
+            $wip = empty(@$arrWip[$item_rm_id]) ? 0 : @$arrWip[$item_rm_id];
+
+            $arr[] = array(
+                "id" => $data->id,
+                "number" => $data->number,
+                "name" => $data->name,
+                "qty" => $data->qty,
+                "uom" => $data->uom,
+                "issued" => $data->issued,
+                "wip" => $wip
+            );
+        }
+
+
+
+        echo json_encode($arr);
     }
 
     public function datatables()

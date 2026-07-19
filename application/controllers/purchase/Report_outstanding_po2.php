@@ -122,6 +122,7 @@ class Report_outstanding_po2 extends CI_Controller
                     <th>Description</th>
                     <th>Supplier ID</th>
                     <th>Supplier Name</th>
+                    <th>PO No</th>
                     <th>Uom</th>
                     <th>Begin Balance</th>
                     <th>Qty PO</th>
@@ -141,6 +142,7 @@ class Report_outstanding_po2 extends CI_Controller
                             <td style="mso-number-format:\@;">' . $record['item_rm_name'] . '</td>
                             <td>' . $record['supplier_id'] . '</td>
                             <td>' . $record['supplier_name'] . '</td>
+                            <td>' . $record['po_no'] . '</td>
                             <td>' . $record['uom'] . '</td>
                             <td style="text-align:right;">' . number_format(@$record['begin_stock'], 2) . '</td>
                             <td style="text-align:right;">' . number_format($record['qty_po'], 2) . '</td>
@@ -150,7 +152,7 @@ class Report_outstanding_po2 extends CI_Controller
 
             if ($filter_display == "DETAIL") {
                 $html .= '  <tr>
-                                <td colspan="13" style="background:#D1FFC6;"><b>DETAIL OF ' . $record['item_rm_id'] . ' - ' . $record['item_rm_number'] . '</b></td>
+                                <td colspan="14" style="background:#D1FFC6;"><b>DETAIL OF ' . $record['item_rm_id'] . ' - ' . $record['item_rm_number'] . '</b></td>
                             </tr>
                             <tr>
                                 <th width="20"></th>

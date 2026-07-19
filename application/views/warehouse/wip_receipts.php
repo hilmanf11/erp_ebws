@@ -17,6 +17,7 @@
             <th rowspan="2" data-options="field:'lot_box',width:80,halign:'center',align:'right'">Lot Box</th>
             <!-- <th rowspan="2" data-options="field:'label',width:80,halign:'center',align:'right'">Label Qty</th> -->
             <th rowspan="2" data-options="field:'label_box',width:80,halign:'center',align:'right'">Box Qty</th>
+            <th rowspan="2" data-options="field:'total_label',width:80,halign:'center',align:'right'">Label Qty</th>
             <!-- <th rowspan="2" data-options="field:'print',width:80,align:'center',formatter:BtnPrint">Label</th> -->
             <th rowspan="2" data-options="field:'print_box',width:80,align:'center',formatter:BtnPrintBox">Box</th>
             <th rowspan="2" data-options="field:'repeat',width:80,align:'center',formatter:BtnRepeatBox">Repeat</th>
@@ -83,8 +84,12 @@
     </div>
 </div>
 
+<div id="toolbar2">
+    <a href="javascript:void(0)" class="easyui-linkbutton" data-options="plain:true" onclick="excelBom()"><i class="fa fa-file"></i> Export to Excel</a>
+</div>
+
 <!-- Insert & Update -->
-<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 1000px; height: 550px; padding:10px; top: 20px; left: 10px;">
+<div id="dlg_insert" class="easyui-dialog" title="Add New" data-options="closed: true,modal:true" style="width: 90%; height: 550px; padding:10px; top: 20px; left: 10px;">
     <form id="frm_insert" method="post" novalidate>
         <fieldset style="width:100%; border:1px solid #d0d0d0; margin-bottom: 10px; border-radius:4px; float: left;">
             <legend><b>Form Data</b></legend>
@@ -136,6 +141,27 @@
                 </tr>
             </thead>
         </table>
+        <!-- <div style="width: 68%; float: left; margin-top:20px;">
+            <div style="float: left; width: 30%; ">
+                <a style="width: 90%; height: 50px; padding:10px;" class="easyui-linkbutton c2" onclick="calculate()">Calculate</a>
+            </div>
+        </div> -->
+        <div style="width: 80%; float: left; margin-top:10px; margin-bottom: 20px;">
+            <table id="dg_bom" class="easyui-datagrid" title="Bill of Material Lists" style="width: 100%;" data-options="singleSelect: true" toolbar="#toolbar2">
+                <thead>
+                    <tr>
+                        <th data-options="field:'item_rm_id',halign:'center',width:120">Part No EBWS</th>
+                        <th data-options="field:'item_rm_number',halign:'center',width:200">Part No Supplier</th>
+                        <th data-options="field:'item_rm_name',halign:'center',width:200">Description</th>
+                        <th data-options="field:'qpa',halign:'center',width:80">QPA</th>
+                        <th data-options="field:'uom',halign:'center',width:80">Uom</th>
+                        <th data-options="field:'rfg',halign:'center',width:80">RFG</th>
+                        <th data-options="field:'consumed',halign:'center',width:80">RFG<br>Consumed</th>
+                        <th data-options="field:'issued',halign:'center',width:100,styler:formatWip">WIP Ending</th>
+                    </tr>
+                </thead>
+            </table>
+        </div>
     </form>
 </div>
 
@@ -159,7 +185,8 @@
         $('#dlg_insert').dialog('open');
         url_save = '<?= base_url('warehouse/wip_receipts/create') ?>';
         $('#frm_insert').form('clear');
-        $("#dg_request").datagrid('loadData', []);
+        $('#dg_bom').datagrid('loadData', {"total": 0, "rows": []});
+        $('#dg_request').datagrid('loadData', {"total": 0, "rows": []});
 
         $("#trans_date_from").datebox('setValue', "<?= date("Y-m-d") ?>");
         $("#trans_date_to").datebox({
@@ -256,6 +283,11 @@
                 onLoadError: function(rowMessage){
                     toastr.error("Data Not Found in Old MRP Process Scan");
                 },
+                onLoadSuccess: function(data){
+                    if(parseInt(data['total']) > 0){
+                        calculate(data['rows'][0].qty);
+                    }
+                },
                 onClickRow: function(rowIndex) {
                     if (lastIndex != rowIndex) {
                         $(this).datagrid('endEdit', lastIndex);
@@ -278,14 +310,43 @@
                                 toastr.info("Qty Receipt Cannot > Qty");
                                 qty.numberbox('setValue', qty_receipt);
                                 label_box.numberbox('setValue', 0);
+                                calculate();
                             }else{
                                 label_box.numberbox('setValue', Math.ceil(parseInt(val) / parseInt(qty_box)));
+                                calculate(val);
                             }
                         }
                     });
                 }
             });
         }
+    }
+
+    function calculate(qty_fg = 0){
+        var period = $("#period").combobox('getValue');
+        var wp = $("#wp").combobox('getValue');
+        var customer_id = $("#customer_id").combobox('getValue');
+        var item_fg_id = $("#item_fg_id").combogrid('getValue');
+
+        var urlGet = "<?= base_url('warehouse/wip_receipts/datatablesBom/') ?>" + btoa(period) + "/" + btoa(wp) + "/" + btoa(customer_id) + "/" + btoa(item_fg_id) + "/" + qty_fg;
+
+        $('#dg_bom').datagrid({
+            url: urlGet,
+            fitColumns: true,
+            onLoadError: function(rowMessage){
+                toastr.error("Data Not Found");
+            },
+            rowStyler:function(index, row){
+                if (parseFloat(row.consumed) > parseFloat(row.issued)){
+                    return 'background-color:#ffa07a;';
+                }
+            }
+        });
+    }
+
+    //PRINT EXCEL
+    function excelBom() {
+        $('#dg_bom').datagrid('toExcel','rfg_bom_consumed.xls');
     }
 
     //Delete Data
@@ -444,22 +505,69 @@
                                 var rows = $('#dg_request').datagrid('getSelections');
                                 var totalrows = rows.length;
 
+                                var rows2 = $('#dg_bom').datagrid('getRows');
+                                var totalrows2 = rows2.length;
+
+                                combinedBom = [];
+                                for (let z = 0; z < totalrows2; z++) {
+                                    var json2 = rows2[z];
+
+                                    if(parseInt(json2.rfg) != parseInt(rows[0].qty)){
+                                        toastr.error("RFG Qty Not same with Breakdown Bom");
+                                        return false;
+                                    }
+
+                                    if(parseFloat(json2.consumed) > parseFloat(json2.issued)){
+                                        toastr.error("RFG Consumed > WIP balance, Please Issued Material this Part No " + json2.item_rm_id);
+                                        return false;
+                                    }
+
+                                    combinedBom.push({
+                                        checksheet_number: checksheet_number,
+                                        customer_id: customer_id,
+                                        item_fg_id: json2.item_fg_id,
+                                        item_rm_id: json2.item_rm_id,
+                                        workorder: json2.workorder,
+                                        wp: json2.wp,
+                                        uom: json2.uom,
+                                        qpa: json2.qpa,
+                                        rfg: json2.rfg,
+                                        consumed: json2.consumed,
+                                        issued: json2.issued
+                                    });
+                                }
+
+                                if(totalrows2 == 0){
+                                    toastr.error("Data Bill of Material Lists still empty");
+                                    return false;
+                                }
+
                                 if(totalrows > 0){
                                     if (customer_id != "" && trans_date_from != "" && trans_date_to != "" && item_fg_id != "") {
                                         $('#dlg_insert').dialog('close');
 
-                                        requestData(totalrows, rows);
-                                        function requestData(total, json, number = 1, value = 0, success = 1, failed = 1) {
-                                            Swal.fire({
-                                                title: 'Please Wait. . .',
-                                                showConfirmButton: false,
-                                                allowOutsideClick: false,
-                                                allowEscapeKey: false,
-                                                didOpen: () => {
-                                                    Swal.showLoading();
-                                                },
-                                            });
+                                        Swal.fire({
+                                            title: 'Please Wait. . .',
+                                            showConfirmButton: false,
+                                            allowOutsideClick: false,
+                                            allowEscapeKey: false,
+                                            didOpen: () => {
+                                                Swal.showLoading();
+                                            },
+                                        });
 
+                                        $.ajax({
+                                            type: "post",
+                                            url: '<?= base_url('warehouse/wip_receipts/create2') ?>',
+                                            data: JSON.stringify({ dataBom: combinedBom}),
+                                            dataType: "json",
+                                            success: function(result) {
+                                                requestData(totalrows, rows);
+                                            }
+                                        });
+
+                                        // requestData(totalrows, rows);
+                                        function requestData(total, json, number = 1, value = 0, success = 1, failed = 1) {
                                             var i = (number - 1);
                                             if (value < 100) {
                                                 value = Math.floor((number / total) * 100);
@@ -482,12 +590,7 @@
                                                     dataType: "json",
                                                     success: function(result) {
                                                         if (result.theme == "success") {
-                                                            if (value >= 100) {
-                                                                create_label(checksheet_number, json[i].workorder, json[i].qty, json[i].qty_box, json[i].label_box, total, json, number, value, success, failed, 1);
-                                                            }else{
-                                                                create_label(checksheet_number, json[i].workorder, json[i].qty, json[i].qty_box, json[i].label_box, total, json, number, value, success, failed, 0);
-                                                                // requestData(total, json, number + 1, value, success + 1, failed + 0);
-                                                            }
+                                                            create_label(checksheet_number, json[i].workorder, json[i].qty, json[i].qty_box, json[i].label_box, total, json, number, value, success, failed, 1);
                                                         } else {
                                                             if (value >= 100) {
                                                                 Swal.close();
@@ -622,78 +725,95 @@
         $.messager.prompt('Repeat Label', 'Please input The Password', function(r){
             if (r == "ULANG"){
 
-                $("#dlg_label").dialog('open');
-
-                requestDataBox(label_box, qty);
-                function requestDataBox(total, qty, number = 1, value = 0, success = 1, failed = 1) {
-                    if (value < 100) {
-                        value = Math.floor((number / total) * 100);
-                        $('#p_upload').progressbar('setValue', value);
-                        $('#p_start').html(number);
-                        $('#p_finish').html(total);
-
-                        if (parseInt(qty) > parseInt(lot_box)) {
-                            var qty_final = lot_box;
-                        } else {
-                            var qty_final = qty;
+                $.ajax({
+                    type: "POST",
+                    async: true,
+                    url: "<?= base_url('warehouse/wip_receipts/deleteLabel') ?>",
+                    data: {
+                        "checksheet_number": checksheet_number
+                    },
+                    cache: false,
+                    dataType: "json",
+                    success: function(delLabel) {
+                        if (delLabel.theme == "success") {
+                            $("#dlg_label").dialog('open');
+                            requestDataBox(label_box, qty);
+                        }else{
+                            toastr.error(delLabel.message);
+                            return false;
                         }
+                        
+                        function requestDataBox(total, qty, number = 1, value = 0, success = 1, failed = 1) {
+                            if (value < 100) {
+                                value = Math.floor((number / total) * 100);
+                                $('#p_upload').progressbar('setValue', value);
+                                $('#p_start').html(number);
+                                $('#p_finish').html(total);
 
-                        $.ajax({
-                            type: "POST",
-                            async: true,
-                            url: "<?= base_url('warehouse/wip_receipts/create_label_box') ?>",
-                            data: {
-                                "checksheet_number": checksheet_number,
-                                "workorder": workorder,
-                                "qty": qty_final,
-                            },
-                            cache: false,
-                            dataType: "json",
-                            success: function(result) {
-                                if (result.theme == "success") {
-                                    $('#p_success').html(success);
-                                    var title = "<b style='color: green;'>" + result.title + "</b> | " + result.message;
-
-                                    var qty_balance = (parseInt(qty) - parseInt(lot_box));
-                                    requestDataBox(total, qty_balance, number + 1, value, success + 1, failed + 0);
+                                if (parseInt(qty) > parseInt(lot_box)) {
+                                    var qty_final = lot_box;
                                 } else {
-                                    $('#p_failed').html(failed);
-                                    var title = "<b style='color: red;'>" + result.title + "</b> | " + result.message;
-
-                                    var qty_balance = (parseInt(qty) - parseInt(lot_box));
-                                    requestDataBox(total, qty_balance, number + 1, value, success + 0, failed + 1);
+                                    var qty_final = qty;
                                 }
 
-                                $("#p_remarks").append(title + "<br>");
+                                $.ajax({
+                                    type: "POST",
+                                    async: true,
+                                    url: "<?= base_url('warehouse/wip_receipts/create_label_box') ?>",
+                                    data: {
+                                        "checksheet_number": checksheet_number,
+                                        "workorder": workorder,
+                                        "qty": qty_final,
+                                    },
+                                    cache: false,
+                                    dataType: "json",
+                                    success: function(result) {
+                                        if (result.theme == "success") {
+                                            $('#p_success').html(success);
+                                            var title = "<b style='color: green;'>" + result.title + "</b> | " + result.message;
 
-                                // if (value == 100) {
-                                //     requestDataLabel(label, qty);
-                                // }
+                                            var qty_balance = (parseInt(qty) - parseInt(lot_box));
+                                            requestDataBox(total, qty_balance, number + 1, value, success + 1, failed + 0);
+                                        } else {
+                                            $('#p_failed').html(failed);
+                                            var title = "<b style='color: red;'>" + result.title + "</b> | " + result.message;
 
-                                if (value == 100) {
-                                    $("#dlg_label").dialog('close');
-                                    $('#dg').datagrid('reload');
-                                    toastr.success("Create Label Completed");
-
-                                    Swal.fire({
-                                        title: "Create Data Successfully",
-                                        icon: "success",
-                                        confirmButtonText: 'Ok',
-                                        allowOutsideClick: false,
-                                    }).then((result) => {
-                                        if (result.isConfirmed) {
-                                            window.location.reload();
+                                            var qty_balance = (parseInt(qty) - parseInt(lot_box));
+                                            requestDataBox(total, qty_balance, number + 1, value, success + 0, failed + 1);
                                         }
-                                    });
-                                    // filter_checksheet();
-                                }
+
+                                        $("#p_remarks").append(title + "<br>");
+
+                                        // if (value == 100) {
+                                        //     requestDataLabel(label, qty);
+                                        // }
+
+                                        if (value == 100) {
+                                            $("#dlg_label").dialog('close');
+                                            $('#dg').datagrid('reload');
+                                            toastr.success("Create Label Completed");
+
+                                            Swal.fire({
+                                                title: "Create Data Successfully",
+                                                icon: "success",
+                                                confirmButtonText: 'Ok',
+                                                allowOutsideClick: false,
+                                            }).then((result) => {
+                                                if (result.isConfirmed) {
+                                                    window.location.reload();
+                                                }
+                                            });
+                                            // filter_checksheet();
+                                        }
+                                    }
+                                }).fail(function(jqXHR, textStatus) {
+                                    toastr.error("Connection Time Out, Please Wait");
+                                    requestDataBox(total, qty, number, value, success, failed);
+                                });
                             }
-                        }).fail(function(jqXHR, textStatus) {
-                            toastr.error("Connection Time Out, Please Wait");
-                            requestDataBox(total, qty, number, value, success, failed);
-                        });
+                        }
                     }
-                }
+                });
             }
         });
     }
@@ -818,7 +938,9 @@
     }
 
     function BtnPrintBox(val, row) {
-        if (row.scan == 0) {
+        if(row.label_box != row.total_label){
+            return '-';
+        }else if (row.scan == 0) {
             return '<a class="btn btn-primary w-100" style="pointer-events: visible; opacity:1;" target="_blank" href="<?= base_url('warehouse/wip_receipts/print_label_box/') ?>' + window.btoa(row.checksheet_number) + '"><i class="fa fa-print"></i> Print</a>';
         } else {
             var details = "printBoxR('"+window.btoa(row.checksheet_number)+"')";
@@ -835,7 +957,7 @@
     }
 
     function BtnRepeatBox(val, row) {
-        if(row.total_label == 0){
+        if(row.total_label == 0 || row.label_box != row.total_label){
             var details = "create_label2('"+row.checksheet_number+"','"+row.workorder+"','"+row.qty+"','"+row.lot_box+"','"+row.label_box+"')";
             return '<a class="btn btn-primary w-100" style="pointer-events: visible; opacity:1;" onclick="'+details+'">Repeat</a>';
         }else{
@@ -862,6 +984,12 @@
             return 'Scanned';
         }
     };
+
+    function formatWip(val,row){
+        if (val < 0){
+            return 'background-color:red;color:white;';
+        }
+    }
 
     //Format Datepicker
     function myformatter(date) {

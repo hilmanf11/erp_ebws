@@ -85,9 +85,11 @@ class Issued_others_store_out extends CI_Controller
     public function datatableDetails($request_no)
     {
         $request_no = base64_decode($request_no);
+        $filter_from = date("Y-m-d");
 
         $query = $this->db->query("
-            select a.item_rm_id, d.number as item_rm_number, d.name as item_rm_name, d.uom, 
+            select a.item_rm_id, d.number as item_rm_number, d.name as item_rm_name, d.uom,
+                    coalesce(e.ending_stock, 0) as ending_stock,
                     (coalesce(b.qty_in,0) - coalesce(c.qty_out,0)) as stock, 
                     (coalesce(b.qty_in,0) - coalesce(c.qty_out,0)) as qty,
                     ((coalesce(b.qty_in,0) - coalesce(c.qty_out,0)) - (coalesce(b.qty_in,0) - coalesce(c.qty_out,0))) as balance,
@@ -95,6 +97,16 @@ class Issued_others_store_out extends CI_Controller
             from (select request_no, item_rm_id, remarks from issued_others_store group by request_no,item_rm_id) a
             left join (select request_no, item_rm_id, sum(qty) as qty_in from issued_others_store where type='IN' group by request_no, item_rm_id) b on a.request_no = b.request_no AND a.item_rm_id = b.item_rm_id
             left join (select request_no, item_rm_id, sum(qty) as qty_out from issued_others_store where type='OUT' group by request_no, item_rm_id) c on a.request_no = c.request_no AND a.item_rm_id = c.item_rm_id
+            left join (SELECT
+                    a.id,
+                    (COALESCE(c.qty_in,0) + COALESCE(e.sto_qty_in,0) - COALESCE(d.qty_out,0) + COALESCE(f.sto_qty_out,0)) AS ending_stock
+                FROM item_rm a 
+                JOIN item_familys b ON a.item_family_id = b.id AND b.number != '006'
+                JOIN (select item_rm_id, sum(qty) as qty_in from issued_others_store where trans_date <= '$filter_from' and `type` = 'IN' and status <> '2' GROUP BY item_rm_id) c ON a.id = c.item_rm_id
+                LEFT JOIN (select item_rm_id, sum(qty) as qty_out from issued_others_store where trans_date <= '$filter_from' and `type` = 'OUT' and status <> '2' GROUP BY item_rm_id) d ON a.id = d.item_rm_id
+                LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as sto_qty_in FROM sto_store WHERE type = 'IN' and trans_date <= '$filter_from' and (approved_to = '' or approved_to is null) GROUP BY item_rm_id) e ON a.id = e.item_rm_id
+                LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as sto_qty_out FROM sto_store WHERE type = 'OUT' and trans_date <= '$filter_from' and (approved_to = '' or approved_to is null) GROUP BY item_rm_id) f ON a.id = f.item_rm_id
+                GROUP BY a.id) e on a.item_rm_id = e.id
             join item_rm d on a.item_rm_id = d.id
             where a.request_no = '" . $request_no . "'
             order by d.number desc

@@ -4,7 +4,7 @@
         <th data-options="field:'id',width:230,halign:'center'">Receipt No</th>
         <th data-options="field:'total_scan',width:80,align:'center',formatter:statusformat,styler:statusStyle">Status GRN<br>(Scan In)</th>
         <th data-options="field:'status',width:80,align:'center',formatter:statusformatFinance,styler:statusStyleFinance">Status<br>Invoice</th>
-        <th data-options="field:'qas',width:80,align:'center',styler:statusStyleQas">QAS<br>Status</th>
+        <th data-options="field:'qas',width:80,align:'center',formatter:statusformatQas,styler:statusStyleQas">QAS<br>Status</th>
     </thead>
     <thead>
         <tr>
@@ -188,9 +188,9 @@
                     <th data-options="field:'uom',width:80">UoM</th>
                     <th data-options="field:'qty_po',width:80,editor:{type:'numberbox', options:{readonly:true}}">PO</th>
                     <th data-options="field:'qty_delivery',width:80,editor:{type:'numberbox', options:{readonly:true}}">Delivery</th>
-                    <th data-options="field:'qty_receipt',width:80,editor:{type:'numberbox', options:{readonly:true}}">Gate Entry</th>
-                    <th data-options="field:'qty_receipt2',width:80,editor:{type:'numberbox', options:{required:true}}">Receipt</th>
-                    <th data-options="field:'qty_balance',width:80,editor:{type:'numberbox', options:{readonly:true}}">Balance</th>
+                    <th data-options="field:'qty_receipt',width:80,editor:{type:'numberbox', options:{readonly:true}}">Receipt</th>
+                    <!-- <th data-options="field:'qty_receipt2',width:80,editor:{type:'numberbox', options:{required:true}}">Receipt</th> -->
+                    <!-- <th data-options="field:'qty_balance',width:80,editor:{type:'numberbox', options:{readonly:true}}">Balance</th> -->
                     <th data-options="field:'currency',width:80,editor:{type:'textbox', options:{readonly:true}}">Currency</th>
                     <th data-options="field:'price',width:80,editor:{type:'numberbox', options:{readonly:true, precision:5}}">Price</th>
                     <th data-options="field:'total',width:80,editor:{type:'numberbox', options:{readonly:true, precision:2}}">Total Price</th>
@@ -461,14 +461,14 @@
                     //     }
                     // });
 
-                    qty_receipt2.add(qty_mpq).numberbox({
-                        onChange: function(value) {
-                            var f_qty_po = qty_po.numberbox('getValue');
-                            var f_qty_delivery = qty_delivery.numberbox('getValue');
-                            var f_qty_receipt = qty_receipt.numberbox('getValue');
-                            var f_qty_mpq = qty_mpq.numberbox('getValue');
+                    // qty_receipt2.add(qty_mpq).numberbox({
+                    //     onChange: function(value) {
+                    //         var f_qty_po = qty_po.numberbox('getValue');
+                    //         var f_qty_delivery = qty_delivery.numberbox('getValue');
+                    //         var f_qty_receipt = qty_receipt.numberbox('getValue');
+                    //         var f_qty_mpq = qty_mpq.numberbox('getValue');
 
-                            qty_balance.numberbox('setValue', (f_qty_receipt - value));
+                    //         qty_balance.numberbox('setValue', (f_qty_receipt - value));
 
                             // if (parseInt(f_qty_delivery) == 0) {
                             //     if (parseInt(f_qty_po) >= parseInt(f_qty_receipt)) {
@@ -491,8 +491,8 @@
                             //         // warehouse.numberbox('setValue', (qty_whs - 0));
                             //     }
                             // }
-                        }
-                    });
+                        // }
+                    // });
                 }
             });
         }
@@ -1062,6 +1062,22 @@
             return "<b style='color:green;'>OPEN</b>";
         }
     }
+    
+    function statusformatQas(value, row) {
+        if(row.status == "2"){
+            return "<b style='color:blue;'>CANCEL</b>";
+        // } else if (row.status == "1") {
+        //     return "<b style='color:red;'>CLOSED</b>";
+        } else {
+            if (value == "OPEN") {
+                return "<b style='color:green;'>OPEN</b>";
+            } else if(value == "NG"){
+                return "<b style='color:red;'>NG</b>";
+            } else {
+                return "<b style='color:red;'>CLOSED</b>";
+            }
+        }
+    }
 
     function statusStyleFinance(value, row, index) {
         if (value == 1) {
@@ -1074,10 +1090,16 @@
     }
 
     function statusStyleQas(value, row, index) {
-        if (value == "OPEN") {
-            return 'background-color:#C8FFCC; font-weight:bold; color:green;';
+        if(row.status == "2"){
+            return 'background-color:#b2c2ff;';
+        // } else if (row.status == "1") {
+        //     return 'background-color:#FFC8C8; font-weight:bold; color:red;';
         } else {
-            return 'background-color:#FFC8C8; font-weight:bold; color:red;';
+            if (value == "OPEN") {
+                return 'background-color:#C8FFCC; font-weight:bold; color:green;';
+            } else {
+                return 'background-color:#FFC8C8; font-weight:bold; color:red;';
+            }
         }
     }
 

@@ -218,6 +218,44 @@ class Report_history_transactions_other extends CI_Controller
                     LEFT JOIN customers c ON a.company_id = c.id 
                     WHERE a.item_id = '$item_rm_id' and a.transaction_date = '$working_date' and (a.approved_to = '' or a.approved_to is null)");
 
+                    //STO
+                    foreach ($sto_rms as $sto_rm) {
+                        if ($sto_rm->type == "IN") {
+                            $type = "STO ADJUSTMENT IN";
+                            $qty_in = $sto_rm->qty;
+                            $qty_out = 0;
+                            $balance = ($begin + $sto_rm->qty);
+                        } else {
+                            $type = "STO ADJUSTMENT OUT";
+                            $qty_in = 0;
+                            $qty_out = $sto_rm->qty;
+                            $balance = ($begin - $sto_rm->qty);
+                        }
+
+                        $html .= '  <tr>
+                                        <td></td>
+                                        <td style="text-align:center">' . $nod . '</td>
+                                        <td>' . $type . '</td>
+                                        <td>' . $sto_rm->username . '</td>
+                                        <td>' . $sto_rm->trans_date . '</td>
+                                        <td>-</td>
+                                        <td>-</td>
+                                        <td>-</td>
+                                        <td>' . $sto_rm->document_no . '</td>
+                                        <td style="text-align:right;">' . number_format($begin, 2) . '</td>
+                                        <td style="text-align:right;">' . number_format($qty_in, 2) . '</td>
+                                        <td style="text-align:right;">' . number_format($qty_out)  . '</td>
+                                        <td style="text-align:right;">' . number_format($balance, 2)  . '</td>
+                                    </tr>';
+                        if ($sto_rm->type == "IN") {
+                            $begin += $sto_rm->qty;
+                        } else {
+                            $begin -= $sto_rm->qty;
+                        }
+
+                        $nod++;
+                    }
+
                     //Purchase Order Receipt
                     foreach ($receipts as $receipt) {
                         $balance = ($begin + ($receipt->qty_receipt - $end_qty));
@@ -300,44 +338,6 @@ class Report_history_transactions_other extends CI_Controller
                                         <td style="text-align:right;">' . number_format($balance, 2)  . '</td>
                                     </tr>';
                         $begin -= $issued->qty;
-                        $nod++;
-                    }
-
-                    //STO
-                    foreach ($sto_rms as $sto_rm) {
-                        if ($sto_rm->type == "IN") {
-                            $type = "STO ADJUSTMENT IN";
-                            $qty_in = $sto_rm->qty;
-                            $qty_out = 0;
-                            $balance = ($begin + $sto_rm->qty);
-                        } else {
-                            $type = "STO ADJUSTMENT OUT";
-                            $qty_in = 0;
-                            $qty_out = $sto_rm->qty;
-                            $balance = ($begin - $sto_rm->qty);
-                        }
-
-                        $html .= '  <tr>
-                                        <td></td>
-                                        <td style="text-align:center">' . $nod . '</td>
-                                        <td>' . $type . '</td>
-                                        <td>' . $sto_rm->username . '</td>
-                                        <td>' . $sto_rm->trans_date . '</td>
-                                        <td>-</td>
-                                        <td>-</td>
-                                        <td>-</td>
-                                        <td>' . $sto_rm->document_no . '</td>
-                                        <td style="text-align:right;">' . number_format($begin, 2) . '</td>
-                                        <td style="text-align:right;">' . number_format($qty_in, 2) . '</td>
-                                        <td style="text-align:right;">' . number_format($qty_out)  . '</td>
-                                        <td style="text-align:right;">' . number_format($balance, 2)  . '</td>
-                                    </tr>';
-                        if ($sto_rm->type == "IN") {
-                            $begin += $sto_rm->qty;
-                        } else {
-                            $begin -= $sto_rm->qty;
-                        }
-
                         $nod++;
                     }
                 }

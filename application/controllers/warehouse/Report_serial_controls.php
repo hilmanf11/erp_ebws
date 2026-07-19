@@ -86,13 +86,15 @@ class Report_serial_controls extends CI_Controller
         $this->db->from('scan_item_receipts_fg a');
         $this->db->join('wip_receipts b', 'a.checksheet_number = b.checksheet_number', 'left');
         $this->db->join('os_fg c', 'a.workorder = c.id', 'left');
-        $this->db->join('item_fg d', '(b.item_fg_id = d.id OR c.item_fg_id = d.id)');
+        $this->db->join('rgp_transactions g', 'a.workorder = g.id', 'left');
+        $this->db->join('sales_returns h', 'a.checksheet_number = h.return_id', 'left');
+        $this->db->join('item_fg d', '(b.item_fg_id = d.id OR c.item_fg_id = d.id or g.item_id = d.id or h.item_fg_id = d.id)');
         $this->db->join("(SELECT a.checksheet_label, c.delivery_note_no, b.delivery_order_no, b.delivery_order_date, b.sales_order_no
             FROM shipping_orders a
             JOIN delivery_orders b ON a.delivery_order_no = b.delivery_order_no
             JOIN delivery_notes c ON b.delivery_order_no = c.delivery_order_no
             GROUP BY a.id) e", 'a.checksheet_label = e.checksheet_label', 'left');
-            $this->db->join('customers f', 'b.customer_id = f.id', 'left');
+        $this->db->join('customers f', '(b.customer_id = f.id or h.customer_id = f.id)', 'left');
         $this->db->where("DATE_FORMAT(a.created_date, '%Y-%m') = '$period'");
         if($filter_customer != ""){
             $this->db->like('f.id', $filter_customer);
@@ -156,33 +158,6 @@ class Report_serial_controls extends CI_Controller
         $no = 1;
         foreach ($records as $data) {
             $barcode_divides_fg = $this->crud->reads("barcode_divides_fg", ["label_no" => $data['checksheet_label']]);
-            foreach ($barcode_divides_fg as $barcode) {
-
-                if($barcode->status == "0"){
-                    $status = "OPEN";
-                    $style = "style='text-align: center; background: green; color:white;'";
-                }else{
-                    $status = "CLOSED";
-                    $style = "style='text-align: center; background: red; color:white;'";
-                }
-
-                $html .= '  <tr>
-                            <td style="text-align:center">' . $no . '</td>
-                            <td '.$style.'>' . $status . '</td>
-                            <td>' . $data['checksheet_number'] . '</td>
-                            <td>' . $data['delivery_note_no'] . '</td>
-                            <td>' . $data['delivery_order_no'] . '</td>
-                            <td>' . $data['delivery_order_date'] . '</td>
-                            <td>' . $data['sales_order_no'] . '</td>
-                            <td>' . $data['customer_name'] . '</td>
-                            <td>' . $data['item_no'] . '</td>
-                            <td>' . $data['item_name'] . '</td>
-                            <td>' . $barcode->label_divided . '</td>
-                            <td>' . number_format($barcode->qty, 2) . '</td>
-                        </tr>';
-
-            }
-
             if(empty($data['delivery_note_no']) && $data['status'] == "0"){
                 $status = "OPEN";
                 $style = "style='text-align: center; background: green; color:white;'";
@@ -209,6 +184,42 @@ class Report_serial_controls extends CI_Controller
                             <td>' . number_format($data['qty'], 2) . '</td>
                         </tr>';
             $no++;
+
+            foreach ($barcode_divides_fg as $barcode) {
+
+                $shipping = $this->db->query("SELECT a.checksheet_label, c.delivery_note_no, b.delivery_order_no, b.delivery_order_date, b.sales_order_no, d.name as customer_name
+                    FROM shipping_orders a
+                    JOIN delivery_orders b ON a.delivery_order_no = b.delivery_order_no
+                    JOIN delivery_notes c ON b.delivery_order_no = c.delivery_order_no
+                    JOIN customers d ON c.customer_id = d.id
+                    WHERE a.checksheet_label = '$barcode->label_divided'
+                    GROUP BY a.id");
+                $dataship = $shipping->row_array();
+
+                if($barcode->status == "0"){
+                    $status = "OPEN";
+                    $style = "style='text-align: center; background: green; color:white;'";
+                }else{
+                    $status = "CLOSED";
+                    $style = "style='text-align: center; background: red; color:white;'";
+                }
+
+                $html .= '  <tr>
+                            <td style="text-align:center">' . $no . '</td>
+                            <td '.$style.'>' . $status . '</td>
+                            <td>' . $data['checksheet_number'] . '</td>
+                            <td>' . $dataship['delivery_note_no'] . '</td>
+                            <td>' . $dataship['delivery_order_no'] . '</td>
+                            <td>' . $dataship['delivery_order_date'] . '</td>
+                            <td>' . $dataship['sales_order_no'] . '</td>
+                            <td>' . $dataship['customer_name'] . '</td>
+                            <td>' . $data['item_no'] . '</td>
+                            <td>' . $data['item_name'] . '</td>
+                            <td>' . $barcode->label_divided . '</td>
+                            <td>' . number_format($barcode->qty, 2) . '</td>
+                        </tr>';
+                $no++;
+            }
         }
         $html .= '</table></body></html>';
         echo $html;

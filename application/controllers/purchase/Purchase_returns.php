@@ -140,7 +140,7 @@ class purchase_returns extends CI_Controller
         //Select Query
         $id = $_POST['id'];
         if ($id === "0") {
-            $this->db->select('return_no, return_date, return_name, po_no, sum(a.qty) as qty, a.status, c.name as supplier_name');
+            $this->db->select('return_no, return_date, source, return_name, po_no, sum(a.qty) as qty, a.status, c.name as supplier_name');
             $this->db->from('purchase_returns a');
             $this->db->join('item_rm b', 'a.item_rm_id = b.id');
             $this->db->join('suppliers c', 'a.supplier_id = c.id');
@@ -167,6 +167,7 @@ class purchase_returns extends CI_Controller
                     "return_date" => $record['return_date'],
                     "supplier_name" => $record['supplier_name'],
                     "return_name" => $record['return_name'],
+                    "source" => $record['source'],
                     "qty" => $record['qty'],
                     "status" => $record['status'],
                     "state" => "closed",
@@ -214,6 +215,7 @@ class purchase_returns extends CI_Controller
                     "invoice_no" => $record['invoice_no'],
                     "supplier_name" => $record['supplier_name'],
                     "remarks" => $record['remarks'],
+                    "source" => $record['source'],
                     "uom" => $record['uom'],
                     "qty" => $record['qty'],
                     "mpq" => $record['mpq'],
@@ -240,7 +242,7 @@ class purchase_returns extends CI_Controller
                 } else {
                     $send = $this->crud->create('purchase_returns', $post);
                     $this->crud->update('scan_item_rejections', ["receipt_id" => $post['receipt_id']], ["status" => 1]);
-                    $this->crud->update('scraps', ["receipt_id" => $post['document'], "item_rm_id" => $post['item_rm_id']], ["status" => 1]);
+                    $this->crud->update('scraps', ["document" => $post['receipt_id'], "item_rm_id" => $post['item_rm_id']], ["status" => 1]);
                     echo $send;
                 }
             } else {
@@ -274,7 +276,7 @@ class purchase_returns extends CI_Controller
         $data = $this->input->post();
         $send = $this->crud->delete('purchase_returns', $data);
         $this->db->update('scan_item_rejections', ["status" => 0], ["receipt_id" => $data['receipt_id']]);
-        $this->db->update('scraps', ["status" => 0], ["receipt_id" => $data['document'], "item_rm_id" => $data['item_rm_id']]);
+        $this->db->update('scraps', ["status" => 0], ["document" => $data['receipt_id'], "item_rm_id" => $data['item_rm_id']]);
         echo $send;
     }
 
@@ -355,7 +357,7 @@ class purchase_returns extends CI_Controller
                     <div class="print">';
         $html .= '  <table id="customers">
                         <tr>
-                            <td colspan="14" style="font-size:15px;" align="center"><b>Delivery Challan cum Debit Advice</b><br><i><u>Under Rule-55 </u><b>(2)</b> of CGST Act 2017</i></td>
+                            <td colspan="14" style="font-size:15px;" align="center"><b>Delivery Challan cum Debit Note</b><br><i><u>Under Rule-55 </u><b>(2)</b> of CGST Act 2017</i></td>
                         </tr>
                         <tr>
                             <td colspan="14" align="center"><b>' . @$config->name . ' PVT. LTD.</b><br> ' . @$config->address2 . '<br>GSTIN : ' . @$config->gst_no . '</td>

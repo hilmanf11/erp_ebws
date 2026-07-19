@@ -318,7 +318,7 @@
                         options: {
                             required: true,
                             readonly: true,
-                            precision: 2
+                            precision: 5
                         }
                     }
                 }, {

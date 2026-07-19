@@ -5,8 +5,8 @@
             <div style="float: left; width:50%;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Trans Date</span>
-                    <input style="width:30%;" id="filter_from" class="easyui-datebox" data-options="prompt:'Start Date',formatter:myformatter,parser:myparser, editable:false">
-                    <input style="width:30%;" id="filter_to" class="easyui-datebox" data-options="prompt:'Finish Date',formatter:myformatter,parser:myparser, editable:false">
+                    <input style="width:30%;" id="filter_from" value="<?= date("Y-m-01") ?>" class="easyui-datebox" data-options="prompt:'Start Date',formatter:myformatter,parser:myparser, editable:false">
+                    <input style="width:30%;" id="filter_to" value="<?= date("Y-m-t") ?>" class="easyui-datebox" data-options="prompt:'Finish Date',formatter:myformatter,parser:myparser, editable:false">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;"></span>
@@ -47,8 +47,8 @@
             "&filter_currency=" + window.btoa(filter_currency) +
             "&filter_account=" + window.btoa(filter_account);
 
-        if (filter_account == "") {
-            toastr.warning("Please select Account No!");
+        if (filter_from == "" || filter_to == "" || filter_account == "") {
+            toastr.warning("Please select Trans Date & Account No!");
         } else {
             $("#printout").contents().find('html').html("<center><br><br><br><b style='font-size:20px;'>Please Wait...</b></center>");
             $("#printout").attr('src', '<?= base_url('finance/report_bank_statements/print') ?>' + url);
@@ -66,8 +66,8 @@
             "&filter_currency=" + window.btoa(filter_currency) +
             "&filter_account=" + window.btoa(filter_account);
 
-        if (filter_account == "") {
-            toastr.warning("Please select Account No!");
+        if (filter_from == "" || filter_to == "" || filter_account == "") {
+            toastr.warning("Please select Trans Date & Account No!");
         } else {
             window.location.assign('<?= base_url('finance/report_bank_statements/print/excel') ?>' + url);
         }

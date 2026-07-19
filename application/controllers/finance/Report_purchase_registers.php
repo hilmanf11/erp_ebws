@@ -107,7 +107,7 @@ class Report_purchase_registers extends CI_Controller
             a.invoice_no,
             a.trans_date AS invoice_date,
             a.journal_date as trans_date,
-            a.description AS item_rm_id,
+            REPLACE(REPLACE(a.description, \"'\", \"\"), '\"', '') AS item_rm_id,
             '-' AS asset_code,
             '-' AS item_rm_number,
             '-' AS product_family,
@@ -128,7 +128,8 @@ class Report_purchase_registers extends CI_Controller
             a.account_name,
             a.gst, 
             a.tds_sup, 
-            a.pen");
+            a.pen,
+            'JOURNAL' as flag");
         $this->db->from("(SELECT a.*, b.name as supplier_name, b.state, b.gst, b.tds as tds_sup, b.pen FROM journal_postings a JOIN suppliers b ON a.company_id = b.id WHERE a.journal_type = 'GL - SUPPLIER') a");
         $this->db->join("(SELECT number, account_number, SUM(local_debit) as local_debit, SUM(local_credit) as local_credit FROM journal_postings WHERE account_number IN ('20100003','17000010','17000013') GROUP BY number) b", "a.number = b.number", 'left');
         $this->db->join("(SELECT number, account_number, SUM(local_debit) as local_debit, SUM(local_credit) as local_credit FROM journal_postings WHERE account_number IN ('20100004','17000009','17000012') GROUP BY number) c", "a.number = c.number", 'left');

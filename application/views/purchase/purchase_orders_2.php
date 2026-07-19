@@ -156,12 +156,12 @@
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Price</span>
-                <input style="width:40%;" name="price" id="price" readonly class="easyui-numberbox" data-options="precision: 4">
+                <input style="width:40%;" name="price" id="price" readonly class="easyui-numberbox" data-options="precision: 5">
                 <a href="javascript:;" class="easyui-linkbutton" onclick="changePrice()"><i class="fa fa-rotate-left"></i> Sync</a>
             </div>
             <div class="fitem">
                 <span style="width:35%; display:inline-block;">Total</span>
-                <input style="width:40%;" name="total" id="total" readonly class="easyui-numberbox" data-options="precision: 4">
+                <input style="width:40%;" name="total" id="total" readonly class="easyui-numberbox" data-options="precision: 5">
             </div>
             <div class="fitem" hidden>
                 <span style="width:35%; display:inline-block;">Revision</span>
@@ -594,7 +594,7 @@
                                 options: {
                                     required: true,
                                     readonly: true,
-                                    precision: 4
+                                    precision: 5
                                 }
                             },
                             formatter: numberformat
@@ -1192,8 +1192,14 @@
     }
 
     function numberformat(value, row) {
+        if(row.currency == "INR"){
+            var digit = 4;
+        }else{
+            var digit = 5;
+        }
+
         const formatter = new Intl.NumberFormat("ja-JP", {
-            minimumFractionDigits: 4
+            minimumFractionDigits: digit
         });
         return "<b>" + formatter.format(value) + "</b>";
     }

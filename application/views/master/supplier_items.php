@@ -173,7 +173,7 @@
             <div style="width: 49%; float: left;">
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Price</span>
-                    <input style="width:60%;" name="price" id="price" class="easyui-numberbox" required data-options="precision:4">
+                    <input style="width:60%;" name="price" id="price" class="easyui-numberbox" required data-options="precision:5">
                 </div>
                 <div class="fitem">
                     <span style="width:35%; display:inline-block;">Valid Date</span>
@@ -484,8 +484,15 @@
 
     function numberformat(value, row) {
         if (value != null) {
+
+            if(row.currency == "INR"){
+                var digit = 4;
+            }else{
+                var digit = 5;
+            }
+
             const formatter = new Intl.NumberFormat('ja-JP', {
-                minimumFractionDigits: 4
+                minimumFractionDigits: digit
             });
             return "<b>" + formatter.format(value) + "</b>";
         }
@@ -770,8 +777,8 @@
             }],
             columns: [
                 [{
-                    field: 'number',
-                    title: 'Supplier No',
+                    field: 'id',
+                    title: 'Supplier ID',
                     width: 100
                 }, {
                     field: 'name',
@@ -851,7 +858,7 @@
             }],
             onSelect: function(row) {
                 $('#filter_item_rm').combogrid({
-                    url: '<?= base_url('planning/item_rm/reads/') ?>' + row.id,
+                    url: '<?= base_url('master/item_rm/reads/') ?>' + row.id,
                     panelWidth: 320,
                     idField: 'id',
                     textField: 'number',

@@ -387,66 +387,84 @@
     function reverse() {
         var row = $('#dg').datagrid('getSelected');
         if (row) {
-            $('#dlg_insert').dialog('open');
-            $('#frm_insert').form('load', row);
-
-            setTimeout(function() {
-                balance_journal();
-                number("<?= $menus_id ?>", "<?= date("Y-m-d") ?>");
-            }, 2000);
-
-            $("#note").textbox('setValue', 'REVERSAL');
-            $("#receipt_date").datebox('enable');
-            $("#receipt_type").combobox('enable');
-            $("#customer_id").combogrid('enable');
-            $("#plant").combobox('enable');
-            $("#sales_invoice").combobox('enable');
-            $("#showExchange").hide();
-
-            var receipt_by = $("#receipt_by").combobox('getValue');
-
-            if (receipt_by == "CHEQUE") {
-                $("#f_cheque_no").show();
-            } else {
-                $("#f_cheque_no").hide();
+            if(row.gl_no == null){
+                toastr.error("Please Posting Journal first!");
+                return false;
             }
 
-            $("#customer_id").combobox({
-                url: '<?= base_url('master/customers/reads') ?>',
-                valueField: 'id',
-                textField: 'name',
-                prompt: "Choose Customer",
-                onLoadSuccess: function(load_customer) {
-                    $("#customer_id").combobox('setValue', row.customer_id);
-                },
-                onSelect: function(customer) {
-                    $("#plant").combobox({
-                        url: '<?= base_url('master/customers/readAddress/') ?>' + btoa(customer.id),
-                        valueField: 'plant',
-                        textField: 'plant',
-                        prompt: "Choose Plant",
-                        onLoadSuccess: function(load_invoice) {
-                            $("#plant").combobox('setValue', row.plant);
+            $.ajax({
+                type: "post",
+                url: "<?= base_url('finance/ar_receipts/checkReversal') ?>",
+                data: "receipt_no=" + row.receipt_no,
+                dataType: "json",
+                success: function(reverseData) {
+                    if(parseInt(reverseData.total) > 0){
+                        toastr.error("This Receipt already Reversal on " + reverseData.number);
+                        return false;
+                    }
+                    
+                    $('#dlg_insert').dialog('open');
+                    $('#frm_insert').form('load', row);
+
+                    setTimeout(function() {
+                        balance_journal();
+                        number("<?= $menus_id ?>", "<?= date("Y-m-d") ?>");
+                    }, 2000);
+
+                    $("#note").textbox('setValue', 'REVERSAL from ' + row.receipt_no);
+                    $("#receipt_date").datebox('enable');
+                    $("#receipt_type").combobox('enable');
+                    $("#customer_id").combogrid('enable');
+                    $("#plant").combobox('enable');
+                    $("#sales_invoice").combobox('enable');
+                    $("#showExchange").hide();
+
+                    var receipt_by = $("#receipt_by").combobox('getValue');
+
+                    if (receipt_by == "CHEQUE") {
+                        $("#f_cheque_no").show();
+                    } else {
+                        $("#f_cheque_no").hide();
+                    }
+
+                    $("#customer_id").combobox({
+                        url: '<?= base_url('master/customers/reads') ?>',
+                        valueField: 'id',
+                        textField: 'name',
+                        prompt: "Choose Customer",
+                        onLoadSuccess: function(load_customer) {
+                            $("#customer_id").combobox('setValue', row.customer_id);
                         },
-                        onSelect: function(plant) {
-                            $("#sales_invoice").combobox({
-                                url: '<?= base_url('finance/ar_receipts/readInvoices/') ?>' + btoa(customer.id) + "/" + btoa(plant.plant),
-                                valueField: 'sales_invoice',
-                                textField: 'sales_invoice',
-                                multiple: true,
-                                prompt: "Choose Sales Invoice No",
+                        onSelect: function(customer) {
+                            $("#plant").combobox({
+                                url: '<?= base_url('master/customers/readAddress/') ?>' + btoa(customer.id),
+                                valueField: 'plant',
+                                textField: 'plant',
+                                prompt: "Choose Plant",
                                 onLoadSuccess: function(load_invoice) {
-                                    $("#sales_invoice").combobox('setValue', row.sales_invoice);
-                                    $("#journal_type").combobox('setValue', row.journal_type_id);
+                                    $("#plant").combobox('setValue', row.plant);
                                 },
+                                onSelect: function(plant) {
+                                    $("#sales_invoice").combobox({
+                                        url: '<?= base_url('finance/ar_receipts/readInvoices/') ?>' + btoa(customer.id) + "/" + btoa(plant.plant),
+                                        valueField: 'sales_invoice',
+                                        textField: 'sales_invoice',
+                                        multiple: true,
+                                        prompt: "Choose Sales Invoice No",
+                                        onLoadSuccess: function(load_invoice) {
+                                            $("#sales_invoice").combobox('setValue', row.sales_invoice);
+                                            $("#journal_type").combobox('setValue', row.journal_type_id);
+                                        },
+                                    });
+                                }
                             });
                         }
                     });
+
+                    preview('<?= base_url('finance/ar_receipts/readReverse/') ?>' + window.btoa(row.receipt_no));
+                    addTable2('<?= base_url('finance/ar_receipts/readJournalReverse/') ?>' + window.btoa(row.receipt_no) + "/" + window.btoa(row.journal_type_id) + "/" + window.btoa(row.bank_account));
                 }
             });
-
-            preview('<?= base_url('finance/ar_receipts/readReverse/') ?>' + window.btoa(row.receipt_no));
-            addTable2('<?= base_url('finance/ar_receipts/readJournalReverse/') ?>' + window.btoa(row.receipt_no) + "/" + window.btoa(row.journal_type_id) + "/" + window.btoa(row.bank_account));
         } else {
             toastr.warning("Please select one of the data in the table first!", "Information");
         }
@@ -1276,13 +1294,68 @@
                                     var totalrows2 = rows2.length;
                                     endEditing2();
 
-                                    for (let z = 0; z < totalrows; z++) {
-                                        var dataz = rows[z];
+                                    combinedAr = [];
+                                    for (let i = 0; i < totalrows; i++) {
+                                        var json = rows[i];
 
-                                        if(dataz.account_number == "" || dataz.account_number == null){
+                                        if(json.account_number == "" || json.account_number == null){
                                             toastr.error("Account No Not valid, Please Check your data input and save again!!");
                                             return false;
                                         }
+
+                                        combinedAr.push({
+                                            receipt_type: receipt_type,
+                                            receipt_date: receipt_date,
+                                            receipt_no: receipt_no,
+                                            customer_id: customer_id,
+                                            plant: plant,
+                                            journal_type_id: journal_type_id,
+                                            bank_account: bank_account,
+                                            other_account: other_account,
+                                            receipt_by: receipt_by,
+                                            cheque_no: cheque_no,
+                                            note: note,
+                                            total_receipt: total_receipt,
+                                            id: json.id,
+                                            sales_invoice: json.sales_invoice,
+                                            description: json.description,
+                                            so_number: json.so_number,
+                                            currency: json.currency,
+                                            amount: json.amount,
+                                            balance: json.balance,
+                                            receipt: json.receipt,
+                                            rate: json.rate,
+                                            remarks: json.remarks,
+                                            account_number: json.account_number,
+                                            account_type: json.account_type,
+                                        });
+                                    }
+
+                                    combinedJournals = [];
+                                    var total_debit  = 0;
+                                    var total_credit = 0;
+                                    for (let z = 0; z < totalrows2; z++) {
+                                        var json2 = rows2[z];
+
+                                        if(json2.account_number == "" || json2.account_number == null){
+                                            toastr.error("Account No Not valid, Please Check your data input and save again!!");
+                                            return false;
+                                        }
+
+                                        combinedJournals.push({
+                                            receipt_no: receipt_no,
+                                            account_number: json2.account_number,
+                                            account_name: json2.account_name,
+                                            description: json2.description,
+                                            debit: json2.debit,
+                                            credit: json2.credit,
+                                            local_debit: json2.local_debit,
+                                            local_credit: json2.local_credit,
+                                            flag: json2.flag,
+                                        });
+
+                                        total_debit += parseFloat(json2.local_debit);
+                                        total_credit += parseFloat(json2.local_credit);
                                     }
 
                                     if (totalrows2 <= 0) {
@@ -1290,173 +1363,112 @@
                                         return false;
                                     }
 
-                                    for (let c = 0; c < totalrows2; c++) {
-                                        var datac = rows2[c];
-
-                                        if(datac.account_number == "" || datac.account_number == null){
-                                            toastr.error("Account No Not valid, Please Check your data input and save again!!");
-                                            return false;
-                                        }
+                                    if(total_debit == 0 && total_credit == 0){
+                                        toastr.error("Debit and Credit still 0, please click add to journal first");
+                                        return false;
                                     }
 
-                                    $.ajax({
-                                        type: "post",
-                                        url: "<?= base_url('finance/ar_receipts/deleteJournal') ?>",
-                                        data: "receipt_no=" + receipt_no,
-                                        dataType: "json",
-                                        success: function(response) {
-                                            Swal.fire({
-                                                title: 'Please Wait for Saving Data',
-                                                showConfirmButton: false,
-                                                allowOutsideClick: false,
-                                                allowEscapeKey: false,
-                                                didOpen: () => {
-                                                    Swal.showLoading();
-                                                },
-                                            });
+                                    if (totalrows > 0) {
+                                        $("#dlg_insert").dialog('close');
 
-                                            if (totalrows > 0) {
-                                                requestData(totalrows, rows);
-                                                $('#dlg_insert').dialog('close');
+                                        Swal.fire({
+                                            title: 'Please Wait for Saving Data',
+                                            showConfirmButton: false,
+                                            allowOutsideClick: false,
+                                            allowEscapeKey: false,
+                                            didOpen: () => {
+                                                Swal.showLoading();
+                                            },
+                                        });
 
-                                                function requestData(total, json, jml = 1, value = 0) {
-                                                    if (value < 100) {
-                                                        value = Math.floor((jml / total) * 100);
-                                                        var i = (jml - 1);
+                                        $.ajax({
+                                            type: "post",
+                                            url: "<?= base_url('finance/ar_receipts/deleteJournal') ?>",
+                                            data: "receipt_no=" + receipt_no,
+                                            dataType: "json",
+                                            success: function(response) {
+                                                $.ajax({
+                                                    type: "post",
+                                                    url: '<?= base_url('finance/ar_receipts/create') ?>',
+                                                    data: JSON.stringify({ combinedAr: combinedAr, combinedJournals: combinedJournals}),
+                                                    dataType: "json",
+                                                    success: function (result) {
+                                                        Swal.close();
 
-                                                        $.ajax({
-                                                            type: "post",
-                                                            url: '<?= base_url('finance/ar_receipts/create') ?>',
-                                                            data: {
-                                                                receipt_type: receipt_type,
-                                                                receipt_date: receipt_date,
-                                                                receipt_no: receipt_no,
-                                                                customer_id: customer_id,
-                                                                plant: plant,
-                                                                journal_type_id: journal_type_id,
-                                                                bank_account: bank_account,
-                                                                other_account: other_account,
-                                                                receipt_by: receipt_by,
-                                                                cheque_no: cheque_no,
-                                                                note: note,
-                                                                total_receipt: total_receipt,
-                                                                id: json[i].id,
-                                                                sales_invoice: json[i].sales_invoice,
-                                                                description: json[i].description,
-                                                                so_number: json[i].so_number,
-                                                                currency: json[i].currency,
-                                                                amount: json[i].amount,
-                                                                balance: json[i].balance,
-                                                                receipt: json[i].receipt,
-                                                                rate: json[i].rate,
-                                                                remarks: json[i].remarks,
-                                                                account_number: json[i].account_number,
-                                                                account_type: json[i].account_type,
-                                                            },
-                                                            dataType: "json",
-                                                            success: function(result) {
-                                                                requestData(total, json, jml + 1, value);
-                                                                if (jml == total) {
-                                                                    if (totalrows2 > 0) {
-                                                                        requestData2(totalrows2, rows2);
-                                                                        
-                                                                        function requestData2(total2, json2, jml2 = 1, value2 = 0) {
-                                                                            if (value2 < 100) {
-                                                                                value2 = Math.floor((jml2 / total2) * 100);
-                                                                                var z = (jml2 - 1);
+                                                        Swal.fire({
+                                                            title: 'Posting Journal',
+                                                            text: result.message + ", Do you want to save journal posting to ?",
+                                                            icon: result.theme,
+                                                            showCancelButton: true,
+                                                            allowOutsideClick: false,
+                                                            allowEscapeKey: false,
+                                                            confirmButtonText: 'Yes, Add to Journal!'
+                                                        }).then((msg) => {
+                                                            if (msg.isConfirmed) {
+                                                                Swal.fire({
+                                                                    title: 'Please Wait...',
+                                                                    showConfirmButton: false,
+                                                                    allowOutsideClick: false,
+                                                                    allowEscapeKey: false,
+                                                                    didOpen: () => {
+                                                                        Swal.showLoading();
+                                                                    },
+                                                                });
 
-                                                                                $.ajax({
-                                                                                    type: "post",
-                                                                                    url: '<?= base_url('finance/ar_receipts/createJournals') ?>',
-                                                                                    data: {
-                                                                                        receipt_no: receipt_no,
-                                                                                        account_number: json2[z].account_number,
-                                                                                        account_name: json2[z].account_name,
-                                                                                        description: json2[z].description,
-                                                                                        debit: json2[z].debit,
-                                                                                        credit: json2[z].credit,
-                                                                                        local_debit: json2[z].local_debit,
-                                                                                        local_credit: json2[z].local_credit,
-                                                                                        flag: json2[z].flag,
-                                                                                    },
-                                                                                    dataType: "json",
-                                                                                    success: function(result2) {
-                                                                                        requestData2(total2, json2, jml2 + 1, value2);
-                                                                                        if (jml2 == total2) {
-                                                                                            Swal.close();
+                                                                $.ajax({
+                                                                    type: "post",
+                                                                    url: '<?= base_url('finance/ar_receipts/createPosting') ?>',
+                                                                    data: {
+                                                                        receipt_no: receipt_no
+                                                                    },
+                                                                    dataType: "json",
+                                                                    success: function(result3) {
+                                                                        Swal.close();
 
-                                                                                            Swal.fire({
-                                                                                                title: result2.message,
-                                                                                                icon: result2.theme,
-                                                                                                confirmButtonText: 'Ok',
-                                                                                                allowOutsideClick: false,
-                                                                                            }).then((result2) => {
-                                                                                                if (result2.isConfirmed) {
-                                                                                                    window.location.reload();
-                                                                                                }
-                                                                                            });
-
-                                                                                            // Swal.fire({
-                                                                                            //     title: 'Posting Journal',
-                                                                                            //     text: result2.message + ", Do you want to save journal posting to ?",
-                                                                                            //     icon: result2.theme,
-                                                                                            //     showCancelButton: true,
-                                                                                            //     allowOutsideClick: false,
-                                                                                            //     allowEscapeKey: false,
-                                                                                            //     confirmButtonText: 'Yes, Add to Journal!'
-                                                                                            // }).then((msg) => {
-                                                                                            //     if (msg.isConfirmed) {
-                                                                                            //         Swal.fire({
-                                                                                            //             title: 'Please Wait...',
-                                                                                            //             showConfirmButton: false,
-                                                                                            //             allowOutsideClick: false,
-                                                                                            //             allowEscapeKey: false,
-                                                                                            //             didOpen: () => {
-                                                                                            //                 Swal.showLoading();
-                                                                                            //             },
-                                                                                            //         });
-
-                                                                                            //         $.ajax({
-                                                                                            //             type: "post",
-                                                                                            //             url: '<?= base_url('finance/sales_invoices/createPosting') ?>',
-                                                                                            //             data: {
-                                                                                            //                 number: number
-                                                                                            //             },
-                                                                                            //             dataType: "json",
-                                                                                            //             success: function(result3) {
-                                                                                            //                 Swal.close();
-
-                                                                                            //                 Swal.fire({
-                                                                                            //                     title: result3.message,
-                                                                                            //                     icon: result3.theme,
-                                                                                            //                     confirmButtonText: 'Ok',
-                                                                                            //                     allowOutsideClick: false,
-                                                                                            //                 }).then((result3) => {
-                                                                                            //                     if (result3.isConfirmed) {
-                                                                                            //                         window.location.reload();
-                                                                                            //                     }
-                                                                                            //                 });
-
-                                                                                            //             }
-                                                                                            //         });
-                                                                                            //     }
-                                                                                            // });
-                                                                                        }
-                                                                                    }
-                                                                                });
+                                                                        Swal.fire({
+                                                                            title: result3.message,
+                                                                            icon: result3.theme,
+                                                                            confirmButtonText: 'Ok',
+                                                                            allowOutsideClick: false,
+                                                                        }).then((result3) => {
+                                                                            if (result3.isConfirmed) {
+                                                                                window.location.reload();
                                                                             }
-                                                                        }
+                                                                        });
+
                                                                     }
-                                                                }
+                                                                });
+                                                            }
+                                                        });
+                                                    },
+                                                    error: function(msg){
+                                                        Swal.fire({
+                                                            title: "Failed to Save Data, Please Try Again",
+                                                            icon: "error",
+                                                            confirmButtonText: 'Ok',
+                                                            allowOutsideClick: false,
+                                                        }).then((result3) => {
+                                                            if (result3.isConfirmed) {
+                                                                $.ajax({
+                                                                    type: "post",
+                                                                    url: "<?= base_url('finance/ar_receipts/delete') ?>",
+                                                                    data: "receipt_no=" + receipt_no,
+                                                                    dataType: "json",
+                                                                    success: function(response) {
+                                                                        window.location.reload();
+                                                                    }
+                                                                });
                                                             }
                                                         });
                                                     }
-                                                }
-                                            } else {
-                                                toastr.warning("please selections your data in table first");
+                                                });
                                             }
-                                        }
-                                    });
+                                        });
+
+                                        $('#dg').datagrid('reload');
+                                    } else {
+                                        toastr.warning("please selections your data in table first");
+                                    }
                                 }
                             } else {
                                 toastr.error("Balance Debit Cannot match on Balance Credit");

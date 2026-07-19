@@ -2,7 +2,8 @@
     <thead frozen="true">
         <th field="ck" checkbox="true"></th>
         <th data-options="field:'id',width:220,halign:'center'">ERP Document No</th>
-        <th data-options="field:'scan',width:100,halign:'center',align:'center',formatter:cellFormatterScan,styler:cellStylerScan">Scan</th>
+        <th data-options="field:'status',width:80,halign:'center',align:'center',formatter:cellFormatterStatus,styler:cellStylerStatus">Status</th>
+        <th data-options="field:'scan',width:80,halign:'center',align:'center',formatter:cellFormatterScan,styler:cellStylerScan">Scan</th>
         <th data-options="field:'return_no',width:150,halign:'center'">Sales Return No</th>
     </thead>
     <thead>
@@ -776,6 +777,22 @@
             return 'Not Scan';
         } else {
             return 'Scanned';
+        }
+    };
+
+    function cellStylerStatus(value, row, index) {
+        if (value == 0) {
+            return 'background: #53D636; color:white;';
+        } else {
+            return 'background: #FF5F5F; color:white;';
+        }
+    }
+
+    function cellFormatterStatus(value, row) {
+        if (value == 0) {
+            return 'OPEN';
+        } else {
+            return 'CLOSED';
         }
     };
 

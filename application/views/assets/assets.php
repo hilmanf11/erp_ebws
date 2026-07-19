@@ -151,7 +151,7 @@
                 url_save = '<?= base_url('assets/assets/update') ?>?id=' + btoa(row.id);
 
                 $('#dg2').datagrid({
-                    url: '<?= base_url('assets/assets/readPrDetails?request_no=') ?>' + row.request_no,
+                    url: '<?= base_url('assets/assets/readPrDetailUpdate?request_no=') ?>' + row.request_no,
                     pagination: false,
                     clientPaging: false,
                     // remoteFilter: true,

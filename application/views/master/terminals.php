@@ -7,11 +7,11 @@
             <th rowspan="2" data-options="field:'item_rm_number',width:200,halign:'center'">Part No Supplier</th>
             <th rowspan="2" data-options="field:'item_rm_name',width:200,halign:'center'">Description</th>
             <th rowspan="2" data-options="field:'maker_name',width:200,halign:'center'">Maker Name</th>
-            <th rowspan="2" data-options="field:'chcb',width:100,halign:'center'">Crimp Height<br>Copper Barrel</th>
-            <th rowspan="2" data-options="field:'cwcb',width:100,halign:'center'">Crimp Width<br>Copper Barrel</th>
-            <th rowspan="2" data-options="field:'cwib',width:100,halign:'center'">Crimp Width<br>Insulation Barrel</th>
-            <th rowspan="2" data-options="field:'chvb',width:100,halign:'center'">Crimp Height<br>Vinly Barrel</th>
-            <th rowspan="2" data-options="field:'chvbs',width:100,halign:'center'">Crimp Height<br>Vinly Barrel With Seal</th>
+            <th rowspan="2" data-options="field:'chcb',width:100,halign:'center'">Crimp Height</th>
+            <th rowspan="2" data-options="field:'cwcb',width:100,halign:'center'">Crimp Width</th>
+            <th rowspan="2" data-options="field:'cwib',width:100,halign:'center'">Insulation Width</th>
+            <th rowspan="2" data-options="field:'chvb',width:100,halign:'center'">Insulation Height</th>
+            <th rowspan="2" data-options="field:'chvbs',width:100,halign:'center'">Seal</th>
             <th rowspan="2" data-options="field:'stripping',width:100,halign:'center'">Stripping</th>
             <th rowspan="2" data-options="field:'wire_type',width:100,halign:'center'">Wire Type</th>
             <th rowspan="2" data-options="field:'wire_size',width:100,halign:'center'">Wire Size</th>
@@ -49,23 +49,23 @@
                 <input style="width:60%;" name="item_rm_name" id="item_rm_name" disabled class="easyui-textbox">
             </div>
             <div class="fitem">
-                <span style="width:35%; display:inline-block;">Crimp Height<br>Copper Barrel</span>
+                <span style="width:35%; display:inline-block;">Crimp Height</span>
                 <input style="width:60%;" name="chcb" id="chcb" class="easyui-numberbox">
             </div>
             <div class="fitem">
-                <span style="width:35%; display:inline-block;">Crimp Width<br>Copper Barrel</span>
+                <span style="width:35%; display:inline-block;">Crimp Width</span>
                 <input style="width:60%;" name="cwcb" id="cwcb" class="easyui-numberbox">
             </div>
             <div class="fitem">
-                <span style="width:35%; display:inline-block;">Crimp Width<br>Insulation Barrel</span>
+                <span style="width:35%; display:inline-block;">Insulation Width</span>
                 <input style="width:60%;" name="cwib" id="cwib" class="easyui-numberbox">
             </div>
             <div class="fitem">
-                <span style="width:35%; display:inline-block;">Crimp Height<br>Vinyl Barrel</span>
+                <span style="width:35%; display:inline-block;">Insulation Height</span>
                 <input style="width:60%;" name="chvb" id="chvb" class="easyui-numberbox">
             </div>
             <div class="fitem">
-                <span style="width:35%; display:inline-block;">Crimp Height<br>Vinyl Barrel With Seal</span>
+                <span style="width:35%; display:inline-block;">Seal</span>
                 <input style="width:60%;" name="chvbs" id="chvbs" class="easyui-numberbox">
             </div>
             <div class="fitem">

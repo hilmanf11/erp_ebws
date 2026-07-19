@@ -39,6 +39,38 @@ class Rgp_scan_out extends CI_Controller
         echo json_encode($send);
     }
 
+    public function readEndingStock($item_rm_id)
+    {
+        // if ($this->input->post()) {
+            $date = date("Y-m-d");
+
+            $records = $this->crud->query("SELECT
+                a.id,
+                ((COALESCE(SUM(c.qty_sto),0) + COALESCE(dd.sto_qty_in, 0) + COALESCE(j.qty_rgp_in, 0) + COALESCE(e.qty_receipt, 0) + COALESCE(g.return_qty, 0)) - COALESCE(f.qty, 0) - COALESCE(d.sto_qty_out, 0) - COALESCE(k.qty_rgp_out, 0) - COALESCE(h.qty_reject, 0)) AS end_stock
+                FROM item_rm a 
+                JOIN item_familys b ON a.item_family_id = b.id AND b.number != '006'
+                LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) AS qty_sto FROM os_rm a JOIN scan_item_receipts b ON a.id  = b.receipt_id WHERE a.trans_date <= '$date' GROUP BY item_rm_id) c ON a.id = c.item_rm_id
+                LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(a.qty), 0) as sto_qty_out FROM sto_rm a WHERE a.type = 'OUT' and a.trans_date <= '$date' and a.approved_to = '' GROUP BY item_rm_id) d ON a.id = d.item_rm_id
+                LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(a.qty), 0) as sto_qty_in FROM sto_rm a WHERE a.type = 'IN' and a.trans_date <= '$date' and a.approved_to = '' GROUP BY item_rm_id) dd ON a.id = dd.item_rm_id
+                LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) AS qty_receipt FROM purchase_order_receipts a JOIN scan_item_receipts b ON a.receipt_id  = b.receipt_id WHERE a.receipt_date <= '$date' GROUP BY item_rm_id) e ON a.id = e.item_rm_id
+                LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) AS qty FROM issued_material_details WHERE DATE_FORMAT(created_date, '%Y-%m-%d') <= '$date' GROUP BY item_rm_id) f ON a.id = f.item_rm_id
+                LEFT JOIN (SELECT a.item_rm_id, COALESCE(SUM(b.qty), 0) AS qty_reject FROM purchase_order_receipts a JOIN scan_item_rejections b ON a.receipt_id  = b.receipt_id WHERE DATE_FORMAT(b.created_date, '%Y-%m-%d') <= '$date' GROUP BY item_rm_id) h ON a.id = h.item_rm_id
+                LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) as qty_rgp_in FROM rgp_transactions a JOIN scan_item_rgp b ON a.number = b.rgp_number and a.item_id = b.item_id WHERE a.type = 'IN' and a.transaction_date <= '$date' GROUP BY a.item_id) j ON a.id = j.item_id
+                LEFT JOIN (SELECT a.item_id, COALESCE(SUM(b.qty), 0) as qty_rgp_out FROM rgp_transactions a JOIN scan_item_rgp b ON a.number = b.rgp_number and a.item_id = b.item_id WHERE a.type = 'OUT' and a.transaction_date <= '$date' GROUP BY a.item_id) k ON a.id = k.item_id
+                LEFT JOIN (SELECT a.item_rm_id, SUM(c.qty) AS return_qty
+                FROM return_materials a 
+                JOIN return_material_labels b ON a.return_id = b.return_id
+                JOIN scan_item_receipts c ON a.return_id = c.receipt_id AND b.label_no = c.label_no
+                WHERE a.return_date <= '$date'
+                GROUP BY a.item_rm_id) g ON a.id = g.item_rm_id
+            WHERE a.id = '$item_rm_id'
+            GROUP BY a.id
+            ORDER BY b.number, a.number");
+
+            return empty(@$records[0]->end_stock) ? 0 : @$records[0]->end_stock;
+        // }
+    }
+
     public function getPoReceipt()
     {
         if ($this->input->post()) {
@@ -87,44 +119,54 @@ class Rgp_scan_out extends CI_Controller
                             $records = $this->db->get()->result_array();
 
                             if ($records == []) {
-                                // cek ke receipt FG
-                                $this->db->select("b.item_fg_id as item_id, a.checksheet_label as label_no, a.qty");
-                                $this->db->from('scan_item_receipts_fg a');
-                                $this->db->join('wip_receipts b', 'a.workorder = b.workorder and a.checksheet_number = b.checksheet_number');
-                                $this->db->where('a.checksheet_label', $label_no);
-                                $this->db->where('a.status', 0);
+                                $this->db->select('a.label_divided as label_no, b.item_rm_id as item_id, a.qty');
+                                $this->db->from('barcode_divides a');
+                                $this->db->join('os_rm b', 'a.reff = b.id');
+                                $this->db->where('a.label_divided', $label_no);
+                                $this->db->where('a.status', '0');
                                 $totalRows = $this->db->count_all_results('', false);
                                 $records = $this->db->get()->result_array();
 
                                 if ($records == []) {
-                                    $this->db->select("a.item_fg_id as item_id, a.label_divided as label_no, a.qty");
-                                    $this->db->from('barcode_divides_fg a');
-                                    $this->db->where('a.label_divided', $label_no);
-                                    $this->db->where('a.status', '0');
-                                    // $this->db->where('a.type', 'SUPPLY');
-                                    $this->db->group_by('a.label_divided');
+                                    // cek ke receipt FG
+                                    $this->db->select("b.item_fg_id as item_id, a.checksheet_label as label_no, a.qty");
+                                    $this->db->from('scan_item_receipts_fg a');
+                                    $this->db->join('wip_receipts b', 'a.workorder = b.workorder and a.checksheet_number = b.checksheet_number');
+                                    $this->db->where('a.checksheet_label', $label_no);
+                                    $this->db->where('a.status', 0);
                                     $totalRows = $this->db->count_all_results('', false);
                                     $records = $this->db->get()->result_array();
 
                                     if ($records == []) {
-                                        $this->db->select("b.item_fg_id as item_id, a.checksheet_label as label_no, a.qty");
-                                        $this->db->from('scan_item_receipts_fg a');
-                                        $this->db->join('os_fg b', 'a.workorder = b.id', 'left');
-                                        $this->db->where('a.checksheet_label', $label_no);
+                                        $this->db->select("a.item_fg_id as item_id, a.label_divided as label_no, a.qty");
+                                        $this->db->from('barcode_divides_fg a');
+                                        $this->db->where('a.label_divided', $label_no);
                                         $this->db->where('a.status', '0');
-                                        $this->db->group_by('a.checksheet_label');
+                                        // $this->db->where('a.type', 'SUPPLY');
+                                        $this->db->group_by('a.label_divided');
                                         $totalRows = $this->db->count_all_results('', false);
                                         $records = $this->db->get()->result_array();
 
                                         if ($records == []) {
-                                            $this->db->select("b.item_id, a.checksheet_label as label_no, a.qty");
+                                            $this->db->select("b.item_fg_id as item_id, a.checksheet_label as label_no, a.qty");
                                             $this->db->from('scan_item_receipts_fg a');
-                                            $this->db->join('rgp_transactions b', 'a.checksheet_number = b.rgp_id', 'left');
+                                            $this->db->join('os_fg b', 'a.workorder = b.id');
                                             $this->db->where('a.checksheet_label', $label_no);
                                             $this->db->where('a.status', '0');
                                             $this->db->group_by('a.checksheet_label');
                                             $totalRows = $this->db->count_all_results('', false);
                                             $records = $this->db->get()->result_array();
+
+                                            if ($records == []) {
+                                                $this->db->select("b.item_id, a.checksheet_label as label_no, a.qty");
+                                                $this->db->from('scan_item_receipts_fg a');
+                                                $this->db->join('rgp_transactions b', 'a.checksheet_number = b.rgp_id');
+                                                $this->db->where('a.checksheet_label', $label_no);
+                                                $this->db->where('a.status', '0');
+                                                $this->db->group_by('a.checksheet_label');
+                                                $totalRows = $this->db->count_all_results('', false);
+                                                $records = $this->db->get()->result_array();
+                                            }
                                         }
                                     }
                                 }
@@ -221,7 +263,11 @@ class Rgp_scan_out extends CI_Controller
                                 //     $item_receipts = $this->crud->read("barcode_divides", [], ["label_divided" => $post['label_no']]);
                                 // }
 
-                                if (@$cek_qty[0]->balance <= 0) {
+                                if(($this->readEndingStock($post['item_id']) - $post['qty']) < 0){
+                                    die(json_encode(array("title" => "Stock Empty", "message" => "Stock In Warehouse is Empty", "theme" => "error")));
+                                }
+
+                                if ((@$cek_qty[0]->total_scan + $post['qty']) > @$cek_qty[0]->total_qty) {
                                     echo json_encode(array("title" => "Qty Label is Over", "message" => "Qty in Barcode more than with required Qty Item", "theme" => "error"));
                                 } else {
                                     $send = $this->crud->create('scan_item_rgp', array_merge($post, ["type" => "OUT"]));
@@ -238,7 +284,7 @@ class Rgp_scan_out extends CI_Controller
                                 //     $item_receipts_fg = $this->crud->read("barcode_divides_fg", [], ["label_divided" => $post['label_no']]);
                                 // }
 
-                                if (@$cek_qty[0]->balance <= 0) {
+                                if ((@$cek_qty[0]->total_scan + $post['qty']) > @$cek_qty[0]->total_qty) {
                                     echo json_encode(array("title" => "Qty Label is Over", "message" => "Qty in Barcode more than with required Qty Item", "theme" => "error"));
                                 } else {
                                     $send = $this->crud->create('scan_item_rgp', array_merge($post, ["type" => "OUT"]));

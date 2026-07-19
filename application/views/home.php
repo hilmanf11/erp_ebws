@@ -92,7 +92,7 @@
 
 	<!-- FOOTER -->
 	<div data-options="region:'south',border:false" style="overflow: hidden;" id="footer">
-		Welcome in Application <?= $config->description ?> <b><?= $this->session->name ?></b> You are login in time <?= date("d F Y H:i:s"); ?>
+		Welcome in Application <?= $config->description ?> <b><?= $this->session->name ?></b> You are login in time <?= @$login->created_date ?>
 		<span style="float: right;"> Copyright &copy; <?= $config->name ?> 2022 Version 1.0</span>
 	</div>
 

@@ -1,4 +1,4 @@
-<div id="f" class="easyui-panel" style="width:100%; background: #F4F4F4;">
+<div id="f" class="easyui-panel" style="width:100%; padding: 10px; background: #F4F4F4;">
     <div style="width: 100%; display: grid; grid-template-columns: auto auto auto; grid-gap: 5px; display: flex;">
         <fieldset style="width: 40%; border:2px solid #d0d0d0; margin-bottom: 5px; margin-top: 5px; margin-left: 10px; border-radius:4px;">
             <legend><b>Form Filter Data</b></legend>
@@ -11,8 +11,6 @@
                 <select style="width:60%;" id="filter_display" class="easyui-combobox" panelHeight="auto">
                     <option value="1">Format 1</option>
                     <option value="2">Format 2</option>
-                    <option value="3">Details</option>
-                    <option value="4">Format Yearly</option>
                 </select>
             </div>
             <div class="fitem">
@@ -42,7 +40,7 @@
 </div>
 
 <div id="p" class="easyui-panel" title="Print Preview" style="width:100%;">
-    <iframe id="printout" src="" style="width: 100%; height: 410px; border: 0;"></iframe>
+    <iframe id="printout" src="" style="width: 100%; height: 530px; border: 0;"></iframe>
 </div>
 
 <script>
@@ -119,86 +117,16 @@
 
                                                         if (i == (data.total - 1)) {
                                                             $('#dlg_generate').dialog('close');
-                                                            
+
                                                             Swal.fire({
-                                                                title: 'Please Wait for Save Trial Balance Detail',
-                                                                showConfirmButton: false,
+                                                                title: result.message,
+                                                                icon: result.theme,
+                                                                confirmButtonText: 'Ok',
                                                                 allowOutsideClick: false,
-                                                                allowEscapeKey: false,
-                                                                didOpen: () => {
-                                                                    Swal.showLoading();
-                                                                },
-                                                            });
-
-                                                            $.ajax({
-                                                                type: "post",
-                                                                url: '<?= base_url('finance/report_income_statements/generateData2') ?>',
-                                                                data: {
-                                                                    filter_date: filter_date,
-                                                                },
-                                                                dataType: "json",
-                                                                success: function(data2) {
-                                                                    Swal.close();
-
-                                                                    if(data2.total > 0){
-                                                                        requestData2(data2.total, data2.rows);
-                                                                        $('#dlg_generate').dialog('open');
-
-                                                                        function requestData2(total2, json2, jml2 = 1, value2 = 0) {
-                                                                            if (value2 < 100) {
-                                                                                value2 = Math.floor((jml2 / total2) * 100);
-                                                                                var z = (jml2 - 1);
-
-                                                                                $('#p_upload').progressbar('setValue', value2);
-                                                                                $('#p_start').html(jml2);
-                                                                                $('#p_finish').html(data2.total);
-
-                                                                                $.ajax({
-                                                                                    type: "post",
-                                                                                    url: '<?= base_url('finance/report_income_statements/createDetail') ?>',
-                                                                                    data: {
-                                                                                        data: json2[z]
-                                                                                    },
-                                                                                    dataType: "json",
-                                                                                    success: function(result2) {
-                                                                                        requestData2(total2, json2, jml2 + 1, value2);
-
-                                                                                        if (result2.theme == "success") {
-                                                                                            var title = "<b style='color: green;'>" + result2.title + "</b> | " + result2.message;
-                                                                                        } else {
-                                                                                            var title = "<b style='color: red;'>" + result2.title + "</b> | " + result2.message;
-                                                                                        }
-
-                                                                                        $("#p_remarks").append(title + "<br>");
-
-                                                                                        if (z == (data2.total - 1)) {
-                                                                                            $('#dlg_generate').dialog('close');
-                                                                                            Swal.fire({
-                                                                                                title: result.message,
-                                                                                                icon: result.theme,
-                                                                                                confirmButtonText: 'Ok',
-                                                                                                allowOutsideClick: false,
-                                                                                            }).then((result) => {
-                                                                                                // if (result.isConfirmed) {
-                                                                                                //     window.location.reload();
-                                                                                                // }
-                                                                                            });
-                                                                                        }
-                                                                                    }
-                                                                                });
-                                                                            }
-                                                                        }
-                                                                    }else{
-                                                                        Swal.fire({
-                                                                            title: "Data Not Found, Please check master account Statements",
-                                                                            icon: "error",
-                                                                            confirmButtonText: 'Ok',
-                                                                            allowOutsideClick: false,
-                                                                        }).then((result) => {
-                                                                            //
-                                                                        });
-                                                                    }
-                                                                }
+                                                            }).then((result) => {
+                                                                // if (result.isConfirmed) {
+                                                                //     window.location.reload();
+                                                                // }
                                                             });
                                                         }
                                                     }

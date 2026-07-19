@@ -192,7 +192,7 @@ class Purchase_invoice_returns extends CI_Controller
     {
         $records = $this->crud->query("SELECT DISTINCT a.return_no, a.invoice_no as bc_document, a.return_date as bc_date, c.journal_type_id, a.supplier_id
             FROM purchase_returns a
-            LEFT JOIN purchase_invoices c ON a.po_no = c.po_no and a.item_rm_id = c.item_rm_id
+            LEFT JOIN purchase_invoices c ON a.invoice_no = c.invoice_no and a.item_rm_id = c.item_rm_id
             WHERE a.status = '0'
             ORDER BY a.return_no desc");
         
@@ -263,7 +263,7 @@ class Purchase_invoice_returns extends CI_Controller
             c.uom, 
             c.hsn_code,
             b.currency, 
-            a.qty, f.price, f.discount, 'INR' as currency_local, h.account_number, i.account_name, h.id  as item_family_id, h.name as item_family_name,
+            a.qty, f.price, 'INR' as currency_local, h.account_number, i.account_name, h.id  as item_family_id, h.name as item_family_name,
             b.tds, b.state, k.individual, b.type as supplier_type,
             ((a.qty * f.price) * COALESCE(j.igst, 0) / 100) as igst,
             ((a.qty * f.price) * COALESCE(j.sgst, 0) / 100) as sgst,
@@ -274,7 +274,7 @@ class Purchase_invoice_returns extends CI_Controller
         $this->db->join('suppliers b', 'a.supplier_id = b.id');
         $this->db->join('item_rm c', 'a.item_rm_id = c.id');
         $this->db->join('supplier_items e', 'b.id = e.supplier_id and c.id = e.item_rm_id', 'left');
-        $this->db->join('purchase_orders f', 'a.po_no = f.po_no and b.id = f.supplier_id and c.id = f.item_rm_id');
+        $this->db->join('purchase_invoices f', 'a.invoice_no = f.invoice_no and b.id = f.supplier_id and c.id = f.item_rm_id');
         $this->db->join('exchange_rates g', "g.start_date = DATE_FORMAT(a.return_date, '%Y-%m-01') and g.currency_from = b.currency", 'left');
         $this->db->join('item_familys h', "c.item_family_id = h.id", 'left');
         $this->db->join('account_coa i', "h.account_number = i.account_number", 'left');
@@ -345,7 +345,6 @@ class Purchase_invoice_returns extends CI_Controller
                 "currency" => $record['currency'],
                 "currency_local" => $record['currency_local'],
                 "qty" => $record['qty'],
-                "discount" => $record['discount'],
                 "price" => $record['price'],
                 "rate" => $record['rate'],
                 "total" => $record['total'],

@@ -69,6 +69,17 @@ class Ar_receipts extends CI_Controller
         die(json_encode($arr));
     }
 
+    public function checkReversal()
+    {
+        $receipt_no = $this->input->post("receipt_no");
+        $this->db->select('receipt_no');
+        $this->db->from('ar_receipts');
+        $this->db->like('note', $receipt_no);
+        $records = $this->db->get()->result_array();
+
+        die(json_encode(array("total" => count($records), "number" => @$records[0]['receipt_no'])));
+    }
+
     public function readJournals($number, $journal_type_id = "", $bank_account = "")
     {
         $number = base64_decode($number);
@@ -104,23 +115,23 @@ class Ar_receipts extends CI_Controller
 
     function readExchangeRate()
     {
-        $payment_date = $this->input->post('receipt_date');
+        $receipt_date = $this->input->post('receipt_date');
         $trans_date = $this->input->post('trans_date');
         $currency = $this->input->post('currency');
 
-        $search_date = date("d", strtotime($payment_date));
+        $search_date = date("d", strtotime($receipt_date));
         if ($search_date == "31") {
-            $payment_date = date("Y-m-d", strtotime('-1 days', strtotime($payment_date)));
+            $receipt_date = date("Y-m-d", strtotime('-1 days', strtotime($receipt_date)));
         }
 
-        $monthNow = date('Y-m-01', strtotime($payment_date));
+        $monthNow = date('Y-m-01', strtotime($receipt_date));
         $monthbf = date('Y-m-01', strtotime($trans_date));
 
         if ($monthNow != $monthbf) {
-            if (date("m", strtotime($payment_date)) == "11") {
-                $monthbf = date('Y-m-t', strtotime('-1 month', strtotime($payment_date)));
+            if (date("m", strtotime($receipt_date)) == "11") {
+                $monthbf = date('Y-m-t', strtotime('-1 month', strtotime($receipt_date)));
             } else {
-                $monthbf = date('Y-m-01', strtotime('-1 month', strtotime($payment_date)));
+                $monthbf = date('Y-m-01', strtotime('-1 month', strtotime($receipt_date)));
             }
         }
 
@@ -165,19 +176,19 @@ class Ar_receipts extends CI_Controller
             $total = $jsonData["receipt"];
             $currency = $jsonData['currency'];
             $rate = $jsonData['rate'];
-            // $payment_date = $jsonData['receipt_date'];
+            // $receipt_date = $jsonData['receipt_date'];
             // $trans_date = $jsonData['trans_date'];
 
-            // $search_date = date("d", strtotime($payment_date));
+            // $search_date = date("d", strtotime($receipt_date));
             // if ($search_date == "31") {
-            //     $payment_date = date("Y-m-d", strtotime('-10 days', strtotime($payment_date)));
+            //     $receipt_date = date("Y-m-d", strtotime('-10 days', strtotime($receipt_date)));
             // }
 
             // $monthBf = date('Y-m-01', strtotime($trans_date));
-            // $monthNow = date('Y-m-01', strtotime($payment_date));
+            // $monthNow = date('Y-m-01', strtotime($receipt_date));
 
             // if ($monthNow != $monthBf) {
-            //     $monthBf = date('Y-m-01', strtotime("-1 month", strtotime($payment_date)));
+            //     $monthBf = date('Y-m-01', strtotime("-1 month", strtotime($receipt_date)));
             // }
 
             // $exchangeBf = $this->crud->read('exchange_rates', [], ["start_date" => $monthBf, "currency_from" => $currency, "currency_to" => "INR"]);
@@ -505,26 +516,37 @@ class Ar_receipts extends CI_Controller
     public function create()
     {
         if ($this->input->post()) {
-            if ($this->form_validation->run() == TRUE) {
-                $post = $this->input->post();
+            $jsonData = file_get_contents("php://input");
+            $post = json_decode($jsonData, true);
+            $combinedAr = $post['combinedAr'];
+            $combinedJournals = $post['combinedJournals'];
 
-                if (@$post['id'] != "") {
-                    $send = $this->crud->update('ar_receipts', ["id" => $post['id']], $post);
-                    echo $send;
+            foreach ($combinedAr as $ap) {
+                if (!empty(@$ap['id'])) {
+                    $send = $this->crud->update('ar_receipts', ["id" => $ap['id']], $ap);
                 } else {
-                    $send = $this->crud->create('ar_receipts', $post);
+                    $send = $this->crud->create('ar_receipts', $ap, "logs");
                     if ($send) {
-                        if ($post['amount'] == $post['receipt']) {
-                            $this->crud->update('sales_invoices', ["number" => $post['sales_invoice']], ["status" => 1]);
+                        if ($ap['amount'] == $ap['receipt']) {
+                            $this->crud->update('sales_invoices', ["number" => $ap['sales_invoice']], ["status" => 1]);
                         }
-                    }
 
-                    $this->crud->update('ar_receipts', ["sales_invoice" => $post['sales_invoice'], "journal_type_id" => "20230823000001"], ["status_dp" => 1]);
-                    echo $send;
+                        $this->crud->update('ar_receipts', ["sales_invoice" => $ap['sales_invoice'], "journal_type_id" => "20230823000001"], ["status_dp" => 1]);
+                    }
                 }
-            } else {
-                show_error(validation_errors());
             }
+
+            foreach ($combinedJournals as $journal) {
+                $ar_receipt_journals = $this->crud->read('ar_receipt_journals', [], ["receipt_no" => $journal['receipt_no'], "account_number" => $journal['account_number'], "flag" => $journal['flag']]);
+
+                if (@$ar_receipt_journals->id != "") {
+                    $send = $this->crud->update('ar_receipt_journals', ["receipt_no" => $journal['receipt_no'], "account_number" => $journal['account_number'], "flag" => $journal['flag']], $journal);
+                } else {
+                    $send = $this->crud->create('ar_receipt_journals', $journal, "logs");
+                }
+            }
+
+            die(json_encode(array("title" => "Good Job", "message" => "Data Save Successfully", "theme" => "success")));
         } else {
             show_error("Cannot Process your request");
         }
@@ -540,24 +562,137 @@ class Ar_receipts extends CI_Controller
         file_put_contents('json/ar_receipt_journals.json', $jsonData2);
     }
 
-    public function createJournals()
-    {
-        if ($this->input->post()) {
-            $post = $this->input->post();
-            $purchase_invoice_journals = $this->crud->read('ar_receipt_journals', [], ["receipt_no" => $post['receipt_no'], "account_number" => $post['account_number'], "debit" => $post['debit'], "credit" => $post['credit'], "flag" => $post['flag'], "description" => @$post['description']]);
+    public function createPosting(){
+        $document_no = $this->input->post('receipt_no');
 
-            if (@$purchase_invoice_journals->id != "") {
-                $send = $this->crud->update('ar_receipt_journals', ["receipt_no" => $post['receipt_no'], "account_number" => $post['account_number'], "debit" => $post['debit'], "credit" => $post['credit'], "flag" => $post['flag'], "description" => @$post['description']], $post);
-                echo $send;
+        $datenow = date("Y-m-d");
+        $sql_menu = $this->db->query("SELECT * FROM menus_no WHERE menus_id = '20240227000005' and `status` = '0' and `start_date` <= '$datenow' and end_date >= '$datenow'");
+        $row_menu = $sql_menu->row();
+
+        if(@$row_menu->number == ""){
+            $voucher_no = "";
+        }else{
+            $number = @$row_menu->number;
+            $yearnow = date("y", strtotime($row_menu->start_date));
+            $yearend = date("y", strtotime($row_menu->end_date));
+
+            $whereDate = $number.$yearnow.$yearend."1";
+
+            $sqlGetID	= $this->db->query("SELECT max(`number`) as kode FROM journal_postings WHERE `number` like '%$whereDate%'");
+            $rowID = $sqlGetID->row();
+            $kode = $rowID->kode;
+            
+            if ($kode == NULL) {
+                $autoID = sprintf("%0".$row_menu->sequence."s", $kode + 1);
+                $autoNo = $whereDate.$autoID;
             } else {
-                $send = $this->crud->create('ar_receipt_journals', $post);
-                echo $send;
+                $urutan = (int) substr($kode, -6);
+                $urutan++;
+                $autoID	= sprintf("%0".$row_menu->sequence."s", $urutan);
+                $autoNo = $whereDate.$autoID;
             }
-        } else {
-            show_error("Cannot Process your request");
-        }
-    }
 
+            $voucher_no = $autoNo;
+        }
+
+        $this->db->select("a.receipt_no, b.journal_type_id, b.receipt_date, b.sales_invoice, b.description as remarks, b.plant, c.id as customer_id, c.name as customer_name, d.account_name as other_account,
+                b.currency, a.description, a.account_number, a.account_name, a.debit, a.credit, a.flag, a.local_debit, a.local_credit, b.rate");
+        $this->db->from('ar_receipt_journals a');
+        $this->db->join("(SELECT * FROM ar_receipts GROUP BY receipt_no) b", "b.receipt_no = a.receipt_no");
+        $this->db->join("customers c", "b.customer_id = c.id");
+        $this->db->join('account_coa d', 'b.other_account = d.account_number', 'left');
+        $this->db->where_in('a.receipt_no', $document_no);
+        $this->db->order_by('a.receipt_no', 'asc');
+        $this->db->order_by('a.flag', 'asc');
+        $journals = $this->db->get()->result_array();
+
+        $trans_date = "";
+        $customer_name = "";
+        $currency = "";
+
+        $original_debit = 0;
+        $original_credit = 0;
+        $local_debit = 0;
+        $local_credit = 0;
+
+        $grand_original_debit = 0;
+        $grand_original_credit = 0;
+        $grand_local_debit = 0;
+        $grand_local_credit = 0;
+
+        $data = array();
+        foreach ($journals as $journal) {
+            $number = $journal['receipt_no'];
+            $account_number = $journal['account_number'];
+            $account_name = $journal['account_name'];
+            $debit = $journal['debit'];
+            $credit = $journal['credit'];
+            $description = $journal['description'];
+            $explode = explode(" | ", $description);
+            $purchase_invoice = @$explode[0];
+            $supplier_invoice = @$explode[1];
+
+            if ($journal['currency'] != "INR") {
+                $original_debit = $debit;
+                $original_credit = $credit;
+                $local_debit = $journal['local_debit'];
+                $local_credit = $journal['local_credit'];
+
+                if(($original_debit + $original_credit) == 0){
+                    $rates = 1;
+                }else{
+                    $rates = (($journal['local_debit'] + $journal['local_credit']) / ($original_debit + $original_credit));
+                }
+            } else {
+                $original_debit = $debit;
+                $original_credit = $credit;
+                $local_debit = $journal['local_debit'];
+                $local_credit = $journal['local_credit'];
+
+                $rates = 1;
+            }
+
+            $data[] = array(
+                "journal_date" => $journal['receipt_date'],
+                "journal_type_id" => $journal['journal_type_id'],
+                "number" => $voucher_no,
+                "trans_date" => $journal['receipt_date'],
+                "document_no" => $number,
+                "invoice_no" => $purchase_invoice,
+                "company_id" => $journal['customer_id'],
+                "company_name" => $journal['customer_name'] . " | " . $journal['plant'],
+                "modul" => "AR RECEIPT",
+                "account_number" => $account_number,
+                "account_name" => $account_name,
+                "description" => "(" . $journal['other_account'] . ") | " . $number . " | " . $purchase_invoice . " | " . $supplier_invoice,
+                "currency" => $journal['currency'],
+                "original_debit" => $original_debit,
+                "original_credit" => $original_credit,
+                "rates" => $rates,
+                "local_debit" => $local_debit,
+                "local_credit" => $local_credit,
+            );
+
+            $grand_original_debit += $original_debit;
+            $grand_original_credit += $original_credit;
+            $grand_local_debit += $local_debit;
+            $grand_local_credit += $local_credit;
+        }
+
+        if($voucher_no == ""){
+            die(json_encode(array("title" => "Configuration", "message" => "Please Check Configuration in Serial No (Journal Posting) First", "theme" => "error")));
+        }
+
+        if(round($grand_local_debit, 2) != round($grand_local_credit, 2)){
+            die(json_encode(array("title" => "Failed", "message" => "Balance Debit (".$grand_local_debit.") Cannot match on Balance Credit (" . $grand_local_credit . ")", "theme" => "error")));
+        }
+
+        foreach ($data as $dt) {
+            $this->crud->create('journal_postings', $dt);
+        }
+
+        die(json_encode(array("title" => "Good Job", "message" => "Data Successfully Created to Journal Posting with Code GL No " . $voucher_no, "theme" => "success")));
+    }
 
     public function update()
     {

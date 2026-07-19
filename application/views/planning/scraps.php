@@ -225,6 +225,18 @@
                         halign: 'center',
                         title: "Part No Supplier",
                     }, {
+                        field: 'stock_wip',
+                        width: 80,
+                        halign: 'center',
+                        title: "Wip",
+                        editor: {
+                            type: 'numberbox',
+                            options: {
+                                required: true,
+                                readonly: true,
+                            }
+                        }
+                    }, {
                         field: 'qty_reject',
                         width: 80,
                         halign: 'center',
@@ -667,7 +679,13 @@
                     var rows = $('#dg2').datagrid('getSelections');
                     var totalrows = rows.length;
                     if (totalrows > 0) {
-                        // endEditing();
+                        for (let z = 0; z < totalrows; z++) {
+                            if(parseInt(rows[z].qty) > parseInt(rows[z].stock_wip)){
+                                toastr.error("qty accepted cannot be greater than qty WIP");
+                                return false;
+                            }
+                        }
+
                         for (let i = 0; i < totalrows; i++) {
                             if (rows[i].item_rm_id) {
                                 $.ajax({

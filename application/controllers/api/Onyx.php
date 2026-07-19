@@ -114,11 +114,11 @@ class Onyx extends CI_Controller
             $alias = @$item_fg->alias;
             if(!$item_fg){
                 $item_fg = $this->crud->read("item_rm", [], ["id" => @$sales_invoice->item_fg_id]);
-                $alias = $item_fg->number;
+                $alias = "";
             }
 
             $total_tcs = $sales_invoice->tcs;
-            $hsn = $this->crud->read("hsn", [], ["number" => @$sales_invoice->hsn_code]);
+            $hsn = $this->crud->read("hsn", [], ["number" => trim(@$sales_invoice->hsn_code)]);
 
             if($customer_address->ship_state == $config->state){
             // if("BENGALURU" == $config->state){
@@ -168,7 +168,7 @@ class Onyx extends CI_Controller
                 "csrt" => 0,
                 "disc" => 0,
                 "freeQty" => 0,
-                "hsnCd" => $item_fg->hsn_code,
+                "hsnCd" => trim($item_fg->hsn_code),
                 "iamt" => $igst,
                 "irt" => @$hsn_igst,
                 "isServc" => "N",
@@ -187,8 +187,8 @@ class Onyx extends CI_Controller
                 "ordLineRef" => null,
                 "orgCntry" => null,
                 "othchrg" => 0,
-                "prdDesc" => $item_fg->name,
-                "prdNm" => $item_fg->name . " " . $alias,
+                "prdDesc" => trim($item_fg->name),
+                "prdNm" => trim($item_fg->name) . " " . $alias,
                 "prdSlNo" => null,
                 "preTaxVal" => 0,
                 "qty" => $sales_invoice->qty,
@@ -216,7 +216,7 @@ class Onyx extends CI_Controller
             $no++;
         }
 
-        $total_tax = round($post['total_grand'] - $total_tcs - ($total_igst + $total_cgst + $total_sgst), 2);
+        $total_tax = round($post['total_grand'] - ($total_igst + $total_cgst + $total_sgst), 2);
 
         $data = array(
             "userGstin" => $config->gst_no,
@@ -297,12 +297,12 @@ class Onyx extends CI_Controller
             "forCur" => $customer->currency,
             "invForCur" => null,
             "taxSch" => "GST",
-            "totinvval" => (int) ($post['total_grand'] - $total_tcs),
+            "totinvval" => round($post['total_grand'] + round($total_tcs, 2), 2),
             "totdisc" => 0,
             "totfrt" => 0,
             "totins" => 0,
             "totpkg" => 0,
-            "totothchrg" => 0,
+            "totothchrg" => round($total_tcs, 2),
             "tottxval" => $total_tax,
             "totiamt" => round($total_igst, 2),
             "totcamt" => round($total_cgst, 2),

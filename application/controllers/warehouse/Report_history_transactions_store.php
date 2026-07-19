@@ -74,20 +74,24 @@ class Report_history_transactions_store extends CI_Controller
             b.name as prodfam, 
             a.uom, 
             COALESCE(h.begin_stock,0) AS begin_stock,
-            COALESCE(c.qty_in,0) AS qty_in,
-            COALESCE(d.qty_out,0) AS qty_out,
-            (COALESCE(h.begin_stock,0) + COALESCE(c.qty_in,0) - COALESCE(d.qty_out,0)) AS end_stock
+            (COALESCE(c.qty_in,0) + COALESCE(e.sto_qty_in,0)) AS qty_in,
+            (COALESCE(d.qty_out,0) + COALESCE(f.sto_qty_out,0)) AS qty_out,
+            (COALESCE(h.begin_stock,0) + (COALESCE(c.qty_in,0) + COALESCE(e.sto_qty_in,0)) - (COALESCE(d.qty_out,0) + COALESCE(f.sto_qty_out,0))) AS end_stock
         FROM item_rm a 
         JOIN item_familys b ON a.item_family_id = b.id and b.number != '006'
         LEFT JOIN (select item_rm_id, sum(qty) as qty_in from issued_others_store where trans_date between '$filter_from' and '$filter_to' and `type` = 'IN' and status <> '2'  $whereLocationSummary GROUP BY item_rm_id) c ON a.id = c.item_rm_id
         LEFT JOIN (select item_rm_id, sum(qty) as qty_out from issued_others_store where trans_date between '$filter_from' and '$filter_to' and `type` = 'OUT' and status <> '2' $whereLocationSummary GROUP BY item_rm_id) d ON a.id = d.item_rm_id
+        LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as sto_qty_in FROM sto_store WHERE type = 'IN' and trans_date between '$filter_from' and '$filter_to' and (approved_to = '' or approved_to is null) GROUP BY item_rm_id) e ON a.id = e.item_rm_id
+        LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as sto_qty_out FROM sto_store WHERE type = 'OUT' and trans_date between '$filter_from' and '$filter_to' and (approved_to = '' or approved_to is null) GROUP BY item_rm_id) f ON a.id = f.item_rm_id
         LEFT JOIN (SELECT
             a.id,
-            (COALESCE(c.qty_in,0) - COALESCE(d.qty_out,0)) AS begin_stock
+            (COALESCE(c.qty_in,0) + COALESCE(e.sto_qty_in,0) - COALESCE(d.qty_out,0) + COALESCE(f.sto_qty_out,0)) AS begin_stock
             FROM item_rm a 
             JOIN item_familys b ON a.item_family_id = b.id AND b.number != '006'
             JOIN (select item_rm_id, sum(qty) as qty_in from issued_others_store where trans_date < '$filter_from' and '$filter_to' and `type` = 'IN' and status <> '2' $whereLocationSummary GROUP BY item_rm_id) c ON a.id = c.item_rm_id
             LEFT JOIN (select item_rm_id, sum(qty) as qty_out from issued_others_store where trans_date < '$filter_from' and `type` = 'OUT' and status <> '2' $whereLocationSummary GROUP BY item_rm_id) d ON a.id = d.item_rm_id
+            LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as sto_qty_in FROM sto_store WHERE type = 'IN' and trans_date < '$filter_from' and (approved_to = '' or approved_to is null) GROUP BY item_rm_id) e ON a.id = e.item_rm_id
+        LEFT JOIN (SELECT item_rm_id, COALESCE(SUM(qty), 0) as sto_qty_out FROM sto_store WHERE type = 'OUT' and trans_date < '$filter_from' and (approved_to = '' or approved_to is null) GROUP BY item_rm_id) f ON a.id = f.item_rm_id
             GROUP BY a.id) h on a.id = h.id
         JOIN item_categories j ON a.item_category_id = j.id 
         WHERE a.id like '%$filter_items%' and b.number like '%$filter_item_family%' and j.id NOT IN ('C01','C08','C02')
@@ -175,98 +179,95 @@ class Report_history_transactions_store extends CI_Controller
 
                 for ($i = $start; $i <= $finish; $i += (60 * 60 * 24)) {
                     $working_date = date('Y-m-d', $i);
-                    //ISSUED
-                    if (!empty($filter_location_other_number)) {
-                        $whereLocationDetail = "and a.location_other_number='$filter_location_other_number'";
-                    } else {
-                        $whereLocationDetail = "";
-                    }
-                    // //RECEIPT
-                    // $receipts = $this->crud->query("SELECT a.*, b.name as location_other_name FROM issued_others_store a LEFT JOIN warehouse_location_others b on a.location_other_number=b.number WHERE a.item_rm_id = '$item_rm_id' and a.trans_date = '$working_date' and a.type = 'IN' $whereLocationDetail");
 
-                    // $issueds = $this->crud->query("SELECT a.*, b.name as location_other_name FROM issued_others_store a LEFT JOIN warehouse_location_others b on a.location_other_number=b.number WHERE a.item_rm_id = '$item_rm_id' and a.trans_date = '$working_date' and a.type='OUT' $whereLocationDetail");
+                    //STO IN
+                    $sql_sto_in = $this->db->query("SELECT 
+                        'STO IN' as trans_type,
+                        a.created_by,
+                        a.trans_date,
+                        a.document_no,
+                        a.qty as qty_in,
+                        '0' as qty_out,
+                        b.name as location_other_name
+                    FROM sto_store a
+                    LEFT JOIN warehouse_location_others b on a.location_other_number = b.number
+                    WHERE a.item_rm_id = '$item_rm_id' 
+                    and a.trans_date = '$working_date' 
+                    and a.type = 'IN'");
+                    $row_sto_in = $sql_sto_in->result_array();
 
-                    // //Purchase Order Receipt
-                    // foreach ($receipts as $receipt) {
-                    //     $userReceipt = $this->crud->read("users", [], ["username" => $receipt->created_by], "", "id", "asc");
-                    //     $balance = ($begin + ($receipt->qty - $end_qty));
-                    //     $html .= '  <tr>
-                    //                     <td></td>
-                    //                     <td style="text-align:center">' . $nod . '</td>
-                    //                     <td>RECEIPT</td>
-                    //                     <td>' . $userReceipt->name . '</td>
-                    //                     <td>' . $receipt->trans_date . '</td>
-                    //                     <td>' . $receipt->document_in . '</td>
-                    //                     <td>' . $receipt->location_other_name . '</td>
-                    //                     <td style="text-align:right;">' . number_format($begin, 2) . '</td>
-                    //                     <td style="text-align:right;">' . number_format($receipt->qty, 2) . '</td>
-                    //                     <td style="text-align:right;">' . number_format(0)  . '</td>
-                    //                     <td style="text-align:right;">' . number_format($balance, 2)  . '</td>
-                    //                 </tr>';
-                    //     $begin += $receipt->qty;
-                    //     $nod++;
-                    // }
+                    //STO OUT
+                    $sql_sto_out = $this->db->query("SELECT 
+                        'STO OUT' as trans_type,
+                        a.created_by,
+                        a.trans_date,
+                        a.document_no,
+                        '0' as qty_in,
+                        a.qty as qty_out,
+                        b.name as location_other_name
+                    FROM sto_store a
+                    LEFT JOIN warehouse_location_others b on a.location_other_number = b.number
+                    WHERE a.item_rm_id = '$item_rm_id' 
+                    and a.trans_date = '$working_date' 
+                    and a.type = 'OUT'");
+                    $row_sto_out = $sql_sto_out->result_array();
 
-                    // //Issued Material
-                    // foreach ($issueds as $issued) {
-                    //     $user = $this->crud->read("users", [], ["username" => $issued->created_by]);
-                    //     $balance = ($begin - $issued->qty);
-                    //     $html .= '  <tr>
-                    //                     <td></td>
-                    //                     <td style="text-align:center">' . $nod . '</td>
-                    //                     <td>ISSUED</td>
-                    //                     <td>' . $user->name . '</td>
-                    //                     <td>' . $issued->out_date . '</td>
-                    //                     <td>' . $issued->request_no . '</td>
-                    //                     <td>' . $issued->location_other_name . '</td>
-                    //                     <td style="text-align:right;">' . number_format($begin, 2) . '</td>
-                    //                     <td style="text-align:right;">' . number_format(0) . '</td>
-                    //                     <td style="text-align:right;">' . number_format($issued->qty, 2)  . '</td>
-                    //                     <td style="text-align:right;">' . number_format($balance, 2)  . '</td>
-                    //                 </tr>';
-                    //     $begin -= $issued->qty;
-                    //     $nod++;
-                    // }
+                    //Issued Material IN
+                    $sql_issued_in = $this->db->query("SELECT
+                        'RECEIPT' as trans_type,
+                        a.created_by,
+                        a.trans_date,
+                        a.document_in as document_no,
+                        a.qty as qty_in,
+                        '0' as qty_out,
+                        b.name as location_other_name
+                    FROM issued_others_store a
+                    LEFT JOIN warehouse_location_others b on a.location_other_number = b.number
+                    WHERE a.item_rm_id = '$item_rm_id' 
+                    and a.trans_date = '$working_date' 
+                    and a.status <> '2'
+                    and a.type = 'IN'");
+                    $row_issued_in = $sql_issued_in->result_array();
 
+                    //Issued Material OUT
+                    $sql_issued_out = $this->db->query("SELECT 
+                        'ISSUED' as trans_type,
+                        a.created_by,
+                        a.out_date as trans_date,
+                        a.request_no as document_no,
+                        '0' as qty_in,
+                        a.qty as qty_out,
+                        b.name as location_other_name
+                    FROM issued_others_store a
+                    LEFT JOIN warehouse_location_others b on a.location_other_number = b.number
+                    WHERE a.item_rm_id = '$item_rm_id' 
+                    and a.trans_date = '$working_date' 
+                    and a.status <> '2'
+                    and a.type = 'OUT'");
+                    $row_issued_out = $sql_issued_out->result_array();
 
-                    //Issued Material
-                    $issueds = $this->crud->query("SELECT a.*, b.name as location_other_name FROM issued_others_store a LEFT JOIN warehouse_location_others b on a.location_other_number=b.number WHERE a.item_rm_id = '$item_rm_id' and a.trans_date = '$working_date' and a.status <> '2'  $whereLocationDetail");
+                    $issueds = array_merge($row_sto_in, $row_sto_out, $row_issued_in, $row_issued_out);
+                    usort($issueds, function($a, $b) {
+                        return strtotime($a['trans_date']) - strtotime($b['trans_date']);
+                    });
 
                     foreach ($issueds as $issued) {
-                        $user = $this->crud->read("users", [], ["username" => $issued->created_by]);
-                        if ($issued->type == "IN") {
-                            $trans_type = "RECEIPT";
-                            $trans_date = $issued->trans_date;
-                            $document = $issued->document_in;
-                            $in = $issued->qty;
-                            $out = 0;
-                            $balance = ($begin + $issued->qty);
-                        } else {
-                            $trans_type = "ISSUED";
-                            $trans_date = $issued->out_date;
-                            $document = $issued->request_no;
-                            $in = 0;
-                            $out = $issued->qty;
-                            $balance = ($begin - $issued->qty);
-                        }
+                        $balance = ($begin + $issued['qty_in'] - $issued['qty_out']);
                         $html .= '  <tr>
                                         <td></td>
                                         <td style="text-align:center">' . $nod . '</td>
-                                        <td>' . $trans_type . '</td>
-                                        <td>' . $user->name . '</td>
-                                        <td>' . $trans_date . '</td>
-                                        <td>' . $document . '</td>
-                                        <td>' . $issued->location_other_name . '</td>
+                                        <td>' . $issued['trans_type'] . '</td>
+                                        <td>' . $issued['created_by'] . '</td>
+                                        <td>' . $issued['trans_date'] . '</td>
+                                        <td>' . $issued['document_no'] . '</td>
+                                        <td>' . $issued['location_other_name'] . '</td>
                                         <td style="text-align:right;">' . number_format($begin, 2) . '</td>
-                                        <td style="text-align:right;">' . number_format($in, 2) . '</td>
-                                        <td style="text-align:right;">' . number_format($out, 2)  . '</td>
+                                        <td style="text-align:right;">' . number_format($issued['qty_in'], 2) . '</td>
+                                        <td style="text-align:right;">' . number_format($issued['qty_out'], 2)  . '</td>
                                         <td style="text-align:right;">' . number_format($balance, 2)  . '</td>
                                     </tr>';
-                        if ($issued->type == "IN") {
-                            $begin += $issued->qty;
-                        } else {
-                            $begin -= $issued->qty;
-                        }
+
+                        $begin = $balance;
                         $nod++;
                     }
                 }

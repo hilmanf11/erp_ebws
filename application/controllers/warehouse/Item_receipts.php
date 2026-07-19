@@ -123,10 +123,10 @@ class Item_receipts extends CI_Controller
 
                 if(@$row->qty_label == @$row->jumlah){
                     if (!$item_receipts) {
-                        $send   = $this->crud->create('scan_item_receipts', array_merge($post, array("label_no" => strtoupper($post['label_no']))));
+                        $send   = $this->crud->create('scan_item_receipts', array_merge($post, array("label_no" => strtoupper($post['label_no']))), "logs");
                         if ($send) {
-                            $this->crud->update('purchase_order_labels', ["label_no" => strtoupper($post['label_no'])], ["status" => 1]);
-                            $this->crud->update('return_material_labels', ["label_no" => strtoupper($post['label_no'])], ["status" => 1]);
+                            $this->db->update('purchase_order_labels', ["status" => 1], ["label_no" => strtoupper($post['label_no'])]);
+                            $this->db->update('return_material_labels', ["status" => 1], ["label_no" => strtoupper($post['label_no'])]);
                             echo $send;
                         }
                     } else {

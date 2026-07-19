@@ -155,7 +155,6 @@ class Barcode_divides extends CI_Controller
                             $this->db->select('return_id as receipt_id');
                             $this->db->from('return_material_labels');
                             $this->db->where('deleted', 0);
-                            $this->db->where('status', 0);
                             $this->db->where('label_no', $post['label_no']);
                             $this->db->group_by('label_no');
                             $checkLabel = $this->db->get()->row();

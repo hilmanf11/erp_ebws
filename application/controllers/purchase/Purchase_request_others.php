@@ -364,14 +364,15 @@ class Purchase_request_others extends CI_Controller
             $datas[] = array(
                 'request_no' => $data->val($i, 2),
                 'request_date' => $data->val($i, 3),
+                'item_category_id' => $data->val($i, 4),
                 'request_name' => $this->session->name,
                 'request_type' => "UPLOAD",
                 'p_month' => date("m", strtotime($data->val($i, 3))),
                 'p_year' => date("Y", strtotime($data->val($i, 3))),
-                'item_rm_id' => $data->val($i, 4),
-                'qty' => $data->val($i, 5),
-                'expected_date' => $data->val($i, 6),
-                'remarks' => $data->val($i, 7)
+                'item_rm_id' => $data->val($i, 5),
+                'qty' => $data->val($i, 6),
+                'expected_date' => $data->val($i, 7),
+                'remarks' => $data->val($i, 8)
             );
         }
         
@@ -418,6 +419,8 @@ class Purchase_request_others extends CI_Controller
 
             if (empty($item->id)) {
                 echo json_encode(array("title" => "Not Found", "message" => "Part No " . $data['item_rm_id'] . " Not Found", "theme" => "error"));
+            } elseif (in_array($data['item_category_id'], ['OTHER','SERVICE','ASSET'])) {
+                echo json_encode(array("title" => "Not Match", "message" => "Category " . $data['item_category_id'] . " Not Match", "theme" => "error"));
             } elseif (!empty($purchase_request_others->id)) {
                 echo json_encode(array("title" => "Duplicated", "message" => "Part No " . $data['item_rm_id'] . " Duplicate Data", "theme" => "error"));
             } else {
@@ -439,16 +442,24 @@ class Purchase_request_others extends CI_Controller
         $approval = $this->crud->read("approvals", [], ["table_name" => "purchase_request_others"]);
         $user_1 = $this->crud->read("users", [], ["username" => @$approval->user_approval_1]);
         $user_2 = $this->crud->read("users", [], ["username" => @$approval->user_approval_2]);
+        $user_3 = $this->crud->read("users", [], ["username" => @$approval->user_approval_3]);
         
         if($purchase_requests->approved_by == @$approval->user_approval_1){
             $imge_1 = '<img src="'.base_url('assets/image/approved.png').'" width="100"/>';
             $imge_2 = "";
+            $imge_3 = "";
         }elseif($purchase_requests->approved_by == @$approval->user_approval_2){
             $imge_1 = '<img src="'.base_url('assets/image/approved.png').'" width="100"/>';
             $imge_2 = '<img src="'.base_url('assets/image/approved.png').'" width="100"/>';
+            $imge_3 = '';
+        }elseif($purchase_requests->approved_by == @$approval->user_approval_3){
+            $imge_1 = '<img src="'.base_url('assets/image/approved.png').'" width="100"/>';
+            $imge_2 = '<img src="'.base_url('assets/image/approved.png').'" width="100"/>';
+            $imge_3 = '<img src="'.base_url('assets/image/approved.png').'" width="100"/>';
         }else{
             $imge_1 = "";
             $imge_2 = "";
+            $imge_3 = "";
         }
 
         //Config Page
@@ -563,21 +574,23 @@ class Purchase_request_others extends CI_Controller
                                     </tr>
                                 </table>
                             </div>
-                            <div style="width:30%; float:left;">
+                            <div style="width:10%; float:left;">
                                 <br>
                             </div>
-                            <div style="width:40%; float:right; margin-bottom: 10px;">
+                            <div style="width:60%; float:right; margin-bottom: 10px;">
                                 <table id="customers" style="margin-top:20px;">
                                     <tr>
-                                        <th colspan="2" style="text-align:center;">'.$config->name.'</th>
+                                        <th colspan="3" style="text-align:center;">'.$config->name.'</th>
                                     </tr>
                                     <tr>
                                         <th style="height:80px;">'.@$imge_1.'</th>
                                         <th style="height:80px;">'.@$imge_2.'</th>
+                                        <th style="height:80px;">'.@$imge_3.'</th>
                                     </tr>
                                     <tr>
                                         <th style="height:20px; text-align:center;">'.@$user_1->name.'</th>
                                         <th style="height:20px; text-align:center;">'.@$user_2->name.'</th>
+                                        <th style="height:20px; text-align:center;">'.@$user_3->name.'</th>
                                     </tr>
                                 </table>
                             </div>';

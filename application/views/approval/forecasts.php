@@ -16,7 +16,6 @@
             <th colspan="2" data-options="field:'',width:200,halign:'center'">Period</th>
             <th rowspan="2" data-options="field:'revision',width:80,align:'center'">Revision</th>
             <th rowspan="2" data-options="field:'reason',width:200,halign:'center'">Reason</th>
-            <th rowspan="2" data-options="field:'attachment',width:80,align:'center',formatter: btnAttachment">Attachment</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Created</th>
             <th colspan="2" data-options="field:'',width:100,halign:'center'"> Updated</th>
         </tr>
@@ -236,16 +235,6 @@
         });
 
         return "<b>" + formatter.format(value) + "</b>";
-    }
-
-    function btnAttachment(val, row, index) {
-        var attachment = row.attachment;
-        
-        if (attachment != null && attachment != "") {
-            return '<a class="btn btn-primary w-100" target="_blank" href="<?= base_url('assets/image/forecasts/') ?>'+row.attachment+'" style="pointer-events: visible; opacity:1;"><i class="fa fa-eye"></i> View</a>';
-        } else {
-            return '-';
-        }
     }
 
     function BtnDetail(val, row) {
